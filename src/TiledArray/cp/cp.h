@@ -301,7 +301,7 @@ class CP {
             val = 1.0 / val;
           }
         },
-        true);
+        /* fence = */ true);
 
     MtKRP("r,n") = (U("r,s") * S("s,sp")) * (Vt("sp,rp") * MtKRP("rp,n"));
   }
@@ -320,34 +320,37 @@ class CP {
     lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
 
     // element-wise square root to convert squared norms to norms
-    TiledArray::foreach_inplace(lambda, [](Tile& tile) {
-      auto lo = tile.range().lobound_data();
-      auto up = tile.range().upbound_data();
-      for (auto R = lo[0]; R < up[0]; ++R) {
-        const auto norm_squared_RR = tile(R);
-        using std::sqrt;
-        tile(R) = sqrt(norm_squared_RR);
-      }
-    });
-    world.taskq.fence();
-
+    TiledArray::foreach_inplace(
+        lambda,
+        [](Tile& tile) {
+          auto lo = tile.range().lobound_data();
+          auto up = tile.range().upbound_data();
+          for (auto R = lo[0]; R < up[0]; ++R) {
+            const auto norm_squared_RR = tile(R);
+            using std::sqrt;
+            tile(R) = sqrt(norm_squared_RR);
+          }
+        },
+        /* fence = */ true);
     lambda.truncate();
     lambda.make_replicated();
     auto lambda_eig = array_to_eigen(lambda);
 
-    TiledArray::foreach_inplace(factor, [&lambda_eig](Tile& tile) {
-      auto lo = tile.range().lobound_data();
-      auto up = tile.range().upbound_data();
-      for (auto R = lo[0]; R < up[0]; ++R) {
-        const auto lambda_R = lambda_eig(R, 0);
-        if (lambda_R < 1e-12) continue;
-        auto scale_by = 1.0 / lambda_R;
-        for (auto N = lo[1]; N < up[1]; ++N) {
-          tile(R, N) *= scale_by;
-        }
-      }
-    });
-    world.taskq.fence();
+    TiledArray::foreach_inplace(
+        factor,
+        [&lambda_eig](Tile& tile) {
+          auto lo = tile.range().lobound_data();
+          auto up = tile.range().upbound_data();
+          for (auto R = lo[0]; R < up[0]; ++R) {
+            const auto lambda_R = lambda_eig(R, 0);
+            if (lambda_R < 1e-12) continue;
+            auto scale_by = 1.0 / lambda_R;
+            for (auto N = lo[1]; N < up[1]; ++N) {
+              tile(R, N) *= scale_by;
+            }
+          }
+        },
+        /* fence = */ true);
     factor.truncate();
   }
 
@@ -371,8 +374,11 @@ class CP {
       for (size_t i = 1; i < ndim - 1; ++i, ++gram_ptr) {
         W("r,rp") *= (*gram_ptr)("r,rp");
       }
-      return sqrt(W("r,rp").dot(
+      auto result = sqrt(W("r,rp").dot(
           (unNormalized_Factor("r,n") * unNormalized_Factor("rp,n"))));
+      // not sure why need to fence here, but hang periodically without it
+      W.world().gop.fence();
+      return result;
     };
     // compute the error in the loss function and find the fit
     double normFactors = factor_norm(),

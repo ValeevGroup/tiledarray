@@ -124,6 +124,7 @@ class CP_ALS : public CP<Tile, Policy> {
     auto W = this->partial_grammian[contracted_index];
     An(final) =
         this->reference(ref_indices) * cp_factors[contracted_index](contract);
+    world.gop.fence();
 
     // next we need to contract (einsum) over all modes not including the
     // mode we seek to optimize. We do this by modifying the strings
@@ -147,9 +148,11 @@ class CP_ALS : public CP<Tile, Policy> {
 
       An = einsum(An(final), cp_factors[contracted_index](contract),
                   mixed_contractions);
+      world.gop.fence();
 
       final = mixed_contractions;
       W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");
+      world.gop.fence();
     }
 
     if (mode == ndim - 1) this->MTtKRP = An;
@@ -157,13 +160,13 @@ class CP_ALS : public CP<Tile, Policy> {
     // TODO check to see if the Cholesky will fail. If it does
     // use SVD
     this->cholesky_inverse(An, W);
+    world.gop.fence();  // N.B. seems to deadlock without this
 
     if (mode == ndim - 1) this->unNormalized_Factor = An.clone();
     this->normalize_factor(An);
     cp_factors[mode] = An;
     auto& gram = this->partial_grammian[mode];
     gram("r,rp") = An("r,n") * An("rp,n");
-    world.gop.fence();
   }
 };
 }  // namespace TiledArray::cp
