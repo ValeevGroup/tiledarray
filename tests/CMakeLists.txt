@@ -98,7 +98,7 @@ set(ta_test_src_files  ta_test.cpp
   # tot_tot_tot_contract_.cpp
     einsum.cpp
     linalg.cpp
-        cp.cpp
+    cp.cpp
 )
 
 if(CUDA_FOUND)

@@ -4,15 +4,15 @@
 
 #ifndef TiledArray_CP_BTAS_CP_H
 #define TiledArray_CP_BTAS_CP_H
-#include <tiledarray.h>
 #include <TiledArray/conversions/btas.h>
 #include <btas/btas.h>
+#include <tiledarray.h>
 
 namespace TiledArray::cp {
 /**
- * REQUIRES BTAS
- * Calculates the canonical product (CP) decomposition of /c Reference to a
- * specific rank using alternating least squares (ALS) method in BTAS
+ * Calculates the canonical product (CP) decomposition of \p Reference to a
+ * specific rank using shared-memory alternating least squares (ALS) solver
+ * in BTAS.
  *
  * @param[in] world Madness world which CP will be computed on.
  * @param[in] Reference  BTAS_Tensor to be CP decomposed.
@@ -33,21 +33,23 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
                  std::size_t decomp_world_rank = 0, double als_threshold = 1e-3,
                  bool verbose = true) {
   using tile_type = typename DistArray<Tile, Policy>::value_type::value_type;
-  using BTAS_Tensor = btas::Tensor<tile_type, btas::DEFAULT::range,
-               btas::varray<double> >;
-  std::cout.precision(12);
+  using BTAS_Tensor =
+      btas::Tensor<tile_type, btas::DEFAULT::range, btas::varray<double>>;
   auto ref_norm = TA::norm2(Reference);
   BTAS_Tensor btas_ref;
   auto n_factors = TA::rank(Reference);
   std::vector<BTAS_Tensor> btas_factors;
   btas_factors.reserve(n_factors + 1);
 
-  if(world.rank() == decomp_world_rank){
-    TA_ASSERT(Reference.world().size() > decomp_world_rank &&
-              "TiledArray::cp::btas_cp_als(): must compute CP decomposition on a  "
-              "single rank.");
-    btas_ref = TA::array_to_btas_tensor<Tile, Policy, btas::DEFAULT::range,
-    btas::varray<typename Tile::value_type>>(Reference, 0);
+  if (world.rank() == decomp_world_rank) {
+    TA_ASSERT(
+        Reference.world().size() > decomp_world_rank &&
+        "TiledArray::cp::btas_cp_als(): must compute CP decomposition on a  "
+        "single rank.");
+    btas_ref =
+        TA::array_to_btas_tensor<Tile, Policy, btas::DEFAULT::range,
+                                 btas::varray<typename Tile::value_type>>(
+            Reference, 0);
     using Tensor = decltype(btas_ref);
     btas::FitCheck<Tensor> fit(als_threshold);
     fit.set_norm(ref_norm);
@@ -60,8 +62,7 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
     // Scale the first factor matrix by the parallel factor, this choice is
     // arbitrary
     for (int i = 0; i < btas_cp_rank; i++) {
-      btas::scal(btas_factors[0].extent(0),
-                 btas_factors[n_factors](i),
+      btas::scal(btas_factors[0].extent(0), btas_factors[n_factors](i),
                  std::begin(btas_factors[0]) + i, btas_cp_rank);
     }
     btas_factors.pop_back();
@@ -74,14 +75,15 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
   world.gop.broadcast_serializable(btas_factors, decomp_world_rank);
   auto factor_number = 0;
   auto one_node = (world.size() == 1);
-  std::vector<TA::DistArray<Tile, Policy> > TA_factors;
+  std::vector<TA::DistArray<Tile, Policy>> TA_factors;
   TA_factors.reserve(n_factors);
   for (auto factor : btas_factors) {
     auto row_trange = Reference.trange().data()[factor_number];
     TiledArray::TiledRange trange({row_trange, rank_trange1});
 
-    auto TA_factor = TiledArray::btas_tensor_to_array<TA::DistArray<Tile, Policy>>(
-        world, trange, factor, !one_node);
+    auto TA_factor =
+        TiledArray::btas_tensor_to_array<TA::DistArray<Tile, Policy>>(
+            world, trange, factor, !one_node);
     TA_factor("r,a") = TA_factor("a,r");
     TA_factors.emplace_back(TA_factor);
     ++factor_number;
@@ -91,9 +93,9 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
 }
 
 /**
- * REQUIRES BTAS
- * Calculates the canonical product (CP) decomposition of /c Reference to a
- * specific rank using a regularized alternating least squares (RALS) method in BTAS
+ * Calculates the canonical product (CP) decomposition of \p Reference to a
+ * specific rank using shared-memory regularized alternating least squares
+ * (RALS) solver in BTAS.
  *
  * @param[in] world Madness world which CP will be computed on.
  * @param[in] Reference  BTAS_Tensor to be CP decomposed.
@@ -110,23 +112,27 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
  **/
 template <typename Tile, typename Policy>
 auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
-                 long btas_cp_rank, TA::TiledRange1 rank_trange1,
-                 std::size_t decomp_world_rank = 0, double als_threshold = 1e-3,
-                 bool verbose = true) {
-  using BTAS_Tensor = btas::Tensor<typename Tile::value_type, btas::DEFAULT::range,
-                              btas::varray<typename Tile::value_type> >;
+                  long btas_cp_rank, TA::TiledRange1 rank_trange1,
+                  std::size_t decomp_world_rank = 0,
+                  double als_threshold = 1e-3, bool verbose = true) {
+  using BTAS_Tensor =
+      btas::Tensor<typename Tile::value_type, btas::DEFAULT::range,
+                   btas::varray<typename Tile::value_type>>;
   auto ref_norm = TA::norm2(Reference);
   BTAS_Tensor btas_ref;
   auto n_factors = TA::rank(Reference);
   std::vector<BTAS_Tensor> btas_factors;
   btas_factors.reserve(n_factors + 1);
 
-  if(world.rank() == decomp_world_rank){
-    TA_ASSERT(Reference.world().size() > decomp_world_rank &&
-              "TiledArray::cp::btas_cp_als(): must compute CP decomposition on a  "
-              "single rank.");
-    btas_ref = TA::array_to_btas_tensor<Tile, Policy,  btas::DEFAULT::range,
-                                        btas::varray<typename Tile::value_type>>(Reference, 0);
+  if (world.rank() == decomp_world_rank) {
+    TA_ASSERT(
+        Reference.world().size() > decomp_world_rank &&
+        "TiledArray::cp::btas_cp_als(): must compute CP decomposition on a  "
+        "single rank.");
+    btas_ref =
+        TA::array_to_btas_tensor<Tile, Policy, btas::DEFAULT::range,
+                                 btas::varray<typename Tile::value_type>>(
+            Reference, 0);
     btas::FitCheck<BTAS_Tensor> fit(als_threshold);
     fit.set_norm(ref_norm);
     fit.verbose(verbose);
@@ -138,8 +144,7 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
     // Scale the first factor matrix by the parallel factor, this choice is
     // arbitrary
     for (int i = 0; i < btas_cp_rank; i++) {
-      btas::scal(btas_factors[0].extent(0),
-                 btas_factors[n_factors](i),
+      btas::scal(btas_factors[0].extent(0), btas_factors[n_factors](i),
                  std::begin(btas_factors[0]) + i, btas_cp_rank);
     }
     btas_factors.pop_back();
@@ -152,14 +157,15 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
   world.gop.broadcast_serializable(btas_factors, decomp_world_rank);
   auto factor_number = 0;
   auto one_node = (world.size() == 1);
-  std::vector<TA::DistArray<Tile, Policy> > TA_factors;
+  std::vector<TA::DistArray<Tile, Policy>> TA_factors;
   TA_factors.reserve(n_factors);
   for (auto factor : btas_factors) {
     auto row_trange = Reference.trange().data()[factor_number];
     TiledArray::TiledRange trange({row_trange, rank_trange1});
 
-    auto TA_factor = TiledArray::btas_tensor_to_array<TA::DistArray<Tile, Policy>>(
-        world, trange, factor, !one_node);
+    auto TA_factor =
+        TiledArray::btas_tensor_to_array<TA::DistArray<Tile, Policy>>(
+            world, trange, factor, !one_node);
     TA_factor("r,a") = TA_factor("a,r");
     TA_factors.emplace_back(TA_factor);
     ++factor_number;
@@ -167,5 +173,5 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
 
   return TA_factors;
 }
-} // namespace TiledArray
+}  // namespace TiledArray::cp
 #endif  // TiledArray_CP_BTAS_CP_H

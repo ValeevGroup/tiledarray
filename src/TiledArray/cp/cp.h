@@ -51,7 +51,7 @@ static inline char intToAlphabet(int i) { return static_cast<char>('a' + i); }
 
 /**
  * This is a base class for the canonical polyadic (CP)
- * decomposition. The decomposition, in general,
+ * decomposition solver. The decomposition, in general,
  * represents an order-N tensor as a set of order-2
  * tensors all coupled by a hyperdimension called the rank.
  * In this base class we have functions/variables that are universal to
