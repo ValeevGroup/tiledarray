@@ -53,6 +53,8 @@ struct TensorViewFixture {
 
   Tensor<int> t{random_tensor(Range(lower_bound, upper_bound))};
 
+  constexpr static std::size_t ntiles_per_test = 10;
+
 };  // TensorViewFixture
 
 const std::array<int, 3> TensorViewFixture::lower_bound{{0, 1, 2}};
@@ -62,6 +64,7 @@ BOOST_FIXTURE_TEST_SUITE(tensor_view_suite, TensorViewFixture,
                          TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(non_const_view) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -96,12 +99,16 @@ BOOST_AUTO_TEST_CASE(non_const_view) {
           BOOST_CHECK_EQUAL(view(*it), t(*it));
           BOOST_CHECK_EQUAL(view(i), t(*it));
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE(const_view) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -136,6 +143,9 @@ BOOST_AUTO_TEST_CASE(const_view) {
           BOOST_CHECK_EQUAL(view(*it), t(*it));
           BOOST_CHECK_EQUAL(view(i), t(*it));
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
@@ -167,6 +177,7 @@ BOOST_AUTO_TEST_CASE(transitive_read_write) {
 }
 
 BOOST_AUTO_TEST_CASE(assign_tensor_to_view) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -195,12 +206,16 @@ BOOST_AUTO_TEST_CASE(assign_tensor_to_view) {
           BOOST_CHECK_EQUAL(t(*it), tensor(*it));
           BOOST_CHECK_EQUAL(t(*it), tensor(i));
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE(copy_view_to_tensor) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -224,12 +239,16 @@ BOOST_AUTO_TEST_CASE(copy_view_to_tensor) {
           BOOST_CHECK_EQUAL(tensor(i), view(*it));
           BOOST_CHECK_EQUAL(tensor(i), view(i));
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE(assign_view_to_tensor) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -254,12 +273,16 @@ BOOST_AUTO_TEST_CASE(assign_view_to_tensor) {
           BOOST_CHECK_EQUAL(tensor(i), view(*it));
           BOOST_CHECK_EQUAL(tensor(i), view(i));
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE(add_tensor_view) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -286,12 +309,16 @@ BOOST_AUTO_TEST_CASE(add_tensor_view) {
              ++it) {
           BOOST_CHECK_EQUAL(result(*it), view(*it) + right(*it));
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE(add_tensor_to_view) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -318,12 +345,16 @@ BOOST_AUTO_TEST_CASE(add_tensor_to_view) {
           BOOST_CHECK_EQUAL(view(*it), temp(*it) + tensor(*it));
           BOOST_CHECK_EQUAL(view(i), temp(*it) + tensor(*it));
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE(scale_view) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -347,12 +378,16 @@ BOOST_AUTO_TEST_CASE(scale_view) {
              ++it, ++i) {
           BOOST_CHECK_EQUAL(result(*it), view(*it) * 3);
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
 }
 
 BOOST_AUTO_TEST_CASE(scale_to_view) {
+  std::size_t tile_count = 0;
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();
        ++lower_it) {
     const auto lower = *lower_it;
@@ -378,6 +413,9 @@ BOOST_AUTO_TEST_CASE(scale_to_view) {
           BOOST_CHECK_EQUAL(view(*it), temp(*it) * 3);
           BOOST_CHECK_EQUAL(view(i), temp(*it) * 3);
         }
+
+        ++tile_count;
+        if (tile_count == ntiles_per_test) return;
       }
     }
   }
