@@ -94,9 +94,8 @@ class CP {
   /// moving to @c rank else builds an efficient
   /// random guess with rank @c rank
   /// \param[in] rank Rank of the CP deccomposition
-  /// \param[in] rank_block_size 0; What is the size of the blocks
-  /// in the rank mode's TiledRange, will compute TiledRange1 inline.
-  /// if 0 : rank_blocck_size = rank.
+  /// \param[in] rank_block_size The target tile size of
+  /// rank mode's range; if 0 will use \p rank as \p rank_block_size .
   /// \param[in] build_rank should CP approximation be built from rank 1
   /// or set.
   /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
