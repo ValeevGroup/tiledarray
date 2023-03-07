@@ -152,7 +152,6 @@ class CP_ALS : public CP<Tile, Policy> {
 
       final = mixed_contractions;
       W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");
-      world.gop.fence();
     }
 
     if (mode == ndim - 1) this->MTtKRP = An;
