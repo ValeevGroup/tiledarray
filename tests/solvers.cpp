@@ -104,9 +104,9 @@ struct make_b<DistArray<Tile, Policy>> {
     typename T::value_type tile(range);
 
     // Fill tile with data
-    tile(0) = 1;
-    tile(1) = 4;
-    tile(2) = 0;
+    tile({0}) = 1;
+    tile({1}) = 4;
+    tile({2}) = 0;
 
     return tile;
   }
@@ -130,9 +130,9 @@ struct make_pc<DistArray<Tile, Policy>> {
     typename T::value_type tile(range);
 
     // Fill tile with data
-    tile(0) = 1;
-    tile(1) = 1;
-    tile(2) = 1;
+    tile({0}) = 1;
+    tile({1}) = 1;
+    tile({2}) = 1;
 
     return tile;
   }
@@ -157,7 +157,7 @@ struct validate<DistArray<Tile, Policy>> {
       const auto& tile_0 = x.find({0}).get();
       double error_2norm = 0.0;
       for (int i = 0; i != 3; ++i) {
-        auto delta = tile_0(i) - tile_0_ref[i];
+        auto delta = tile_0({i}) - tile_0_ref[i];
         error_2norm += delta * delta;
       }
       error_2norm = std::sqrt(error_2norm);

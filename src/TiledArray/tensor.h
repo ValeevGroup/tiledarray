@@ -62,7 +62,7 @@ template <typename T, typename std::enable_if<detail::is_tensor<T>::value &&
 inline std::ostream& operator<<(std::ostream& os, const T& t) {
   os << t.range() << " { ";
   const auto n = t.range().volume();
-  for (auto i = 0ul; i < n; ++i) os << t[i] << " ";
+  for (auto ord = 0ul; ord < n; ++ord) os << t.at_ordinal(ord) << " ";
 
   os << "}";
 

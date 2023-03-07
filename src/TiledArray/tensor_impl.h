@@ -133,41 +133,135 @@ class TensorImpl : private NO_DEFAULTS {
 
   /// Query a tile owner
 
-  /// \tparam Index The index type
+  /// \tparam Index The sized integral range type
   /// \param i The tile index to query
   /// \return The process ID of the node that owns tile \c i
   /// \throw TiledArray::Exception When \c i is outside the tiled range tile
   /// range
   /// \throw TiledArray::Exception When the process map has not been set
-  template <typename Index>
-  ProcessID owner(const Index& i) const {
-    TA_ASSERT(trange_.tiles_range().includes(i));
-    return pmap_->owner(trange_.tiles_range().ordinal(i));
+  template <typename Index, typename = std::enable_if_t<
+                                detail::is_integral_sized_range_v<Index>>>
+  ProcessID owner(const Index& index) const {
+    const auto ord = trange_.tiles_range().ordinal(index);
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return pmap_->owner(ord);
+  }
+
+  /// Query a tile owner
+
+  /// \tparam Integer An integer type
+  /// \param i The tile index to query
+  /// \return The process ID of the node that owns tile \c i
+  /// \throw TiledArray::Exception When \c i is outside the tiled range tile
+  /// range
+  /// \throw TiledArray::Exception When the process map has not been set
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  ProcessID owner(const std::initializer_list<Integer>& index) const {
+    const auto ord = trange_.tiles_range().ordinal(index);
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return pmap_->owner(ord);
+  }
+
+  /// Query a tile owner
+
+  /// \tparam Ordinal An integer type
+  /// \param i The tile index to query
+  /// \return The process ID of the node that owns tile \c i
+  /// \throw TiledArray::Exception When \c i is outside the tiled range tile
+  /// range
+  /// \throw TiledArray::Exception When the process map has not been set
+  template <typename Ordinal>
+  std::enable_if_t<std::is_integral_v<Ordinal>, ProcessID> owner(
+      const Ordinal& ord) const {
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return pmap_->owner(ord);
   }
 
   /// Query for a locally owned tile
 
-  /// \tparam Index The index type
+  /// \tparam Index The sized integral range type
   /// \param i The tile index to query
   /// \return \c true if the tile is owned by this node, otherwise \c false
   /// \throw TiledArray::Exception When the process map has not been set
-  template <typename Index>
-  bool is_local(const Index& i) const {
-    TA_ASSERT(trange_.tiles_range().includes(i));
-    return pmap_->is_local(trange_.tiles_range().ordinal(i));
+  template <typename Index, typename = std::enable_if_t<
+                                detail::is_integral_sized_range_v<Index>>>
+  bool is_local(const Index& index) const {
+    const auto ord = trange_.tiles_range().ordinal(index);
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return pmap_->is_local(ord);
+  }
+
+  /// Query for a locally owned tile
+
+  /// \tparam Integer An integer type
+  /// \param i The tile index to query
+  /// \return \c true if the tile is owned by this node, otherwise \c false
+  /// \throw TiledArray::Exception When the process map has not been set
+  template <typename Integer,
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  bool is_local(const std::initializer_list<Integer>& index) const {
+    const auto ord = trange_.tiles_range().ordinal(index);
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return pmap_->is_local(ord);
+  }
+
+  /// Query for a locally owned tile
+
+  /// \tparam Ordinal An integer type
+  /// \param i The tile index to query
+  /// \return \c true if the tile is owned by this node, otherwise \c false
+  /// \throw TiledArray::Exception When the process map has not been set
+  template <typename Ordinal>
+  std::enable_if_t<std::is_integral_v<Ordinal>, bool> is_local(
+      const Ordinal& ord) const {
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return pmap_->is_local(ord);
   }
 
   /// Query for a zero tile
 
-  /// \tparam Index The index type
+  /// \tparam Index The sized integral range type
   /// \param i The tile index to query
   /// \return \c true if the tile is zero, otherwise \c false
   /// \throw TiledArray::Exception When \c i is outside the tiled range tile
   /// range
-  template <typename Index>
-  bool is_zero(const Index& i) const {
-    TA_ASSERT(trange_.tiles_range().includes(i));
-    return shape_->is_zero(trange_.tiles_range().ordinal(i));
+  template <typename Index, typename = std::enable_if_t<
+                                detail::is_integral_sized_range_v<Index> &&
+                                !std::is_integral_v<Index>>>
+  bool is_zero(const Index& index) const {
+    const auto ord = trange_.tiles_range().ordinal(index);
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return shape_->is_zero(ord);
+  }
+
+  /// Query for a zero tile
+
+  /// \tparam Integer An integer type
+  /// \param i The tile index to query
+  /// \return \c true if the tile is zero, otherwise \c false
+  /// \throw TiledArray::Exception When \c i is outside the tiled range tile
+  /// range
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  bool is_zero(const std::initializer_list<Integer>& index) const {
+    const auto ord = trange_.tiles_range().ordinal(index);
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return shape_->is_zero(ord);
+  }
+
+  /// Query for a zero tile
+
+  /// \tparam Ordinal An integer type
+  /// \param i The tile index to query
+  /// \return \c true if the tile is zero, otherwise \c false
+  /// \throw TiledArray::Exception When \c i is outside the tiled range tile
+  /// range
+  template <typename Ordinal>
+  std::enable_if_t<std::is_integral_v<Ordinal>, bool> is_zero(
+      const Ordinal& ord) const {
+    TA_ASSERT(trange_.tiles_range().includes_ordinal(ord));
+    return shape_->is_zero(ord);
   }
 
   /// Query the density of the tensor

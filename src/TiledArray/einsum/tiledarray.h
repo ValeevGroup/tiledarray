@@ -179,7 +179,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
         bi = bi.reshape(shape, batch);
         for (size_t k = 0; k < batch; ++k) {
           auto hk = ai.batch(k).dot(bi.batch(k));
-          tile[k] += hk;
+          tile({k}) += hk;
         }
       }
       auto pc = C.permutation;
@@ -406,11 +406,11 @@ namespace TiledArray::expressions {
 /// @param[in] B second argument to the product
 /// @warning just as in the plain expression code, reductions are a special
 /// case; use Expr::reduce()
-template<typename T, typename U>
+template <typename T, typename U>
 auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B) {
   auto a = std::get<0>(idx(A));
   auto b = std::get<0>(idx(B));
-  return einsum(A, B, std::string(a^b));
+  return einsum(A, B, std::string(a ^ b));
 }
 
 /// einsum function with result indices explicitly specified
@@ -419,37 +419,29 @@ auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B) {
 /// @param[in] r result indices
 /// @warning just as in the plain expression code, reductions are a special
 /// case; use Expr::reduce()
-template<typename T, typename U, typename ... Indices>
-auto einsum(
-  expressions::TsrExpr<T> A,
-  expressions::TsrExpr<U> B,
-  const std::string &cs,
-  World &world = get_default_world())
-{
+template <typename T, typename U, typename... Indices>
+auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
+            const std::string &cs, World &world = get_default_world()) {
   static_assert(std::is_same<const T, const U>::value);
   using E = expressions::TsrExpr<const T>;
   return Einsum::einsum(E(A), E(B), Einsum::idx<T>(cs), world);
 }
 
 template <typename T, typename U, typename V>
-auto dot(expressions::TsrExpr<T> A,
-         expressions::TsrExpr<U> B,
-         expressions::TsrExpr<V> C,
-         World &world = get_default_world())
-{
+auto dot(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
+         expressions::TsrExpr<V> C, World &world = get_default_world()) {
   static_assert(std::is_same<const T, const U>::value);
   static_assert(std::is_same<const T, const V>::value);
   using E = expressions::TsrExpr<const T>;
   return Einsum::dot(E(A), E(B), E(C), world);
 }
 
-} // TiledArray::expressions
+}  // namespace TiledArray::expressions
 
 namespace TiledArray {
 
 using expressions::dot;
 using expressions::einsum;
-using expressions::dot;
 
 template <typename T, typename P>
 auto einsum(const std::string &expr, const DistArray<T, P> &A,

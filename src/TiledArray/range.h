@@ -76,7 +76,8 @@ class Range {
   ///   stride[0],  ..., stride[rank_ - 1] }
   /// \endcode
   container::svector<index1_type, 4 * TA_MAX_SOO_RANK_METADATA> datavec_;
-  distance_type offset_ = 0l;  ///< Ordinal index offset correction
+  distance_type offset_ =
+      0l;  ///< Ordinal index offset correction to support nonzero lobound
   ordinal_type volume_ = 0ul;  ///< Total number of elements
   unsigned int rank_ = 0u;  ///< The rank (or number of dimensions) in the range
 
@@ -825,7 +826,7 @@ class Range {
   /// \throw TiledArray::Exception When the rank of this range is not
   /// equal to the size of the index.
   template <typename Index,
-            typename std::enable_if<detail::is_integral_range_v<Index>,
+            typename std::enable_if<detail::is_integral_sized_range_v<Index>,
                                     bool>::type* = nullptr>
   bool includes(const Index& index) const {
     TA_ASSERT(*this);
@@ -870,10 +871,28 @@ class Range {
 
   /// \param i The ordinal index to check for inclusion in the range
   /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
+  /// \warning if this->order()==1 this
   /// \throw nothing
   template <typename Ordinal>
   typename std::enable_if<std::is_integral_v<Ordinal>, bool>::type includes(
       Ordinal i) const {
+    TA_ASSERT(*this);
+    // can't distinguish between includes(Index...) and includes(ordinal)
+    // thus assume includes_ordinal() if this->rank()==1
+    TA_ASSERT(this->rank() != 1 &&
+              "use Range::includes(index) or "
+              "Range::includes_ordinal(index_ordinal) if this->rank()==1");
+    return include_ordinal_(i);
+  }
+
+  /// Check the ordinal index to make sure it is within the range.
+
+  /// \param i The ordinal index to check for inclusion in the range
+  /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
+  /// \throw nothing
+  template <typename Ordinal>
+  typename std::enable_if<std::is_integral_v<Ordinal>, bool>::type
+  includes_ordinal(Ordinal i) const {
     TA_ASSERT(*this);
     return include_ordinal_(i);
   }
@@ -1009,10 +1028,7 @@ class Range {
   /// \param index Ordinal index
   /// \return \c index (unchanged)
   /// \throw When \c index is not included in this range
-  ordinal_type ordinal(const ordinal_type index) const {
-    TA_ASSERT(includes(index));
-    return index;
-  }
+  ordinal_type ordinal(const ordinal_type index) const { return index; }
 
   /// calculate the ordinal index of \p index
 
@@ -1024,8 +1040,6 @@ class Range {
   template <typename Index, typename std::enable_if_t<
                                 detail::is_integral_range_v<Index>>* = nullptr>
   ordinal_type ordinal(const Index& index) const {
-    TA_ASSERT(includes(index));
-
     auto* MADNESS_RESTRICT const stride = stride_data();
 
     ordinal_type result = 0ul;
@@ -1071,16 +1085,16 @@ class Range {
     return ordinal(temp_index);
   }
 
-  /// calculate the coordinate index of the ordinal index, \c index.
+  /// calculate the coordinate index of the ordinal index, \c ord.
 
   /// Convert an ordinal index to a coordinate index.
-  /// \param index Ordinal index
+  /// \param ord Ordinal index
   /// \return The index of the ordinal index
-  /// \throw TiledArray::Exception When \c index is not included in this range
-  index_type idx(ordinal_type index) const {
+  /// \throw TiledArray::Exception When \p ord is not included in this range
+  index_type idx(ordinal_type ord) const {
     // Check that index is contained by range.
     // N.B. this will fail if any extent is zero
-    TA_ASSERT(includes(index));
+    TA_ASSERT(includes_ordinal(ord));
 
     // Construct result coordinate index object and allocate its memory.
     Range_::index result(rank_, 0);
@@ -1096,8 +1110,8 @@ class Range {
       const auto size_i = size[i];
 
       // Compute result index element i
-      const auto result_i = (index % size_i) + lower_i;
-      index /= size_i;
+      const auto result_i = (ord % size_i) + lower_i;
+      ord /= size_i;
 
       // Store result
       result_data[i] = result_i;

@@ -326,9 +326,9 @@ class CP {
           auto lo = tile.range().lobound_data();
           auto up = tile.range().upbound_data();
           for (auto R = lo[0]; R < up[0]; ++R) {
-            const auto norm_squared_RR = tile(R);
+            const auto norm_squared_RR = tile({R});
             using std::sqrt;
-            tile(R) = sqrt(norm_squared_RR);
+            tile({R}) = sqrt(norm_squared_RR);
           }
         },
         /* fence = */ true);

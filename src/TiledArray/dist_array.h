@@ -1545,30 +1545,31 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
  private:
-  template <typename Index>
-  std::enable_if_t<std::is_integral_v<Index>, void> check_index(
-      const Index i) const {
+  template <typename Ordinal>
+  std::enable_if_t<std::is_integral_v<Ordinal>, void> check_index(
+      const Ordinal ord) const {
     TA_ASSERT(
-        impl_ref().tiles_range().includes(i) &&
+        impl_ref().tiles_range().includes_ordinal(ord) &&
         "The ordinal index used to access an array tile is out of range.");
   }
 
   template <typename Index>
-  std::enable_if_t<detail::is_integral_range_v<Index>, void> check_index(
+  std::enable_if_t<detail::is_integral_sized_range_v<Index>, void> check_index(
       const Index& i) const {
     TA_ASSERT(
         impl_ref().tiles_range().includes(i) &&
         "The coordinate index used to access an array tile is out of range.");
   }
 
-  template <typename Index1>
+  template <typename Index1,
+            typename = std::enable_if_t<std::is_integral_v<Index1>>>
   void check_index(const std::initializer_list<Index1>& i) const {
     check_index<std::initializer_list<Index1>>(i);
   }
 
-  template <typename Index>
-  std::enable_if_t<std::is_integral_v<Index>, void> check_local_index(
-      const Index i) const {
+  template <typename Ordinal>
+  std::enable_if_t<std::is_integral_v<Ordinal>, void> check_local_index(
+      const Ordinal i) const {
     check_index(i);
     TA_ASSERT(pimpl_->is_local(i)  // pimpl_ already checked
               &&
@@ -1576,15 +1577,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   template <typename Index>
-  std::enable_if_t<detail::is_integral_range_v<Index>, void> check_local_index(
-      const Index& i) const {
+  std::enable_if_t<detail::is_integral_sized_range_v<Index>, void>
+  check_local_index(const Index& i) const {
     check_index(i);
     TA_ASSERT(
         pimpl_->is_local(i)  // pimpl_ already checked
         && "The coordinate index used to access an array tile is not local.");
   }
 
-  template <typename Index1>
+  template <typename Index1,
+            typename = std::enable_if_t<std::is_integral_v<Index1>>>
   void check_local_index(const std::initializer_list<Index1>& i) const {
     check_local_index<std::initializer_list<Index1>>(i);
   }

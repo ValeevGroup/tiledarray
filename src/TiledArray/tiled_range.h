@@ -180,12 +180,12 @@ class TiledRange {
 
   /// Construct a range for the tile indexed by the given ordinal index.
 
-  /// \param i The ordinal index of the tile range to be constructed
+  /// \param ord The ordinal index of the tile range to be constructed
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
-  range_type make_tile_range(const index1_type& i) const {
-    TA_ASSERT(tiles_range().includes(i));
-    return make_tile_range(tiles_range().idx(i));
+  range_type make_tile_range(const ordinal_type& ord) const {
+    TA_ASSERT(tiles_range().includes_ordinal(ord));
+    return make_tile_range(tiles_range().idx(ord));
   }
 
   /// Construct a range for the tile indexed by the given index.

@@ -485,9 +485,23 @@ class SparseShape {
 
   /// Check that a tile is zero
 
-  /// \tparam Index The type of the index
-  /// \return false
-  template <typename Index>
+  /// \tparam Ordinal an integer type
+  /// \param ord the ordinal index
+  /// \return true if tile at position \p ord is zero
+  template <typename Ordinal>
+  std::enable_if_t<std::is_integral_v<Ordinal>, bool> is_zero(
+      const Ordinal& ord) const {
+    TA_ASSERT(!tile_norms_.empty());
+    return tile_norms_.at_ordinal(ord) < my_threshold_;
+  }
+
+  /// Check that a tile is zero
+
+  /// \tparam Index a sized integral range type
+  /// \param i the index
+  /// \return true if tile at position \p i is zero
+  template <typename Index, typename = std::enable_if_t<
+                                detail::is_integral_sized_range_v<Index>>>
   bool is_zero(const Index& i) const {
     TA_ASSERT(!tile_norms_.empty());
     return tile_norms_[i] < my_threshold_;
