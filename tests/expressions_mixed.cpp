@@ -65,44 +65,7 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
 
   template <typename Tile>
   static void random_fill(DistArray<Tile>& array) {
-    typename DistArray<Tile>::pmap_interface::const_iterator it =
-        array.pmap()->begin();
-    typename DistArray<Tile>::pmap_interface::const_iterator end =
-        array.pmap()->end();
-    for (; it != end; ++it)
-      array.set(*it, array.world().taskq.add(
-                         &MixedExpressionsFixture::template make_rand_tile<
-                             DistArray<Tile>>,
-                         array.trange().make_tile_range(*it)));
-  }
-
-  template <typename T>
-  static void set_random(T& t) {
-    // with 50% generate nonzero integer value in [0,101)
-    auto rand_int = GlobalFixture::world->rand();
-    t = (rand_int < 0x8fffff) ? rand_int % 101 : 0;
-  }
-
-  template <typename T>
-  static void set_random(std::complex<T>& t) {
-    // with 50% generate nonzero value
-    auto rand_int1 = GlobalFixture::world->rand();
-    if (rand_int1 < 0x8ffffful) {
-      t = std::complex<T>{T(rand_int1 % 101),
-                          T(GlobalFixture::world->rand() % 101)};
-    } else
-      t = std::complex<T>{0, 0};
-  }
-
-  // Fill a tile with random data
-  template <typename A>
-  static typename A::value_type make_rand_tile(
-      const typename A::value_type::range_type& r) {
-    typename A::value_type tile(r);
-    for (const auto& i : r) {
-      set_random(tile[i]);
-    }
-    return tile;
+    array.fill_random();
   }
 
   template <typename M, typename A>

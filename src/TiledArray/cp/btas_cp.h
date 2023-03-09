@@ -31,7 +31,7 @@ template <typename Tile, typename Policy>
 auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
                  long btas_cp_rank, TA::TiledRange1 rank_trange1,
                  std::size_t decomp_world_rank = 0, double als_threshold = 1e-3,
-                 bool verbose = true) {
+                 bool verbose = false) {
   using tile_type = typename DistArray<Tile, Policy>::value_type::value_type;
   using BTAS_Tensor =
       btas::Tensor<tile_type, btas::DEFAULT::range, btas::varray<double>>;
@@ -114,7 +114,7 @@ template <typename Tile, typename Policy>
 auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
                   long btas_cp_rank, TA::TiledRange1 rank_trange1,
                   std::size_t decomp_world_rank = 0,
-                  double als_threshold = 1e-3, bool verbose = true) {
+                  double als_threshold = 1e-3, bool verbose = false) {
   using BTAS_Tensor =
       btas::Tensor<typename Tile::value_type, btas::DEFAULT::range,
                    btas::varray<typename Tile::value_type>>;

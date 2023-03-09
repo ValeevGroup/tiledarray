@@ -30,9 +30,15 @@
 
 namespace TiledArray {
 
-/// Range that references a subblock of another range
+/// a Range that references a subblock of another Range
 class BlockRange : public Range {
  private:
+  /// datavec_ contains same data as if this were an ordinary Range, except:
+  /// - stride describes the host range
+  /// - offset_ corrects ordinals so that the first element in this (sub)Range
+  /// has ordinal of zero ...
+  /// - block_offset_ is the distance from the first element of this Range to
+  /// the first element of the host Range
   using Range::datavec_;
   using Range::offset_;
   using Range::rank_;
@@ -300,37 +306,59 @@ class BlockRange : public Range {
     init<std::initializer_list<std::initializer_list<Index>>>(range, bounds);
   }
 
-  /// calculate the ordinal index of \c i
+  /// Converts coordinate index \c i to its ordinal index in the host Range
 
-  /// Convert a coordinate index to an ordinal index.
   /// \tparam Index An integral range type
-  /// \param index The index to be converted to an ordinal index
-  /// \return The ordinal index of \c index
+  /// \param index The index to be converted to the ordinal index
+  /// \return The ordinal index of \c index in the host Range
   /// \throw When \c index is not included in this range.
-  template <typename Index, typename std::enable_if_t<
-                                detail::is_integral_range_v<Index>>* = nullptr>
+  template <typename Index,
+            typename std::enable_if_t<
+                detail::is_integral_sized_range_v<Index>>* = nullptr>
   ordinal_type ordinal(const Index& index) const {
     return Range::ordinal(index);
   }
 
-  template <typename... Index,
-            typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
+  /// Converts coordinate index \c i to its ordinal index in the host Range
+
+  /// \tparam Index An integral range type
+  /// \param index The index to be converted to the ordinal index
+  /// \return The ordinal index of \c index in the host Range
+  /// \throw When \c index is not included in this range.
+  template <typename Integer,
+            typename std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  ordinal_type ordinal(const std::initializer_list<Integer>& index) const {
+    return Range::ordinal(index);
+  }
+
+  /// Converts coordinate index \c i to its ordinal index in the host Range
+
+  /// \tparam Index An integral range type
+  /// \param index The index to be converted to the ordinal index
+  /// \return The ordinal index of \c index in the host Range
+  /// \throw When \c index is not included in this range.
+  template <
+      typename... Index,
+      typename std::enable_if_t<(sizeof...(Index) > 1ul) &&
+                                (std::is_integral_v<Index> && ...)>* = nullptr>
   ordinal_type ordinal(const Index&... index) const {
     return Range::ordinal(index...);
   }
 
-  /// calculate the coordinate index of the ordinal index, \c index.
+  /// Converts the ordinal index within this block range to the ordinal index of
+  /// the host range
 
-  /// Convert an ordinal index to a coordinate index.
-  /// \param index Ordinal index
-  /// \return The index of the ordinal index
+  /// \warning this overloads base method that did not perform any conversion
+  ///          of \p ord
+  /// \param index the ordinal index for the host Range
+  /// \return The ordinal index in the
   /// \throw TiledArray::Exception When \c index is not included in this range
-  ordinal_type ordinal(ordinal_type index) const {
-    // Check that index is contained by range.
-    TA_ASSERT(includes(index));
+  ordinal_type ordinal(ordinal_type ord) const {
+    // Check that ord is contained by this range.
+    TA_ASSERT(Range::includes_ordinal(ord));
 
     // Construct result coordinate index object and allocate its memory.
-    ordinal_type result = 0ul;
+    ordinal_type host_ord = 0ul;
 
     // Get pointers to the data
     const auto* MADNESS_RESTRICT const size = extent_data();
@@ -342,11 +370,11 @@ class BlockRange : public Range {
       const auto stride_i = stride[i];
 
       // Compute result index element i
-      result += (index % size_i) * stride_i;
-      index /= size_i;
+      host_ord += (ord % size_i) * stride_i;
+      ord /= size_i;
     }
 
-    return result + block_offset_ - offset_;
+    return host_ord + block_offset_ - offset_;
   }
 
   /// Resize of block range is not supported

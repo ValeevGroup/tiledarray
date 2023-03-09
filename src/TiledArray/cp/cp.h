@@ -8,42 +8,10 @@
 #include <TiledArray/conversions/btas.h>
 #include <TiledArray/expressions/einsum.h>
 #include <tiledarray.h>
-#include <random>
 
 namespace TiledArray::cp {
+
 namespace detail {
-// A seed for the random number generator.
-static inline unsigned int& random_seed_accessor() {
-  static unsigned int value = 3;
-  return value;
-}
-
-// given a rank and block size, this computes a
-// trange for the rank dimension to be used to make the CP factors.
-static inline TiledRange1 compute_trange1(size_t rank, size_t rank_block_size) {
-  std::size_t nblocks = (rank + rank_block_size - 1) / rank_block_size;
-  auto dv = std::div((int)(rank + nblocks - 1), (int)nblocks);
-  auto avg_block_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
-
-  TiledArray::TiledRange1 new_trange1;
-  {
-    std::vector<std::size_t> new_trange1_v;
-    new_trange1_v.reserve(nblocks + 1);
-    auto block_counter = 0;
-    for (auto i = 0; i < num_avg_plus_one;
-         ++i, block_counter += avg_block_size + 1) {
-      new_trange1_v.emplace_back(block_counter);
-    }
-    for (auto i = num_avg_plus_one; i < nblocks;
-         ++i, block_counter += avg_block_size) {
-      new_trange1_v.emplace_back(block_counter);
-    }
-    new_trange1_v.emplace_back(rank);
-    new_trange1 =
-        TiledArray::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
-  }
-  return new_trange1;
-}
 
 static inline char intToAlphabet(int i) { return static_cast<char>('a' + i); }
 
@@ -94,9 +62,8 @@ class CP {
   /// moving to @c rank else builds an efficient
   /// random guess with rank @c rank
   /// \param[in] rank Rank of the CP deccomposition
-  /// \param[in] rank_block_size 0; What is the size of the blocks
-  /// in the rank mode's TiledRange, will compute TiledRange1 inline.
-  /// if 0 : rank_blocck_size = rank.
+  /// \param[in] rank_block_size The target tile size of
+  /// rank mode's range; if 0 will use \p rank as \p rank_block_size .
   /// \param[in] build_rank should CP approximation be built from rank 1
   /// or set.
   /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
@@ -112,13 +79,13 @@ class CP {
     if (build_rank) {
       size_t cur_rank = 1;
       do {
-        rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
+        rank_trange = TiledArray::compute_trange1(cur_rank, rank_block_size);
         build_guess(cur_rank, rank_trange);
         ALS(cur_rank, 100, verbose);
         ++cur_rank;
       } while (cur_rank < rank);
     } else {
-      rank_trange = detail::compute_trange1(rank, rank_block_size);
+      rank_trange = TiledArray::compute_trange1(rank, rank_block_size);
       build_guess(rank, rank_trange);
       ALS(rank, 100, verbose);
     }
@@ -144,7 +111,7 @@ class CP {
     double epsilon = 1.0;
     fit_tol = epsilonALS;
     do {
-      auto rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
+      auto rank_trange = compute_trange1(cur_rank, rank_block_size);
       build_guess(cur_rank, rank_trange);
       ALS(cur_rank, 100, verbose);
       ++cur_rank;
@@ -197,9 +164,10 @@ class CP {
       final_fit,          // The final fit of the ALS
                           // optimization at fixed rank.
       fit_tol,            // Tolerance for the ALS solver
-      converged_num,      // How many times the ALS solver
-                          // has changed less than the tolerance
       norm_reference;     // used in determining the CP fit.
+  std::size_t converged_num =
+      0;  // How many times the ALS solver
+          // has changed less than the tolerance in a row
 
   /// This function is determined by the specific CP solver.
   /// builds the rank @c rank CP approximation and stores
@@ -228,14 +196,12 @@ class CP {
     auto lambda = std::vector<typename Tile::value_type>(
         rank, (typename Tile::value_type)0);
     if (world.rank() == 0) {
-      std::mt19937 generator(detail::random_seed_accessor());
-      std::uniform_real_distribution<> distribution(-1.0, 1.0);
       auto factor_ptr = factor.data();
       size_t offset = 0;
       for (auto r = 0; r < rank; ++r, offset += mode_size) {
         auto lam_ptr = lambda.data() + r;
         for (auto m = offset; m < offset + mode_size; ++m) {
-          auto val = distribution(generator);
+          auto val = TiledArray::drand() * 2 - 1;  // random number in [-1,1]
           *(factor_ptr + m) = val;
           *lam_ptr += val * val;
         }
@@ -326,9 +292,9 @@ class CP {
           auto lo = tile.range().lobound_data();
           auto up = tile.range().upbound_data();
           for (auto R = lo[0]; R < up[0]; ++R) {
-            const auto norm_squared_RR = tile(R);
+            const auto norm_squared_RR = tile({R});
             using std::sqrt;
-            tile(R) = sqrt(norm_squared_RR);
+            tile({R}) = sqrt(norm_squared_RR);
           }
         },
         /* fence = */ true);
@@ -365,7 +331,7 @@ class CP {
   /// \returns bool : is the change in fit less than the ALS tolerance?
   virtual bool check_fit(bool verbose = false) {
     // Compute the inner product T * T_CP
-    double inner_prod = MTtKRP("r,n").dot(unNormalized_Factor("r,n"));
+    const auto ref_dot_cp = MTtKRP("r,n").dot(unNormalized_Factor("r,n"));
     // compute the square of the CP tensor (can use the grammian)
     auto factor_norm = [&]() {
       auto gram_ptr = partial_grammian.begin();
@@ -381,27 +347,39 @@ class CP {
       return result;
     };
     // compute the error in the loss function and find the fit
-    double normFactors = factor_norm(),
-           normResidual =
-               sqrt(abs(norm_reference * norm_reference +
-                        normFactors * normFactors - 2.0 * inner_prod)),
-           fit = 1.0 - (normResidual / norm_reference),
-           fit_change = abs(prev_fit - fit);
+    const auto norm_cp = factor_norm();  // ||T_CP||_2
+    const auto squared_norm_error = norm_reference * norm_reference +
+                                    norm_cp * norm_cp -
+                                    2.0 * ref_dot_cp;  // ||T - T_CP||_2^2
+    // N.B. squared_norm_error is very noisy
+    // TA_ASSERT(squared_norm_error >= - 1e-8);
+    const auto norm_error = sqrt(abs(squared_norm_error));
+    const auto fit = 1.0 - (norm_error / norm_reference);
+    const auto fit_change = fit - prev_fit;
     prev_fit = fit;
     // print fit data if required
     if (verbose) {
-      std::cout << fit << "\t" << fit_change << std::endl;
+      std::cout << MTtKRP.world().rank() << ": fit=" << fit
+                << " fit_change=" << fit_change << std::endl;
     }
 
     // if the change in fit is less than the tolerance try to return true.
-    if (fit_change < fit_tol) {
+    if (abs(fit_change) < fit_tol) {
       converged_num++;
       if (converged_num == 2) {
         converged_num = 0;
         final_fit = prev_fit;
         prev_fit = 1.0;
+        if (verbose)
+          std::cout << MTtKRP.world().rank() << ": converged" << std::endl;
         return true;
+      } else {
+        TA_ASSERT(converged_num == 1);
+        if (verbose)
+          std::cout << MTtKRP.world().rank() << ": pre-converged" << std::endl;
       }
+    } else {
+      converged_num = 0;
     }
     return false;
   }

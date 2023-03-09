@@ -139,7 +139,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
   // Fill a tile with random data
   static Tile make_rand_tile(const typename Tile::range_type& r) {
     Tile tile(r);
-    for (std::size_t i = 0ul; i < tile.size(); ++i) set_random(tile[i]);
+    for (std::size_t i = 0ul; i < tile.size(); ++i)
+      set_random(tile.at_ordinal(i));
     return tile;
   }
 
@@ -198,7 +199,7 @@ struct ExpressionsFixture : public TiledRangeFixture {
     // make sure all mpi gets the same shape
     if (GlobalFixture::world->rank() == 0) {
       for (std::size_t i = 0; i < n; i++) {
-        norms[i] = GlobalFixture::world->drand() > 0.5 ? 0.0 : 1.0;
+        norms.at_ordinal(i) = GlobalFixture::world->drand() > 0.5 ? 0.0 : 1.0;
       }
     }
 

@@ -321,7 +321,7 @@ BOOST_AUTO_TEST_CASE(constructors) {
                                   stride_ref.begin(), stride_ref.end());
     BOOST_CHECK_EQUAL(r2.volume(), 48);
   }
-#else  // TA_SIGNED_1INDEX_TYPE
+#else   // TA_SIGNED_1INDEX_TYPE
   BOOST_REQUIRE_THROW(Range r2({{-1, 1}, {-2, 2}, {0, 6}}),
                       TiledArray::Exception);
 #endif  // TA_SIGNED_1INDEX_TYPE
@@ -603,12 +603,33 @@ BOOST_AUTO_TEST_CASE(include) {
   BOOST_CHECK(r1.includes(t19));  // check corners
   BOOST_CHECK(r1.includes(t20));
 
+  //
+  // try different flavors of includes
+  //
+  // 1-d Range is a corner case
+  Range r_1d({3});
+  // integers...
+  BOOST_CHECK(r1.includes(t20[0], t20[1], t20[2]));
+  // initializer_list<integer>
+  BOOST_CHECK(r1.includes({t20[0], t20[1], t20[2]}));
+  BOOST_CHECK(r_1d.includes({0}));
+  // array<integer>
+  BOOST_CHECK(
+      r1.includes(std::array<Range::index1_type, 3>{{t20[0], t20[1], t20[2]}}));
+  BOOST_CHECK(r_1d.includes(std::array<Range::index1_type, 1>{{0}}));
+  // ordinal
   Range::size_type o = 0;
   for (; o < r.volume(); ++o) {
     BOOST_CHECK(r.includes(o));
+    BOOST_CHECK(r.includes_ordinal(o));  // equivalent: see below
   }
-
   BOOST_CHECK(!r.includes(o));
+  BOOST_CHECK_THROW(
+      r_1d.includes(0),
+      TiledArray::Exception);  // for 1-d Range can't distinguish
+                               // includes(integers...) and includes(ordinal)
+  BOOST_CHECK(
+      r_1d.includes_ordinal(0));  // so must explicitly use includes_ordinal
 
   // ensure that includes always fails if any extent is zero
   {

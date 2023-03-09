@@ -11,7 +11,7 @@ using true_types = boost::mpl::list<int, float, double, std::complex<float>,
                                     std::complex<double>>;
 }  // namespace
 
-BOOST_AUTO_TEST_SUITE(can_make_random, TA_UT_LABEL_SERIAL)
+BOOST_AUTO_TEST_SUITE(random_suite, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(can_make_random_false, ValueType, false_types) {
   using can_make_random_t = CanMakeRandom<ValueType>;
@@ -42,6 +42,19 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(enable_if_true, ValueType, true_types) {
   using enable_if_t = enable_if_can_make_random_t<ValueType>;
   auto result = std::is_same_v<enable_if_t, void>;
   BOOST_CHECK(result);
+}
+
+BOOST_AUTO_TEST_CASE(rand) {
+  // set random seed
+  TiledArray::srand(20010515);
+  auto v0 = TiledArray::detail::MakeRandom<int>::generate_value();
+  auto v1 = TiledArray::detail::MakeRandom<int>::generate_value();
+  auto v2 = TiledArray::detail::MakeRandom<int>::generate_value();
+  // now set random seed
+  TiledArray::srand(20010515);
+  BOOST_CHECK_EQUAL(v0, TiledArray::detail::MakeRandom<int>::generate_value());
+  BOOST_CHECK_EQUAL(v1, TiledArray::detail::MakeRandom<int>::generate_value());
+  BOOST_CHECK_EQUAL(v2, TiledArray::detail::MakeRandom<int>::generate_value());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

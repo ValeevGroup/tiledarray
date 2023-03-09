@@ -224,8 +224,8 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
 
   const auto volume = result.range().volume();
 
-  for (decltype(result.range().volume()) i = 0ul; i < volume; ++i) {
-    inplace_tensor_op(op, result[i], tensors[i]...);
+  for (decltype(result.range().volume()) ord = 0ul; ord < volume; ++ord) {
+    inplace_tensor_op(op, result.at_ordinal(ord), tensors.at_ordinal(ord)...);
   }
 }
 
@@ -395,9 +395,9 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
           inplace_tensor_op(op, result_data[i], tensors_data[i]...);
       };
 
-  for (decltype(result.range().volume()) i = 0ul; i < volume; i += stride)
-    inplace_tensor_range(result.data() + result.range().ordinal(i),
-                         (tensors.data() + tensors.range().ordinal(i))...);
+  for (decltype(result.range().volume()) ord = 0ul; ord < volume; ord += stride)
+    inplace_tensor_range(result.data() + result.range().ordinal(ord),
+                         (tensors.data() + tensors.range().ordinal(ord))...);
 }
 
 // -------------------------------------------------------------------------
@@ -455,9 +455,9 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 
   const auto volume = result.range().volume();
 
-  for (decltype(result.range().volume()) i = 0ul; i < volume; ++i) {
-    new (result.data() + i) typename TR::value_type(
-        tensor_op<typename TR::value_type>(op, tensors[i]...));
+  for (decltype(result.range().volume()) ord = 0ul; ord < volume; ++ord) {
+    new (result.data() + ord) typename TR::value_type(
+        tensor_op<typename TR::value_type>(op, tensors.at_ordinal(ord)...));
   }
 }
 
@@ -578,10 +578,11 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
     new (result_ptr) typename T1::value_type(op(value1, values...));
   };
 
-  for (decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride)
-    math::vector_ptr_op(wrapper_op, stride, result.data() + i,
-                        (tensor1.data() + tensor1.range().ordinal(i)),
-                        (tensors.data() + tensors.range().ordinal(i))...);
+  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
+       ord += stride)
+    math::vector_ptr_op(wrapper_op, stride, result.data() + ord,
+                        (tensor1.data() + tensor1.range().ordinal(ord)),
+                        (tensors.data() + tensors.range().ordinal(ord))...);
 }
 
 /// Initialize tensor with one or more non-contiguous tensor arguments
@@ -625,10 +626,10 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
                   op, tensor1_data[i], tensors_data[i]...));
       };
 
-  for (decltype(volume) i = 0ul; i < volume; i += stride)
-    inplace_tensor_range(result.data() + i,
-                         (tensor1.data() + tensor1.range().ordinal(i)),
-                         (tensors.data() + tensors.range().ordinal(i))...);
+  for (decltype(volume) ord = 0ul; ord < volume; ord += stride)
+    inplace_tensor_range(result.data() + ord,
+                         (tensor1.data() + tensor1.range().ordinal(ord)),
+                         (tensors.data() + tensors.range().ordinal(ord))...);
 }
 
 // -------------------------------------------------------------------------
@@ -735,9 +736,10 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
   const auto volume = tensor1.range().volume();
 
   auto result = identity;
-  for (decltype(tensor1.range().volume()) i = 0ul; i < volume; ++i) {
+  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume; ++ord) {
     auto temp =
-        tensor_reduce(reduce_op, join_op, identity, tensor1[i], tensors[i]...);
+        tensor_reduce(reduce_op, join_op, identity, tensor1.at_ordinal(ord),
+                      tensors.at_ordinal(ord)...);
     join_op(result, temp);
   }
 
@@ -778,11 +780,12 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   const auto volume = tensor1.range().volume();
 
   Scalar result = identity;
-  for (decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride) {
+  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
+       ord += stride) {
     Scalar temp = identity;
     math::reduce_op(reduce_op, join_op, identity, stride, temp,
-                    tensor1.data() + tensor1.range().ordinal(i),
-                    (tensors.data() + tensors.range().ordinal(i))...);
+                    tensor1.data() + tensor1.range().ordinal(ord),
+                    (tensors.data() + tensors.range().ordinal(ord))...);
     join_op(result, temp);
   }
 
@@ -834,10 +837,11 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
       };
 
   Scalar result = identity;
-  for (decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride) {
-    Scalar temp =
-        tensor_reduce_range(result, tensor1.data() + tensor1.range().ordinal(i),
-                            (tensors.data() + tensors.range().ordinal(i))...);
+  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
+       ord += stride) {
+    Scalar temp = tensor_reduce_range(
+        result, tensor1.data() + tensor1.range().ordinal(ord),
+        (tensors.data() + tensors.range().ordinal(ord))...);
     join_op(result, temp);
   }
 
