@@ -890,11 +890,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///
   /// \tparam T The type of random value to generate. Defaults to
   ///           element_type.
-  /// \tparam <anonymous> A template type parameter which will be deduced as
-  ///                     void only if MakeRandom knows how to generate random
-  ///                     values of type T. If MakeRandom does not know how to
-  ///                     generate random values of type T, SFINAE will disable
-  ///                     this function.
   /// \param[in] skip_set If false, will throw if any tiles are already set
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
   ///                              throw guarantee.

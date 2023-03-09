@@ -963,10 +963,10 @@ DistArray_ eigen_tensor_to_array(
 /// replicated TiledArray::DistArray. Usage:
 /// \code
 /// TiledArray::TArrayD
-/// array(world, trange);
+/// array(world, trange_3d);
 /// // Set tiles of array ...
 ///
-/// auto t = array_to_eigen_tensor(array);
+/// auto t = array_to_eigen_tensor<Eigen::Tensor<double, 3>(array);
 /// \endcode
 /// \tparam Tile the tile type of \c src
 /// \tparam Policy the policy type of \c src
@@ -980,13 +980,11 @@ DistArray_ eigen_tensor_to_array(
 ///            create the Eigen::Tensor on every rank (this requires
 ///            that \c src.is_replicated()==true )
 /// \return Eigen::Tensor object containing the data of \c src , if my rank
-/// equals
-///         \c target_rank or \c target_rank==-1 ,
+///         equals \c target_rank or \c target_rank==-1 ,
 ///         default-initialized Eigen::Tensor otherwise.
 template <typename Tensor, typename Tile, typename Policy>
 Tensor array_to_eigen_tensor(const TiledArray::DistArray<Tile, Policy>& src,
                              int target_rank = -1) {
-
   TA_ASSERT(src.tiles_range().rank() == Tensor::NumDimensions);
 
   // Test preconditions
