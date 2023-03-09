@@ -43,10 +43,13 @@ struct SparseShapeFixture : public TiledRangeFixture {
         tolerance(0.0001)
 
   {
+    prior_default_threshold = SparseShape<float>::threshold();
     SparseShape<float>::threshold(default_threshold);
   }
 
-  ~SparseShapeFixture() {}
+  ~SparseShapeFixture() {
+    SparseShape<float>::threshold(prior_default_threshold);
+  }
 
   static Tensor<float> make_norm_tensor(const TiledRange& trange,
                                         const float fill_percent,
@@ -104,6 +107,8 @@ struct SparseShapeFixture : public TiledRangeFixture {
   Permutation perm;
   TiledArray::detail::PermIndex perm_index;
   const float tolerance;
+  inline static float prior_default_threshold =
+      std::numeric_limits<float>::max();
   static constexpr float default_threshold = 0.001;
 };  // SparseShapeFixture
 
