@@ -24,6 +24,38 @@
 #include <cstdlib>      // for std::rand
 #include <type_traits>  // for true_type, false_type, and enable_if
 
+#include <boost/random/mersenne_twister.hpp>
+
+namespace TiledArray {
+
+/// \return reference to the thread-specific random engine used to implement
+/// TiledArray::rand() and TiledArray::drand()
+/// \note the reference to the thread local is not persistent; the value
+///       will change after every call to TiledArray::srand()
+boost::random::mt19937& random_engine();
+
+/// reentrant high-quality version of std::rand()
+
+/// \return a random integer in [0,`RAND_MAX`]
+/// \sa std::rand()
+int rand();
+
+/// reentrant high-quality version of drand48()
+
+/// \return a random integer in [0,1]
+/// \sa drand48()
+double drand();
+
+/// Seeds the pseudo-random number generator used by TiledArray::rand() and
+/// TiledArray::drand() with the value \p seed .
+
+/// Calling this changes the values returned by TiledArray::random_engine()
+/// \param seed the value used to seed the random engine
+/// \warning this is not reentrant
+void srand(unsigned int seed);
+
+}  // namespace TiledArray
+
 namespace TiledArray::detail {
 
 //------------------------------------------------------------------------------
@@ -99,14 +131,14 @@ struct MakeRandom {
     static_assert(std::is_floating_point_v<ValueType> ||
                   std::is_integral_v<ValueType>);
     if constexpr (std::is_floating_point_v<ValueType>)
-      return (2 * static_cast<ValueType>(std::rand()) / RAND_MAX) - 1;
+      return (2 * static_cast<ValueType>(TiledArray::rand()) / RAND_MAX) - 1;
     else if constexpr (std::is_integral_v<ValueType>) {
       static_assert(RAND_MAX == 2147483647);
       static_assert(RAND_MAX % 2 == 1);
       constexpr std::int64_t RAND_MAX_DIVBY_9 =
           (static_cast<std::int64_t>(RAND_MAX) + 8) / 9;
       const ValueType v = static_cast<ValueType>(
-          static_cast<std::int64_t>(std::rand()) / RAND_MAX_DIVBY_9);
+          static_cast<std::int64_t>(TiledArray::rand()) / RAND_MAX_DIVBY_9);
       if constexpr (std::is_signed_v<ValueType>) {
         return v - 4;
       } else {

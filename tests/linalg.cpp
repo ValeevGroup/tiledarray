@@ -119,7 +119,10 @@ struct LinearAlgebraFixture : ReferenceFixture {
   template <class A>
   static void compare(const char* context, const A& non_dist, const A& result,
                       double e) {
-    BOOST_TEST_CONTEXT(context);
+    // clang-format off
+    BOOST_TEST_CONTEXT(context)
+    ;
+    // clang-format on
     auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
     BOOST_CHECK_SMALL(diff_with_non_dist, e);
   }

@@ -12,7 +12,7 @@
  * takes a reference order-N tensor and decomposes it into a
  * set of order-2 tensors all coupled by a hyperdimension called the rank.
  * These factors are optimized using an alternating least squares
- * algorithm. This class is derived form the base CP class
+ * algorithm.
  *
  * @tparam Tile typing for the DistArray tiles
  * @tparam Policy policy of the DistArray

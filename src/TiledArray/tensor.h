@@ -62,8 +62,20 @@ template <typename T, typename std::enable_if<detail::is_tensor<T>::value &&
 inline std::ostream& operator<<(std::ostream& os, const T& t) {
   os << t.range() << " { ";
   const auto n = t.range().volume();
-  for (auto ord = 0ul; ord < n; ++ord) os << t.at_ordinal(ord) << " ";
-
+  std::size_t offset = 0ul;
+  const auto more_than_1_batch = t.batch_size() > 1;
+  for (auto b = 0ul; b != t.batch_size(); ++b) {
+    if (more_than_1_batch) {
+      os << "[batch " << b << "]{ ";
+    }
+    for (auto ord = 0ul; ord < n; ++ord) {
+      os << t.data()[offset + ord] << " ";
+    }
+    if (more_than_1_batch) {
+      os << "} ";
+    }
+    offset += n;
+  }
   os << "}";
 
   return os;

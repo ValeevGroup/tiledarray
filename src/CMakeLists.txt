@@ -195,10 +195,12 @@ TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/ptr_registry.cpp
 TiledArray/util/ptr_registry.h
+TiledArray/util/random.cpp
 TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/threads.h
 TiledArray/util/threads.cpp
+TiledArray/util/thread_specific.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
 )
