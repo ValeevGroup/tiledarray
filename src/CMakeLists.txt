@@ -199,6 +199,7 @@ TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/threads.h
 TiledArray/util/threads.cpp
+TiledArray/util/thread_specific.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
 )
