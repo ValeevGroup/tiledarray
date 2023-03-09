@@ -164,9 +164,9 @@ class CP {
       final_fit,          // The final fit of the ALS
                           // optimization at fixed rank.
       fit_tol,            // Tolerance for the ALS solver
-      converged_num,      // How many times the ALS solver
-                          // has changed less than the tolerance
       norm_reference;     // used in determining the CP fit.
+  std::size_t converged_num = 0;      // How many times the ALS solver
+                              // has changed less than the tolerance in a row
 
   /// This function is determined by the specific CP solver.
   /// builds the rank @c rank CP approximation and stores
@@ -367,6 +367,14 @@ class CP {
         prev_fit = 1.0;
         return true;
       }
+      else {
+        TA_ASSERT(converged_num == 1);
+        if (verbose)
+          std::cout << MTtKRP.world().rank() << ": pre-converged" << std::endl;
+      }
+    }
+    else {
+      converged_num = 0;
     }
     return false;
   }
