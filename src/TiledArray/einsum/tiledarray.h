@@ -225,7 +225,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
         if (!term.array.is_local(idx)) continue;
         if (term.array.is_zero(idx)) continue;
         // TODO no need for immediate evaluation
-        auto tile = term.array.find(idx).get();
+        auto tile = term.array.find_local(idx).get();
         if (P) tile = tile.permute(P);
         auto shape = term.ei_tiled_range.tile(ei);
         tile = tile.reshape(shape, batch);
@@ -247,7 +247,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
       if (!C.ei.is_local(e)) continue;
       if (C.ei.is_zero(e)) continue;
       // TODO no need for immediate evaluation
-      auto tile = C.ei.find(e).get();
+      auto tile = C.ei.find_local(e).get();
       assert(tile.batch_size() == batch);
       const Permutation &P = C.permutation;
       auto c = apply(P, h + e);
