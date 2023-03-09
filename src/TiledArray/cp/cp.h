@@ -165,8 +165,9 @@ class CP {
                           // optimization at fixed rank.
       fit_tol,            // Tolerance for the ALS solver
       norm_reference;     // used in determining the CP fit.
-  std::size_t converged_num = 0;      // How many times the ALS solver
-                              // has changed less than the tolerance in a row
+  std::size_t converged_num =
+      0;  // How many times the ALS solver
+          // has changed less than the tolerance in a row
 
   /// This function is determined by the specific CP solver.
   /// builds the rank @c rank CP approximation and stores
@@ -330,7 +331,7 @@ class CP {
   /// \returns bool : is the change in fit less than the ALS tolerance?
   virtual bool check_fit(bool verbose = false) {
     // Compute the inner product T * T_CP
-    double inner_prod = MTtKRP("r,n").dot(unNormalized_Factor("r,n"));
+    const auto ref_dot_cp = MTtKRP("r,n").dot(unNormalized_Factor("r,n"));
     // compute the square of the CP tensor (can use the grammian)
     auto factor_norm = [&]() {
       auto gram_ptr = partial_grammian.begin();
@@ -346,34 +347,38 @@ class CP {
       return result;
     };
     // compute the error in the loss function and find the fit
-    double normFactors = factor_norm(),
-           normResidual =
-               sqrt(abs(norm_reference * norm_reference +
-                        normFactors * normFactors - 2.0 * inner_prod)),
-           fit = 1.0 - (normResidual / norm_reference),
-           fit_change = abs(prev_fit - fit);
+    const auto norm_cp = factor_norm();  // ||T_CP||_2
+    const auto squared_norm_error = norm_reference * norm_reference +
+                                    norm_cp * norm_cp -
+                                    2.0 * ref_dot_cp;  // ||T - T_CP||_2^2
+    // N.B. squared_norm_error is very noisy
+    // TA_ASSERT(squared_norm_error >= - 1e-8);
+    const auto norm_error = sqrt(abs(squared_norm_error));
+    const auto fit = 1.0 - (norm_error / norm_reference);
+    const auto fit_change = fit - prev_fit;
     prev_fit = fit;
     // print fit data if required
     if (verbose) {
-      std::cout << fit << "\t" << fit_change << std::endl;
+      std::cout << MTtKRP.world().rank() << ": fit=" << fit
+                << " fit_change=" << fit_change << std::endl;
     }
 
     // if the change in fit is less than the tolerance try to return true.
-    if (fit_change < fit_tol) {
+    if (abs(fit_change) < fit_tol) {
       converged_num++;
       if (converged_num == 2) {
         converged_num = 0;
         final_fit = prev_fit;
         prev_fit = 1.0;
+        if (verbose)
+          std::cout << MTtKRP.world().rank() << ": converged" << std::endl;
         return true;
-      }
-      else {
+      } else {
         TA_ASSERT(converged_num == 1);
         if (verbose)
           std::cout << MTtKRP.world().rank() << ": pre-converged" << std::endl;
       }
-    }
-    else {
+    } else {
       converged_num = 0;
     }
     return false;
