@@ -8,42 +8,10 @@
 #include <TiledArray/conversions/btas.h>
 #include <TiledArray/expressions/einsum.h>
 #include <tiledarray.h>
-#include <random>
 
 namespace TiledArray::cp {
+
 namespace detail {
-// A seed for the random number generator.
-static inline unsigned int& random_seed_accessor() {
-  static unsigned int value = 3;
-  return value;
-}
-
-// given a rank and block size, this computes a
-// trange for the rank dimension to be used to make the CP factors.
-static inline TiledRange1 compute_trange1(size_t rank, size_t rank_block_size) {
-  std::size_t nblocks = (rank + rank_block_size - 1) / rank_block_size;
-  auto dv = std::div((int)(rank + nblocks - 1), (int)nblocks);
-  auto avg_block_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
-
-  TiledArray::TiledRange1 new_trange1;
-  {
-    std::vector<std::size_t> new_trange1_v;
-    new_trange1_v.reserve(nblocks + 1);
-    auto block_counter = 0;
-    for (auto i = 0; i < num_avg_plus_one;
-         ++i, block_counter += avg_block_size + 1) {
-      new_trange1_v.emplace_back(block_counter);
-    }
-    for (auto i = num_avg_plus_one; i < nblocks;
-         ++i, block_counter += avg_block_size) {
-      new_trange1_v.emplace_back(block_counter);
-    }
-    new_trange1_v.emplace_back(rank);
-    new_trange1 =
-        TiledArray::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
-  }
-  return new_trange1;
-}
 
 static inline char intToAlphabet(int i) { return static_cast<char>('a' + i); }
 
@@ -227,14 +195,12 @@ class CP {
     auto lambda = std::vector<typename Tile::value_type>(
         rank, (typename Tile::value_type)0);
     if (world.rank() == 0) {
-      std::mt19937 generator(detail::random_seed_accessor());
-      std::uniform_real_distribution<> distribution(-1.0, 1.0);
       auto factor_ptr = factor.data();
       size_t offset = 0;
       for (auto r = 0; r < rank; ++r, offset += mode_size) {
         auto lam_ptr = lambda.data() + r;
         for (auto m = offset; m < offset + mode_size; ++m) {
-          auto val = distribution(generator);
+          auto val = TiledArray::drand() * 2 - 1;  // random number in [-1,1]
           *(factor_ptr + m) = val;
           *lam_ptr += val * val;
         }
