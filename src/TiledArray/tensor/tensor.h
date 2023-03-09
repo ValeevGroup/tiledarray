@@ -610,16 +610,18 @@ class Tensor {
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
   /// \return Const reference to the element at position \c ord .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
+  /// included in the range, and `batch_size()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   const_reference operator[](const Ordinal ord) const {
+    TA_ASSERT(!this->empty());
     // can't distinguish between operator[](Index...) and operator[](ordinal)
     // thus assume at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator[](index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
+    TA_ASSERT(this->batch_size() == 1);
     TA_ASSERT(this->range_.includes_ordinal(ord));
     return this->data()[ord];
   }
@@ -629,16 +631,18 @@ class Tensor {
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
   /// \return Reference to the element at position \c ord .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
+  /// included in the range, and `batch_size()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   reference operator[](const Ordinal ord) {
+    TA_ASSERT(!this->empty());
     // can't distinguish between operator[](Index...) and operator[](ordinal)
     // thus assume at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator[](index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
+    TA_ASSERT(this->batch_size() == 1);
     TA_ASSERT(this->range_.includes_ordinal(ord));
     return this->data()[ord];
   }
@@ -648,11 +652,13 @@ class Tensor {
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
   /// \return Const reference to the element at position \c ord .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
+  /// included in the range, and `batch_size()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   const_reference at_ordinal(const Ordinal ord) const {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     TA_ASSERT(this->range_.includes_ordinal(ord));
     return this->data()[ord];
   }
@@ -662,11 +668,13 @@ class Tensor {
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
   /// \return Reference to the element at position \c ord .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
+  /// included in the range, and `batch_size()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   reference at_ordinal(const Ordinal ord) {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     TA_ASSERT(this->range_.includes_ordinal(ord));
     return this->data()[ord];
   }
@@ -676,11 +684,13 @@ class Tensor {
   /// \tparam Index An integral range type
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   const_reference operator[](const Index& i) const {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -691,11 +701,13 @@ class Tensor {
   /// \tparam Index An integral range type
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   reference operator[](const Index& i) {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -706,11 +718,13 @@ class Tensor {
   /// \tparam Integer An integral type
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   const_reference operator[](const std::initializer_list<Integer>& i) const {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -721,11 +735,13 @@ class Tensor {
   /// \tparam Integer An integral type
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   reference operator[](const std::initializer_list<Integer>& i) {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -736,11 +752,13 @@ class Tensor {
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
   /// \return Const reference to the element at position \c ord .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
+  /// included in the range, and `batch_size()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral_v<Ordinal>>* = nullptr>
   const_reference operator()(const Ordinal& ord) const {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     // can't distinguish between operator[](Index...) and operator[](ordinal)
     // thus assume at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
@@ -755,11 +773,13 @@ class Tensor {
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
   /// \return Reference to the element at position \c ord .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
+  /// included in the range, and `batch_size()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral_v<Ordinal>>* = nullptr>
   reference operator()(const Ordinal& ord) {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     // can't distinguish between operator[](Index...) and operator[](ordinal)
     // thus assume at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
@@ -774,11 +794,13 @@ class Tensor {
   /// \tparam Index An integral range type
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   const_reference operator()(const Index& i) const {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -789,11 +811,13 @@ class Tensor {
   /// \tparam Index An integral range type
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   reference operator()(const Index& i) {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -804,11 +828,13 @@ class Tensor {
   /// \tparam Integer An integral type
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   const_reference operator()(const std::initializer_list<Integer>& i) const {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -819,11 +845,13 @@ class Tensor {
   /// \tparam Integer An integral type
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   reference operator()(const std::initializer_list<Integer>& i) {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -835,13 +863,15 @@ class Tensor {
   /// )
   /// \param[in] i an index \return Const reference to the element at position
   /// \c i .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord
-  /// is included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <
       typename... Index,
       std::enable_if_t<(sizeof...(Index) > 1ul) &&
                        detail::is_integral_list<Index...>::value>* = nullptr>
   const_reference operator()(const Index&... i) const {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     const auto iord = this->range_.ordinal(
         std::array<std::common_type_t<Index...>, sizeof...(Index)>{{i...}});
     TA_ASSERT(this->range_.includes_ordinal(iord));
@@ -854,13 +884,15 @@ class Tensor {
   /// )
   /// \param[in] i an index \return Reference to the element at position \c i
   /// .
-  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
-  /// included in the range
+  /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
+  /// included in the range, and `batch_size()==1`
   template <
       typename... Index,
       std::enable_if_t<(sizeof...(Index) > 1ul) &&
                        detail::is_integral_list<Index...>::value>* = nullptr>
   reference operator()(const Index&... i) {
+    TA_ASSERT(!this->empty());
+    TA_ASSERT(this->batch_size() == 1);
     using Int = std::common_type_t<Index...>;
     const auto iord = this->range_.ordinal(
         std::array<Int, sizeof...(Index)>{{static_cast<Int>(i)...}});
