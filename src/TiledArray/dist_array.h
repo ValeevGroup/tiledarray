@@ -895,10 +895,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              throw guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already initialized. Weak throw guarantee.
-  template <typename T = element_type,
+  template <HostExecutor Exec = HostExecutor::Default,
+            typename T = element_type,
             typename = detail::enable_if_can_make_random_t<T>>
   void fill_random(bool skip_set = false) {
-    init_elements(
+    init_elements<Exec>(
         [](const auto&) { return detail::MakeRandom<T>::generate_value(); });
   }
 
@@ -938,7 +939,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if a tile is already set and skip_set is
   ///                              false. Weak throw guarantee.
-  template <typename Op>
+  template <HostExecutor Exec = HostExecutor::Default, typename Op>
   void init_tiles(Op&& op, bool skip_set = false) {
     // lifetime management of op depends on whether it is a lvalue ref (i.e. has
     // an external owner) or an rvalue ref
@@ -952,15 +953,20 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       const auto& index = *it;
       if (!pimpl_->is_zero(index)) {
         if (skip_set) {
-          auto fut = find(index);
+          auto fut = find_local(index);
           if (fut.probe()) continue;
         }
-        Future<value_type> tile = pimpl_->world().taskq.add(
-            [pimpl = pimpl_, index = ordinal_type(index),
-             op_shared_handle]() -> value_type {
-              return op_shared_handle(pimpl->trange().make_tile_range(index));
-            });
-        set(index, std::move(tile));
+        if constexpr (Exec == HostExecutor::MADWorld) {
+          Future<value_type> tile = pimpl_->world().taskq.add(
+              [pimpl = pimpl_, index = ordinal_type(index),
+               op_shared_handle]() -> value_type {
+                return op_shared_handle(pimpl->trange().make_tile_range(index));
+              });
+          set(index, std::move(tile));
+        } else {
+          static_assert(Exec == HostExecutor::Thread);
+          set(index, op_shared_handle(trange().make_tile_range(index)));
+        }
       }
     }
   }
@@ -989,10 +995,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if skip_set is false and a local, non-zero
   ///                              tile is already initialized. Weak throw
   ///                              guarantee.
-  template <typename Op>
+  template <HostExecutor Exec = HostExecutor::Default, typename Op>
   void init_elements(Op&& op, bool skip_set = false) {
     auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
-    init_tiles(
+    init_tiles<Exec>(
         [op = std::move(op_shared_handle)](
             const TiledArray::Range& range) -> value_type {
           // Initialize the tile with the given range object
