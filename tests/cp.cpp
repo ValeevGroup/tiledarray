@@ -23,18 +23,17 @@
  *
  */
 
-#include "range_fixture.h"
-#include "compute_trange1.h"
-
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
-#include "TiledArray/cp/btas_cp.h"
-#include "TiledArray/cp/cp_reconstruct.h"
-#include <libgen.h>
 #include <iomanip>
+#include "TiledArray/math/solvers/cp.h"
+#include "TiledArray/math/solvers/cp/btas_cp.h"
 
-const std::string __dirname = dirname(strdup(__FILE__));
+#include "range_fixture.h"
+
+constexpr std::int64_t rank_tile_size = 10;
+constexpr bool verbose = false;
 
 using namespace TiledArray;
 
@@ -42,22 +41,8 @@ struct CPFixture : public TiledRangeFixture {
   CPFixture()
       : shape_tr(make_random_sparseshape(tr)),
         a_sparse(*GlobalFixture::world, tr, shape_tr) {
-    random_fill(a_sparse);
+    a_sparse.fill_random<HostExecutor::Thread>();
     a_sparse.truncate();
-  }
-
-  template <typename Tile, typename Policy>
-  static void random_fill(DistArray<Tile, Policy>& array) {
-    typename DistArray<Tile, Policy>::pmap_interface::const_iterator it =
-        array.pmap()->begin();
-    typename DistArray<Tile, Policy>::pmap_interface::const_iterator end =
-        array.pmap()->end();
-    for (; it != end; ++it) {
-      if (!array.is_zero(*it))
-        array.set(*it, array.world().taskq.add(
-                           &CPFixture::template make_rand_tile<Tile>,
-                           array.trange().make_tile_range(*it)));
-    }
   }
 
   /// make a shape with approximate half dense and half sparse
@@ -75,39 +60,6 @@ struct CPFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.broadcast_serializable(norms, 0);
 
     return SparseShape<float>(norms, tr);
-  }
-
-  // Fill a tile with random data
-  template <typename Tile>
-  static Tile make_rand_tile(const typename Tile::range_type& r) {
-    Tile tile(r);
-    for (std::size_t i = 0ul; i < tile.size(); ++i) set_random(tile[i]);
-    return tile;
-  }
-
-  template <typename Tile>
-  static double init_rand_tile(Tile& tile, const typename Tile::range_type& r) {
-    tile = Tile(r);
-    for (std::size_t i = 0ul; i < tile.size(); ++i) set_random(tile[i]);
-    double result;
-    norm(tile, result);
-    return result;
-  }
-
-  template <typename Tile>
-  static double init_unit_tile(Tile& tile, const typename Tile::range_type& r) {
-    tile = Tile(r);
-    std::mt19937 generator(3);
-    std::uniform_real_distribution distribution(-1.0, 1.0);
-    for (std::size_t i = 0ul; i < tile.size(); ++i) tile[i] = 1;
-    double result;
-    norm(tile, result);
-    return result;
-  }
-
-  template <typename T>
-  static void set_random(T& t) {
-    t = GlobalFixture::world->rand() % 101;
   }
 
   static TensorF tensori_to_tensorf(const TensorI& tensori) {
@@ -136,165 +88,139 @@ struct CPFixture : public TiledRangeFixture {
   TSpArrayI a_sparse;
 };
 
-//TiledArray::TiledRange1 compute_trange1(std::size_t range_size,
-//                                        std::size_t target_block_size) {
-//  if (range_size > 0) {
-//    std::size_t nblocks =
-//        (range_size + target_block_size - 1) / target_block_size;
-//    auto dv = std::div((int) (range_size + nblocks - 1), (int) nblocks);
-//    auto avg_block_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
-//    std::vector<std::size_t> hashmarks;
-//    hashmarks.reserve(nblocks + 1);
-//    auto block_counter = 0;
-//    for(auto i = 0; i < num_avg_plus_one; ++i, block_counter += avg_block_size + 1){
-//      hashmarks.push_back(block_counter);
-//    }
-//    for (auto i = num_avg_plus_one; i < nblocks; ++i, block_counter+= avg_block_size) {
-//      hashmarks.push_back(block_counter);
-//    }
-//    hashmarks.push_back(range_size);
-//    return TA::TiledRange1(hashmarks.begin(), hashmarks.end());
-//  } else
-//    return TA::TiledRange1{};
-//}
+template <typename TArrayT>
+TArrayT compute_cp(const TArrayT& T, size_t cp_rank, bool verbose = false) {
+  CP_ALS<typename TArrayT::value_type, typename TArrayT::policy_type> CPD(T);
+  CPD.compute_rank(cp_rank, rank_tile_size, false, 1e-3, verbose);
+  return CPD.reconstruct();
+}
+
+enum class Fill { Random, Constant };
+
+template <typename TArrayT, Fill fill = Fill::Constant,
+          typename... OptionalArgs>
+TArrayT make(const TiledRange& tr, OptionalArgs&&... opt_args) {
+  TArrayT result(*GlobalFixture::world, tr, opt_args...);
+  switch (fill) {
+    case Fill::Constant:
+      result.fill(1);
+      break;
+    case Fill::Random:
+      // make sure randomness is deterministic
+      result.template fill_random<HostExecutor::Thread>();
+      break;
+  }
+  return result;
+}
 
 BOOST_FIXTURE_TEST_SUITE(cp_suite, CPFixture)
 
-BOOST_AUTO_TEST_CASE(btas_cp_als){
-  // get local world
-  const auto rank = (*GlobalFixture::world).rank();
-  const auto size = (*GlobalFixture::world).size();
+const auto target_rel_error = std::sqrt(std::numeric_limits<double>::epsilon());
 
-  madness::World* tmp_ptr;
-  std::shared_ptr<madness::World> world_ptr;
-
-  if (size > 1) {
-    SafeMPI::Group group =
-        (*GlobalFixture::world).mpi.comm().Get_group().Incl(1, &rank);
-    SafeMPI::Intracomm comm = (*GlobalFixture::world).mpi.comm().Create(group);
-    world_ptr = std::make_shared<madness::World>(comm);
-    tmp_ptr = world_ptr.get();
-  } else {
-    tmp_ptr = &(*GlobalFixture::world);
-  }
-  auto& this_world = *tmp_ptr;
-  (*GlobalFixture::world).gop.fence();
+BOOST_AUTO_TEST_CASE(btas_cp_als) {
+  TiledArray::srand(1);
 
   // Make a tiled range with block size of 1
   TiledArray::TiledRange tr3, tr4, tr5;
   {
-    TiledRange1 tr1_mode0 = compute_trange1(11, 1),
-                    tr1_mode1 = compute_trange1(7, 2),
-                    tr1_mode2 = compute_trange1(15, 4),
-                    tr1_mode3 = compute_trange1(8,7);
+    TiledRange1 tr1_mode0 = TiledRange1::make_uniform(11, 1),
+                tr1_mode1 = TiledRange1::make_uniform(7, 2),
+                tr1_mode2 = TiledRange1::make_uniform(15, 4),
+                tr1_mode3 = TiledRange1::make_uniform(8, 7);
     tr3 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2});
     tr4 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
     tr5 = TiledRange({tr1_mode0, tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
   }
 
-  // Dense test
-  // order-3 test
+  // Dense
+
+  // order-3 rank-1 test
   {
     std::vector<TArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_dense = make_array<TArrayD>(*GlobalFixture::world, tr3,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
-    auto b_cp = cp::reconstruct(factors);
+    auto b_dense = make<TArrayD>(tr3);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
-    if(!accurate) std::cout << "The error in order-3 dense is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
     BOOST_CHECK(accurate);
   }
-  // order-4 test
+  // order-4 rank-1 test
   {
     std::vector<TArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_dense = make_array<TArrayD>(*GlobalFixture::world, tr4,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_dense = make<TArrayD>(tr4);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d") = b_dense("a,b,c,d") - b_cp("a,b,c,d");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
-    if(!accurate) std::cout << "The error in order-4 dense is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
     BOOST_CHECK(accurate);
   }
-  // order-5 test
+  // order-5 rank-1 test
   {
     std::vector<TArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_dense = make_array<TArrayD>(*GlobalFixture::world, tr5,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_dense = make<TArrayD>(tr5);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d,e") = b_dense("a,b,c,d,e") - b_cp("a,b,c,d,e");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
-    if(!accurate) std::cout << "The error in order-5 dense is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
     BOOST_CHECK(accurate);
   }
 
-  // sparse test
+  // sparse
+
+  // order-3 rank-N test
   {
     std::vector<TSpArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr3,
-                                              &this->init_rand_tile<TensorD>);
-    double cp_rank = 100;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_sparse = make<TSpArrayD, Fill::Random>(tr3);
+    size_t cp_rank = 77;
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
-    bool accurate = ( TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
-    if(!accurate) std::cout << "The error in order-3 sparse is : " << TA::norm2(diff) / TA::norm2(b_sparse) << std::endl;
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
     BOOST_CHECK(accurate);
   }
-  // order-4 test
+  // order-4 rank-1 test
   {
     std::vector<TSpArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr4,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 100;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_sparse = make<TSpArrayD>(tr4);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
-    if(!accurate) std::cout << "The error in order-4 sparse is : " << TA::norm2(diff) / TA::norm2(b_sparse) << std::endl;
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
     BOOST_CHECK(accurate);
   }
   // order-5 test
   {
     std::vector<TSpArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr5,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 105;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_sparse = make<TSpArrayD>(tr5);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-9);
@@ -302,33 +228,16 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
   }
 }
 
-BOOST_AUTO_TEST_CASE(btas_cp_rals){
-  // get local world
-  const auto rank = (*GlobalFixture::world).rank();
-  const auto size = (*GlobalFixture::world).size();
-
-  madness::World* tmp_ptr;
-  std::shared_ptr<madness::World> world_ptr;
-
-  if (size > 1) {
-    SafeMPI::Group group =
-        (*GlobalFixture::world).mpi.comm().Get_group().Incl(1, &rank);
-    SafeMPI::Intracomm comm = (*GlobalFixture::world).mpi.comm().Create(group);
-    world_ptr = std::make_shared<madness::World>(comm);
-    tmp_ptr = world_ptr.get();
-  } else {
-    tmp_ptr = &(*GlobalFixture::world);
-  }
-  auto& this_world = *tmp_ptr;
-  (*GlobalFixture::world).gop.fence();
+BOOST_AUTO_TEST_CASE(btas_cp_rals) {
+  TiledArray::srand(1);
 
   // Make a tiled range with block size of 1
   TiledArray::TiledRange tr3, tr4, tr5;
   {
-    TiledRange1 tr1_mode0 = compute_trange1(11, 1),
-                tr1_mode1 = compute_trange1(7, 2),
-                tr1_mode2 = compute_trange1(15, 4),
-                tr1_mode3 = compute_trange1(8,7);
+    TiledRange1 tr1_mode0 = TiledRange1::make_uniform(11, 1),
+                tr1_mode1 = TiledRange1::make_uniform(7, 2),
+                tr1_mode2 = TiledRange1::make_uniform(15, 4),
+                tr1_mode3 = TiledRange1::make_uniform(8, 7);
     tr3 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2});
     tr4 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
     tr5 = TiledRange({tr1_mode0, tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
@@ -338,104 +247,176 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
   // order-3 test
   {
     std::vector<TArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_dense = make_array<TArrayD>(*GlobalFixture::world, tr3,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 1;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_dense = make<TArrayD>(tr3);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
     BOOST_CHECK(accurate);
   }
   // order-4 test
   {
     std::vector<TArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_dense = make_array<TArrayD>(*GlobalFixture::world, tr4,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 1;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_dense = make<TArrayD>(tr4);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d") = b_dense("a,b,c,d") - b_cp("a,b,c,d");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
     BOOST_CHECK(accurate);
   }
   // order-5 test
   {
     std::vector<TArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_dense = make_array<TArrayD>(*GlobalFixture::world, tr5,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 1;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_dense = make<TArrayD>(tr5);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d,e") = b_dense("a,b,c,d,e") - b_cp("a,b,c,d,e");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
     BOOST_CHECK(accurate);
   }
 
   // sparse test
   {
     std::vector<TSpArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr3,
-                                          &this->init_rand_tile<TensorD>);
-    double cp_rank = 100;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_sparse = make<TSpArrayD, Fill::Random>(tr3);
+    size_t cp_rank = 77;
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
-    bool accurate = ( TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
     BOOST_CHECK(accurate);
   }
   // order-4 test
   {
     std::vector<TSpArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr4,
-                                          &this->init_unit_tile<TensorD>);
-    double cp_rank = 100;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_sparse = make<TSpArrayD>(tr4);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
     BOOST_CHECK(accurate);
   }
   // order-5 test
   {
     std::vector<TSpArrayD> factors;
-    // Make an sparse array with tiled range from above.
-    auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr5,
-                                       &this->init_unit_tile<TensorD>);
-    double cp_rank = 105;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+    auto b_sparse = make<TSpArrayD>(tr5);
+    size_t cp_rank = 1;
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-9);
+    BOOST_CHECK(accurate);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(ta_cp_als) {
+  TiledArray::srand(1);
+
+  // Make a tiled range with block size of 1
+  TiledArray::TiledRange tr3, tr4, tr5;
+  {
+    TiledRange1 tr1_mode0 = TiledRange1::make_uniform(11, 1),
+                tr1_mode1 = TiledRange1::make_uniform(7, 2),
+                tr1_mode2 = TiledRange1::make_uniform(15, 4),
+                tr1_mode3 = TiledRange1::make_uniform(8, 7);
+    tr3 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2});
+    tr4 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
+    tr5 = TiledRange({tr1_mode0, tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
+  }
+
+  // Dense test
+  // order-3 test
+  {
+    auto b_dense = make<TArrayD>(tr3);
+    size_t cp_rank = 1;
+    auto b_cp = compute_cp(b_dense, cp_rank, verbose);
+    TArrayD diff;
+    diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
+    BOOST_CHECK(accurate);
+  }
+  // order-4 test
+  {
+    auto b_dense = make<TArrayD>(tr4);
+    size_t cp_rank = 1;
+    auto b_cp = compute_cp(b_dense, cp_rank, verbose);
+
+    TArrayD diff;
+    diff("a,b,c,d") = b_dense("a,b,c,d") - b_cp("a,b,c,d");
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
+    BOOST_CHECK(accurate);
+  }
+  // order-5 test
+  {
+    auto b_dense = make<TArrayD>(tr5);
+    size_t cp_rank = 1;
+    auto b_cp = compute_cp(b_dense, cp_rank, verbose);
+
+    TArrayD diff;
+    diff("a,b,c,d,e") = b_dense("a,b,c,d,e") - b_cp("a,b,c,d,e");
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
+    BOOST_CHECK(accurate);
+  }
+
+  // sparse test
+  // order-3 test
+  {
+    auto b_sparse = make<TSpArrayD, Fill::Random>(tr3);
+    // std::cout << "b_sparse = " <<
+    // array_to_eigen_tensor<Eigen::Tensor<double,3>>(b_sparse) << std::endl;
+    size_t cp_rank = 77;
+    auto b_cp = compute_cp(b_sparse, cp_rank, verbose);
+    TSpArrayD diff;
+    diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
+    BOOST_CHECK(accurate);
+  }
+  // order-4 test
+  {
+    auto b_sparse = make<TSpArrayD>(tr4);
+    size_t cp_rank = 1;
+    auto b_cp = compute_cp(b_sparse, cp_rank, verbose);
+    TSpArrayD diff;
+    diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
+    BOOST_CHECK(accurate);
+  }
+  // order-5 test
+  {
+    auto b_sparse = make<TSpArrayD>(tr5);
+    double cp_rank = 1;
+    auto b_cp = compute_cp(b_sparse, cp_rank, verbose);
+    TSpArrayD diff;
+    diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
     BOOST_CHECK(accurate);
   }
 }

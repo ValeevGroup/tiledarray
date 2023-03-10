@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2020 Virginia Tech
+ *  Copyright (C) 2023  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,22 +15,24 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  David Williams-Young
- *  Computational Research Division, Lawrence Berkeley National Laboratory
+ *  Eduard Valeyev
+ *  Department of Chemistry, Virginia Tech
  *
- *  scalapack.h
- *  Created:  25 May, 2020
+ *  cp.h
+ *  March 10, 2023
  *
  */
 
-#ifndef TILEDARRAY_MATH_LINALG_LINALG_H__INCLUDED
-#define TILEDARRAY_MATH_LINALG_LINALG_H__INCLUDED
+#ifndef TILEDARRAY_MATH_SOLVERS_CP_H__INCLUDED
+#define TILEDARRAY_MATH_SOLVERS_CP_H__INCLUDED
 
-#include <TiledArray/math/linalg/basic.h>
-#include <TiledArray/math/linalg/cholesky.h>
-#include <TiledArray/math/linalg/heig.h>
-#include <TiledArray/math/linalg/lu.h>
-#include <TiledArray/math/linalg/qr.h>
-#include <TiledArray/math/linalg/svd.h>
+#include <TiledArray/math/solvers/cp/cp.h>
+#include <TiledArray/math/solvers/cp/cp_als.h>
+#include <TiledArray/math/solvers/cp/cp_reconstruct.h>
 
-#endif  // TILEDARRAY_MATH_LINALG_LINALG_H__INCLUDED
+namespace TiledArray {
+using TiledArray::math::cp::CP_ALS;
+using TiledArray::math::cp::cp_reconstruct;
+}  // namespace TiledArray
+
+#endif  // TILEDARRAY_MATH_SOLVERS_CP_H__INCLUDED

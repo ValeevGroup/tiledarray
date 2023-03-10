@@ -28,6 +28,7 @@
 
 #include "TiledArray/math/linalg/forward.h"
 
+#include "TiledArray/conversions/concat.h"
 #include "TiledArray/dist_array.h"
 #include "TiledArray/external/eigen.h"
 
@@ -64,6 +65,14 @@ struct symmetric_matrix_shape {
 
 }  // namespace detail
 
+namespace non_distributed {}
+namespace scalapack {}
+namespace ttg {}
+
+}  // namespace TiledArray::math::linalg
+
+namespace TiledArray {
+
 // freestanding adaptors for DistArray needed by solvers like DIIS
 
 template <typename Tile, typename Policy>
@@ -93,18 +102,35 @@ inline void axpy(DistArray<Tile, Policy>& y, S alpha,
   y(vars) = y(vars) + numeric_type(alpha) * x(vars);
 }
 
-namespace non_distributed {}
-namespace scalapack {}
-namespace ttg {}
+/// selector for concat
+enum class Concat : char { Row = 'R', Col = 'C', Both = 'B' };
 
-}  // namespace TiledArray::math::linalg
+/// generic TiledArray::concat adapted for matrices
+template <typename Tile, typename Policy>
+inline DistArray<Tile, Policy> concat(const DistArray<Tile, Policy>& a,
+                                      const DistArray<Tile, Policy>& b,
+                                      Concat C) {
+  TA_ASSERT(a.trange().rank() == 2);
+  TA_ASSERT(b.trange().rank() == 2);
+  switch (C) {
+    case Concat::Row:
+      return TiledArray::concat<Tile, Policy>({a, b},
+                                              std::vector<bool>{true, false});
+    case Concat::Col:
+      return TiledArray::concat<Tile, Policy>({a, b},
+                                              std::vector<bool>{false, true});
+    case Concat::Both:
+      return TiledArray::concat<Tile, Policy>({a, b},
+                                              std::vector<bool>{true, true});
+  }
+}
 
-namespace TiledArray {
 using TiledArray::math::linalg::get_linalg_backend;
 using TiledArray::math::linalg::get_linalg_crossover_to_distributed;
 using TiledArray::math::linalg::LinearAlgebraBackend;
 using TiledArray::math::linalg::set_linalg_backend;
 using TiledArray::math::linalg::set_linalg_crossover_to_distributed;
+
 }  // namespace TiledArray
 
 namespace Eigen {

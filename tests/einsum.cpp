@@ -744,10 +744,30 @@ BOOST_AUTO_TEST_SUITE_END()
 
 #include "TiledArray/einsum/eigen.h"
 
+template <typename... Tensors>
+using common_scalar_t = std::common_type_t<typename Tensors::Scalar...>;
+
+template <typename T>
+auto abs_comparison_threshold_default() {
+  if constexpr (std::is_integral_v<T>) {
+    return 0;
+  } else {
+    return 1e-4;
+  }
+}
+
 template <typename TA, typename TB>
 bool isApprox(const Eigen::TensorBase<TA, Eigen::ReadOnlyAccessors>& A,
-              const Eigen::TensorBase<TB, Eigen::ReadOnlyAccessors>& B) {
-  Eigen::Tensor<bool, 0> r = (derived(A) == derived(B)).all();
+              const Eigen::TensorBase<TB, Eigen::ReadOnlyAccessors>& B,
+              common_scalar_t<TA, TB> abs_comparison_threshold =
+                  abs_comparison_threshold_default<common_scalar_t<TA, TB>>()) {
+  Eigen::Tensor<bool, 0> r;
+  if constexpr (std::is_integral_v<typename TA::Scalar> &&
+                std::is_integral_v<typename TB::Scalar>) {
+    r = (derived(A) == derived(B)).all();
+  } else {  // soft floating-point comparison
+    r = ((derived(A) - derived(B)).abs() <= abs_comparison_threshold).all();
+  }
   return r.coeffRef();
 }
 
@@ -1057,5 +1077,20 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_dot) {
   BOOST_CHECK(hik_hkj_hji == hkj_hji_hik);
   TiledArray::get_default_world().gop.fence();
 }
+
+// BOOST_AUTO_TEST_CASE(einsum_tiledarray_dot) {
+//   using TiledArray::dot;
+//   auto hik = random<DensePolicy>(4,3,5);
+//   auto hkj = random<DensePolicy>(4,5,6);
+//   auto hji = random<DensePolicy>(4,6,3);
+//   auto hik_hkj_hji = dot("hik,hkj,hji", hik, hkj, hji);
+//   auto hji_hik_hkj = dot("hji,hik,hkj", hji, hik, hkj);
+//   auto hkj_hji_hik = dot("hkj,hji,hik", hkj, hji, hik);
+//   auto AB = einsum("hik,hkj->hji", hik, hkj);
+//   BOOST_CHECK(dot(AB,hji) == hik_hkj_hji);
+//   BOOST_CHECK(hik_hkj_hji == hji_hik_hkj);
+//   BOOST_CHECK(hik_hkj_hji == hji_hik_hkj);
+//   BOOST_CHECK(hik_hkj_hji == hkj_hji_hik);
+// }
 
 BOOST_AUTO_TEST_SUITE_END()
