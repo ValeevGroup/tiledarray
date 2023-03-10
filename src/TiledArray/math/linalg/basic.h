@@ -65,6 +65,14 @@ struct symmetric_matrix_shape {
 
 }  // namespace detail
 
+namespace non_distributed {}
+namespace scalapack {}
+namespace ttg {}
+
+}  // namespace TiledArray::math::linalg
+
+namespace TiledArray {
+
 // freestanding adaptors for DistArray needed by solvers like DIIS
 
 template <typename Tile, typename Policy>
@@ -117,18 +125,12 @@ inline DistArray<Tile, Policy> concat(const DistArray<Tile, Policy>& a,
   }
 }
 
-namespace non_distributed {}
-namespace scalapack {}
-namespace ttg {}
-
-}  // namespace TiledArray::math::linalg
-
-namespace TiledArray {
 using TiledArray::math::linalg::get_linalg_backend;
 using TiledArray::math::linalg::get_linalg_crossover_to_distributed;
 using TiledArray::math::linalg::LinearAlgebraBackend;
 using TiledArray::math::linalg::set_linalg_backend;
 using TiledArray::math::linalg::set_linalg_crossover_to_distributed;
+
 }  // namespace TiledArray
 
 namespace Eigen {

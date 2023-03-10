@@ -1,15 +1,36 @@
-//
-// Created by Karl Pierce on 3/17/22.
-//
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2023  Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Karl Pierce
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  cp.h
+ *  March 17, 2022
+ *
+ */
 
-#ifndef TILEDARRAY_CP_CP__H
-#define TILEDARRAY_CP_CP__H
+#ifndef TILEDARRAY_MATH_SOLVERS_CP_CP__H
+#define TILEDARRAY_MATH_SOLVERS_CP_CP__H
 
 #include <TiledArray/conversions/btas.h>
 #include <TiledArray/expressions/einsum.h>
 #include <tiledarray.h>
 
-namespace TiledArray::cp {
+namespace TiledArray::math::cp {
 
 namespace detail {
 
@@ -61,7 +82,7 @@ class CP {
   /// There are 2 options, if @c build_rank the rank starts at 1 and
   /// moving to @c rank else builds an efficient
   /// random guess with rank @c rank
-  /// \param[in] rank Rank of the CP deccomposition
+  /// \param[in] rank Rank of the CP decomposition
   /// \param[in] rank_block_size The target tile size of
   /// rank mode's range; if 0 will use \p rank as \p rank_block_size .
   /// \param[in] build_rank should CP approximation be built from rank 1
@@ -123,9 +144,10 @@ class CP {
   std::vector<Array> get_factor_matrices() {
     TA_ASSERT(!cp_factors.empty(),
               "CP factor matrices have not been computed)");
-    cp_factors.pop_back();
-    cp_factors.emplace_back(unNormalized_Factor);
-    return cp_factors;
+    auto result = cp_factors;
+    result.pop_back();
+    result.emplace_back(unNormalized_Factor);
+    return result;
   }
 
   Array reconstruct() {
@@ -385,6 +407,6 @@ class CP {
   }
 };
 
-}  // namespace TiledArray::cp
+}  // namespace TiledArray::math::cp
 
-#endif  // TILEDARRAY_CP_CP__H
+#endif  // TILEDARRAY_MATH_SOLVERS_CP_CP__H

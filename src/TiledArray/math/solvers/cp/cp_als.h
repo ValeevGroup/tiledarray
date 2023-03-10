@@ -1,11 +1,34 @@
-//
-// Created by Karl Pierce on 4/17/22.
-//
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2023  Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Karl Pierce
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  cp.h
+ *  April 17, 2022
+ *
+ */
 
-#ifndef TILEDARRAY_CP_CP_ALS__H
-#define TILEDARRAY_CP_CP_ALS__H
+#ifndef TILEDARRAY_MATH_SOLVERS_CP_CP_ALS__H
+#define TILEDARRAY_MATH_SOLVERS_CP_CP_ALS__H
 
-#include <TiledArray/cp/cp.h>
+#include <TiledArray/math/solvers/cp/cp.h>
+
+namespace TiledArray::math::cp {
 
 /**
  * This is a canonical polyadic (CP) optimization class which
@@ -17,7 +40,6 @@
  * @tparam Tile typing for the DistArray tiles
  * @tparam Policy policy of the DistArray
  **/
-namespace TiledArray::cp {
 template <typename Tile, typename Policy>
 class CP_ALS : public CP<Tile, Policy> {
  public:
@@ -168,6 +190,7 @@ class CP_ALS : public CP<Tile, Policy> {
     gram("r,rp") = An("r,n") * An("rp,n");
   }
 };
-}  // namespace TiledArray::cp
 
-#endif  // TILEDARRAY_CP_CP_ALS__H
+}  // namespace TiledArray::math::cp
+
+#endif  // TILEDARRAY_MATH_SOLVERS_CP_CP_ALS__H

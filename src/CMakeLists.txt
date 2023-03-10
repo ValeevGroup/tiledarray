@@ -60,8 +60,6 @@ ${PROJECT_BINARY_DIR}/src/TiledArray/version.h
 TiledArray/zero_tensor.h
 TiledArray/math/linalg/forward.h
 TiledArray/math/linalg/basic.h
-TiledArray/math/linalg/conjgrad.h
-TiledArray/math/linalg/diis.h
 TiledArray/math/linalg/util.h
 TiledArray/math/linalg/cholesky.h
 TiledArray/math/linalg/heig.h
@@ -77,6 +75,13 @@ TiledArray/math/linalg/scalapack/qr.h
 TiledArray/math/linalg/scalapack/svd.h
 TiledArray/math/linalg/ttg/cholesky.h
 TiledArray/math/linalg/ttg/util.h
+TiledArray/math/solvers/conjgrad.h
+TiledArray/math/solvers/diis.h
+TiledArray/math/solvers/cp.h
+TiledArray/math/solvers/cp/btas_cp.h
+TiledArray/math/solvers/cp/cp.h
+TiledArray/math/solvers/cp/cp_als.h
+TiledArray/math/solvers/cp/cp_reconstruct.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/concat.h
@@ -89,9 +94,6 @@ TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/conversions/retile.h
-TiledArray/cp/btas_cp.h
-TiledArray/cp/cp.h
-TiledArray/cp/cp_als.h
 TiledArray/dist_eval/array_eval.h
 TiledArray/dist_eval/binary_eval.h
 TiledArray/dist_eval/contraction_eval.h

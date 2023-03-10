@@ -31,9 +31,8 @@
 
 #include <libgen.h>
 #include <iomanip>
-#include "TiledArray/cp/btas_cp.h"
-#include "TiledArray/cp/cp_als.h"
-#include "TiledArray/cp/cp_reconstruct.h"
+#include "TiledArray/math/solvers/cp.h"
+#include "TiledArray/math/solvers/cp/btas_cp.h"
 
 constexpr std::int64_t rank_tile_size = 10;
 constexpr bool verbose = false;
@@ -93,8 +92,7 @@ struct CPFixture : public TiledRangeFixture {
 
 template <typename TArrayT>
 TArrayT compute_cp(const TArrayT& T, size_t cp_rank, bool verbose = false) {
-  cp::CP_ALS<typename TArrayT::value_type, typename TArrayT::policy_type> CPD(
-      T);
+  CP_ALS<typename TArrayT::value_type, typename TArrayT::policy_type> CPD(T);
   CPD.compute_rank(cp_rank, rank_tile_size, false, 1e-3, verbose);
   return CPD.reconstruct();
 }
@@ -143,10 +141,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr3);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, rank_tile_size), 0, 1e-3,
-                              verbose);
-    auto b_cp = cp::reconstruct(factors);
+    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_dense, cp_rank,
+                                     compute_trange1(cp_rank, rank_tile_size),
+                                     0, 1e-3, verbose);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
@@ -157,11 +155,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr4);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, rank_tile_size), 0, 1e-3,
-                              verbose);
+    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_dense, cp_rank,
+                                     compute_trange1(cp_rank, rank_tile_size),
+                                     0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d") = b_dense("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
@@ -172,11 +170,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr5);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                              compute_trange1(cp_rank, rank_tile_size), 0, 1e-3,
-                              verbose);
+    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_dense, cp_rank,
+                                     compute_trange1(cp_rank, rank_tile_size),
+                                     0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d,e") = b_dense("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
@@ -190,11 +188,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD, Fill::Random>(tr3);
     size_t cp_rank = 77;
-    factors =
-        cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                        compute_trange1(cp_rank, rank_tile_size), 0, 1e-3);
+    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_sparse, cp_rank,
+                                     compute_trange1(cp_rank, rank_tile_size),
+                                     0, 1e-3);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
@@ -205,11 +203,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD>(tr4);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, rank_tile_size), 0, 1e-3,
-                              verbose);
+    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_sparse, cp_rank,
+                                     compute_trange1(cp_rank, rank_tile_size),
+                                     0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
@@ -220,11 +218,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD>(tr5);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, rank_tile_size), 0, 1e-3,
-                              verbose);
+    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_sparse, cp_rank,
+                                     compute_trange1(cp_rank, rank_tile_size),
+                                     0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-9);
@@ -253,11 +251,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr3);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                               compute_trange1(cp_rank, rank_tile_size), 0,
-                               1e-3, verbose);
+    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_dense, cp_rank,
+                                      compute_trange1(cp_rank, rank_tile_size),
+                                      0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
@@ -268,11 +266,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr4);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                               compute_trange1(cp_rank, rank_tile_size), 0,
-                               1e-3, verbose);
+    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_dense, cp_rank,
+                                      compute_trange1(cp_rank, rank_tile_size),
+                                      0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d") = b_dense("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
@@ -283,11 +281,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr5);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                               compute_trange1(cp_rank, rank_tile_size), 0,
-                               1e-3, verbose);
+    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_dense, cp_rank,
+                                      compute_trange1(cp_rank, rank_tile_size),
+                                      0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d,e") = b_dense("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < target_rel_error);
@@ -299,11 +297,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD, Fill::Random>(tr3);
     size_t cp_rank = 77;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
-                               compute_trange1(cp_rank, rank_tile_size), 0,
-                               1e-3, verbose);
+    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
+                                      compute_trange1(cp_rank, rank_tile_size),
+                                      0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
@@ -314,11 +312,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD>(tr4);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
-                               compute_trange1(cp_rank, rank_tile_size), 0,
-                               1e-3, verbose);
+    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
+                                      compute_trange1(cp_rank, rank_tile_size),
+                                      0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
@@ -329,11 +327,11 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD>(tr5);
     size_t cp_rank = 1;
-    factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                              compute_trange1(cp_rank, rank_tile_size), 0, 1e-3,
-                              verbose);
+    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_sparse, cp_rank,
+                                     compute_trange1(cp_rank, rank_tile_size),
+                                     0, 1e-3, verbose);
 
-    auto b_cp = cp::reconstruct(factors);
+    auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-9);

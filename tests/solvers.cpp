@@ -23,7 +23,7 @@
  *
  */
 
-#include <TiledArray/math/linalg/conjgrad.h>
+#include <TiledArray/math/solvers/conjgrad.h>
 #include <tiledarray.h>
 
 #include "unit_test_config.h"

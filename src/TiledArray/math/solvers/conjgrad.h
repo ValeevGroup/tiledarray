@@ -27,10 +27,10 @@
 #define TILEDARRAY_MATH_LINALG_CONJGRAD_H__INCLUDED
 
 #include <TiledArray/math/linalg/basic.h>
-#include <TiledArray/math/linalg/diis.h>
+#include <TiledArray/math/solvers/diis.h>
 #include "TiledArray/dist_array.h"
 
-namespace TiledArray::math::linalg {
+namespace TiledArray::math {
 
 // clang-format off
 /// Solves real linear system <tt> a(x) = b </tt>, with \c a is a linear
@@ -182,10 +182,10 @@ struct ConjugateGradientSolver {
   }
 };
 
-}  // namespace TiledArray::math::linalg
+}  // namespace TiledArray::math
 
 namespace TiledArray {
-using TiledArray::math::linalg::ConjugateGradientSolver;
+using TiledArray::math::ConjugateGradientSolver;
 }
 
 #endif  // TILEDARRAY_MATH_LINALG_CONJGRAD_H__INCLUDED
