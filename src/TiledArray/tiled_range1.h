@@ -238,6 +238,33 @@ class TiledRange1 {
     return element_to_tile(i);
   }
 
+  // clang-format off
+  /// @brief makes a uniform (or, as uniform as possible) TiledRange1
+
+  /// @param[in] range_size the range size
+  /// @param[in] target_block_size the desired block size
+  /// @return TiledRange1 obtained by tiling range `[0,range_size)` into `(range_size + target_block_size - 1)/target_block_size`
+  ///         blocks of approximately @p target_block_size size
+  // clang-format on
+  static TiledRange1 make_uniform(std::size_t range_size,
+                                  std::size_t target_block_size) {
+    if (range_size > 0) {
+      TA_ASSERT(target_block_size > 0);
+      std::size_t nblocks =
+          (range_size + target_block_size - 1) / target_block_size;
+      std::size_t block_size = (range_size + nblocks - 1) / nblocks;
+      std::vector<std::size_t> hashmarks;
+      hashmarks.reserve(nblocks + 1);
+      hashmarks.push_back(0);
+      for (auto i = block_size; i < range_size; i += block_size) {
+        hashmarks.push_back(i);
+      }
+      hashmarks.push_back(range_size);
+      return TiledRange1(hashmarks.begin(), hashmarks.end());
+    } else
+      return TiledRange1{};
+  }
+
   /// swapper
 
   /// \param other the range with which the contents of this range will be
