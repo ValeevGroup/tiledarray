@@ -100,13 +100,13 @@ class CP {
     if (build_rank) {
       size_t cur_rank = 1;
       do {
-        rank_trange = TiledArray::compute_trange1(cur_rank, rank_block_size);
+        rank_trange = TiledRange1::make_uniform(cur_rank, rank_block_size);
         build_guess(cur_rank, rank_trange);
         ALS(cur_rank, 100, verbose);
         ++cur_rank;
       } while (cur_rank < rank);
     } else {
-      rank_trange = TiledArray::compute_trange1(rank, rank_block_size);
+      rank_trange = TiledRange1::make_uniform(rank, rank_block_size);
       build_guess(rank, rank_trange);
       ALS(rank, 100, verbose);
     }
@@ -132,7 +132,7 @@ class CP {
     double epsilon = 1.0;
     fit_tol = epsilonALS;
     do {
-      auto rank_trange = compute_trange1(cur_rank, rank_block_size);
+      auto rank_trange = TiledRange1::make_uniform(cur_rank, rank_block_size);
       build_guess(cur_rank, rank_trange);
       ALS(cur_rank, 100, verbose);
       ++cur_rank;

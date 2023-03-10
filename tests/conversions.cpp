@@ -23,10 +23,10 @@
  *
  */
 
+#include "kmp5_compute_trange1.h"
 #include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "compute_trange1.h"
 
 #include "TiledArray/conversions/concat.h"
 #include "TiledArray/conversions/vector_of_arrays.h"
@@ -242,8 +242,9 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
   TiledArray::TiledRange tr;
   TiledArray::TiledRange tr_split;
   {
-    TA::TiledRange1 tr1_mode0 = compute_trange1(11, 1);
-    TA::TiledRange1 tr1_mode1 = compute_trange1(7, 2);
+    // N.B. for unit-tiled case OK to use TiledRange1::make_uniform
+    TA::TiledRange1 tr1_mode0 = TA::TiledRange1::make_uniform(11, 1);
+    TA::TiledRange1 tr1_mode1 = TA::TiledRange1::make_uniform(7, 2);
     tr = TiledArray::TiledRange({tr1_mode0, tr1_mode1});
     tr_split = TiledArray::TiledRange({tr1_mode1});
   }
@@ -339,8 +340,8 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
   std::size_t dim_one = 1336;
   std::size_t dim_two = 552;
   {
-    TA::TiledRange1 tr1_mode0 = compute_trange1(dim_one, block_size);
-    TA::TiledRange1 tr1_mode1 = compute_trange1(dim_two, 10);
+    TA::TiledRange1 tr1_mode0 = kmp5_compute_trange1(dim_one, block_size);
+    TA::TiledRange1 tr1_mode1 = kmp5_compute_trange1(dim_two, 10);
     tr = TiledArray::TiledRange({tr1_mode0, tr1_mode1});
     tr_split = TiledArray::TiledRange({tr1_mode1});
   }

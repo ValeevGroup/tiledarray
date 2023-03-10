@@ -23,16 +23,14 @@
  *
  */
 
-#include "compute_trange1.h"
-#include "range_fixture.h"
-
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
-#include <libgen.h>
 #include <iomanip>
 #include "TiledArray/math/solvers/cp.h"
 #include "TiledArray/math/solvers/cp/btas_cp.h"
+
+#include "range_fixture.h"
 
 constexpr std::int64_t rank_tile_size = 10;
 constexpr bool verbose = false;
@@ -125,10 +123,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
   // Make a tiled range with block size of 1
   TiledArray::TiledRange tr3, tr4, tr5;
   {
-    TiledRange1 tr1_mode0 = compute_trange1(11, 1),
-                tr1_mode1 = compute_trange1(7, 2),
-                tr1_mode2 = compute_trange1(15, 4),
-                tr1_mode3 = compute_trange1(8, 7);
+    TiledRange1 tr1_mode0 = TiledRange1::make_uniform(11, 1),
+                tr1_mode1 = TiledRange1::make_uniform(7, 2),
+                tr1_mode2 = TiledRange1::make_uniform(15, 4),
+                tr1_mode3 = TiledRange1::make_uniform(8, 7);
     tr3 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2});
     tr4 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
     tr5 = TiledRange({tr1_mode0, tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
@@ -141,9 +139,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr3);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                                     compute_trange1(cp_rank, rank_tile_size),
-                                     0, 1e-3, verbose);
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
     auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
@@ -155,9 +153,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr4);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                                     compute_trange1(cp_rank, rank_tile_size),
-                                     0, 1e-3, verbose);
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
@@ -170,9 +168,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr5);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_dense, cp_rank,
-                                     compute_trange1(cp_rank, rank_tile_size),
-                                     0, 1e-3, verbose);
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
@@ -188,9 +186,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD, Fill::Random>(tr3);
     size_t cp_rank = 77;
-    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                                     compute_trange1(cp_rank, rank_tile_size),
-                                     0, 1e-3);
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3);
 
     auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
@@ -203,9 +201,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD>(tr4);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                                     compute_trange1(cp_rank, rank_tile_size),
-                                     0, 1e-3, verbose);
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
@@ -218,9 +216,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_als) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD>(tr5);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                                     compute_trange1(cp_rank, rank_tile_size),
-                                     0, 1e-3, verbose);
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
@@ -236,10 +234,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
   // Make a tiled range with block size of 1
   TiledArray::TiledRange tr3, tr4, tr5;
   {
-    TiledRange1 tr1_mode0 = compute_trange1(11, 1),
-                tr1_mode1 = compute_trange1(7, 2),
-                tr1_mode2 = compute_trange1(15, 4),
-                tr1_mode3 = compute_trange1(8, 7);
+    TiledRange1 tr1_mode0 = TiledRange1::make_uniform(11, 1),
+                tr1_mode1 = TiledRange1::make_uniform(7, 2),
+                tr1_mode2 = TiledRange1::make_uniform(15, 4),
+                tr1_mode3 = TiledRange1::make_uniform(8, 7);
     tr3 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2});
     tr4 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
     tr5 = TiledRange({tr1_mode0, tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
@@ -251,9 +249,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr3);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                                      compute_trange1(cp_rank, rank_tile_size),
-                                      0, 1e-3, verbose);
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
@@ -266,9 +264,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr4);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                                      compute_trange1(cp_rank, rank_tile_size),
-                                      0, 1e-3, verbose);
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
@@ -281,9 +279,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TArrayD> factors;
     auto b_dense = make<TArrayD>(tr5);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_dense, cp_rank,
-                                      compute_trange1(cp_rank, rank_tile_size),
-                                      0, 1e-3, verbose);
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_dense, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TArrayD diff;
@@ -297,9 +295,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD, Fill::Random>(tr3);
     size_t cp_rank = 77;
-    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
-                                      compute_trange1(cp_rank, rank_tile_size),
-                                      0, 1e-3, verbose);
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
@@ -312,9 +310,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD>(tr4);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
-                                      compute_trange1(cp_rank, rank_tile_size),
-                                      0, 1e-3, verbose);
+    factors = math::cp::btas::cp_rals(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
@@ -327,9 +325,9 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals) {
     std::vector<TSpArrayD> factors;
     auto b_sparse = make<TSpArrayD>(tr5);
     size_t cp_rank = 1;
-    factors = math::cp::btas::cp_als(*GlobalFixture::world, b_sparse, cp_rank,
-                                     compute_trange1(cp_rank, rank_tile_size),
-                                     0, 1e-3, verbose);
+    factors = math::cp::btas::cp_als(
+        *GlobalFixture::world, b_sparse, cp_rank,
+        TiledRange1::make_uniform(cp_rank, rank_tile_size), 0, 1e-3, verbose);
 
     auto b_cp = cp_reconstruct(factors);
     TSpArrayD diff;
@@ -345,10 +343,10 @@ BOOST_AUTO_TEST_CASE(ta_cp_als) {
   // Make a tiled range with block size of 1
   TiledArray::TiledRange tr3, tr4, tr5;
   {
-    TiledRange1 tr1_mode0 = compute_trange1(11, 1),
-                tr1_mode1 = compute_trange1(7, 2),
-                tr1_mode2 = compute_trange1(15, 4),
-                tr1_mode3 = compute_trange1(8, 7);
+    TiledRange1 tr1_mode0 = TiledRange1::make_uniform(11, 1),
+                tr1_mode1 = TiledRange1::make_uniform(7, 2),
+                tr1_mode2 = TiledRange1::make_uniform(15, 4),
+                tr1_mode3 = TiledRange1::make_uniform(8, 7);
     tr3 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2});
     tr4 = TiledRange({tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
     tr5 = TiledRange({tr1_mode0, tr1_mode0, tr1_mode1, tr1_mode2, tr1_mode3});
