@@ -253,4 +253,22 @@ BOOST_AUTO_TEST_CASE(concatenation) {
   BOOST_CHECK(concat(r2, r1) == (TiledRange1{0, 3, 4, 5, 7, 11, 13}));
 }
 
+BOOST_AUTO_TEST_CASE(make_uniform) {
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(0, 0));
+  BOOST_CHECK(TiledRange1::make_uniform(0, 0) == TiledRange1{});
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(0, 1));
+  BOOST_CHECK(TiledRange1::make_uniform(0, 1) == TiledRange1{});
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(3, 10));
+  BOOST_CHECK(TiledRange1::make_uniform(3, 10) == (TiledRange1{0, 3}));
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(50, 10));
+  BOOST_CHECK(TiledRange1::make_uniform(50, 10) ==
+              (TiledRange1{0, 10, 20, 30, 40, 50}));
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(55, 10));
+  BOOST_CHECK(TiledRange1::make_uniform(55, 10) ==
+              (TiledRange1{0, 10, 19, 28, 37, 46, 55}));
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(59, 10));
+  BOOST_CHECK(TiledRange1::make_uniform(59, 10) ==
+              (TiledRange1{0, 10, 20, 30, 40, 50, 59}));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

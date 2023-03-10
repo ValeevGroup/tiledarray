@@ -59,7 +59,7 @@ class TiledRange1 {
   TiledRange1()
       : range_(0, 0), elements_range_(0, 0), tiles_ranges_(), elem2tile_() {}
 
-  /// Constructs a range with the boundaries provided by
+  /// Constructs a range with the tile boundaries ("hashmarks") provided by
   /// the range [ \p first , \p last ).
   /// \note validity of the [ \p first , \p last ) range is checked using
   /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
@@ -79,7 +79,7 @@ class TiledRange1 {
 
   /// Construct a 1D tiled range.
 
-  /// This will construct a 1D tiled range with tile boundaries
+  /// This will construct a 1D tiled range with tile boundaries ("hashmarks")
   /// {\p t0 , \p t_rest... }
   /// The number of tile boundaries is n + 1, where n is the number of tiles.
   /// Tiles are defined as [\p t0, t1), [t1, t2), [t2, t3), ...
@@ -96,7 +96,7 @@ class TiledRange1 {
 
   /// Construct a 1D tiled range.
 
-  /// This will construct a 1D tiled range with tile boundaries
+  /// This will construct a 1D tiled range with tile boundaries ("hashmarks")
   /// {\p t0 , \p t_rest... }
   /// The number of tile boundaries is n + 1, where n is the number of tiles.
   /// Tiles are defined as [\p t0 , t1), [t1, t2), [t2, t3), ...
@@ -242,22 +242,32 @@ class TiledRange1 {
   /// @brief makes a uniform (or, as uniform as possible) TiledRange1
 
   /// @param[in] range_size the range size
-  /// @param[in] target_block_size the desired block size
-  /// @return TiledRange1 obtained by tiling range `[0,range_size)` into `(range_size + target_block_size - 1)/target_block_size`
-  ///         blocks of approximately @p target_block_size size
+  /// @param[in] target_tile_size the desired tile size
+  /// @return TiledRange1 obtained by tiling range `[0,range_size)` into
+  /// `ntiles = (range_size + target_tile_size - 1)/target_tile_size`
+  ///         tiles; if `x = range_size % ntiles` is not zero, first `x` tiles
+  /// have size `target_tile_size` and last
+  /// `ntiles - x` tiles have size `target_tile_size - 1`, else
+  /// all tiles have size `target_tile_size` .
   // clang-format on
   static TiledRange1 make_uniform(std::size_t range_size,
-                                  std::size_t target_block_size) {
+                                  std::size_t target_tile_size) {
     if (range_size > 0) {
-      TA_ASSERT(target_block_size > 0);
-      std::size_t nblocks =
-          (range_size + target_block_size - 1) / target_block_size;
-      std::size_t block_size = (range_size + nblocks - 1) / nblocks;
+      TA_ASSERT(target_tile_size > 0);
+      std::size_t ntiles =
+          (range_size + target_tile_size - 1) / target_tile_size;
+      auto dv = std::div((long)(range_size + ntiles - 1), (long)ntiles);
+      auto avg_tile_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
       std::vector<std::size_t> hashmarks;
-      hashmarks.reserve(nblocks + 1);
-      hashmarks.push_back(0);
-      for (auto i = block_size; i < range_size; i += block_size) {
-        hashmarks.push_back(i);
+      hashmarks.reserve(ntiles + 1);
+      std::size_t element = 0;
+      for (auto i = 0; i < num_avg_plus_one;
+           ++i, element += avg_tile_size + 1) {
+        hashmarks.push_back(element);
+      }
+      for (auto i = num_avg_plus_one; i < ntiles;
+           ++i, element += avg_tile_size) {
+        hashmarks.push_back(element);
       }
       hashmarks.push_back(range_size);
       return TiledRange1(hashmarks.begin(), hashmarks.end());
