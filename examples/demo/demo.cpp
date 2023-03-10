@@ -23,6 +23,9 @@
 #include <tiledarray.h>
 #include <random>
 
+#include <TiledArray/expressions/einsum.h>
+#include <TiledArray/math/solvers/cp.h>
+
 auto make_tile(const TA::Range &range) {
   // Construct a tile
   TA::TArrayD::value_type tile(range);
@@ -74,7 +77,7 @@ int main(int argc, char *argv[]) {
 
   TArray<double> a0(world, TR);
   a0.fill(1.0);
-  if (world.rank() == 0) cout << "a0:\n" << a0 << endl;
+  cout << "a0:\n" << a0 << endl;
   world.gop.fence();
 
   Tensor<float> shape_tensor(TR.tiles_range(), 0.0);
@@ -84,50 +87,50 @@ int main(int argc, char *argv[]) {
   shape_tensor(2, 2) = 1.0;
   SparseShape<float> shape(shape_tensor, TR);
   TSpArrayD a1(world, TR, shape);
-  a1.fill_random();
-
-  if (world.rank() == 0) cout << "a1:\n" << a1 << endl;
+  a1.fill_random();  // for deterministic fill:
+                     // TA::srand(seed);
+                     // a1.fill_random<HostExecutor::Thread>();
+  cout << "a1:\n" << a1 << endl;
   world.gop.fence();
-
-  //  TSpArrayZ a1(world, TR, shape);
-  //  a1.fill_random();
-  //  if (world.rank() == 0)
-  //    cout << a1 << endl;
-  //  world.gop.fence();
 
   TSpArrayD a2;
   a2("i,j") = a1("i,j") * 2.0;
-  if (world.rank() == 0) cout << "a2:\n" << a2 << endl;
+  cout << "a2:\n" << a2 << endl;
   world.gop.fence();
 
   TSpArrayD a3;
   a3("j,i") = a2("i,j");
-  if (world.rank() == 0) cout << "a3:\n" << a3 << endl;
+  cout << "a3:\n" << a3 << endl;
   world.gop.fence();
 
   TSpArrayD a4;
   a4("j,i") = a3("i,j") * 0.5;
-  if (world.rank() == 0) cout << "a4:\n" << a4 << endl;
+  cout << "a4:\n" << a4 << endl;
   world.gop.fence();
 
   TSpArrayD a5;
   a5("i,j") = a4("i,j") + 2.0 * a4("i,j");
-  if (world.rank() == 0) cout << "a5:\n" << a5 << endl;
+  cout << "a5:\n" << a5 << endl;
   world.gop.fence();
 
   TSpArrayD a6;
   a6("i,j") = a4("i,j") - 2.0 * a4("i,j");
-  if (world.rank() == 0) cout << "a6:\n" << a6 << endl;
+  cout << "a6:\n" << a6 << endl;
   world.gop.fence();
 
   TSpArrayD a7;
   a7("i,j") = a6("i,j") * a5("i,j");
-  if (world.rank() == 0) cout << "a7:\n" << a7 << endl;
+  cout << "a7:\n" << a7 << endl;
   world.gop.fence();
 
   TSpArrayD a8;
   a8("i,j") = a1("i,k") * a5("j,k");
-  if (world.rank() == 0) cout << "a8:\n" << a8 << endl;
+  cout << "a8:\n" << a8 << endl;
+  world.gop.fence();
+
+  TSpArrayD a9;
+  a9 = einsum(a6("i,j"), a5("i,j"), "i");
+  cout << "a9:\n" << a9 << endl;
   world.gop.fence();
 
   auto tile_0_0 = a1.find({0, 0});
@@ -150,7 +153,23 @@ int main(int argc, char *argv[]) {
     }
 
     world.gop.fence();
-    std::cout << array << std::endl;
+  }
+
+  // CP decomposition
+  {
+    TSpArrayD a65;
+    a65 = einsum(a6("i,r"), a5("j,r"), "i,j,r");
+    TSpArrayD a765;
+    a765 = einsum(a7("i,r"), a65("j,k,r"), "i,j,k");
+
+    using cp_solver_t = CP_ALS<TA::TensorD, TA::SparsePolicy>;
+    cp_solver_t cpd(a765);
+    cpd.compute_rank(70, 10, /* build_rank */ false, 1e-3);
+    auto a765_cp = cpd.reconstruct();
+    TA::axpy(a765, -1, a765_cp);  // now a765 contains a765-a765_cp
+    // std::cout << "a765 - a765_CP:" << a765 << std::endl;
+    std::cout << "CP error = " << TA::norm2(a765) << std::endl;
+    world.gop.fence();
   }
 
   return 0;

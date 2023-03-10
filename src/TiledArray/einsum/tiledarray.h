@@ -179,7 +179,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
         bi = bi.reshape(shape, batch);
         for (size_t k = 0; k < batch; ++k) {
           auto hk = ai.batch(k).dot(bi.batch(k));
-          tile[k] += hk;
+          tile({k}) += hk;
         }
       }
       auto pc = C.permutation;
@@ -225,7 +225,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
         if (!term.array.is_local(idx)) continue;
         if (term.array.is_zero(idx)) continue;
         // TODO no need for immediate evaluation
-        auto tile = term.array.find(idx).get();
+        auto tile = term.array.find_local(idx).get();
         if (P) tile = tile.permute(P);
         auto shape = term.ei_tiled_range.tile(ei);
         tile = tile.reshape(shape, batch);
@@ -247,7 +247,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
       if (!C.ei.is_local(e)) continue;
       if (C.ei.is_zero(e)) continue;
       // TODO no need for immediate evaluation
-      auto tile = C.ei.find(e).get();
+      auto tile = C.ei.find_local(e).get();
       assert(tile.batch_size() == batch);
       const Permutation &P = C.permutation;
       auto c = apply(P, h + e);
@@ -419,7 +419,7 @@ auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B) {
 /// @param[in] r result indices
 /// @warning just as in the plain expression code, reductions are a special
 /// case; use Expr::reduce()
-template <typename T, typename U>
+template <typename T, typename U, typename... Indices>
 auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
             const std::string &cs, World &world = get_default_world()) {
   static_assert(std::is_same<const T, const U>::value);
@@ -427,21 +427,6 @@ auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
   return Einsum::einsum(E(A), E(B), Einsum::idx<T>(cs), world);
 }
 
-/// Computes ternary tensor product whose result
-/// is a scalar (a ternary dot product). Optimized for the case where
-/// the arguments have common (Hadamard) indices.
-
-/// \tparam T a DistArray type
-/// \tparam U a DistArray type (must be same as \p T )
-/// \tparam V a DistArray type (must be same as \p T )
-/// \param A an annotated array of type T
-/// \param B an annotated array of type U
-/// \param C an annotated array of type V
-/// \param world the World in which to compute the result
-/// \return scalar result
-/// \note if \p A , \p B , and \p C share indices computes `A*B` one slice at
-/// a time and contracts with the corresponding slice `C`; thus storage of
-/// `A*B` is eliminated
 template <typename T, typename U, typename V>
 auto dot(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
          expressions::TsrExpr<V> C, World &world = get_default_world()) {

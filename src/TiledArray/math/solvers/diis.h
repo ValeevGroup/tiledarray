@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED
-#define TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED
+#ifndef TILEDARRAY_MATH_SOLVERS_DIIS_H__INCLUDED
+#define TILEDARRAY_MATH_SOLVERS_DIIS_H__INCLUDED
 
 #include <TiledArray/math/linalg/basic.h>
 #include "TiledArray/dist_array.h"
@@ -33,7 +33,7 @@
 #include <Eigen/QR>
 #include <deque>
 
-namespace TiledArray::math::linalg {
+namespace TiledArray::math {
 
 /// DIIS (``direct inversion of iterative subspace'') extrapolation
 
@@ -418,10 +418,10 @@ class DIIS {
 
 };  // class DIIS
 
-}  // namespace TiledArray::math::linalg
+}  // namespace TiledArray::math
 
 namespace TiledArray {
-using TiledArray::math::linalg::DIIS;
+using TiledArray::math::DIIS;
 }
 
-#endif  // TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED
+#endif  // TILEDARRAY_MATH_SOLVERS_DIIS_H__INCLUDED

@@ -890,20 +890,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///
   /// \tparam T The type of random value to generate. Defaults to
   ///           element_type.
-  /// \tparam <anonymous> A template type parameter which will be deduced as
-  ///                     void only if MakeRandom knows how to generate random
-  ///                     values of type T. If MakeRandom does not know how to
-  ///                     generate random values of type T, SFINAE will disable
-  ///                     this function.
   /// \param[in] skip_set If false, will throw if any tiles are already set
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
   ///                              throw guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already initialized. Weak throw guarantee.
-  template <typename T = element_type,
+  template <HostExecutor Exec = HostExecutor::Default,
+            typename T = element_type,
             typename = detail::enable_if_can_make_random_t<T>>
   void fill_random(bool skip_set = false) {
-    init_elements(
+    init_elements<Exec>(
         [](const auto&) { return detail::MakeRandom<T>::generate_value(); });
   }
 
@@ -943,7 +939,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if a tile is already set and skip_set is
   ///                              false. Weak throw guarantee.
-  template <typename Op>
+  template <HostExecutor Exec = HostExecutor::Default, typename Op>
   void init_tiles(Op&& op, bool skip_set = false) {
     // lifetime management of op depends on whether it is a lvalue ref (i.e. has
     // an external owner) or an rvalue ref
@@ -957,15 +953,20 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       const auto& index = *it;
       if (!pimpl_->is_zero(index)) {
         if (skip_set) {
-          auto fut = find(index);
+          auto fut = find_local(index);
           if (fut.probe()) continue;
         }
-        Future<value_type> tile = pimpl_->world().taskq.add(
-            [pimpl = pimpl_, index = ordinal_type(index),
-             op_shared_handle]() -> value_type {
-              return op_shared_handle(pimpl->trange().make_tile_range(index));
-            });
-        set(index, std::move(tile));
+        if constexpr (Exec == HostExecutor::MADWorld) {
+          Future<value_type> tile = pimpl_->world().taskq.add(
+              [pimpl = pimpl_, index = ordinal_type(index),
+               op_shared_handle]() -> value_type {
+                return op_shared_handle(pimpl->trange().make_tile_range(index));
+              });
+          set(index, std::move(tile));
+        } else {
+          static_assert(Exec == HostExecutor::Thread);
+          set(index, op_shared_handle(trange().make_tile_range(index)));
+        }
       }
     }
   }
@@ -994,10 +995,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if skip_set is false and a local, non-zero
   ///                              tile is already initialized. Weak throw
   ///                              guarantee.
-  template <typename Op>
+  template <HostExecutor Exec = HostExecutor::Default, typename Op>
   void init_elements(Op&& op, bool skip_set = false) {
     auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
-    init_tiles(
+    init_tiles<Exec>(
         [op = std::move(op_shared_handle)](
             const TiledArray::Range& range) -> value_type {
           // Initialize the tile with the given range object
@@ -1545,30 +1546,31 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
  private:
-  template <typename Index>
-  std::enable_if_t<std::is_integral_v<Index>, void> check_index(
-      const Index i) const {
+  template <typename Ordinal>
+  std::enable_if_t<std::is_integral_v<Ordinal>, void> check_index(
+      const Ordinal ord) const {
     TA_ASSERT(
-        impl_ref().tiles_range().includes(i) &&
+        impl_ref().tiles_range().includes_ordinal(ord) &&
         "The ordinal index used to access an array tile is out of range.");
   }
 
   template <typename Index>
-  std::enable_if_t<detail::is_integral_range_v<Index>, void> check_index(
+  std::enable_if_t<detail::is_integral_sized_range_v<Index>, void> check_index(
       const Index& i) const {
     TA_ASSERT(
         impl_ref().tiles_range().includes(i) &&
         "The coordinate index used to access an array tile is out of range.");
   }
 
-  template <typename Index1>
+  template <typename Index1,
+            typename = std::enable_if_t<std::is_integral_v<Index1>>>
   void check_index(const std::initializer_list<Index1>& i) const {
     check_index<std::initializer_list<Index1>>(i);
   }
 
-  template <typename Index>
-  std::enable_if_t<std::is_integral_v<Index>, void> check_local_index(
-      const Index i) const {
+  template <typename Ordinal>
+  std::enable_if_t<std::is_integral_v<Ordinal>, void> check_local_index(
+      const Ordinal i) const {
     check_index(i);
     TA_ASSERT(pimpl_->is_local(i)  // pimpl_ already checked
               &&
@@ -1576,15 +1578,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   template <typename Index>
-  std::enable_if_t<detail::is_integral_range_v<Index>, void> check_local_index(
-      const Index& i) const {
+  std::enable_if_t<detail::is_integral_sized_range_v<Index>, void>
+  check_local_index(const Index& i) const {
     check_index(i);
     TA_ASSERT(
         pimpl_->is_local(i)  // pimpl_ already checked
         && "The coordinate index used to access an array tile is not local.");
   }
 
-  template <typename Index1>
+  template <typename Index1,
+            typename = std::enable_if_t<std::is_integral_v<Index1>>>
   void check_local_index(const std::initializer_list<Index1>& i) const {
     check_local_index<std::initializer_list<Index1>>(i);
   }
@@ -1713,6 +1716,7 @@ extern template class DistArray<Tensor<std::complex<float>>, SparsePolicy>;
 /// \param os The output stream
 /// \param a The array to be put in the output stream
 /// \return A reference to the output stream
+/// \note this is a collective operation
 template <typename Tile, typename Policy>
 inline std::ostream& operator<<(std::ostream& os,
                                 const DistArray<Tile, Policy>& a) {

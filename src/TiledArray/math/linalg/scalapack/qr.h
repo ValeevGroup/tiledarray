@@ -53,7 +53,7 @@ auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
     scalapackpp::placpy( scalapackpp::Uplo::Upper, K, N, 
       V_sca.local_mat().data(), 1, 1, desc_v,
       R_sca.local_mat().data(), 1, 1, desc_r );
-    
+
     if (r_trange.rank() == 0) {
       // Generate a TRange based on column tiling of V
       auto col_tiling = V.trange().dim(1);

@@ -60,8 +60,6 @@ ${PROJECT_BINARY_DIR}/src/TiledArray/version.h
 TiledArray/zero_tensor.h
 TiledArray/math/linalg/forward.h
 TiledArray/math/linalg/basic.h
-TiledArray/math/linalg/conjgrad.h
-TiledArray/math/linalg/diis.h
 TiledArray/math/linalg/util.h
 TiledArray/math/linalg/cholesky.h
 TiledArray/math/linalg/heig.h
@@ -77,6 +75,13 @@ TiledArray/math/linalg/scalapack/qr.h
 TiledArray/math/linalg/scalapack/svd.h
 TiledArray/math/linalg/ttg/cholesky.h
 TiledArray/math/linalg/ttg/util.h
+TiledArray/math/solvers/conjgrad.h
+TiledArray/math/solvers/diis.h
+TiledArray/math/solvers/cp.h
+TiledArray/math/solvers/cp/btas_cp.h
+TiledArray/math/solvers/cp/cp.h
+TiledArray/math/solvers/cp/cp_als.h
+TiledArray/math/solvers/cp/cp_reconstruct.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/concat.h
@@ -192,10 +197,12 @@ TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/ptr_registry.cpp
 TiledArray/util/ptr_registry.h
+TiledArray/util/random.cpp
 TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/threads.h
 TiledArray/util/threads.cpp
+TiledArray/util/thread_specific.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
 )

@@ -149,6 +149,8 @@ using Array
     [[deprecated("use TiledArray::DistArray or TiledArray::TArray<T>")]] =
         DistArray<Tile, Policy>;
 
+enum class HostExecutor { Thread, MADWorld, Default = MADWorld };
+
 }  // namespace TiledArray
 
 #ifndef TILEDARRAY_DISABLE_NAMESPACE_TA

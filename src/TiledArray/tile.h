@@ -213,7 +213,7 @@ class Tile {
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   const_reference operator[](const Ordinal ord) const {
     TA_ASSERT(pimpl_);
-    TA_ASSERT(tensor().range().includes(ord));
+    TA_ASSERT(tensor().range().includes_ordinal(ord));
     return tensor().data()[ord];
   }
 
@@ -228,7 +228,7 @@ class Tile {
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   reference operator[](const Ordinal ord) {
     TA_ASSERT(pimpl_);
-    TA_ASSERT(tensor().range().includes(ord));
+    TA_ASSERT(tensor().range().includes_ordinal(ord));
     return tensor().data()[ord];
   }
 
@@ -360,7 +360,8 @@ class Tile {
   /// is included in the range
   template <
       typename... Index,
-      std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+      std::enable_if_t<(sizeof...(Index) > 1ul) &&
+                       detail::is_integral_list<Index...>::value>* = nullptr>
   const_reference operator()(const Index&... i) const {
     TA_ASSERT(pimpl_);
     TA_ASSERT(tensor().range().includes(i...));
@@ -375,7 +376,8 @@ class Tile {
   /// included in the range
   template <
       typename... Index,
-      std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+      std::enable_if_t<(sizeof...(Index) > 1ul) &&
+                       detail::is_integral_list<Index...>::value>* = nullptr>
   reference operator()(const Index&... i) {
     TA_ASSERT(pimpl_);
     TA_ASSERT(tensor().range().includes(i...));

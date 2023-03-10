@@ -229,7 +229,7 @@ void householder_qr( Matrix<T> &V, Matrix<T> &R ) {
   }
 
   // Explicitly form Q
-  // TODO: This is wrong for complex, but it doesn't look like R/C is caught 
+  // TODO: This is wrong for complex, but it doesn't look like R/C is caught
   //       anywhere else either...
   lapack::orgqr( m, n, k, v, ldv, tau.data() );
 
@@ -246,7 +246,7 @@ void householder_qr( Matrix<T> &V, Matrix<T> &R ) {
   template void lu_solve(MATRIX&, MATRIX&);                      \
   template void lu_inv(MATRIX&);                                 \
   template void householder_qr<true>(MATRIX&,MATRIX&);           \
-  template void householder_qr<false>(MATRIX&,MATRIX&); 
+  template void householder_qr<false>(MATRIX&,MATRIX&);
 
 TA_LAPACK_EXPLICIT(Matrix<double>, std::vector<double>);
 TA_LAPACK_EXPLICIT(Matrix<float>, std::vector<float>);
