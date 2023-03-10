@@ -86,15 +86,11 @@ int main(int argc, char *argv[]) {
   shape_tensor(2, 2) = 1.0;
   SparseShape<float> shape(shape_tensor, TR);
   TSpArrayD a1(world, TR, shape);
-  a1.fill_random();
-
+  a1.fill_random();  // for deterministic fill:
+                     // TA::srand(seed);
+                     // a1.fill_random<HostExecutor::Thread>();
   cout << "a1:\n" << a1 << endl;
   world.gop.fence();
-
-  //  TSpArrayZ a1(world, TR, shape);
-  //  a1.fill_random();
-  //  cout << a1 << endl;
-  //  world.gop.fence();
 
   TSpArrayD a2;
   a2("i,j") = a1("i,j") * 2.0;
