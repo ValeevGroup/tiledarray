@@ -24,6 +24,7 @@
 #include <random>
 
 #include <TiledArray/expressions/einsum.h>
+#include <TiledArray/math/solvers/cp.h>
 
 auto make_tile(const TA::Range &range) {
   // Construct a tile
@@ -152,7 +153,23 @@ int main(int argc, char *argv[]) {
     }
 
     world.gop.fence();
-    std::cout << array << std::endl;
+  }
+
+  // CP decomposition
+  {
+    TSpArrayD a65;
+    a65 = einsum(a6("i,r"), a5("j,r"), "i,j,r");
+    TSpArrayD a765;
+    a765 = einsum(a7("i,r"), a65("j,k,r"), "i,j,k");
+
+    using cp_solver_t = CP_ALS<TA::TensorD, TA::SparsePolicy>;
+    cp_solver_t cpd(a765);
+    cpd.compute_rank(70, 10, /* build_rank */ false, 1e-3);
+    auto a765_cp = cpd.reconstruct();
+    TA::axpy(a765, -1, a765_cp);  // now a765 contains a765-a765_cp
+    // std::cout << "a765 - a765_CP:" << a765 << std::endl;
+    std::cout << "CP error = " << TA::norm2(a765) << std::endl;
+    world.gop.fence();
   }
 
   return 0;
