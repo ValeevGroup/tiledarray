@@ -258,7 +258,16 @@ class CP {
   void cholesky_inverse(Array& MtKRP, const Array& W) {
     // auto inv = TiledArray::math::linalg::cholesky_lsolve(NoTranspose,W,
     // MtKRP);
-    MtKRP = math::linalg::cholesky_solve(W, MtKRP);
+    try {
+      MtKRP = math::linalg::cholesky_solve(W, MtKRP);
+    } catch (std::runtime_error& ex) {
+      // if W is near-singular try LU instead of Cholesky
+      if (std::string(ex.what()).find("lapack::posv failed") !=
+          std::string::npos) {
+        MtKRP = math::linalg::lu_solve(W, MtKRP);
+      } else  // rethrow other exceptions
+        throw ex;
+    }
   }
 
   /// Technically the Least squares problem requires doing a pseudoinverse
