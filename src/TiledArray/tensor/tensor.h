@@ -872,8 +872,9 @@ class Tensor {
   const_reference operator()(const Index&... i) const {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->batch_size() == 1);
+    using Int = std::common_type_t<Index...>;
     const auto iord = this->range_.ordinal(
-        std::array<std::common_type_t<Index...>, sizeof...(Index)>{{i...}});
+        std::array<Int, sizeof...(Index)>{{static_cast<Int>(i)...}});
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
   }

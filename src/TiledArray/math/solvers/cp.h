@@ -35,4 +35,4 @@ using TiledArray::math::cp::CP_ALS;
 using TiledArray::math::cp::cp_reconstruct;
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_MATH_SOLVERS_DIIS_H__INCLUDED
+#endif  // TILEDARRAY_MATH_SOLVERS_CP_H__INCLUDED
