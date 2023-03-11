@@ -23,7 +23,6 @@
  *
  */
 
-#include "kmp5_compute_trange1.h"
 #include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
@@ -340,8 +339,8 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
   std::size_t dim_one = 1336;
   std::size_t dim_two = 552;
   {
-    TA::TiledRange1 tr1_mode0 = kmp5_compute_trange1(dim_one, block_size);
-    TA::TiledRange1 tr1_mode1 = kmp5_compute_trange1(dim_two, 10);
+    TA::TiledRange1 tr1_mode0 = TiledRange1::make_uniform(dim_one, block_size);
+    TA::TiledRange1 tr1_mode1 = TiledRange1::make_uniform(dim_two, 10);
     tr = TiledArray::TiledRange({tr1_mode0, tr1_mode1});
     tr_split = TiledArray::TiledRange({tr1_mode1});
   }
