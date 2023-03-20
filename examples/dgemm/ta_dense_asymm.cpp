@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
                  "blocked by Bm, Bn, and Bk, respectively"
               << std::endl
               << "Usage: " << argv[0]
-              << " Nm Bm Nn Bn Nk Bk [repetitions=5] [real=double]\n";
+              << " Nm Bm Nn Bn Nk Bk [repetitions=5] [element_type=double]\n";
     return 0;
   }
   const long Nm = atol(argv[1]);
@@ -59,9 +59,10 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const std::string real_type_str = (argc >= 9 ? argv[8] : "double");
-  if (real_type_str != "double" && real_type_str != "float") {
-    std::cerr << "Error: invalid real type " << real_type_str << ".\n";
+  const std::string elem_type_str = (argc >= 9 ? argv[8] : "double");
+  if (elem_type_str != "double" && elem_type_str != "float" && elem_type_str != "dcomplex" && elem_type_str != "complex") {
+    std::cerr << "Error: invalid element type " << elem_type_str
+              << " (valid options: float/double/complex/dcomplex).\n";
     return 1;
   }
 
@@ -155,11 +156,12 @@ int main(int argc, char** argv) {
     // Stop clock
     const double wall_time_stop = madness::wall_time();
 
+    double factor = elem_type_str == "dcomplex" || elem_type_str == "complex" ? 8.0 : 2.0;
     if (world.rank() == 0)
       std::cout << "Average wall time   = "
                 << (wall_time_stop - wall_time_start) / double(repeat)
                 << " sec\nAverage GFLOPS      = "
-                << double(repeat) * 2.0 * double(Nn * Nm * Nk) /
+                << double(repeat) * factor * double(Nn * Nm * Nk) /
                        (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   };
@@ -167,13 +169,27 @@ int main(int argc, char** argv) {
   // by default use TiledArray tensors
   constexpr bool use_btas = false;
   // btas::Tensor instead
-  if (real_type_str == "double") {
+  if (elem_type_str == "double") {
     if constexpr (!use_btas)
       run(static_cast<TiledArray::TArrayD*>(nullptr));
     else
       run(static_cast<TiledArray::DistArray<
               TiledArray::Tile<btas::Tensor<double, TiledArray::Range>>>*>(
           nullptr));
+  } else if (elem_type_str == "dcomplex") {
+      if constexpr (!use_btas)
+          run(static_cast<TiledArray::TArrayZ*>(nullptr));
+      else
+          run(static_cast<TiledArray::DistArray<
+                  TiledArray::Tile<btas::Tensor<std::complex<double>, TiledArray::Range>>>*>(
+                      nullptr));
+  } else if (elem_type_str == "complex") {
+      if constexpr (!use_btas)
+          run(static_cast<TiledArray::TArrayC*>(nullptr));
+      else
+          run(static_cast<TiledArray::DistArray<
+                  TiledArray::Tile<btas::Tensor<std::complex<float>, TiledArray::Range>>>*>(
+                      nullptr));
   } else {
     if constexpr (!use_btas)
       run(static_cast<TiledArray::TArrayF*>(nullptr));
