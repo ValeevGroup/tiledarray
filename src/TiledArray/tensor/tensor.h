@@ -2174,18 +2174,19 @@ class Tensor {
   /// identity . If HAVE_INTEL_TBB is defined, and this is a contiguous tensor,
   /// the reduction will be executed in an undefined order, otherwise will
   /// execute in the order of increasing \c i .
-  /// \tparam ReduceOp The reduction
-  /// operation type
+  /// \tparam ReduceOp The reduction operation type
   /// \tparam JoinOp The join operation type
-  /// \param reduce_op The
-  /// element-wise reduction operation
+  /// \tparam T a type that can be used as argument to ReduceOp
+  /// \param reduce_op The element-wise reduction operation
   /// \param join_op The join result operation
   /// \param identity The identity value of the reduction
   /// \return The reduced value
-  template <typename ReduceOp, typename JoinOp, typename Scalar>
-  decltype(auto) reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
-                        Scalar identity) const {
-    return detail::tensor_reduce(reduce_op, join_op, identity, *this);
+  template <typename ReduceOp, typename JoinOp, typename Identity>
+  auto reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
+              Identity&& identity) const {
+    return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
+                                 std::forward<JoinOp>(join_op),
+                                 std::forward<Identity>(identity), *this);
   }
 
   /// Binary reduction operation
@@ -2196,22 +2197,23 @@ class Tensor {
   /// \c identity . If HAVE_INTEL_TBB is defined, and this is a contiguous
   /// tensor, the reduction will be executed in an undefined order, otherwise
   /// will execute in the order of increasing \c i .
-  /// \tparam Right The
-  /// right-hand argument tensor type
-  /// \tparam ReduceOp The reduction operation
-  /// type
+  /// \tparam Right The right-hand argument tensor type
+  /// \tparam ReduceOp The reduction operation type
   /// \tparam JoinOp The join operation type
-  /// \param other The right-hand
-  /// argument of the binary reduction
-  /// \param reduce_op The element-wise
-  /// reduction operation \param join_op The join result operation
+  /// \tparam Identity A type that can be used as argument to ReduceOp
+  /// \param other The right-hand argument of the binary reduction
+  /// \param reduce_op The element-wise reduction operation
+  /// \param join_op The join result operation
   /// \param identity The identity value of the reduction
   /// \return The reduced value
-  template <typename Right, typename ReduceOp, typename JoinOp, typename Scalar,
+  template <typename Right, typename ReduceOp, typename JoinOp,
+            typename Identity,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  decltype(auto) reduce(const Right& other, ReduceOp&& reduce_op,
-                        JoinOp&& join_op, Scalar identity) const {
-    return detail::tensor_reduce(reduce_op, join_op, identity, *this, other);
+  auto reduce(const Right& other, ReduceOp&& reduce_op, JoinOp&& join_op,
+              Identity&& identity) const {
+    return detail::tensor_reduce(
+        std::forward<ReduceOp>(reduce_op), std::forward<JoinOp>(join_op),
+        std::forward<Identity>(identity), *this, other);
   }
 
   /// Sum of elements

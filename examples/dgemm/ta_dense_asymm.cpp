@@ -31,7 +31,8 @@ int main(int argc, char** argv) {
                  "blocked by Bm, Bn, and Bk, respectively"
               << std::endl
               << "Usage: " << argv[0]
-              << " Nm Bm Nn Bn Nk Bk [repetitions=5] [real=double]\n";
+              << " Nm Bm Nn Bn Nk Bk [repetitions=5] [scalar=double] "
+                 "[do_memtrace=0]\n";
     return 0;
   }
   const long Nm = atol(argv[1]);
@@ -59,11 +60,16 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const std::string real_type_str = (argc >= 9 ? argv[8] : "double");
-  if (real_type_str != "double" && real_type_str != "float") {
-    std::cerr << "Error: invalid real type " << real_type_str << ".\n";
+  const std::string scalar_type_str = (argc >= 9 ? argv[8] : "double");
+  if (scalar_type_str != "double" && scalar_type_str != "float" &&
+      scalar_type_str != "zdouble" && scalar_type_str != "zfloat") {
+    std::cerr << "Error: invalid real type " << scalar_type_str << ".\n";
+    std::cerr << "       valid real types are \"double\", \"float\", "
+                 "\"zdouble\", and \"zfloat\".\n";
     return 1;
   }
+
+  const bool do_memtrace = (argc >= 10 ? std::atol(argv[9]) : false);
 
   const std::size_t Tm = Nm / Bm;
   const std::size_t Tn = Nn / Bn;
@@ -72,6 +78,7 @@ int main(int argc, char** argv) {
   if (world.rank() == 0)
     std::cout << "TiledArray: dense matrix multiply test...\n"
               << "Number of nodes     = " << world.size()
+              << "\nScalar type       = " << scalar_type_str
               << "\nSize of A         = " << Nm << "x" << Nk << " ("
               << double(Nm * Nk * sizeof(double)) / 1.0e9 << " GB)"
               << "\nSize of A block   = " << Bm << "x" << Bk
@@ -133,54 +140,112 @@ int main(int argc, char** argv) {
 
   auto run = [&](auto* tarray_ptr) {
     using Array = std::decay_t<std::remove_pointer_t<decltype(tarray_ptr)>>;
+    using scalar_type = TiledArray::detail::scalar_t<Array>;
 
-    // Construct and initialize arrays
-    Array a(world, trange_a);
-    Array b(world, trange_b);
-    Array c(world, trange_c);
-    a.fill(1.0);
-    b.fill(1.0);
+    const auto complex_T = TiledArray::detail::is_complex_v<scalar_type>;
+    const std::int64_t nflops =
+        (complex_T ? 8 : 2)  // 1 multiply takes 6/1 flops for complex/real
+                             // 1 add takes 2/1 flops for complex/real
+        * static_cast<std::int64_t>(Nn) * static_cast<std::int64_t>(Nm) *
+        static_cast<std::int64_t>(Nk);
 
-    // Start clock
-    world.gop.fence();
-    const double wall_time_start = madness::wall_time();
+    auto memtrace = [do_memtrace, &world](const std::string& str) -> void {
+      if (do_memtrace) {
+        world.gop.fence();
+        madness::print_meminfo(world.rank(), str);
+      }
+#ifdef TA_TENSOR_MEM_PROFILE
+      {
+        world.gop.fence();
+        std::cout
+            << str << ": TA::Tensor allocated "
+            << TA::hostEnv::instance()->host_allocator_getActualHighWatermark()
+            << " bytes and used "
+            << TA::hostEnv::instance()->host_allocator().getHighWatermark()
+            << " bytes" << std::endl;
+      }
+#endif
+    };
 
-    // Do matrix multiplication
-    for (int i = 0; i < repeat; ++i) {
-      c("m,n") = a("m,k") * b("k,n");
+    memtrace("start");
+    {  // array lifetime scope
+      // Construct and initialize arrays
+      Array a(world, trange_a);
+      Array b(world, trange_b);
+      Array c(world, trange_c);
+      a.fill(1.0);
+      b.fill(1.0);
+      memtrace("allocated a and b");
+
+      // Start clock
       world.gop.fence();
-      if (world.rank() == 0) std::cout << "Iteration " << i + 1 << "\n";
-    }
+      if (world.rank() == 0)
+        std::cout << "Starting iterations: "
+                  << "\n";
 
-    // Stop clock
-    const double wall_time_stop = madness::wall_time();
+      double total_time = 0.0;
+      double total_gflop_rate = 0.0;
 
-    if (world.rank() == 0)
-      std::cout << "Average wall time   = "
-                << (wall_time_stop - wall_time_start) / double(repeat)
-                << " sec\nAverage GFLOPS      = "
-                << double(repeat) * 2.0 * double(Nn * Nm * Nk) /
-                       (wall_time_stop - wall_time_start) / 1.0e9
-                << "\n";
+      // Do matrix multiplication
+      for (int i = 0; i < repeat; ++i) {
+        const double start = madness::wall_time();
+        c("m,n") = a("m,k") * b("k,n");
+        memtrace("c=a*b");
+        const double time = madness::wall_time() - start;
+        total_time += time;
+        const double gflop_rate = double(nflops) / (time * 1.e9);
+        total_gflop_rate += gflop_rate;
+        if (world.rank() == 0)
+          std::cout << "Iteration " << i + 1 << "   time=" << time
+                    << "   GFLOPS=" << gflop_rate << "\n";
+      }
+
+      // Stop clock
+      const double wall_time_stop = madness::wall_time();
+
+      if (world.rank() == 0) {
+        std::cout << "Average wall time   = " << total_time / double(repeat)
+                  << " sec\nAverage GFLOPS      = "
+                  << total_gflop_rate / double(repeat) << "\n";
+      }
+
+    }  // array lifetime scope
+    memtrace("stop");
   };
 
   // by default use TiledArray tensors
   constexpr bool use_btas = false;
   // btas::Tensor instead
-  if (real_type_str == "double") {
+  if (scalar_type_str == "double") {
     if constexpr (!use_btas)
       run(static_cast<TiledArray::TArrayD*>(nullptr));
     else
       run(static_cast<TiledArray::DistArray<
               TiledArray::Tile<btas::Tensor<double, TiledArray::Range>>>*>(
           nullptr));
-  } else {
+  } else if (scalar_type_str == "float") {
     if constexpr (!use_btas)
       run(static_cast<TiledArray::TArrayF*>(nullptr));
     else
       run(static_cast<TiledArray::DistArray<
               TiledArray::Tile<btas::Tensor<float, TiledArray::Range>>>*>(
           nullptr));
+  } else if (scalar_type_str == "zdouble") {
+    if constexpr (!use_btas)
+      run(static_cast<TiledArray::TArrayZ*>(nullptr));
+    else
+      run(static_cast<TiledArray::DistArray<TiledArray::Tile<
+              btas::Tensor<std::complex<double>, TiledArray::Range>>>*>(
+          nullptr));
+  } else if (scalar_type_str == "zfloat") {
+    if constexpr (!use_btas)
+      run(static_cast<TiledArray::TArrayC*>(nullptr));
+    else
+      run(static_cast<TiledArray::DistArray<TiledArray::Tile<
+              btas::Tensor<std::complex<float>, TiledArray::Range>>>*>(
+          nullptr));
+  } else {
+    abort();  // unreachable
   }
 
   return 0;

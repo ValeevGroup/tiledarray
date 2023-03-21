@@ -979,17 +979,20 @@ class TensorInterface {
   /// \c i in the index range of \c this . \c result is initialized to \c
   /// identity . If HAVE_INTEL_TBB is defined, and this is a contiguous tensor,
   /// the reduction will be executed in an undefined order, otherwise will
-  /// execute in the order of increasing \c i . \tparam ReduceOp The reduction
-  /// operation type \tparam JoinOp The join operation type \param reduce_op The
-  /// element-wise reduction operation \param join_op The join result operation
+  /// execute in the order of increasing \c i .
+  /// \tparam ReduceOp The reduction operation type
+  /// \tparam JoinOp The join operation type
+  /// \tparam Identity a type that can be used as argument to ReduceOp
+  /// \param reduce_op The element-wise reduction operation
+  /// \param join_op The join result operation
   /// \param identity The identity value of the reduction
   /// \return The reduced value
-  template <typename ReduceOp, typename JoinOp>
-  numeric_type reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
-                      const numeric_type identity) const {
+  template <typename ReduceOp, typename JoinOp, typename Identity>
+  decltype(auto) reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
+                        Identity&& identity) const {
     return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
-                                 std::forward<JoinOp>(join_op), identity,
-                                 *this);
+                                 std::forward<JoinOp>(join_op),
+                                 std::forward<Identity>(identity), *this);
   }
 
   /// Binary reduction operation
@@ -999,19 +1002,24 @@ class TensorInterface {
   /// for each \c i in the index range of \c this . \c result is initialized to
   /// \c identity . If HAVE_INTEL_TBB is defined, and this is a contiguous
   /// tensor, the reduction will be executed in an undefined order, otherwise
-  /// will execute in the order of increasing \c i . \tparam Right The
-  /// right-hand argument tensor type \tparam ReduceOp The reduction operation
-  /// type \tparam JoinOp The join operation type \param other The right-hand
-  /// argument of the binary reduction \param reduce_op The element-wise
-  /// reduction operation \param join_op The join result operation \param
-  /// identity The identity value of the reduction \return The reduced value
+  /// will execute in the order of increasing \c i .
+  /// \tparam Right The right-hand argument tensor type
+  /// \tparam ReduceOp The reduction operation type
+  /// \tparam JoinOp The join operation type
+  /// \tparam Identity a type that can be used as argument to ReduceOp
+  /// \param other The right-hand argument of the binary reduction
+  /// \param reduce_op The element-wise reduction operation
+  /// \param join_op The join result operation
+  /// \param identity The identity value of the reduction
+  /// \return The reduced value
   template <typename Right, typename ReduceOp, typename JoinOp,
+            typename Identity,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  numeric_type reduce(const Right& other, ReduceOp&& reduce_op,
-                      JoinOp&& join_op, const numeric_type identity) const {
-    return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
-                                 std::forward<JoinOp>(join_op), identity, *this,
-                                 other);
+  decltype(auto) reduce(const Right& other, ReduceOp&& reduce_op,
+                        JoinOp&& join_op, Identity&& identity) const {
+    return detail::tensor_reduce(
+        std::forward<ReduceOp>(reduce_op), std::forward<JoinOp>(join_op),
+        std::forward<Identity>(identity), *this, other);
   }
 
   /// Sum of elements
@@ -1043,7 +1051,7 @@ class TensorInterface {
     auto sum_op = [](scalar_type& MADNESS_RESTRICT res, const scalar_type arg) {
       res += arg;
     };
-    return reduce(square_op, sum_op, numeric_type(0));
+    return reduce(square_op, sum_op, scalar_type(0));
   }
 
   /// Vector 2-norm
@@ -1077,27 +1085,29 @@ class TensorInterface {
   /// Absolute minimum element
 
   /// \return The minimum elements of this tensor
-  numeric_type abs_min() const {
-    auto abs_min_op = [](numeric_type& MADNESS_RESTRICT res,
+  scalar_type abs_min() const {
+    auto abs_min_op = [](scalar_type& MADNESS_RESTRICT res,
                          const numeric_type arg) {
       res = std::min(res, std::abs(arg));
     };
-    auto min_op = [](numeric_type& MADNESS_RESTRICT res,
-                     const numeric_type arg) { res = std::min(res, arg); };
-    return reduce(abs_min_op, min_op, std::numeric_limits<numeric_type>::max());
+    auto min_op = [](scalar_type& MADNESS_RESTRICT res, const scalar_type arg) {
+      res = std::min(res, arg);
+    };
+    return reduce(abs_min_op, min_op, std::numeric_limits<scalar_type>::max());
   }
 
   /// Absolute maximum element
 
   /// \return The maximum elements of this tensor
-  numeric_type abs_max() const {
-    auto abs_max_op = [](numeric_type& MADNESS_RESTRICT res,
+  scalar_type abs_max() const {
+    auto abs_max_op = [](scalar_type& MADNESS_RESTRICT res,
                          const numeric_type arg) {
       res = std::max(res, std::abs(arg));
     };
-    auto max_op = [](numeric_type& MADNESS_RESTRICT res,
-                     const numeric_type arg) { res = std::max(res, arg); };
-    return reduce(abs_max_op, max_op, numeric_type(0));
+    auto max_op = [](scalar_type& MADNESS_RESTRICT res, const scalar_type arg) {
+      res = std::max(res, arg);
+    };
+    return reduce(abs_max_op, max_op, scalar_type(0));
   }
 
   /// Vector dot product
