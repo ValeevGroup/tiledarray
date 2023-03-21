@@ -646,34 +646,34 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
 /// \tparam ReduceOp The element-wise reduction
 /// operation type
 /// \tparam JoinOp The result operation type
-/// \tparam Scalar A
-/// scalar type
+/// \tparam Identity A type that can be used as an argument to ReduceOp
 /// \tparam T1 The first argument tensor type
-/// \tparam Ts The
-/// argument tensor types
+/// \tparam Ts The argument tensor types
 /// \param reduce_op The element-wise reduction operation
 /// \param identity The initial value for the reduction and the result
 /// \param tensor1 The first tensor to be reduced
 /// \param tensors The other tensors to be reduced
 /// \return The reduced value of the tensor(s)
 template <
-    typename ReduceOp, typename JoinOp, typename Scalar, typename T1,
+    typename ReduceOp, typename JoinOp, typename Identity, typename T1,
     typename... Ts,
     typename std::enable_if_t<
         is_tensor<T1, Ts...>::value && is_contiguous_tensor<T1, Ts...>::value &&
-        !is_reduce_op_v<std::decay_t<ReduceOp>, std::decay_t<Scalar>,
+        !is_reduce_op_v<std::decay_t<ReduceOp>, std::decay_t<Identity>,
                         std::decay_t<T1>, std::decay_t<Ts>...>>* = nullptr>
-Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
-                     const T1& tensor1, const Ts&... tensors) {
+auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Identity&& identity,
+                   const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
   const auto volume = tensor1.range().volume();
 
-  math::reduce_op(reduce_op, join_op, identity, volume, identity,
+  auto init = std::forward<Identity>(identity);
+  math::reduce_op(std::forward<ReduceOp>(reduce_op),
+                  std::forward<JoinOp>(join_op), init, volume, init,
                   tensor1.data(), tensors.data()...);
 
-  return identity;
+  return init;
 }
 
 /// Reduction operation for tensors
@@ -698,8 +698,8 @@ template <
         is_tensor<T1, Ts...>::value && is_contiguous_tensor<T1, Ts...>::value &&
         is_reduce_op_v<std::decay_t<ReduceOp>, std::decay_t<Scalar>,
                        std::decay_t<T1>, std::decay_t<Ts>...>>* = nullptr>
-Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
-                     const T1& tensor1, const Ts&... tensors) {
+auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
+                   const T1& tensor1, const Ts&... tensors) {
   reduce_op(identity, &tensor1, &tensors...);
   return identity;
 }
@@ -723,13 +723,14 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
 /// \param tensor1 The first tensor to be reduced
 /// \param tensors The other tensors to be reduced
 /// \return The reduced value of the tensor(s)
-template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1,
+template <typename ReduceOp, typename JoinOp, typename Identity, typename T1,
           typename... Ts,
           typename std::enable_if<
               is_tensor_of_tensor<T1, Ts...>::value &&
               is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
-Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
-                     const T1& tensor1, const Ts&... tensors) {
+auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
+                   const Identity& identity, const T1& tensor1,
+                   const Ts&... tensors) {
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
@@ -765,24 +766,24 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
 /// \param tensor1 The first tensor to be reduced
 /// \param tensors The other tensors to be reduced
 /// \return The reduced value of the tensor(s)
-template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1,
+template <typename ReduceOp, typename JoinOp, typename Identity, typename T1,
           typename... Ts,
           typename std::enable_if<
               is_tensor<T1, Ts...>::value &&
               !is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
-Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
-                     const Scalar identity, const T1& tensor1,
-                     const Ts&... tensors) {
+auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
+                   const Identity& identity, const T1& tensor1,
+                   const Ts&... tensors) {
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
   const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
-  Scalar result = identity;
+  auto result = identity;
   for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
        ord += stride) {
-    Scalar temp = identity;
+    auto temp = identity;
     math::reduce_op(reduce_op, join_op, identity, stride, temp,
                     tensor1.data() + tensor1.range().ordinal(ord),
                     (tensors.data() + tensors.range().ordinal(ord))...);
