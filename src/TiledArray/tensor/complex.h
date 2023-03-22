@@ -274,6 +274,32 @@ inline auto abs(const ComplexConjugate<T>& a) {
 
 inline int abs(const ComplexConjugate<void>& a) { return 1; }
 
+template <typename L, typename R,
+          typename = std::enable_if_t<std::is_integral_v<L>>>
+TILEDARRAY_FORCE_INLINE auto operator*(const L l, const std::complex<R> r) {
+  return static_cast<R>(l) * r;
+}
+
+template <typename L, typename R,
+          typename = std::enable_if_t<std::is_integral_v<R>>>
+TILEDARRAY_FORCE_INLINE auto operator*(const std::complex<L> l, const R r) {
+  return l * static_cast<L>(r);
+}
+
+template <typename L, typename R>
+TILEDARRAY_FORCE_INLINE
+    std::enable_if_t<std::is_floating_point_v<L>, std::complex<R>>
+    operator*(const L l, const std::complex<R> r) {
+  return std::complex<R>(l, 0.) * r;
+}
+
+template <typename L, typename R>
+TILEDARRAY_FORCE_INLINE
+    std::enable_if_t<std::is_floating_point_v<R>, std::complex<L>>
+    operator*(const std::complex<L> l, const R r) {
+  return l * std::complex<L>(r, 0.);
+}
+
 }  // namespace detail
 }  // namespace TiledArray
 

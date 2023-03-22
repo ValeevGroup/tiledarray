@@ -1412,8 +1412,10 @@ class Tensor {
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor scale(const Scalar factor) const {
-    return unary(
-        [factor](const numeric_type a) -> numeric_type { return a * factor; });
+    return unary([factor](const numeric_type a) -> numeric_type {
+      using namespace TiledArray::detail;
+      return a * factor;
+    });
   }
 
   /// Construct a scaled and permuted copy of this tensor
@@ -1429,7 +1431,10 @@ class Tensor {
                                         detail::is_permutation_v<Perm>>>
   Tensor scale(const Scalar factor, const Perm& perm) const {
     return unary(
-        [factor](const numeric_type a) -> numeric_type { return a * factor; },
+        [factor](const numeric_type a) -> numeric_type {
+          using namespace TiledArray::detail;
+          return a * factor;
+        },
         perm);
   }
 
