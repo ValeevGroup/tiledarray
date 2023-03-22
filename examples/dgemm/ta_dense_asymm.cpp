@@ -140,9 +140,8 @@ int main(int argc, char** argv) {
 
   auto run = [&](auto* tarray_ptr) {
     using Array = std::decay_t<std::remove_pointer_t<decltype(tarray_ptr)>>;
-    using scalar_type = TiledArray::detail::scalar_t<Array>;
-
-    const auto complex_T = TiledArray::detail::is_complex_v<scalar_type>;
+    using T = TiledArray::detail::numeric_t<Array>;
+    const auto complex_T = TiledArray::detail::is_complex_v<T>;
     const std::int64_t nflops =
         (complex_T ? 8 : 2)  // 1 multiply takes 6/1 flops for complex/real
                              // 1 add takes 2/1 flops for complex/real
