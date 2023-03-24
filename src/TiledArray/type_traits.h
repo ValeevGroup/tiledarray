@@ -760,6 +760,31 @@ struct scalar_type<T, typename std::enable_if<!is_numeric_v<T>>::type>
 template <typename T>
 using scalar_t = typename TiledArray::detail::scalar_type<T>::type;
 
+/// is true type if `T::rebind_t<Element>` is defined
+template <typename T, typename Element, typename = void>
+struct has_rebind : std::false_type {};
+template <typename T, typename Element>
+struct has_rebind<T, Element,
+                  std::void_t<typename T::template rebind_t<Element>>>
+    : std::true_type {};
+
+/// alias to has_rebind<T, Element>::value
+template <typename T, typename Element>
+inline constexpr bool has_rebind_v = has_rebind<T, Element>::value;
+
+/// is true type if `T::rebind_numeric_t<Numeric>` is defined
+template <typename T, typename Numeric, typename = void>
+struct has_rebind_numeric : std::false_type {};
+template <typename T, typename Numeric>
+struct has_rebind_numeric<
+    T, Numeric, std::void_t<typename T::template rebind_numeric_t<Numeric>>>
+    : std::true_type {};
+
+/// alias to has_rebind_numeric<T, Element>::value
+template <typename T, typename Element>
+inline constexpr bool has_rebind_numeric_v =
+    has_rebind_numeric<T, Element>::value;
+
 template <typename T>
 struct is_strictly_ordered_helper {
   using Yes = char;

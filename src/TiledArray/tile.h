@@ -96,6 +96,31 @@ class Tile {
       tensor_type>::type;  ///< the scalar type that supports T
 
  private:
+  template <typename Element, typename = void>
+  struct rebind;
+  template <typename Element>
+  struct rebind<Element, std::enable_if_t<detail::has_rebind_v<T, Element>>> {
+    using type = Tile<typename T::template rebind_t<Element>>;
+  };
+
+  template <typename Numeric, typename = void>
+  struct rebind_numeric;
+  template <typename Numeric>
+  struct rebind_numeric<
+      Numeric, std::enable_if_t<detail::has_rebind_numeric_v<T, Numeric>>> {
+    using type = Tile<typename T::template rebind_numeric_t<Numeric>>;
+  };
+
+ public:
+  /// compute type of Tile<T> with different element type
+  template <typename ElementType>
+  using rebind_t = typename rebind<ElementType>::type;
+
+  /// compute type of Tile<T> with different numeric type
+  template <typename NumericType>
+  using rebind_numeric_t = typename rebind_numeric<NumericType>::type;
+
+ private:
   std::shared_ptr<tensor_type> pimpl_;
 
  public:

@@ -136,6 +136,27 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       std::is_same_v<std::decay_t<Value>, Future<value_type>> ||
       std::is_same_v<std::decay_t<Value>, value_type>;
 
+  /// compute type of DistArray with different Policy and/or Tile
+  template <typename TileU, typename PolicyU = Policy>
+  using rebind_t = DistArray<TileU, PolicyU>;
+
+ private:
+  template <typename Numeric, typename = void>
+  struct rebind_numeric;
+  template <typename Numeric>
+  struct rebind_numeric<
+      Numeric, std::enable_if_t<detail::has_rebind_numeric_v<Tile, Numeric>>> {
+    using type =
+        DistArray<typename Tile::template rebind_numeric_t<Numeric>, Policy>;
+  };
+
+ public:
+  /// compute type of DistArray with Tile's rebound numeric type
+  /// @note this is SFINAE-disabled if `Tile::rebind_numeric_t<Numeric>` is not
+  /// defined
+  template <typename Numeric>
+  using rebind_numeric_t = typename rebind_numeric<Numeric>::type;
+
  private:
   pimpl_type pimpl_;  ///< managed ptr to Array implementation
   bool defer_deleter_to_next_fence_ =

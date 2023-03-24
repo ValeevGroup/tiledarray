@@ -108,6 +108,32 @@ class Tensor {
                                   detail::is_tensor_of_tensor<Ts...>::value;
   };
 
+ public:
+  /// compute type of Tensor with different element type
+  template <typename U,
+            typename OtherAllocator = typename std::allocator_traits<
+                Allocator>::template rebind_alloc<U>>
+  using rebind_t = Tensor<U, OtherAllocator>;
+
+  template <typename U, typename V = value_type, typename = void>
+  struct rebind_numeric;
+  template <typename U, typename V>
+  struct rebind_numeric<U, V, std::enable_if_t<is_tensor<V>::value>> {
+    using VU = typename V::template rebind_numeric<U>::type;
+    using type = Tensor<VU, typename std::allocator_traits<
+                                Allocator>::template rebind_alloc<VU>>;
+  };
+  template <typename U, typename V>
+  struct rebind_numeric<U, V, std::enable_if_t<!is_tensor<V>::value>> {
+    using type = Tensor<
+        U, typename std::allocator_traits<Allocator>::template rebind_alloc<U>>;
+  };
+
+  /// compute type of Tensor with different numeric type
+  template <typename U>
+  using rebind_numeric_t = typename rebind_numeric<U, value_type>::type;
+
+ private:
   using default_construct = bool;
 
   Tensor(const range_type& range, size_t batch_size, bool default_construct)

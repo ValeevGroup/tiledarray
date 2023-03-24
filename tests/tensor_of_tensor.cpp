@@ -1234,4 +1234,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(serialization, ITensor, itensor_types) {
                                 cend(a_roundtrip));
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(rebind, ITensor, itensor_types) {
+  using ITensorD = typename ITensor::template rebind_t<double>;
+  using ITensorZ = typename ITensor::template rebind_t<std::complex<double>>;
+  static_assert(
+      std::is_same_v<typename Tensor<ITensor>::template rebind_t<double>,
+                     TensorD>);
+  static_assert(std::is_same_v<
+                typename Tensor<ITensor>::template rebind_numeric_t<double>,
+                Tensor<ITensorD>>);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
