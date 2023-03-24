@@ -42,10 +42,10 @@ template <typename T>
 void cholesky_lsolve(Op transpose, Matrix<T> &A, Matrix<T> &X);
 
 template <typename T>
-void heig(Matrix<T> &A, std::vector<T> &W);
+void heig(Matrix<T> &A, std::vector<TiledArray::detail::real_t<T>> &W);
 
 template <typename T>
-void heig(Matrix<T> &A, Matrix<T> &B, std::vector<T> &W);
+void heig(Matrix<T> &A, Matrix<T> &B, std::vector<TiledArray::detail::real_t<T>> &W);
 
 template <typename T>
 void svd(Job jobu, Job jobvt, Matrix<T> &A, std::vector<T> &S, Matrix<T> *U,
