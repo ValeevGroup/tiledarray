@@ -1673,6 +1673,22 @@ bool operator!=(const Tile<T1>& t1, const Tile<T2>& t2) {
   return !(t1 == t2);
 }
 
+namespace detail {
+
+template <typename T>
+struct real_t_impl<Tile<T>> {
+  using type = typename Tile<T>::template rebind_numeric_t<
+      typename Tile<T>::scalar_type>;
+};
+
+template <typename T>
+struct complex_t_impl<Tile<T>> {
+  using type = typename Tile<T>::template rebind_numeric_t<
+      std::complex<typename Tile<T>::scalar_type>>;
+};
+
+}  // namespace detail
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_TILE_H__INCLUDED

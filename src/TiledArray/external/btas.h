@@ -841,6 +841,20 @@ struct ordinal_traits<btas::RangeNd<_Order, _Index, _Ordinal>> {
                                          : OrdinalType::ColMajor;
 };
 
+template <typename T, typename Range, typename Storage>
+struct real_t_impl<btas::Tensor<T, Range, Storage>> {
+  using type =
+      typename btas::Tensor<T, Range, Storage>::template rebind_numeric_t<
+          typename btas::Tensor<T, Range, Storage>::scalar_type>;
+};
+
+template <typename T, typename Range, typename Storage>
+struct complex_t_impl<btas::Tensor<T, Range, Storage>> {
+  using type =
+      typename btas::Tensor<T, Range, Storage>::template rebind_numeric_t<
+          std::complex<typename btas::Tensor<T, Range, Storage>::scalar_type>>;
+};
+
 }  // namespace detail
 }  // namespace TiledArray
 

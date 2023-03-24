@@ -1243,6 +1243,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(rebind, ITensor, itensor_types) {
   static_assert(std::is_same_v<
                 typename Tensor<ITensor>::template rebind_numeric_t<double>,
                 Tensor<ITensorD>>);
+  static_assert(std::is_same_v<TiledArray::detail::real_t<Tensor<TensorZ>>,
+                               Tensor<TensorD>>);
+  static_assert(std::is_same_v<TiledArray::detail::complex_t<Tensor<TensorD>>,
+                               Tensor<TensorZ>>);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

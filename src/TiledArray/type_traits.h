@@ -632,6 +632,42 @@ struct is_complex<std::complex<T>> : public std::true_type {};
 template <typename T>
 constexpr const bool is_complex_v = is_complex<T>::value;
 
+template <typename T, typename Enabler = void>
+struct complex_t_impl;
+
+template <typename T>
+struct complex_t_impl<std::complex<T>> {
+  using type = std::complex<T>;
+};
+
+template <typename T>
+struct complex_t_impl<T, std::enable_if_t<std::is_floating_point_v<T>>> {
+  using type = std::complex<T>;
+};
+
+/// evaluates to std::complex<T> if T is real, else T
+/// @note specialize complex_t_impl<T> to customize the behavior for type T
+template <typename T>
+using complex_t = typename complex_t_impl<T>::type;
+
+template <typename T, typename Enabler = void>
+struct real_t_impl;
+
+template <typename T>
+struct real_t_impl<std::complex<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct real_t_impl<T, std::enable_if_t<std::is_floating_point_v<T>>> {
+  using type = T;
+};
+
+/// evaluates to U if T is std::complex<U>, or if T is real then evaluates to T
+/// @note specialize real_t_impl<T> to customize the behavior for type T
+template <typename T>
+using real_t = typename real_t_impl<T>::type;
+
 template <typename T>
 struct is_numeric : public std::is_arithmetic<T> {};
 

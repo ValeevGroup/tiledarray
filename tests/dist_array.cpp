@@ -720,6 +720,13 @@ BOOST_AUTO_TEST_CASE(rebind) {
   static_assert(
       std::is_same_v<typename SpArrayN::template rebind_numeric_t<double>,
                      TSpArrayD>);
+  static_assert(std::is_same_v<TiledArray::detail::real_t<TArrayZ>, TArrayD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<TArrayD>, TArrayZ>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::real_t<TSpArrayZ>, TSpArrayD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<TSpArrayD>, TSpArrayZ>);
 
   // DistArray of Tensors
   using SpArrayTD = DistArray<Tensor<TensorD>, SparsePolicy>;
@@ -730,6 +737,10 @@ BOOST_AUTO_TEST_CASE(rebind) {
       std::is_same_v<
           typename SpArrayTD::template rebind_numeric_t<std::complex<double>>,
           SpArrayTZ>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::real_t<SpArrayTZ>, SpArrayTD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<SpArrayTD>, SpArrayTZ>);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

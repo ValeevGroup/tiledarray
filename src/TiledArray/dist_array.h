@@ -1859,6 +1859,22 @@ DistArray<T, P> replicated(const DistArray<T, P>& a) {
   return result;
 }
 
+namespace detail {
+
+template <typename Tile, typename Policy>
+struct real_t_impl<DistArray<Tile, Policy>> {
+  using type = typename DistArray<Tile, Policy>::template rebind_numeric_t<
+      typename Tile::scalar_type>;
+};
+
+template <typename Tile, typename Policy>
+struct complex_t_impl<DistArray<Tile, Policy>> {
+  using type = typename DistArray<Tile, Policy>::template rebind_numeric_t<
+      std::complex<typename Tile::scalar_type>>;
+};
+
+}  // namespace detail
+
 }  // namespace TiledArray
 
 // serialization

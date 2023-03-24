@@ -2703,6 +2703,22 @@ struct transform<Tensor<T, A>> {
 };
 }  // namespace detail
 
+namespace detail {
+
+template <typename T, typename A>
+struct real_t_impl<Tensor<T, A>> {
+  using type = typename Tensor<T, A>::template rebind_numeric_t<
+      typename Tensor<T, A>::scalar_type>;
+};
+
+template <typename T, typename A>
+struct complex_t_impl<Tensor<T, A>> {
+  using type = typename Tensor<T, A>::template rebind_numeric_t<
+      std::complex<typename Tensor<T, A>::scalar_type>>;
+};
+
+}  // namespace detail
+
 #ifndef TILEDARRAY_HEADER_ONLY
 
 extern template class Tensor<double>;
