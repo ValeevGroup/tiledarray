@@ -121,7 +121,10 @@ void heig(Matrix<T>& A, std::vector<TiledArray::detail::real_t<T>>& W) {
   integer lda = A.rows();
   W.resize(n);
   auto* w = W.data();
-  TA_LAPACK(syev, jobz, uplo, n, a, lda, w);
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    TA_LAPACK(heev, jobz, uplo, n, a, lda, w);
+  else
+    TA_LAPACK(syev, jobz, uplo, n, a, lda, w);
 }
 
 template <typename T>
@@ -137,7 +140,10 @@ void heig(Matrix<T>& A, Matrix<T>& B,
   integer ldb = B.rows();
   W.resize(n);
   auto* w = W.data();
-  TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w);
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    TA_LAPACK(hegv, itype, jobz, uplo, n, a, lda, b, ldb, w);
+  else
+    TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w);
 }
 
 template <typename T>
@@ -236,7 +242,10 @@ void householder_qr(Matrix<T>& V, Matrix<T>& R) {
   // Explicitly form Q
   // TODO: This is wrong for complex, but it doesn't look like R/C is caught
   //       anywhere else either...
-  lapack::orgqr(m, n, k, v, ldv, tau.data());
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    lapack::ungqr(m, n, k, v, ldv, tau.data());
+  else
+    lapack::orgqr(m, n, k, v, ldv, tau.data());
 }
 
 #define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                         \
@@ -254,5 +263,7 @@ void householder_qr(Matrix<T>& V, Matrix<T>& R) {
 
 TA_LAPACK_EXPLICIT(Matrix<double>, std::vector<double>);
 TA_LAPACK_EXPLICIT(Matrix<float>, std::vector<float>);
+TA_LAPACK_EXPLICIT(Matrix<std::complex<double>>, std::vector<double>);
+TA_LAPACK_EXPLICIT(Matrix<std::complex<float>>, std::vector<float>);
 
 }  // namespace TiledArray::math::linalg::rank_local
