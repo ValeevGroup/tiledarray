@@ -191,7 +191,9 @@ class TensorInterface {
   template <typename T1, typename std::enable_if<
                              detail::is_tensor<T1>::value>::type* = nullptr>
   TensorInterface_& operator=(const T1& other) {
-    TA_ASSERT(data_ != other.data());
+    if constexpr (std::is_same_v<numeric_type, numeric_t<T1>>) {
+      TA_ASSERT(data_ != other.data());
+    }
 
     detail::inplace_tensor_op([](numeric_type& MADNESS_RESTRICT result,
                                  const numeric_t<T1> arg) { result = arg; },

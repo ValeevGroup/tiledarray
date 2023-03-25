@@ -513,7 +513,7 @@ BOOST_AUTO_TEST_CASE(make_replicated) {
   BOOST_REQUIRE_NO_THROW(a.make_replicated());
 
   // check for cda7b8a33b85f9ebe92bc369d6a362c94f1eae40 bug
-  for (const auto &tile : a) {
+  for (const auto& tile : a) {
     BOOST_CHECK(tile.get().size() != 0);
   }
 
@@ -532,7 +532,6 @@ BOOST_AUTO_TEST_CASE(make_replicated) {
          it != tile.get().end(); ++it)
       BOOST_CHECK_EQUAL(*it, distributed_pmap->owner(i) + 1);
   }
-
 }
 
 BOOST_AUTO_TEST_CASE(serialization_by_tile) {
@@ -708,6 +707,40 @@ BOOST_AUTO_TEST_CASE(issue_225) {
   BOOST_CHECK_EQUAL_COLLECTIONS(St_read.begin(), St_read.end(), St.begin(),
                                 St.end());
   std::remove(archive_file_name);
+}
+
+BOOST_AUTO_TEST_CASE(rebind) {
+  static_assert(
+      std::is_same_v<typename ArrayN::template rebind_t<TensorD>, TArrayD>);
+  static_assert(
+      std::is_same_v<typename ArrayN::template rebind_numeric_t<double>,
+                     TArrayD>);
+  static_assert(
+      std::is_same_v<typename SpArrayN::template rebind_t<TensorD>, TSpArrayD>);
+  static_assert(
+      std::is_same_v<typename SpArrayN::template rebind_numeric_t<double>,
+                     TSpArrayD>);
+  static_assert(std::is_same_v<TiledArray::detail::real_t<TArrayZ>, TArrayD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<TArrayD>, TArrayZ>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::real_t<TSpArrayZ>, TSpArrayD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<TSpArrayD>, TSpArrayZ>);
+
+  // DistArray of Tensors
+  using SpArrayTD = DistArray<Tensor<TensorD>, SparsePolicy>;
+  using SpArrayTZ = DistArray<Tensor<TensorZ>, SparsePolicy>;
+  static_assert(std::is_same_v<typename SpArrayTD::template rebind_t<TensorZ>,
+                               TSpArrayZ>);
+  static_assert(
+      std::is_same_v<
+          typename SpArrayTD::template rebind_numeric_t<std::complex<double>>,
+          SpArrayTZ>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::real_t<SpArrayTZ>, SpArrayTD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<SpArrayTD>, SpArrayTZ>);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

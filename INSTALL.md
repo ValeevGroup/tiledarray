@@ -40,7 +40,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 6fcb6451bc7ca46a00534a30c51dc5c230c39ac3 . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag 561fe1bff7f3374814111a15e28c7a141ab9b67a . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 91fff76deba20c751d0646c54f2f1c1e07bd6156 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.

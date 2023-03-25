@@ -724,4 +724,14 @@ BOOST_AUTO_TEST_CASE(block) {
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(rebind) {
+  static_assert(
+      std::is_same_v<TensorD::rebind_t<std::complex<double>>, TensorZ>);
+  static_assert(
+      std::is_same_v<TensorD::rebind_numeric_t<std::complex<double>>, TensorZ>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<TensorD>, TensorZ>);
+  static_assert(std::is_same_v<TiledArray::detail::real_t<TensorZ>, TensorD>);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

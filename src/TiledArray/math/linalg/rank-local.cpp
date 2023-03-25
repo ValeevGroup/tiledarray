@@ -113,19 +113,23 @@ void cholesky_lsolve(Op transpose, Matrix<T>& A, Matrix<T>& X) {
 }
 
 template <typename T>
-void heig(Matrix<T>& A, std::vector<T>& W) {
+void heig(Matrix<T>& A, std::vector<TiledArray::detail::real_t<T>>& W) {
   auto jobz = lapack::Job::Vec;
   auto uplo = lapack::Uplo::Lower;
   integer n = A.rows();
   T* a = A.data();
   integer lda = A.rows();
   W.resize(n);
-  T* w = W.data();
-  TA_LAPACK(syev, jobz, uplo, n, a, lda, w);
+  auto* w = W.data();
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    TA_LAPACK(heev, jobz, uplo, n, a, lda, w);
+  else
+    TA_LAPACK(syev, jobz, uplo, n, a, lda, w);
 }
 
 template <typename T>
-void heig(Matrix<T>& A, Matrix<T>& B, std::vector<T>& W) {
+void heig(Matrix<T>& A, Matrix<T>& B,
+          std::vector<TiledArray::detail::real_t<T>>& W) {
   integer itype = 1;
   auto jobz = lapack::Job::Vec;
   auto uplo = lapack::Uplo::Lower;
@@ -135,12 +139,17 @@ void heig(Matrix<T>& A, Matrix<T>& B, std::vector<T>& W) {
   T* b = B.data();
   integer ldb = B.rows();
   W.resize(n);
-  T* w = W.data();
-  TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w);
+  auto* w = W.data();
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    TA_LAPACK(hegv, itype, jobz, uplo, n, a, lda, b, ldb, w);
+  else
+    TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w);
 }
 
 template <typename T>
-void svd(Job jobu, Job jobvt, Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
+void svd(Job jobu, Job jobvt, Matrix<T>& A,
+         std::vector<TiledArray::detail::real_t<T>>& S, Matrix<T>* U,
+         Matrix<T>* VT) {
   integer m = A.rows();
   integer n = A.cols();
   integer k = std::min(m, n);
@@ -148,40 +157,42 @@ void svd(Job jobu, Job jobvt, Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Mat
   integer lda = A.rows();
 
   S.resize(k);
-  T* s = S.data();
+  auto* s = S.data();
 
-  T* u  = nullptr;
+  T* u = nullptr;
   T* vt = nullptr;
   integer ldu = 1, ldvt = 1;
-  if( (jobu == Job::SomeVec or jobu == Job::AllVec) and (not U) ) 
-    TA_LAPACK_ERROR("Requested out-of-place right singular vectors with null U input");
-  if( (jobvt == Job::SomeVec or jobvt == Job::AllVec) and (not VT) ) 
-    TA_LAPACK_ERROR("Requested out-of-place left singular vectors with null VT input");
+  if ((jobu == Job::SomeVec or jobu == Job::AllVec) and (not U))
+    TA_LAPACK_ERROR(
+        "Requested out-of-place right singular vectors with null U input");
+  if ((jobvt == Job::SomeVec or jobvt == Job::AllVec) and (not VT))
+    TA_LAPACK_ERROR(
+        "Requested out-of-place left singular vectors with null VT input");
 
-  if( jobu == Job::SomeVec ) {
+  if (jobu == Job::SomeVec) {
     U->resize(m, k);
     u = U->data();
     ldu = m;
   }
 
-  if( jobu == Job::AllVec ) {
+  if (jobu == Job::AllVec) {
     U->resize(m, m);
     u = U->data();
     ldu = m;
   }
 
-  if( jobvt == Job::SomeVec ) {
+  if (jobvt == Job::SomeVec) {
     VT->resize(k, n);
     vt = VT->data();
     ldvt = k;
   }
 
-  if( jobvt == Job::AllVec ) {
+  if (jobvt == Job::AllVec) {
     VT->resize(n, n);
     vt = VT->data();
     ldvt = n;
   }
-    
+
   TA_LAPACK(gesvd, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt);
 }
 
@@ -208,47 +219,51 @@ void lu_inv(Matrix<T>& A) {
 }
 
 template <bool QOnly, typename T>
-void householder_qr( Matrix<T> &V, Matrix<T> &R ) {
+void householder_qr(Matrix<T>& V, Matrix<T>& R) {
   integer m = V.rows();
   integer n = V.cols();
-  integer k = std::min(m,n);
-  integer ldv = V.rows(); // Col Major
+  integer k = std::min(m, n);
+  integer ldv = V.rows();  // Col Major
   T* v = V.data();
   std::vector<T> tau(k);
-  lapack::geqrf( m, n, v, ldv, tau.data() );
+  lapack::geqrf(m, n, v, ldv, tau.data());
 
   // Extract R
-  if constexpr ( not QOnly ) {
+  if constexpr (not QOnly) {
     // Resize R just in case
-    R.resize(k,n);
+    R.resize(k, n);
     R.fill(0.);
     // Extract Upper triangle into R
     integer ldr = R.rows();
     T* r = R.data();
-    lapack::lacpy( lapack::MatrixType::Upper, k, n, v, ldv, r, ldr );
+    lapack::lacpy(lapack::MatrixType::Upper, k, n, v, ldv, r, ldr);
   }
 
   // Explicitly form Q
   // TODO: This is wrong for complex, but it doesn't look like R/C is caught
   //       anywhere else either...
-  lapack::orgqr( m, n, k, v, ldv, tau.data() );
-
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    lapack::ungqr(m, n, k, v, ldv, tau.data());
+  else
+    lapack::orgqr(m, n, k, v, ldv, tau.data());
 }
 
-#define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                       \
-  template void cholesky(MATRIX&);                               \
-  template void cholesky_linv(MATRIX&);                          \
-  template void cholesky_solve(MATRIX&, MATRIX&);                \
-  template void cholesky_lsolve(Op, MATRIX&, MATRIX&);           \
-  template void heig(MATRIX&, VECTOR&);                          \
-  template void heig(MATRIX&, MATRIX&, VECTOR&);                 \
-  template void svd(Job,Job,MATRIX&, VECTOR&, MATRIX*, MATRIX*); \
-  template void lu_solve(MATRIX&, MATRIX&);                      \
-  template void lu_inv(MATRIX&);                                 \
-  template void householder_qr<true>(MATRIX&,MATRIX&);           \
-  template void householder_qr<false>(MATRIX&,MATRIX&);
+#define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                         \
+  template void cholesky(MATRIX&);                                 \
+  template void cholesky_linv(MATRIX&);                            \
+  template void cholesky_solve(MATRIX&, MATRIX&);                  \
+  template void cholesky_lsolve(Op, MATRIX&, MATRIX&);             \
+  template void heig(MATRIX&, VECTOR&);                            \
+  template void heig(MATRIX&, MATRIX&, VECTOR&);                   \
+  template void svd(Job, Job, MATRIX&, VECTOR&, MATRIX*, MATRIX*); \
+  template void lu_solve(MATRIX&, MATRIX&);                        \
+  template void lu_inv(MATRIX&);                                   \
+  template void householder_qr<true>(MATRIX&, MATRIX&);            \
+  template void householder_qr<false>(MATRIX&, MATRIX&);
 
 TA_LAPACK_EXPLICIT(Matrix<double>, std::vector<double>);
 TA_LAPACK_EXPLICIT(Matrix<float>, std::vector<float>);
+TA_LAPACK_EXPLICIT(Matrix<std::complex<double>>, std::vector<double>);
+TA_LAPACK_EXPLICIT(Matrix<std::complex<float>>, std::vector<float>);
 
 }  // namespace TiledArray::math::linalg::rank_local

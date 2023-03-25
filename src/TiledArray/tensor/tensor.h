@@ -108,6 +108,32 @@ class Tensor {
                                   detail::is_tensor_of_tensor<Ts...>::value;
   };
 
+ public:
+  /// compute type of Tensor with different element type
+  template <typename U,
+            typename OtherAllocator = typename std::allocator_traits<
+                Allocator>::template rebind_alloc<U>>
+  using rebind_t = Tensor<U, OtherAllocator>;
+
+  template <typename U, typename V = value_type, typename = void>
+  struct rebind_numeric;
+  template <typename U, typename V>
+  struct rebind_numeric<U, V, std::enable_if_t<is_tensor<V>::value>> {
+    using VU = typename V::template rebind_numeric<U>::type;
+    using type = Tensor<VU, typename std::allocator_traits<
+                                Allocator>::template rebind_alloc<VU>>;
+  };
+  template <typename U, typename V>
+  struct rebind_numeric<U, V, std::enable_if_t<!is_tensor<V>::value>> {
+    using type = Tensor<
+        U, typename std::allocator_traits<Allocator>::template rebind_alloc<U>>;
+  };
+
+  /// compute type of Tensor with different numeric type
+  template <typename U>
+  using rebind_numeric_t = typename rebind_numeric<U, value_type>::type;
+
+ private:
   using default_construct = bool;
 
   Tensor(const range_type& range, size_t batch_size, bool default_construct)
@@ -1412,8 +1438,10 @@ class Tensor {
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor scale(const Scalar factor) const {
-    return unary(
-        [factor](const numeric_type a) -> numeric_type { return a * factor; });
+    return unary([factor](const numeric_type a) -> numeric_type {
+      using namespace TiledArray::detail;
+      return a * factor;
+    });
   }
 
   /// Construct a scaled and permuted copy of this tensor
@@ -1429,7 +1457,10 @@ class Tensor {
                                         detail::is_permutation_v<Perm>>>
   Tensor scale(const Scalar factor, const Perm& perm) const {
     return unary(
-        [factor](const numeric_type a) -> numeric_type { return a * factor; },
+        [factor](const numeric_type a) -> numeric_type {
+          using namespace TiledArray::detail;
+          return a * factor;
+        },
         perm);
   }
 
@@ -2670,6 +2701,22 @@ struct transform<Tensor<T, A>> {
                         std::forward<Op>(op), std::forward<Perm>(perm));
   }
 };
+}  // namespace detail
+
+namespace detail {
+
+template <typename T, typename A>
+struct real_t_impl<Tensor<T, A>> {
+  using type = typename Tensor<T, A>::template rebind_numeric_t<
+      typename Tensor<T, A>::scalar_type>;
+};
+
+template <typename T, typename A>
+struct complex_t_impl<Tensor<T, A>> {
+  using type = typename Tensor<T, A>::template rebind_numeric_t<
+      std::complex<typename Tensor<T, A>::scalar_type>>;
+};
+
 }  // namespace detail
 
 #ifndef TILEDARRAY_HEADER_ONLY

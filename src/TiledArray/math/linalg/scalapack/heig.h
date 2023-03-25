@@ -58,7 +58,7 @@ namespace TiledArray::math::linalg::scalapack {
 template <typename Array>
 auto heig(const Array& A, TiledRange evec_trange = TiledRange(),
           size_t NB = default_block_size()) {
-  using value_type = typename Array::element_type;
+  using value_type = typename Array::numeric_type;
   using real_type = scalapackpp::detail::real_t<value_type>;
 
   auto& world = A.world();
@@ -80,9 +80,8 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange(),
   scalapack::BlockCyclicMatrix<value_type> evecs(world, grid, N, N, NB, NB);
 
   auto info = scalapackpp::hereig(
-      scalapackpp::Job::Vec, blacspp::Uplo::Lower, N,
-      matrix.local_mat().data(), 1, 1, desc, evals.data(),
-      evecs.local_mat().data(), 1, 1, desc);
+      scalapackpp::Job::Vec, blacspp::Uplo::Lower, N, matrix.local_mat().data(),
+      1, 1, desc, evals.data(), evecs.local_mat().data(), 1, 1, desc);
   if (info) TA_EXCEPTION("EVP Failed");
 
   if (evec_trange.rank() == 0) evec_trange = A.trange();
@@ -122,8 +121,8 @@ template <typename ArrayA, typename ArrayB, typename EVecType = ArrayA>
 auto heig(const ArrayA& A, const ArrayB& B,
           TiledRange evec_trange = TiledRange(),
           size_t NB = default_block_size()) {
-  using value_type = typename ArrayA::element_type;
-  static_assert(std::is_same_v<typename ArrayB::element_type, value_type>);
+  using value_type = typename ArrayA::numeric_type;
+  static_assert(std::is_same_v<typename ArrayB::numeric_type, value_type>);
   using real_type = scalapackpp::detail::real_t<value_type>;
 
   auto& world = A.world();
@@ -150,9 +149,9 @@ auto heig(const ArrayA& A, const ArrayB& B,
   scalapack::BlockCyclicMatrix<value_type> evecs(world, grid, N, N, NB, NB);
 
   auto info = scalapackpp::hereig_gen(
-      scalapackpp::Job::Vec, blacspp::Uplo::Lower, N,
-      A_sca.local_mat().data(), 1, 1, desc, B_sca.local_mat().data(), 1, 1,
-      desc, evals.data(), evecs.local_mat().data(), 1, 1, desc);
+      scalapackpp::Job::Vec, blacspp::Uplo::Lower, N, A_sca.local_mat().data(),
+      1, 1, desc, B_sca.local_mat().data(), 1, 1, desc, evals.data(),
+      evecs.local_mat().data(), 1, 1, desc);
   if (info) TA_EXCEPTION("EVP Failed");
 
   if (evec_trange.rank() == 0) evec_trange = A.trange();
