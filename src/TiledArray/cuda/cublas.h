@@ -54,6 +54,25 @@ inline void __cublasSafeCall(cublasStatus_t err, const char *file,
 
 namespace TiledArray {
 
+namespace detail {
+
+template <typename T>
+auto cublasPointer(T *std_complex_ptr) {
+  using Scalar = TiledArray::detail::scalar_t<T>;
+  static_assert(std::is_same_v<Scalar, double> ||
+                std::is_same_v<Scalar, float>);
+  constexpr bool DP = std::is_same_v<Scalar, double>;
+  using cuT = std::conditional_t<std::is_same_v<Scalar, double>,
+                                 cuDoubleComplex, cuComplex>;
+  if constexpr (std::is_const_v<
+                    std::remove_pointer_t<decltype(std_complex_ptr)>>) {
+    return reinterpret_cast<const cuT *>(std_complex_ptr);
+  } else
+    return reinterpret_cast<cuT *>(std_complex_ptr);
+};
+
+}  // namespace detail
+
 /*
  * cuBLAS interface functions
  */
@@ -117,6 +136,29 @@ inline cublasStatus_t cublasGemm<double>(
   return cublasDgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb,
                      beta, C, ldc);
 }
+template <>
+inline cublasStatus_t cublasGemm<std::complex<float>>(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const std::complex<float> *alpha,
+    const std::complex<float> *A, int lda, const std::complex<float> *B,
+    int ldb, const std::complex<float> *beta, std::complex<float> *C, int ldc) {
+  using detail::cublasPointer;
+  return cublasCgemm(handle, transa, transb, m, n, k, cublasPointer(alpha),
+                     cublasPointer(A), lda, cublasPointer(B), ldb,
+                     cublasPointer(beta), cublasPointer(C), ldc);
+}
+template <>
+inline cublasStatus_t cublasGemm<std::complex<double>>(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const std::complex<double> *alpha,
+    const std::complex<double> *A, int lda, const std::complex<double> *B,
+    int ldb, const std::complex<double> *beta, std::complex<double> *C,
+    int ldc) {
+  using detail::cublasPointer;
+  return cublasZgemm(handle, transa, transb, m, n, k, cublasPointer(alpha),
+                     cublasPointer(A), lda, cublasPointer(B), ldb,
+                     cublasPointer(beta), cublasPointer(C), ldc);
+}
 
 /// AXPY interface functions
 
@@ -137,6 +179,25 @@ inline cublasStatus_t cublasAxpy<double, double>(cublasHandle_t handle, int n,
                                                  const double *x, int incx,
                                                  double *y, int incy) {
   return cublasDaxpy(handle, n, alpha, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<std::complex<float>, std::complex<float>>(
+    cublasHandle_t handle, int n, const std::complex<float> *alpha,
+    const std::complex<float> *x, int incx, std::complex<float> *y, int incy) {
+  using detail::cublasPointer;
+  return cublasCaxpy(handle, n, cublasPointer(alpha), cublasPointer(x), incx,
+                     cublasPointer(y), incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<std::complex<double>, std::complex<double>>(
+    cublasHandle_t handle, int n, const std::complex<double> *alpha,
+    const std::complex<double> *x, int incx, std::complex<double> *y,
+    int incy) {
+  using detail::cublasPointer;
+  return cublasZaxpy(handle, n, cublasPointer(alpha), cublasPointer(x), incx,
+                     cublasPointer(y), incy);
 }
 
 template <>

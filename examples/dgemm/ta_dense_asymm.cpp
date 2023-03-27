@@ -75,23 +75,6 @@ int main(int argc, char** argv) {
   const std::size_t Tn = Nn / Bn;
   const std::size_t Tk = Nk / Bk;
 
-  if (world.rank() == 0)
-    std::cout << "TiledArray: dense matrix multiply test...\n"
-              << "Number of nodes     = " << world.size()
-              << "\nScalar type       = " << scalar_type_str
-              << "\nSize of A         = " << Nm << "x" << Nk << " ("
-              << double(Nm * Nk * sizeof(double)) / 1.0e9 << " GB)"
-              << "\nSize of A block   = " << Bm << "x" << Bk
-              << "\nSize of B         = " << Nk << "x" << Nn << " ("
-              << double(Nk * Nn * sizeof(double)) / 1.0e9 << " GB)"
-              << "\nSize of B block   = " << Bk << "x" << Bn
-              << "\nSize of C         = " << Nm << "x" << Nn << " ("
-              << double(Nm * Nn * sizeof(double)) / 1.0e9 << " GB)"
-              << "\nSize of C block   = " << Bm << "x" << Bn
-              << "\n# of blocks of C  = " << Tm * Tn
-              << "\nAverage # of blocks of C/node = "
-              << double(Tm * Tn) / double(world.size()) << "\n";
-
   // Construct TiledRange
   std::vector<unsigned int> blocking_m;
   blocking_m.reserve(Tm + 1);
@@ -147,6 +130,23 @@ int main(int argc, char** argv) {
                              // 1 add takes 2/1 flops for complex/real
         * static_cast<std::int64_t>(Nn) * static_cast<std::int64_t>(Nm) *
         static_cast<std::int64_t>(Nk);
+
+    if (world.rank() == 0)
+      std::cout << "TiledArray: dense matrix multiply test...\n"
+                << "Number of nodes     = " << world.size()
+                << "\nScalar type       = " << scalar_type_str
+                << "\nSize of A         = " << Nm << "x" << Nk << " ("
+                << double(Nm * Nk * sizeof(T)) / 1.0e9 << " GB)"
+                << "\nSize of A block   = " << Bm << "x" << Bk
+                << "\nSize of B         = " << Nk << "x" << Nn << " ("
+                << double(Nk * Nn * sizeof(T)) / 1.0e9 << " GB)"
+                << "\nSize of B block   = " << Bk << "x" << Bn
+                << "\nSize of C         = " << Nm << "x" << Nn << " ("
+                << double(Nm * Nn * sizeof(T)) / 1.0e9 << " GB)"
+                << "\nSize of C block   = " << Bm << "x" << Bn
+                << "\n# of blocks of C  = " << Tm * Tn
+                << "\nAverage # of blocks of C/node = "
+                << double(Tm * Tn) / double(world.size()) << "\n";
 
     auto memtrace = [do_memtrace, &world](const std::string& str) -> void {
       if (do_memtrace) {

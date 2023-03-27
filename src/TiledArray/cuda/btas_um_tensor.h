@@ -780,6 +780,10 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<UMTensor, Policy> &array) {
 extern template class btas::varray<double,
                                    TiledArray::cuda_um_allocator<double>>;
 extern template class btas::varray<float, TiledArray::cuda_um_allocator<float>>;
+extern template class btas::varray<
+    std::complex<double>, TiledArray::cuda_um_allocator<std::complex<double>>>;
+extern template class btas::varray<
+    std::complex<float>, TiledArray::cuda_um_allocator<std::complex<float>>>;
 extern template class btas::varray<int, TiledArray::cuda_um_allocator<int>>;
 extern template class btas::varray<long, TiledArray::cuda_um_allocator<long>>;
 
@@ -787,6 +791,12 @@ extern template class btas::Tensor<double, TiledArray::Range,
                                    TiledArray::cuda_um_btas_varray<double>>;
 extern template class btas::Tensor<float, TiledArray::Range,
                                    TiledArray::cuda_um_btas_varray<float>>;
+extern template class btas::Tensor<
+    std::complex<double>, TiledArray::Range,
+    TiledArray::cuda_um_btas_varray<std::complex<double>>>;
+extern template class btas::Tensor<
+    std::complex<float>, TiledArray::Range,
+    TiledArray::cuda_um_btas_varray<std::complex<float>>>;
 extern template class btas::Tensor<int, TiledArray::Range,
                                    TiledArray::cuda_um_btas_varray<int>>;
 extern template class btas::Tensor<long, TiledArray::Range,
@@ -796,6 +806,12 @@ extern template class TiledArray::Tile<btas::Tensor<
     double, TiledArray::Range, TiledArray::cuda_um_btas_varray<double>>>;
 extern template class TiledArray::Tile<btas::Tensor<
     float, TiledArray::Range, TiledArray::cuda_um_btas_varray<float>>>;
+extern template class TiledArray::Tile<
+    btas::Tensor<std::complex<double>, TiledArray::Range,
+                 TiledArray::cuda_um_btas_varray<std::complex<double>>>>;
+extern template class TiledArray::Tile<
+    btas::Tensor<std::complex<float>, TiledArray::Range,
+                 TiledArray::cuda_um_btas_varray<std::complex<float>>>>;
 extern template class TiledArray::Tile<
     btas::Tensor<int, TiledArray::Range, TiledArray::cuda_um_btas_varray<int>>>;
 extern template class TiledArray::Tile<btas::Tensor<

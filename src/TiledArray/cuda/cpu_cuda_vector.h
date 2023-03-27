@@ -158,6 +158,8 @@ class cpu_cuda_vector {
 
 extern template class cpu_cuda_vector<double>;
 extern template class cpu_cuda_vector<float>;
+extern template class cpu_cuda_vector<std::complex<double>>;
+extern template class cpu_cuda_vector<std::complex<float>>;
 
 template <MemorySpace Space, typename T, typename HostAlloc,
           typename DeviceAlloc>
