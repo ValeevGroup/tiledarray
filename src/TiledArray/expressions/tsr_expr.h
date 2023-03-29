@@ -112,8 +112,14 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   /// Expression assignment operator
 
   /// \param other The expression that will be assigned to the array
-  array_type& operator=(TsrExpr_& other) {
-    other.eval_to(*this);
+  array_type& operator=(const TsrExpr_& other) {
+    // N.B. corner case: whether A("i,j") = B("i,j") is deep or shallow copy
+    // depends on whether the copy semantics of tiles ... to be sure use clone
+    if (IndexList(this->annotation()) == IndexList(other.annotation())) {
+      array_ = other.array().clone();
+    } else {
+      other.eval_to(*this);
+    }
     return array_;
   }
 
