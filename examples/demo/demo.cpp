@@ -39,7 +39,7 @@ auto make_tile(const TA::Range &range) {
 int main(int argc, char *argv[]) {
   using namespace std;
 
-  std::srand(2017);
+  TA::srand(2017);
   TA::World &world = TA::initialize(argc, argv);
 
   using namespace TA;
@@ -88,7 +88,6 @@ int main(int argc, char *argv[]) {
   SparseShape<float> shape(shape_tensor, TR);
   TSpArrayD a1(world, TR, shape);
   a1.fill_random();  // for deterministic fill:
-                     // TA::srand(seed);
                      // a1.fill_random<HostExecutor::Thread>();
   cout << "a1:\n" << a1 << endl;
   world.gop.fence();
