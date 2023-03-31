@@ -1245,6 +1245,10 @@ class Range {
 
 };  // class Range
 
+// lift Range::index_type and Range::index_view_type into user-land
+using Index = Range::index_type;
+using IndexView = Range::index_view_type;
+
 inline Range& Range::operator*=(const Permutation& perm) {
   TA_ASSERT(perm.size() == rank_);
   if (rank_ > 1ul) {

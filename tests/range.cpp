@@ -65,15 +65,37 @@ BOOST_FIXTURE_TEST_SUITE(range_suite, RangeFixture, TA_UT_LABEL_SERIAL)
 BOOST_AUTO_TEST_CASE(dimension_accessor) {
   BOOST_CHECK_EQUAL_COLLECTIONS(r.lobound_data(), r.lobound_data() + r.rank(),
                                 start.begin(), start.end());  // check start()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.lobound().begin(), r.lobound().end(),
+                                start.begin(), start.end());  // check start()
+  BOOST_CHECK_EQUAL(r.lobound(), start);                      // check start()
+  BOOST_CHECK_EQUAL(r.lobound(),
+                    (Index{start.begin(), start.end()}));  // check finish()
   BOOST_CHECK_EQUAL_COLLECTIONS(r.upbound_data(), r.upbound_data() + r.rank(),
                                 finish.begin(),
                                 finish.end());  // check finish()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.upbound().begin(), r.upbound().end(),
+                                finish.begin(),
+                                finish.end());  // check finish()
+  BOOST_CHECK_EQUAL(r.upbound(), finish);       // check finish()
+  BOOST_CHECK_EQUAL(r.upbound(),
+                    (Index{finish.begin(), finish.end()}));  // check finish()
   BOOST_CHECK_EQUAL_COLLECTIONS(r.extent_data(), r.extent_data() + r.rank(),
                                 size.begin(), size.end());  // check size()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.extent().begin(), r.extent().end(),
+                                size.begin(), size.end());  // check size()
+  BOOST_CHECK_EQUAL(r.extent(), size);                      // check size()
+  BOOST_CHECK_EQUAL(r.extent(),
+                    (Index{size.begin(), size.end()}));  // check size()
   BOOST_CHECK_EQUAL_COLLECTIONS(r.stride_data(), r.stride_data() + r.rank(),
                                 weight.begin(),
                                 weight.end());  // check weight()
-  BOOST_CHECK_EQUAL(r.volume(), volume);        // check volume()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.stride().begin(), r.stride().end(),
+                                weight.begin(),
+                                weight.end());  // check weight()
+  BOOST_CHECK_EQUAL(r.stride(), weight);        // check weight()
+  BOOST_CHECK_EQUAL(r.stride(),
+                    (Index{weight.begin(), weight.end()}));  // check weight()
+  BOOST_CHECK_EQUAL(r.volume(), volume);                     // check volume()
   for (size_t d = 0; d != r.rank(); ++d) {
     auto range_d = r.dim(d);
     BOOST_CHECK_EQUAL(range_d.first, start[d]);
