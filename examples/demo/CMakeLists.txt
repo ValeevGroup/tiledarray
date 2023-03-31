@@ -16,8 +16,10 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# Create the ta_fock_build executable
-
-# Add the demo executable
+# Standard TA demo to accompany the keynote slides
 add_ta_executable(demo "demo.cpp" "tiledarray")
 add_dependencies(examples-tiledarray demo)
+
+# TA demo snippets for the paper
+add_ta_executable(demo2 "demo2.cpp" "tiledarray")
+add_dependencies(examples-tiledarray demo2)
