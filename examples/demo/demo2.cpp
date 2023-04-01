@@ -34,14 +34,34 @@ int main(int argc, char* argv[]) {
 
   using namespace TA;
 
+  // requires compiler new enough to support unicode characters in variable
+  // names
+#ifndef TILEDARRAY_CXX_COMPILER_SUPPORTS_UNICODE_VARIABLES
+#ifdef TILEDARRAY_CXX_COMPILER_IS_GCC
+#if __GNUC__ >= 10
+#define TILEDARRAY_CXX_COMPILER_SUPPORTS_UNICODE_VARIABLES 1
+#endif
+#elif !defined(TILEDARRAY_CXX_COMPILER_IS_ICC)
+#define TILEDARRAY_CXX_COMPILER_SUPPORTS_UNICODE_VARIABLES 1
+#endif
+#endif  // !defined(TILEDARRAY_CXX_COMPILER_SUPPORT_UNICODE_VARIABLES)
+
+#ifdef TILEDARRAY_CXX_COMPILER_SUPPORTS_UNICODE_VARIABLES
+
   // $\rho \equiv \mathbb{Z}_{1,11} \otimes \mathbb{Z}_{-1,9}$
   Range ρ{{1, 11}, {-1, 9}};
+  // lower bound of $\mathbb{Z}_{1,11} \otimes \mathbb{Z}_{-1,9}$
   assert((ρ.lobound() == Index{1, -1}));
+  // upper bound of $\mathbb{Z}_{1,11} \otimes \mathbb{Z}_{-1,9}$
   assert((ρ.upbound() == Index{11, 9}));
+  // extent of $\mathbb{Z}_{1,11} \otimes \mathbb{Z}_{-1,9}$
   assert((ρ.extent() == Index{10, 10}));
+  // the number of elements in $\mathbb{Z}_{1,11} \otimes \mathbb{Z}_{-1,9}$
   assert(ρ.volume() == 100);
+  // row-major order
   assert((ρ.stride() == Index{10, 1}));
   assert((ρ.ordinal({1, -1}) == 0));
+  assert((ρ.ordinal({1, 0}) == 1));
   assert((ρ.ordinal({10, 8}) + 1 == ρ.volume()));
   // prints "[1,-1] [1,0] .. [1,8] [2,-1] .. [10,8] "
   for (auto&& idx : ρ) cout << idx << " ";
@@ -86,6 +106,8 @@ int main(int argc, char* argv[]) {
 
   // grab a tile NB this returns a ${\bf future}$ to a tile; see Section 3.2.
   auto t00 = array0.find({0, 0});
+
+#endif  // defined(TILEDARRAY_CXX_COMPILER_SUPPORT_UNICODE_VARIABLES)
 
   return 0;
 }
