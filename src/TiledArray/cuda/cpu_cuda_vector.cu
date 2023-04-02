@@ -15,11 +15,25 @@ void resize<float,thrust::device_allocator<float>>(
     size_t size) {
     dev_vec.resize(size);
 }
+template<>
+void resize<std::complex<double>,thrust::device_allocator<std::complex<double>>>(
+    thrust::device_vector<std::complex<double>, thrust::device_allocator<std::complex<double>>>& dev_vec,
+    size_t size) {
+    dev_vec.resize(size);
+}
+template<>
+void resize<std::complex<float>,thrust::device_allocator<std::complex<float>>>(
+    thrust::device_vector<std::complex<float>, thrust::device_allocator<std::complex<float>>>& dev_vec,
+    size_t size) {
+    dev_vec.resize(size);
+}
 }
 
 namespace TiledArray {
 template class cpu_cuda_vector<double>;
 template class cpu_cuda_vector<float>;
+template class cpu_cuda_vector<std::complex<double>>;
+template class cpu_cuda_vector<std::complex<float>>;
 }
 
 // Thrust included in CUDA 9+ seems to generate uninstantiated CUB calls
@@ -34,6 +48,12 @@ auto force_missing_copy_instantiations_double() {
 }
 auto force_missing_copy_instantiations_float() {
   return force_missing_copy_instantiations<float>();
+}
+auto force_missing_copy_instantiations_zdouble() {
+  return force_missing_copy_instantiations<std::complex<double>>();
+}
+auto force_missing_copy_instantiations_zfloat() {
+  return force_missing_copy_instantiations<std::complex<float>>();
 }
 auto force_missing_copy_instantiations_unsigned_long() {
   return force_missing_copy_instantiations<unsigned long>();
@@ -65,4 +85,3 @@ auto force_missing_copy_n_instantiations_long_long(){
 }
 
 #endif  // __CUDACC_VER_MAJOR__  >= 9
-

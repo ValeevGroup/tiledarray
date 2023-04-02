@@ -27,6 +27,7 @@
 #include <limits>
 
 #include <TiledArray/external/cuda.h>
+#include <TiledArray/type_traits.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
 #include <thrust/functional.h>
@@ -38,9 +39,15 @@ namespace TiledArray {
 namespace detail {
 
 template <typename T>
-struct absolute_value : public thrust::unary_function<T, T> {
-  __host__ __device__ T operator()(const T &x) const {
-    return x < T(0) ? -x : x;
+struct absolute_value
+    : public thrust::unary_function<T, TiledArray::detail::scalar_t<T>> {
+  __host__ __device__ TiledArray::detail::scalar_t<T> operator()(
+      const T &x) const {
+    using RT = TiledArray::detail::scalar_t<T>;
+    if constexpr (!TiledArray::detail::is_complex_v<T>) {
+      return x < RT(0) ? -x : x;
+    } else
+      return std::sqrt(x.real() * x.real() + x.imag() * x.imag());
   }
 };
 
@@ -93,10 +100,11 @@ T min_reduce_cuda_kernel_impl(const T *arg, std::size_t n, cudaStream_t stream,
 }
 
 template <typename T>
-T absmax_reduce_cuda_kernel_impl(const T *arg, std::size_t n,
-                                 cudaStream_t stream, int device_id) {
-  T init(0);
-  thrust::maximum<T> max_op;
+TiledArray::detail::scalar_t<T> absmax_reduce_cuda_kernel_impl(
+    const T *arg, std::size_t n, cudaStream_t stream, int device_id) {
+  using TR = TiledArray::detail::scalar_t<T>;
+  TR init(0);
+  thrust::maximum<TR> max_op;
   detail::absolute_value<T> abs_op;
 
   CudaSafeCall(cudaSetDevice(device_id));
@@ -110,10 +118,11 @@ T absmax_reduce_cuda_kernel_impl(const T *arg, std::size_t n,
 }
 
 template <typename T>
-T absmin_reduce_cuda_kernel_impl(const T *arg, std::size_t n,
-                                 cudaStream_t stream, int device_id) {
-  T init(0);
-  thrust::minimum<T> min_op;
+TiledArray::detail::scalar_t<T> absmin_reduce_cuda_kernel_impl(
+    const T *arg, std::size_t n, cudaStream_t stream, int device_id) {
+  using TR = TiledArray::detail::scalar_t<T>;
+  TR init = std::numeric_limits<TR>::max();
+  thrust::minimum<TR> min_op;
   detail::absolute_value<T> abs_op;
 
   CudaSafeCall(cudaSetDevice(device_id));

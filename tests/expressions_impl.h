@@ -64,6 +64,18 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(tensor_factories, F, Fixtures, F) {
                            ca("a,b,c").block(boost::combine(lobound, upbound)));
   BOOST_CHECK_NO_THROW(c("a,b,c") =
                            ca("a,b,c").block(iv(3, 3, 3), iv(5, 5, 5)));
+
+  // make sure that c("abc") = a("abc") does a deep copy
+  {
+    BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,   b, c"));
+    for (auto&& idx : c.tiles_range()) {
+      if (c.is_local(idx) && !c.is_local(idx) && a.is_local(idx) &&
+          !a.is_zero(idx)) {
+        BOOST_CHECK(c.find_local(idx).get().data() !=
+                    a.find_local(idx).get().data());
+      }
+    }
+  }
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_tensor_factories, F, Fixtures, F) {

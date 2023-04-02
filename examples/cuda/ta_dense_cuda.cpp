@@ -137,23 +137,31 @@ template <typename Storage>
 void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                   const long Nn, const long Bn, const long Nk, const long Bk,
                   const long nrepeat) {
-  using Real = typename Storage::value_type;
+  using T = TiledArray::detail::numeric_t<Storage>;
+  using RT = TiledArray::detail::scalar_t<Storage>;
+  constexpr auto complex_T = TiledArray::detail::is_complex_v<T>;
 
   const std::size_t Tm = Nm / Bm;
   const std::size_t Tn = Nn / Bn;
   const std::size_t Tk = Nk / Bk;
 
+  const std::int64_t nflops =
+      (complex_T ? 8 : 2)  // 1 multiply takes 6/1 flops for complex/real
+                           // 1 add takes 2/1 flops for complex/real
+      * static_cast<std::int64_t>(Nn) * static_cast<std::int64_t>(Nm) *
+      static_cast<std::int64_t>(Nk);
+
   if (world.rank() == 0)
     std::cout << "TiledArray: dense matrix multiply test...\n"
               << "Number of nodes     = " << world.size()
               << "\nSize of A         = " << Nm << "x" << Nk << " ("
-              << double(Nm * Nk * sizeof(double)) / 1.0e9 << " GB)"
+              << double(Nm * Nk * sizeof(T)) / 1.0e9 << " GB)"
               << "\nSize of A block   = " << Bm << "x" << Bk
               << "\nSize of B         = " << Nk << "x" << Nn << " ("
-              << double(Nk * Nn * sizeof(double)) / 1.0e9 << " GB)"
+              << double(Nk * Nn * sizeof(T)) / 1.0e9 << " GB)"
               << "\nSize of B block   = " << Bk << "x" << Bn
               << "\nSize of C         = " << Nm << "x" << Nn << " ("
-              << double(Nm * Nn * sizeof(double)) / 1.0e9 << " GB)"
+              << double(Nm * Nn * sizeof(T)) / 1.0e9 << " GB)"
               << "\nSize of C block   = " << Bm << "x" << Bn
               << "\n# of blocks of C  = " << Tm * Tn
               << "\nAverage # of blocks of C/node = "
@@ -205,14 +213,13 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   TiledArray::TiledRange  // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
-  using value_type = typename Storage::value_type;
-  using CUDATile = btas::Tensor<Real, TA::Range, Storage>;
+  using CUDATile = btas::Tensor<T, TA::Range, Storage>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
-  using TAMatrix = TA::DistArray<TA::Tensor<value_type>>;
+  using TAMatrix = TA::DistArray<TA::Tensor<T>>;
 
   CUDAMatrix c(world, trange_c);
-  value_type val_a = 0.03;
-  value_type val_b = 0.02;
+  auto val_a = 0.03;
+  auto val_b = 0.02;
 
   {
     // Construct and initialize arrays
@@ -235,19 +242,26 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // start profiler
     cudaProfilerStart();
 
-    // Start clock
-    const double wall_time_start = madness::wall_time();
+    double total_time = 0.0;
+    double total_gflop_rate = 0.0;
 
     // Do matrix multiplication
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
       //      c("m,n") = a("m,k") * b("k,n") + a("m,n") - b("m,n");
       c("m,n") = a("m,k") * b("k,n");
+      c.world().gop.fence();  // fence since GEMM can return early
       double iter_time_stop = madness::wall_time();
+      const double iter_time = iter_time_stop - iter_time_start;
+      total_time += iter_time;
+      const double gflop_rate = double(nflops) / (iter_time * 1.e9);
+      total_gflop_rate += gflop_rate;
       if (world.rank() == 0)
-        std::cout << "Iteration " << i + 1
-                  << " wall time: " << (iter_time_stop - iter_time_start)
+        std::cout << "Iteration " << i + 1 << " wall time: " << iter_time
                   << "\n";
+      if (world.rank() == 0)
+        std::cout << "Iteration " << i + 1 << "   time=" << time
+                  << "   GFLOPS=" << gflop_rate << "\n";
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -256,32 +270,43 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     cudaProfilerStop();
 
     if (world.rank() == 0)
-      std::cout << "Average wall time   = "
-                << (wall_time_stop - wall_time_start) / double(nrepeat)
+      std::cout << "Average wall time   = " << total_time / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
-                << double(nrepeat) * 2.0 * double(Nn * Nm * Nm) /
-                       (wall_time_stop - wall_time_start) / 1.0e9
-                << "\n";
+                << total_gflop_rate / double(nrepeat) << "\n";
   }
 
-  double threshold =
-      std::numeric_limits<typename Storage::value_type>::epsilon();
+  double threshold = std::numeric_limits<RT>::epsilon();
   auto dot_length = Nk;
   //  auto result = dot_length * val_a * val_b + val_a - val_b;
-  auto result = dot_length * val_a * val_b;
+  T result;
+  if constexpr (complex_T) {
+    result = T(dot_length * val_a * val_b, 0.);
+  } else
+    result = dot_length * val_a * val_b;
 
   auto verify = [&world, &threshold, &result,
                  &dot_length](TA::Tile<CUDATile> &tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
-      double abs_err = fabs(tile[i] - result);
+      double abs_err = std::abs(tile[i] - result);
       //      double abs_val = fabs(tile[i]);
-      double rel_err = abs_err / result / dot_length;
+      double rel_err = abs_err / std::abs(result) / dot_length;
       if (rel_err > threshold) {
+        auto to_string = [](const auto &v) {
+          constexpr bool complex_T =
+              TiledArray::detail::is_complex_v<std::decay_t<decltype(v)>>;
+          if constexpr (complex_T) {
+            std::string result;
+            result = "{" + std::to_string(v.real()) + "," +
+                     std::to_string(v.imag()) + "}";
+            return result;
+          } else
+            return std::to_string(v);
+        };
         std::cout << "Node: " << world.rank() << " Tile: " << tile.range()
                   << " id: " << i
-                  << std::string(" gpu: " + std::to_string(tile[i]) +
-                                 " cpu: " + std::to_string(result) + "\n");
+                  << std::string(" gpu: " + to_string(tile[i]) +
+                                 " cpu: " + to_string(result) + "\n");
         break;
       }
     }
@@ -308,7 +333,7 @@ int try_main(int argc, char **argv) {
                  "blocked by Bm, Bn, and Bk, respectively"
               << std::endl
               << "Usage: " << argv[0]
-              << " Nm Bm Nn Bn Nk Bk [# of repetitions = 5] [real = double] "
+              << " Nm Bm Nn Bn Nk Bk [# of repetitions = 5] [scalar = double] "
                  "[storage type = cuda_um_btas_varray]\n";
     return 0;
   }
@@ -337,13 +362,13 @@ int try_main(int argc, char **argv) {
     return 1;
   }
 
-  const auto real_type_str =
-      (argc >= 9) ? std::string(argv[8]) : std::string("double");
-
-  if (real_type_str != "float" && real_type_str != "double") {
-    std::cerr << "Error: invalid real type: " << real_type_str
-              << "\n Valid option includes: float or "
-                 "double. \n";
+  const std::string scalar_type_str = (argc >= 9 ? argv[8] : "double");
+  if (scalar_type_str != "double" && scalar_type_str != "float" &&
+      scalar_type_str != "zdouble" && scalar_type_str != "zfloat") {
+    std::cerr << "Error: invalid real type " << scalar_type_str << ".\n";
+    std::cerr << "       valid real types are \"double\", \"float\", "
+                 "\"zdouble\", and \"zfloat\".\n";
+    return 1;
   }
 
   const auto storage_type =
@@ -357,7 +382,7 @@ int try_main(int argc, char **argv) {
                  "cuda_um_btas_varray or cuda_um_thrust_vector "
                  "or cpu_cuda_vector. \n";
   }
-  std::cout << "Storage type: " << storage_type << "<" << real_type_str << ">"
+  std::cout << "Storage type: " << storage_type << "<" << scalar_type_str << ">"
             << std::endl;
   //  auto to_bool = [](const std::string &str) {
   //    return (str == "true" || str == "True" || str == "TRUE" || str == "1" ||
@@ -424,7 +449,7 @@ int try_main(int argc, char **argv) {
   }  // print device properties
 
   //  if (storage_type == "cpu_cuda_vector") {
-  //    if (real_type_str == "double")
+  //    if (scalar_type_str == "double")
   //      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn,
   //      Bn,
   //                                                        Nk, Bk, nrepeat);
@@ -434,15 +459,24 @@ int try_main(int argc, char **argv) {
   //                                                       Nk, Bk, nrepeat);
   //  } else if (storage_type == "cuda_um_btas_varray") {
   if (storage_type == "cuda_um_btas_varray") {
-    if (real_type_str == "double")
+    if (scalar_type_str == "double")
       do_main_body<TiledArray::cuda_um_btas_varray<double>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-    else
+    else if (scalar_type_str == "float")
       do_main_body<TiledArray::cuda_um_btas_varray<float>>(world, Nm, Bm, Nn,
                                                            Bn, Nk, Bk, nrepeat);
+    else if (scalar_type_str == "zdouble")
+      do_main_body<TiledArray::cuda_um_btas_varray<std::complex<double>>>(
+          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+    else if (scalar_type_str == "zfloat")
+      do_main_body<TiledArray::cuda_um_btas_varray<std::complex<float>>>(
+          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+    else {
+      abort();  // unreachable
+    }
   }
   // else if (storage_type == "cuda_um_thrust_vector") {
-  //    if (real_type_str == "double")
+  //    if (scalar_type_str == "double")
   //      do_main_body<TiledArray::cuda_um_thrust_vector<double>>(
   //          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
   //    else

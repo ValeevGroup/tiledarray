@@ -28,6 +28,8 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
+#include <complex>
+
 namespace TiledArray {
 
 // foreach(i) result *= arg[i]
@@ -40,6 +42,14 @@ float product_cuda_kernel(const float *arg, std::size_t n, cudaStream_t stream,
 double product_cuda_kernel(const double *arg, std::size_t n,
                            cudaStream_t stream, int device_id);
 
+std::complex<float> product_cuda_kernel(const std::complex<float> *arg,
+                                        std::size_t n, cudaStream_t stream,
+                                        int device_id);
+
+std::complex<double> product_cuda_kernel(const std::complex<double> *arg,
+                                         std::size_t n, cudaStream_t stream,
+                                         int device_id);
+
 // foreach(i) result += arg[i]
 int sum_cuda_kernel(const int *arg, std::size_t n, cudaStream_t stream,
                     int device_id);
@@ -49,6 +59,14 @@ float sum_cuda_kernel(const float *arg, std::size_t n, cudaStream_t stream,
 
 double sum_cuda_kernel(const double *arg, std::size_t n, cudaStream_t stream,
                        int device_id);
+
+std::complex<float> sum_cuda_kernel(const std::complex<float> *arg,
+                                    std::size_t n, cudaStream_t stream,
+                                    int device_id);
+
+std::complex<double> sum_cuda_kernel(const std::complex<double> *arg,
+                                     std::size_t n, cudaStream_t stream,
+                                     int device_id);
 
 // foreach(i) result = max(result, arg[i])
 int max_cuda_kernel(const int *arg, std::size_t n, cudaStream_t stream,
@@ -80,6 +98,14 @@ float absmax_cuda_kernel(const float *arg, std::size_t n, cudaStream_t stream,
 double absmax_cuda_kernel(const double *arg, std::size_t n, cudaStream_t stream,
                           int device_id);
 
+std::complex<float> absmax_cuda_kernel(const std::complex<float> *arg,
+                                       std::size_t n, cudaStream_t stream,
+                                       int device_id);
+
+std::complex<double> absmax_cuda_kernel(const std::complex<double> *arg,
+                                        std::size_t n, cudaStream_t stream,
+                                        int device_id);
+
 // foreach(i) result = min(result, abs(arg[i]))
 int absmin_cuda_kernel(const int *arg, std::size_t n, cudaStream_t stream,
                        int device_id);
@@ -89,6 +115,14 @@ float absmin_cuda_kernel(const float *arg, std::size_t n, cudaStream_t stream,
 
 double absmin_cuda_kernel(const double *arg, std::size_t n, cudaStream_t stream,
                           int device_id);
+
+std::complex<float> absmin_cuda_kernel(const std::complex<float> *arg,
+                                       std::size_t n, cudaStream_t stream,
+                                       int device_id);
+
+std::complex<double> absmin_cuda_kernel(const std::complex<double> *arg,
+                                        std::size_t n, cudaStream_t stream,
+                                        int device_id);
 
 }  // namespace TiledArray
 

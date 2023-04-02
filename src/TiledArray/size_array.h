@@ -42,6 +42,15 @@ class SizeArray {
   T* first_ = nullptr;  ///< First element of the array
   T* last_ = nullptr;   ///< Last element of the array
 
+  // can compare to any sized range
+  template <typename U, typename SizedRange>
+  friend std::enable_if_t<
+      is_sized_range_v<std::remove_reference_t<SizedRange>> &&
+          !std::is_same_v<SizeArray<U>, std::remove_reference_t<SizedRange>> &&
+          !std::is_base_of_v<SizeArray<U>, std::remove_reference_t<SizedRange>>,
+      bool>
+  operator==(const SizeArray<U>&, SizedRange&&);
+
  public:
   // type definitions
   typedef T value_type;
@@ -435,6 +444,19 @@ class SizeArray {
   }
 
 };  // class SizeArray
+
+template <typename U, typename SizedRange>
+std::enable_if_t<
+    is_sized_range_v<std::remove_reference_t<SizedRange>> &&
+        !std::is_same_v<SizeArray<U>, std::remove_reference_t<SizedRange>> &&
+        !std::is_base_of_v<SizeArray<U>, std::remove_reference_t<SizedRange>>,
+    bool>
+operator==(const SizeArray<U>& idx1, SizedRange&& idx2) {
+  if (idx1.size() == idx2.size())
+    return std::equal(idx1.begin(), idx1.end(), idx2.begin());
+  else
+    return false;
+}
 
 template <typename T>
 inline std::vector<T> operator*(const Permutation& perm,

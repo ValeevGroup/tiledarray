@@ -5,6 +5,13 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
+# N.B. need relaxed constexpr for std::complex
+# see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#constexpr-functions%5B/url%5D:
+if (DEFINED CMAKE_CUDA_FLAGS)
+  set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr ${CMAKE_CUDA_FLAGS}")
+else()
+  set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
+endif()
 enable_language(CUDA)
 
 set(CUDA_FOUND TRUE)
