@@ -76,6 +76,13 @@ BOOST_AUTO_TEST_CASE(constructors) {
   for (ArrayN::const_iterator it = ad.begin(); it != ad.end(); ++it)
     BOOST_CHECK(!it->probe());
 
+  // Construct a dense array in default world
+  {
+    BOOST_REQUIRE_NO_THROW(ArrayN ad(tr));
+    ArrayN ad(tr);
+    BOOST_CHECK_EQUAL(ad.world().id(), get_default_world().id());
+  }
+
   // Construct a sparse array
   BOOST_REQUIRE_NO_THROW(
       SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr)));
@@ -87,6 +94,14 @@ BOOST_AUTO_TEST_CASE(constructors) {
 
   // now fill it
   BOOST_REQUIRE_NO_THROW(as.fill(1));
+
+  // Construct a sparse array in default world
+  {
+    BOOST_REQUIRE_NO_THROW(
+        SpArrayN as(tr, TiledArray::SparseShape<float>(shape_tensor, tr)));
+    SpArrayN as(tr, TiledArray::SparseShape<float>(shape_tensor, tr));
+    BOOST_CHECK_EQUAL(as.world().id(), get_default_world().id());
+  }
 
   // Construct a sparse array from another sparse array
   {
@@ -107,6 +122,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
         ++itr;
       }
     }
+
+    // now with default world
+    {
+      TArray<double> a_vector(il);
+      BOOST_CHECK_EQUAL(a_vector.world().id(), get_default_world().id());
+    }
   }
 
   // Create a matrix with an initializer list
@@ -121,6 +142,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
           ++itr;
         }
       }
+    }
+
+    // now with default world
+    {
+      TArray<double> a_matrix(il);
+      BOOST_CHECK_EQUAL(a_matrix.world().id(), get_default_world().id());
     }
   }
 
@@ -143,6 +170,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
           }
         }
       }
+    }
+
+    // now with default world
+    {
+      TArray<double> a_tensor3(il);
+      BOOST_CHECK_EQUAL(a_tensor3.world().id(), get_default_world().id());
     }
   }
 
@@ -167,6 +200,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
           }
         }
       }
+    }
+
+    // now with default world
+    {
+      TArray<double> a_tensor4(il);
+      BOOST_CHECK_EQUAL(a_tensor4.world().id(), get_default_world().id());
     }
   }
 
@@ -193,6 +232,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
           }
         }
       }
+    }
+
+    // now with default world
+    {
+      TArray<double> a_tensor5(il);
+      BOOST_CHECK_EQUAL(a_tensor5.world().id(), get_default_world().id());
     }
   }
 
@@ -222,6 +267,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
         }
       }
     }
+
+    // now with default world
+    {
+      TArray<double> a_tensor6(il);
+      BOOST_CHECK_EQUAL(a_tensor6.world().id(), get_default_world().id());
+    }
   }
 }
 
@@ -232,6 +283,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 3}};
     TArray<double> a_vector(world, tr, il);
     BOOST_CHECK_EQUAL(a_vector.size(), 2);
+
+    // now with default world
+    {
+      TArray<double> a_vector(tr, il);
+      BOOST_CHECK_EQUAL(a_vector.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -239,6 +296,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 2}, {0, 1, 3}};
     TArray<double> a_matrix(world, tr, il);
     BOOST_CHECK_EQUAL(a_matrix.size(), 4);
+
+    // now with default world
+    {
+      TArray<double> a_matrix(tr, il);
+      BOOST_CHECK_EQUAL(a_matrix.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -247,6 +310,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 8);
+
+    // now with default world
+    {
+      TArray<double> a_tensor(tr, il);
+      BOOST_CHECK_EQUAL(a_tensor.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -257,6 +326,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 16);
+
+    // now with default world
+    {
+      TArray<double> a_tensor(tr, il);
+      BOOST_CHECK_EQUAL(a_tensor.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -269,6 +344,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 32);
+
+    // now with default world
+    {
+      TArray<double> a_tensor(tr, il);
+      BOOST_CHECK_EQUAL(a_tensor.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -286,6 +367,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
                   {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 64);
+
+    // now with default world
+    {
+      TArray<double> a_tensor(tr, il);
+      BOOST_CHECK_EQUAL(a_tensor.world().id(), get_default_world().id());
+    }
   }
 }
 
