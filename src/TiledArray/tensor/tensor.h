@@ -163,7 +163,7 @@ class Tensor {
 #endif
       allocator.deallocate(ptr, size);
     };
-    this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
+    this->data_ = std::shared_ptr<value_type[]>(ptr, std::move(deleter));
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
@@ -201,7 +201,7 @@ class Tensor {
 #endif
       allocator.deallocate(ptr, size);
     };
-    this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
+    this->data_ = std::shared_ptr<value_type[]>(ptr, std::move(deleter));
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
@@ -216,7 +216,7 @@ class Tensor {
   /// Number of `range_`-sized blocks in `data_`
   /// \note this is not used for (in)equality comparison
   size_t batch_size_ = 1;
-  std::shared_ptr<value_type> data_;  ///< Shared pointer to the data
+  std::shared_ptr<value_type[]> data_;  ///< Shared pointer to the data
 
  public:
   /// constructs an empty (null) Tensor
@@ -491,13 +491,27 @@ class Tensor {
   /// \param batch_size The batch size
   /// \param data shared pointer to the data
   Tensor(const range_type& range, size_t batch_size,
-         std::shared_ptr<value_type> data)
-      : range_(range), batch_size_(batch_size), data_(data) {
+         std::shared_ptr<value_type[]> data)
+      : range_(range), batch_size_(batch_size), data_(std::move(data)) {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
           this, make_string("TA::Tensor(range, batch_size, data)::data_.get()=",
                             data_.get()));
+    }
+#endif
+  }
+
+  /// Construct a tensor with a range equal to \c range using existing data
+  /// assuming unit batch size \param range The range of the tensor \param data
+  /// shared pointer to the data
+  Tensor(const range_type& range, std::shared_ptr<value_type[]> data)
+      : range_(range), batch_size_(1), data_(std::move(data)) {
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->insert(
+          this,
+          make_string("TA::Tensor(range, data)::data_.get()=", data_.get()));
     }
 #endif
   }
@@ -513,8 +527,8 @@ class Tensor {
   /// the batch
   Tensor batch(size_t idx) const {
     TA_ASSERT(idx < this->batch_size());
-    std::shared_ptr<value_type> data(this->data_,
-                                     this->data_.get() + idx * this->size());
+    std::shared_ptr<value_type[]> data(this->data_,
+                                       this->data_.get() + idx * this->size());
     return Tensor(this->range(), 1, data);
   }
 
@@ -962,12 +976,14 @@ class Tensor {
   /// Read-only shared_ptr to the data
 
   /// \return A const shared_ptr to the tensor data
-  std::shared_ptr<const value_type> data_shared() const { return this->data_; }
+  std::shared_ptr<const value_type[]> data_shared() const {
+    return this->data_;
+  }
 
   /// Mutable shared_ptr to the data
 
   /// \return A mutable shared_ptr to the tensor data
-  std::shared_ptr<value_type> data_shared() { return this->data_; }
+  std::shared_ptr<value_type[]> data_shared() { return this->data_; }
 
   /// Test if the tensor is empty
 
