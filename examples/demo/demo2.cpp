@@ -56,6 +56,10 @@ int main(int argc, char* argv[]) {
   assert((ρ.upbound() == Index{11, 9}));
   // extent of $\mathbb{Z}_{1,11} \otimes \mathbb{Z}_{-1,9}$
   assert((ρ.extent() == Index{10, 10}));
+  // 1st dimension of ρ is $\mathbb{Z}_{1,11}$
+  assert((ρ.dim(0) == Range1{1, 11}));
+  // 2nd dimension of ρ is $\mathbb{Z}_{-1,9}$
+  assert((ρ.dim(1) == Range1{-1, 9}));
   // the number of elements in $\mathbb{Z}_{1,11} \otimes \mathbb{Z}_{-1,9}$
   assert(ρ.volume() == 100);
   // row-major order
@@ -99,6 +103,28 @@ int main(int argc, char* argv[]) {
   // \mathbb{Z}_{-1,5}$
   auto tile_0_0 = τ.tile({0, 0});
   assert((tile_0_0 == Range{{1, 5}, {-1, 5}}));
+
+  // clang-format off
+
+  // 2-d array of $\code{double}$ 0s, indexed by ρ
+  Tensor<double> t0(ρ, 0.);
+  // same as $\code{t0}$ but filled with ordinals
+  TensorD t1(ρ, [&ρ](auto&& idx) {
+    return ρ.ordinal(idx);
+  });
+  // print out "0 1 .. 99 "
+  for (auto&& v : t1) cout << v << " ";
+  // same as $\code{t0}$, using external buffer
+  shared_ptr<double[]> v(new double[ρ.volume()]);
+  TensorD t2(ρ, v);
+  v[0] = 1.;
+  assert(t2(1, -1) == 1.);
+  // Tensor has shallow-copy semantics
+  auto t3 = t0;
+  t0(1, -1) = 2.;
+  assert(t3(1, -1) == 2.);
+
+  // clang-format on
 
   // default instance of $\code{DistArray}$ is a dense array of $\code{double}$s
   DistArray array0(world, τ);
