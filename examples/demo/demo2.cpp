@@ -126,12 +126,25 @@ int main(int argc, char* argv[]) {
 
   // clang-format on
 
-  // default instance of $\code{DistArray}$ is a dense array of $\code{double}$s
-  DistArray array0(world, τ);
-  array0.fill(1.0);  // fill $\code{array0}$ with 1's
+  // default instance of $\code{DistArray}$ is
+  // a {\em dense} array of $\code{double}$s
+  // NB can use TArrayD instead of DistArray<>
+  DistArray<> a0(τ);
+  a0.fill(1.);  // fill $\code{da}$ with 1s
+  // every tile exists in a dense array
+  assert(!a0.is_zero({0, 0}));
+  // grab a ${\em future}$ to the {0,0} tile
+  auto t00 = a0.find({0, 0});
 
-  // grab a tile NB this returns a ${\bf future}$ to a tile; see Section 3.2.
-  auto t00 = array0.find({0, 0});
+  // shape of a {\em sparse} array over τ
+  // tiles with even ordinals ({0,0}, {0,2}, {1,1}) are zero
+  SparseShape s(TensorF(τ.tiles_range(), {0, 1, 0, 1, 0, 1}), τ);
+  // a sparse array of $\code{double}$s
+  // TSpArrayX $\equiv$ DistArray<TensorX, SparsePolicy>
+  TSpArrayD a1(τ, s);
+  // only some tiles are nonzero in sparse array
+  assert(a1.is_zero({0, 0}));
+  assert(!a1.is_zero({0, 1}));
 
 #endif  // defined(TILEDARRAY_CXX_COMPILER_SUPPORT_UNICODE_VARIABLES)
 
