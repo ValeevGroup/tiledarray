@@ -421,7 +421,12 @@ BOOST_AUTO_TEST_CASE(tensor_to_array) {
     decltype(tensor) tensor_copy;
     if (GlobalFixture::world->rank() == 1) tensor_copy = tensor;
     GlobalFixture::world->gop.broadcast_serializable(tensor_copy, 1);
+// Eigen::TensorBase::operator== is ambiguously defined in C++20
+#if __cplusplus >= 202002L
+    Eigen::Tensor<bool, 0> eq = ((tensor - tensor_copy).abs() == 0).all();
+#else
     Eigen::Tensor<bool, 0> eq = (tensor == tensor_copy).all();
+#endif
     BOOST_CHECK(eq() == true);
   }
 

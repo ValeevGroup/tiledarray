@@ -764,7 +764,12 @@ bool isApprox(const Eigen::TensorBase<TA, Eigen::ReadOnlyAccessors>& A,
   Eigen::Tensor<bool, 0> r;
   if constexpr (std::is_integral_v<typename TA::Scalar> &&
                 std::is_integral_v<typename TB::Scalar>) {
+// Eigen::TensorBase::operator== is ambiguously defined in C++20
+#if __cplusplus >= 202002L
+    r = ((derived(A) - derived(B)).abs() == 0).all();
+#else
     r = (derived(A) == derived(B)).all();
+#endif
   } else {  // soft floating-point comparison
     r = ((derived(A) - derived(B)).abs() <= abs_comparison_threshold).all();
   }
