@@ -107,12 +107,14 @@ inline TR tensor_op(Op&& op, const Permutation& perm, const T1& tensor1,
 }
 
 /// provides transform functionality to class \p T, useful for nonintrusive
-/// extension of a tensor type \p T to be usable as element type \p T in \c
-/// Tensor<T> \tparam T a tensor type \note The default implementation
+/// extension of a tensor type \p T to be usable as element type \p T in
+/// \c Tensor<T>
+/// \tparam T a tensor type
+/// \note The default implementation
 /// constructs T, then computes it by coiterating over elements of the argument
 /// tensors and transforming with the transform \c Op .
-///       This should be specialized for classes like TiledArray::Tensor that
-///       already include the appropriate transform constructors already
+/// This should be specialized for classes like TiledArray::Tensor that
+/// already include the appropriate transform constructors already
 template <typename T>
 struct transform {
   /// creates a result tensor in which element \c i is obtained by \c
@@ -283,29 +285,23 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
 /// \endcode
 /// The expected signature of the output
 /// operations is:
-/// \code void op(TR::value_type::value_type*, const
+/// \code
+/// void op(TR::value_type::value_type*, const
 /// TR::value_type::value_type)
 /// \endcode
-/// \tparam InputOp The input operation
-/// type
+/// \tparam InputOp The input operation type
 /// \tparam OutputOp The output operation type
-/// \tparam TR The result tensor
-/// type
+/// \tparam TR The result tensor type
 /// \tparam T1 The first argument tensor type
-/// \tparam Ts The remaining
-/// argument tensor types
+/// \tparam Ts The remaining argument tensor types
 /// \param[in] input_op The operation that is used to
 /// generate the output value from the input arguments
-/// \param[in] output_op The
-/// operation that is used to set the value of the result tensor given the
-/// element pointer and the result value
-/// \param[in] perm The permutation applied
-/// to the argument tensors
+/// \param[in] output_op The operation that is used to set the value
+/// of the result tensor given the element pointer and the result value
+/// \param[in] perm The permutation applied to the argument tensors
 /// \param[in,out] result The result tensor
-/// \param[in]
-/// tensor1 The first argument tensor
-/// \param[in] tensors The remaining argument
-/// tensors
+/// \param[in] tensor1 The first argument tensor
+/// \param[in] tensors The remaining argument tensors
 template <typename InputOp, typename OutputOp, typename TR, typename T1,
           typename... Ts,
           typename std::enable_if<
@@ -407,8 +403,9 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
 /// Initialize tensor with contiguous tensor arguments
 
 /// This function initializes the \c i -th element of \c result with the result
-/// of \c op(tensors[i]...) \pre The memory of \c tensor1 has been allocated but
-/// not initialized. \tparam Op The element initialization operation type
+/// of \c op(tensors[i]...)
+/// \pre The memory of \c tensor1 has been allocated but not initialized.
+/// \tparam Op The element initialization operation type
 /// \tparam TR The result tensor type
 /// \tparam Ts The argument tensor types
 /// \param[in] op The result tensor element initialization operation
@@ -437,8 +434,7 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 
 /// This function initializes the \c i -th element of \c result with the result
 /// of \c op(tensors[i]...)
-/// \pre The memory of \c tensor1 has been allocated but
-/// not initialized.
+/// \pre The memory of \c tensor1 has been allocated but not initialized.
 /// \tparam Op The element initialization operation type
 /// \tparam TR The result tensor type
 /// \tparam Ts The argument tensor types
@@ -467,21 +463,15 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// of \c op(tensor1[i], tensors[i]...)
 /// \pre The memory of \c result has been
 /// allocated but not initialized.
-/// \tparam Op The element initialization
-/// operation type
+/// \tparam Op The element initialization operation type
 /// \tparam TR The result tensor type
-/// \tparam T1 The first
-/// argument tensor type
+/// \tparam T1 The first argument tensor type
 /// \tparam Ts The argument tensor types
-/// \param[in] op The
-/// result tensor element initialization operation
-/// \param[in] perm The
-/// permutation that will be applied to tensor2
-/// \param[out] result The result
-/// tensor
+/// \param[in] op The result tensor element initialization operation
+/// \param[in] perm The permutation that will be applied to tensor2
+/// \param[out] result The result tensor
 /// \param[in] tensor1 The first argument tensor
-/// \param[in] tensors The
-/// argument tensors
+/// \param[in] tensors The argument tensors
 template <
     typename Op, typename TR, typename T1, typename... Ts,
     typename std::enable_if<is_tensor<TR, T1, Ts...>::value>::type* = nullptr>
@@ -505,8 +495,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 
 /// This function initializes the \c i -th element of \c result with the result
 /// of \c op(tensor1[i], tensors[i]...)
-/// \pre The memory of \c result has been
-/// allocated but not initialized.
+/// \pre The memory of \c result has been allocated but not initialized.
 /// \tparam Op The element initialization operation type
 /// \tparam Perm A permutation type
 /// \tparam TR The result tensor type
@@ -546,18 +535,13 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 
 /// This function initializes the \c i -th element of \c result with the result
 /// of \c op(tensor1[i], tensors[i]...)
-/// \pre The memory of \c tensor1 has been
-/// allocated but not initialized.
-/// \tparam Op The element initialization
-/// operation type
+/// \pre The memory of \c tensor1 has been allocated but not initialized.
+/// \tparam Op The element initialization operation type
 /// \tparam T1 The result tensor type
-/// \tparam Ts The argument
-/// tensor types
-/// \param[in] op The result tensor element initialization
-/// operation
+/// \tparam Ts The argument tensor types
+/// \param[in] op The result tensor element initialization operation
 /// \param[out] result The result tensor
-/// \param[in] tensor1 The first
-/// argument tensor
+/// \param[in] tensor1 The first argument tensor
 /// \param[in] tensors The argument tensors
 template <
     typename Op, typename TR, typename T1, typename... Ts,
@@ -591,13 +575,10 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
 /// of \c op(tensor1[i],tensors[i]...)
 /// \pre The memory of \c tensor1 has been
 /// allocated but not initialized.
-/// \tparam Op The element initialization
-/// operation type
+/// \tparam Op The element initialization operation type
 /// \tparam T1 The result tensor type
-/// \tparam Ts The argument
-/// tensor types
-/// \param[in] op The result tensor element initialization
-/// operation
+/// \tparam Ts The argument tensor types
+/// \param[in] op The result tensor element initialization operation
 /// \param[out] result The result tensor
 /// \param[in] tensor1 The first
 /// argument tensor
@@ -639,12 +620,11 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
 
 /// Perform an element-wise reduction of the tensors by
 /// executing <tt>join_op(result, reduce_op(result, &tensor1[i],
-/// &tensors[i]...))</tt> for each \c i in the index range of \c tensor1 . \c
-/// result is initialized to \c identity . If HAVE_INTEL_TBB is defined, the
-/// reduction will be executed in an undefined order, otherwise will execute in
-/// the order of increasing \c i .
-/// \tparam ReduceOp The element-wise reduction
-/// operation type
+/// &tensors[i]...))</tt> for each \c i in the index range of \c tensor1 .
+/// \c result is initialized to \c identity . If `HAVE_INTEL_TBB` is defined,
+/// the reduction will be executed in an undefined order, otherwise will
+/// execute in the order of increasing \c i .
+/// \tparam ReduceOp The element-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Identity A type that can be used as an argument to ReduceOp
 /// \tparam T1 The first argument tensor type
@@ -708,10 +688,10 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
 
 /// Perform reduction of the tensor-of-tensors' elements by
 /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for
-/// each \c i in the index range of \c tensor1 . \c result is initialized to \c
-/// identity . This will execute serially, in the order of increasing \c i (each
-/// element's reduction can however be executed in parallel, depending on the
-/// element type).
+/// each \c i in the index range of \c tensor1 . \c result is initialized to
+/// \c identity . This will execute serially, in the order of increasing
+/// \c i (each element's reduction can however be executed in parallel,
+/// depending on the element type).
 /// \tparam ReduceOp The tensor-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
@@ -751,10 +731,10 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
 
 /// Perform an element-wise reduction of the tensors by
 /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for
-/// each \c i in the index range of \c tensor1 . \c result is initialized to \c
-/// identity . This will execute serially, in the order of increasing \c i (each
-/// element-wise reduction can however be executed in parallel, depending on the
-/// element type).
+/// each \c i in the index range of \c tensor1 . \c result is initialized to
+/// \c identity . This will execute serially, in the order of increasing
+/// \c i (each element-wise reduction can however be executed in parallel,
+/// depending on the element type).
 /// \tparam ReduceOp The element-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
@@ -797,10 +777,11 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
 
 /// Perform an element-wise reduction of the tensors by
 /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for
-/// each \c i in the index range of \c tensor1 . \c result is initialized to \c
-/// identity . This will execute serially, in the order of increasing \c i (each
-/// element-wise reduction can however be executed in parallel, depending on the
-/// element type). \tparam ReduceOp The element-wise reduction operation type
+/// each \c i in the index range of \c tensor1 . \c result is initialized to
+/// \c identity . This will execute serially, in the order of increasing
+/// \c i (each element-wise reduction can however be executed in parallel,
+/// depending on the element type).
+/// \tparam ReduceOp The element-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
 /// \tparam T1 The first argument tensor type

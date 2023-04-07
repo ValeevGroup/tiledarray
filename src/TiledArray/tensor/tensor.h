@@ -308,9 +308,10 @@ class Tensor {
 
   /// Construct a tensor with a fill op that takes an element index
 
-  /// \tparam ElementIndexOp callable of signature `value_type(const
-  /// Range::index_type&)` \param range An array with the size of of each
-  /// dimension \param element_idx_op a callable of type ElementIndexOp
+  /// \tparam ElementIndexOp callable of signature
+  /// `value_type(const Range::index_type&)`
+  /// \param range An array with the size of of each dimension
+  /// \param element_idx_op a callable of type ElementIndexOp
   template <typename ElementIndexOp,
             typename = std::enable_if_t<std::is_invocable_r_v<
                 value_type, ElementIndexOp, const Range::index_type&>>>
@@ -1494,7 +1495,7 @@ class Tensor {
 
   // Addition operations
 
-  /// Add this and \c other to construct a new tensors
+  /// Add this and \c other to construct a new tensor
 
   /// \tparam Right The right-hand tensor type
   /// \param right The tensor that will be added to this tensor
