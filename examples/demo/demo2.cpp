@@ -114,15 +114,19 @@ int main(int argc, char* argv[]) {
   });
   // print out "0 1 .. 99 "
   for (auto&& v : t1) cout << v << " ";
-  // same as $\code{t0}$, using external buffer
+  // same as $\code{t0}$, using existing buffer
   shared_ptr<double[]> v(new double[ρ.volume()]);
-  TensorD t2(ρ, v);
+  TensorD t2(ρ, v); // t2 and v co-manage buffer lifetime
   v[0] = 1.;
   assert(t2(1, -1) == 1.);
-  // Tensor has shallow-copy semantics
-  auto t3 = t0;
-  t0(1, -1) = 2.;
+  // same as $\code{t0}$, using existing (unmanaged) buffer
+  auto t3 = make_map(v.get(), ρ);
+  v[0] = 2.;
   assert(t3(1, -1) == 2.);
+  // Tensor has shallow-copy semantics
+  auto t4 = t0;
+  t0(1, -1) = 3.;
+  assert(t4(1, -1) == 3.);
 
   // clang-format on
 
