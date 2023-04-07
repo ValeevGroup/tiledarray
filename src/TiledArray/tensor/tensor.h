@@ -1503,12 +1503,25 @@ class Tensor {
   /// \c this and \c other
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  Tensor add(const Right& right) const {
+  Tensor add(const Right& right) const& {
     return binary(
         right,
         [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
           return l + r;
         });
+  }
+
+  /// Add this and \c other to construct a new tensor
+
+  /// \tparam Right The right-hand tensor type
+  /// \param right The tensor that will be added to this tensor
+  /// \return A new tensor where the elements are the sum of the elements of
+  /// \c this and \c other
+  template <typename Right,
+            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+  Tensor add(const Right& right) && {
+    add_to(right);
+    return std::move(*this);
   }
 
   /// Add this and \c other to construct a new, permuted tensor

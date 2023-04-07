@@ -39,10 +39,21 @@ namespace TiledArray {
 /// \param left The left-hand argument to be added
 /// \param right The right-hand argument to be added
 /// \return A tile that is equal to <tt>(left + right)</tt>
-template <typename Left, typename Right>
-inline auto add(const Left& left, const Right& right)
-    -> decltype(left.add(right)) {
-  return left.add(right);
+template <typename Left, typename Right,
+          typename = std::enable_if_t<
+              detail::has_member_function_add_anyreturn_v<Left&&, Right&&> ||
+              detail::has_member_function_add_anyreturn_v<Right&&, Left&&>>>
+inline decltype(auto) add(Left&& left, Right&& right) {
+  constexpr auto left_right =
+      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&> &&
+       detail::has_member_function_add_anyreturn_v<Right&&, Left&&> &&
+       !std::is_reference_v<Right> && std::is_reference_v<Left>) ||
+      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&> &&
+       !detail::has_member_function_add_anyreturn_v<Right&&, Left&&>);
+  if constexpr (left_right)
+    return std::forward<Left>(left).add(std::forward<Right>(right));
+  else
+    return std::forward<Right>(right).add(std::forward<Left>(left));
 }
 
 /// Add and scale tile arguments
@@ -56,9 +67,26 @@ inline auto add(const Left& left, const Right& right)
 /// \return A tile that is equal to <tt>(left + right) * factor</tt>
 template <
     typename Left, typename Right, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline auto add(const Left& left, const Right& right, const Scalar factor) {
-  return left.add(right, factor);
+    typename = std::enable_if_t<detail::is_numeric_v<Scalar> &&
+                                (detail::has_member_function_add_anyreturn_v<
+                                     Left&&, Right&&, const Scalar> ||
+                                 detail::has_member_function_add_anyreturn_v<
+                                     Right&&, Left&&, const Scalar>)>>
+inline decltype(auto) add(Left&& left, Right&& right, const Scalar factor) {
+  constexpr auto left_right =
+      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
+                                                   const Scalar> &&
+       detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+                                                   const Scalar> &&
+       !std::is_reference_v<Right> && std::is_reference_v<Left>) ||
+      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
+                                                   const Scalar> &&
+       !detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+                                                    const Scalar>);
+  if constexpr (left_right)
+    return std::forward<Left>(left).add(std::forward<Right>(right), factor);
+  else
+    return std::forward<Right>(right).add(std::forward<Left>(left), factor);
 }
 
 /// Add and permute tile arguments
@@ -72,10 +100,25 @@ inline auto add(const Left& left, const Right& right, const Scalar factor) {
 template <
     typename Left, typename Right, typename Perm,
     typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm> &&
-                                detail::has_member_function_add_anyreturn_v<
-                                    const Left, const Right&, const Perm&>>>
-inline auto add(const Left& left, const Right& right, const Perm& perm) {
-  return left.add(right, perm);
+                                (detail::has_member_function_add_anyreturn_v<
+                                     Left&&, Right&&, const Perm&> ||
+                                 detail::has_member_function_add_anyreturn_v<
+                                     Right&&, Left&&, const Perm&>)>>
+inline decltype(auto) add(Left&& left, Right&& right, const Perm& perm) {
+  constexpr auto left_right =
+      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
+                                                   const Perm&> &&
+       detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+                                                   const Perm&> &&
+       !std::is_reference_v<Right> && std::is_reference_v<Left>) ||
+      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
+                                                   const Perm&> &&
+       !detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+                                                    const Perm&>);
+  if constexpr (left_right)
+    return std::forward<Left>(left).add(std::forward<Right>(right), perm);
+  else
+    return std::forward<Right>(right).add(std::forward<Left>(left), perm);
 }
 
 /// Add, scale, and permute tile arguments
@@ -88,13 +131,31 @@ inline auto add(const Left& left, const Right& right, const Perm& perm) {
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
-template <
-    typename Left, typename Right, typename Scalar, typename Perm,
-    typename std::enable_if<detail::is_numeric_v<Scalar> &&
-                            detail::is_permutation_v<Perm>>::type* = nullptr>
-inline auto add(const Left& left, const Right& right, const Scalar factor,
-                const Perm& perm) {
-  return left.add(right, factor, perm);
+template <typename Left, typename Right, typename Scalar, typename Perm,
+          typename = std::enable_if_t<
+              detail::is_numeric_v<Scalar> && detail::is_permutation_v<Perm> &&
+              (detail::has_member_function_add_anyreturn_v<
+                   Left&&, Right&&, const Scalar, const Perm&> ||
+               detail::has_member_function_add_anyreturn_v<
+                   Right&&, Left&&, const Scalar, const Perm&>)>>
+inline decltype(auto) add(Left&& left, Right&& right, const Scalar factor,
+                          const Perm& perm) {
+  constexpr auto left_right =
+      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
+                                                   const Scalar, const Perm&> &&
+       detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+                                                   const Scalar, const Perm&> &&
+       !std::is_reference_v<Right> && std::is_reference_v<Left>) ||
+      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
+                                                   const Scalar, const Perm&> &&
+       !detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+                                                    const Scalar, const Perm&>);
+  if constexpr (left_right)
+    return std::forward<Left>(left).add(std::forward<Right>(right), factor,
+                                        perm);
+  else
+    return std::forward<Right>(right).add(std::forward<Left>(left), factor,
+                                          perm);
 }
 
 /// Add to the result tile
@@ -104,7 +165,10 @@ inline auto add(const Left& left, const Right& right, const Scalar factor,
 /// \param result The result tile
 /// \param arg The argument to be added to the result
 /// \return A tile that is equal to <tt>result[i] += arg[i]</tt>
-template <typename Result, typename Arg>
+template <
+    typename Result, typename Arg,
+    typename = std::enable_if_t<
+        detail::has_member_function_add_to_anyreturn_v<Result&, const Arg&>>>
 inline Result& add_to(Result& result, const Arg& arg) {
   return result.add_to(arg);
 }
@@ -118,9 +182,11 @@ inline Result& add_to(Result& result, const Arg& arg) {
 /// \param arg The argument to be added to \c result
 /// \param factor The scaling factor
 /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
-template <
-    typename Result, typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+template <typename Result, typename Arg, typename Scalar,
+          typename std::enable_if<
+              detail::is_numeric_v<Scalar> &&
+              detail::has_member_function_add_to_anyreturn_v<
+                  Result&, const Arg&, const Scalar>>::type* = nullptr>
 inline Result& add_to(Result& result, const Arg& arg, const Scalar factor) {
   return result.add_to(arg, factor);
 }

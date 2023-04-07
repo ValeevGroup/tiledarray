@@ -41,11 +41,13 @@ namespace TiledArray {
 /// \param right The right-hand tensor argument
 /// \return A tensor where element \c i is equal to <tt>left[i] + right[i]</tt>
 template <typename T1, typename T2,
-          typename std::enable_if<
-              detail::is_tensor<T1, T2>::value ||
-              detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
-inline auto operator+(const T1& left, const T2& right) {
-  return add(left, right);
+          typename = std::enable_if_t<
+              detail::is_tensor<detail::remove_cvr_t<T1>,
+                                detail::remove_cvr_t<T2>>::value ||
+              detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
+                                          detail::remove_cvr_t<T2>>::value>>
+inline decltype(auto) operator+(T1&& left, T2&& right) {
+  return add(std::forward<T1>(left), std::forward<T2>(right));
 }
 
 /// Tensor minus operator

@@ -122,10 +122,36 @@ class EigenSparseTile {
   matrix_type& matrix() { return std::get<0>(*impl_); }
 
   /// data read-write accessor
-  template <typename Index>
+  template <typename Index, typename = std::enable_if_t<
+                                detail::is_integral_sized_range_v<Index>>>
   value_type& operator[](const Index& idx) {
     auto start = range().lobound_data();
-    return std::get<0>(*impl_).coeffRef(idx[0] - start[0], idx[1] - start[1]);
+    return matrix().coeffRef(idx[0] - start[0], idx[1] - start[1]);
+  }
+
+  /// data read-write accessor
+  template <typename Ordinal,
+            std::enable_if_t<std::is_integral_v<Ordinal>>* = nullptr>
+  value_type& operator[](const Ordinal& ord) {
+    auto idx = range().idx(ord);
+    auto start = range().lobound_data();
+    return matrix().coeffRef(idx[0] - start[0], idx[1] - start[1]);
+  }
+
+  /// data read-only accessor
+  template <typename Index, typename = std::enable_if_t<
+                                detail::is_integral_sized_range_v<Index>>>
+  value_type operator[](const Index& idx) const {
+    auto start = range().lobound_data();
+    return matrix().coeff(idx[0] - start[0], idx[1] - start[1]);
+  }
+
+  /// data read-only accessor
+  template <typename Ordinal, std::enable_if_t<std::is_integral_v<Ordinal>>>
+  value_type operator[](const Ordinal& ord) const {
+    auto idx = range().idx(ord);
+    auto start = range().lobound_data();
+    return matrix().coeff(idx[0] - start[0], idx[1] - start[1]);
   }
 
   /// Maximum # of elements in the tile
@@ -138,8 +164,8 @@ class EigenSparseTile {
 
   // output
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     if (impl_) {
       ar & true;
@@ -151,7 +177,7 @@ class EigenSparseTile {
         for (typename matrix_type::InnerIterator it(mat, k); it; ++it) {
           datavec.push_back(Eigen::Triplet<T>(it.row(), it.col(), it.value()));
         }
-      ar& datavec & this->range();
+      ar& datavec& this->range();
     } else {
       ar & false;
     }
@@ -159,8 +185,8 @@ class EigenSparseTile {
 
   // output
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     bool have_impl = false;
     ar& have_impl;
@@ -229,22 +255,22 @@ EigenSparseTile<T, TagType> add(const EigenSparseTile<T, TagType>& arg1,
                                      arg1.range());
 }
 
-// dense_result[i] = dense_arg1[i] + sparse_arg2[i]
-template <typename T, typename TagType>
-TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
-                          const EigenSparseTile<T, TagType>& arg2) {
-  TA_ASSERT(arg1.range() == arg2.range());
-
-  // this could be done better ...
-  return TiledArray::add(arg1, static_cast<TiledArray::Tensor<T>>(arg2));
-}
-
-// dense_result[i] = sparse_arg1[i] + dense_arg2[i]
-template <typename T, typename TagType>
-TiledArray::Tensor<T> add(const EigenSparseTile<T, TagType>& arg1,
-                          const TiledArray::Tensor<T>& arg2) {
-  return TiledArray::add(arg2, arg1);
-}
+//// dense_result[i] = dense_arg1[i] + sparse_arg2[i]
+// template <typename T, typename TagType>
+// TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
+//                           const EigenSparseTile<T, TagType>& arg2) {
+//   TA_ASSERT(arg1.range() == arg2.range());
+//
+//   // this could be done better ...
+//   return TiledArray::add(arg1, static_cast<TiledArray::Tensor<T>>(arg2));
+// }
+//
+//// dense_result[i] = sparse_arg1[i] + dense_arg2[i]
+// template <typename T, typename TagType>
+// TiledArray::Tensor<T> add(const EigenSparseTile<T, TagType>& arg1,
+//                           const TiledArray::Tensor<T>& arg2) {
+//   return TiledArray::add(arg2, static_cast<TiledArray::Tensor<T>>(arg1));
+// }
 
 // dense_result[perm ^ i] = dense_arg1[i] + sparse_arg2[i]
 template <
