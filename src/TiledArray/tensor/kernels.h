@@ -28,6 +28,7 @@
 
 #include <TiledArray/tensor/permute.h>
 #include <TiledArray/tensor/utility.h>
+#include <TiledArray/util/vector.h>
 
 namespace TiledArray {
 
@@ -353,13 +354,26 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
 
-  const auto stride = inner_size(result, tensors...);
   const auto volume = result.range().volume();
 
-  for (decltype(result.range().volume()) i = 0ul; i < volume; i += stride)
-    math::inplace_vector_op(std::forward<Op>(op), stride,
-                            result.data() + result.range().ordinal(i),
-                            (tensors.data() + tensors.range().ordinal(i))...);
+  if constexpr (detail::has_member_function_data_anyreturn_v<TR> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(result, tensors...);
+    for (std::decay_t<decltype(volume)> i = 0ul; i < volume; i += stride)
+      math::inplace_vector_op(std::forward<Op>(op), stride,
+                              result.data() + result.range().ordinal(i),
+                              (tensors.data() + tensors.range().ordinal(i))...);
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& result_rng = result.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto result_lobound = signed_idx_t(result_rng.lobound());
+    for (auto&& idx : result_rng) {
+      using namespace container::operators;
+      std::forward<Op>(op)(
+          result[idx], (tensors[idx - result_lobound +
+                                signed_idx_t(tensors.range().lobound())])...);
+    }
+  }
 }
 
 /// In-place tensor of tensors operations with non-contiguous data
@@ -380,20 +394,33 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
 
-  const auto stride = inner_size(result, tensors...);
   const auto volume = result.range().volume();
 
-  auto inplace_tensor_range =
-      [&op, stride](
-          typename TR::pointer MADNESS_RESTRICT const result_data,
-          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
-        for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
-          inplace_tensor_op(op, result_data[i], tensors_data[i]...);
-      };
+  if constexpr (detail::has_member_function_data_anyreturn_v<TR> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(result, tensors...);
+    auto inplace_tensor_range =
+        [&op, stride](
+            typename TR::pointer MADNESS_RESTRICT const result_data,
+            typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
+          for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
+            inplace_tensor_op(op, result_data[i], tensors_data[i]...);
+        };
 
-  for (decltype(result.range().volume()) ord = 0ul; ord < volume; ord += stride)
-    inplace_tensor_range(result.data() + result.range().ordinal(ord),
-                         (tensors.data() + tensors.range().ordinal(ord))...);
+    for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume; ord += stride)
+      inplace_tensor_range(result.data() + result.range().ordinal(ord),
+                           (tensors.data() + tensors.range().ordinal(ord))...);
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& result_rng = result.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto result_lobound = signed_idx_t(result_rng.lobound());
+    for (auto&& idx : result_rng) {
+      using namespace container::operators;
+      std::forward<Op>(op)(
+          result[idx], (tensors[idx - result_lobound +
+                                signed_idx_t(tensors.range().lobound())])...);
+    }
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -553,7 +580,6 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
 
-  const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
   auto wrapper_op = [&op](typename TR::pointer MADNESS_RESTRICT result_ptr,
@@ -562,11 +588,27 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
     new (result_ptr) typename T1::value_type(op(value1, values...));
   };
 
-  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
-       ord += stride)
-    math::vector_ptr_op(wrapper_op, stride, result.data() + ord,
-                        (tensor1.data() + tensor1.range().ordinal(ord)),
-                        (tensors.data() + tensors.range().ordinal(ord))...);
+  if constexpr (detail::has_member_function_data_anyreturn_v<TR> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(tensor1, tensors...);
+    for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
+         ord += stride)
+      math::vector_ptr_op(wrapper_op, stride, result.data() + ord,
+                          (tensor1.data() + tensor1.range().ordinal(ord)),
+                          (tensors.data() + tensors.range().ordinal(ord))...);
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& result_rng = result.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto result_lobound = signed_idx_t(result_rng.lobound());
+    for (auto&& idx : result_rng) {
+      using namespace container::operators;
+      const signed_idx_t relidx = idx - result_lobound;
+      wrapper_op(
+          &(result[idx]),
+          tensor1[relidx + signed_idx_t(tensor1.range().lobound())],
+          (tensors[relidx + signed_idx_t(tensors.range().lobound())])...);
+    }
+  }
 }
 
 /// Initialize tensor with one or more non-contiguous tensor arguments
@@ -593,24 +635,40 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
 
-  const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
-  auto inplace_tensor_range =
-      [&op, stride](
-          typename TR::pointer MADNESS_RESTRICT const result_data,
-          typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
-          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
-        for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
-          new (result_data + i)
-              typename TR::value_type(tensor_op<typename TR::value_type>(
-                  op, tensor1_data[i], tensors_data[i]...));
-      };
+  if constexpr (detail::has_member_function_data_anyreturn_v<TR> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(tensor1, tensors...);
+    auto inplace_tensor_range =
+        [&op, stride](
+            typename TR::pointer MADNESS_RESTRICT const result_data,
+            typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
+            typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
+          for (std::decay_t<decltype(volume)> i = 0ul; i < stride; ++i)
+            new (result_data + i)
+                typename TR::value_type(tensor_op<typename TR::value_type>(
+                    op, tensor1_data[i], tensors_data[i]...));
+        };
 
-  for (decltype(volume) ord = 0ul; ord < volume; ord += stride)
-    inplace_tensor_range(result.data() + ord,
-                         (tensor1.data() + tensor1.range().ordinal(ord)),
-                         (tensors.data() + tensors.range().ordinal(ord))...);
+    for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume; ord += stride)
+      inplace_tensor_range(result.data() + ord,
+                           (tensor1.data() + tensor1.range().ordinal(ord)),
+                           (tensors.data() + tensors.range().ordinal(ord))...);
+  } else {
+    auto& result_rng = result.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto result_lobound = signed_idx_t(result_rng.lobound());
+    for (auto&& idx : result_rng) {
+      using namespace container::operators;
+      const signed_idx_t relidx = idx - result_lobound;
+
+      new (&(result[idx]))
+          typename TR::value_type(tensor_op<typename TR::value_type>(
+              op, tensor1[relidx + signed_idx_t(tensor1.range().lobound())],
+              (tensors[relidx + signed_idx_t(tensors.range().lobound())])...));
+    }
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -757,17 +815,31 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
   auto result = identity;
-  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
-       ord += stride) {
-    auto temp = identity;
-    math::reduce_op(reduce_op, join_op, identity, stride, temp,
-                    tensor1.data() + tensor1.range().ordinal(ord),
-                    (tensors.data() + tensors.range().ordinal(ord))...);
-    join_op(result, temp);
+  if constexpr (detail::has_member_function_data_anyreturn_v<T1> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(tensor1, tensors...);
+    for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume;
+         ord += stride) {
+      auto temp = identity;
+      math::reduce_op(reduce_op, join_op, identity, stride, temp,
+                      tensor1.data() + tensor1.range().ordinal(ord),
+                      (tensors.data() + tensors.range().ordinal(ord))...);
+      join_op(result, temp);
+    }
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& t1_rng = tensor1.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto t1_lobound = signed_idx_t(t1_rng.lobound());
+    for (auto&& idx : t1_rng) {
+      using namespace container::operators;
+      signed_idx_t relidx = idx - t1_lobound;
+      reduce_op(result, tensor1[idx],
+                (tensors[idx - t1_lobound +
+                         signed_idx_t(tensors.range().lobound())])...);
+    }
   }
 
   return result;
@@ -803,31 +875,49 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
-  auto tensor_reduce_range =
-      [&reduce_op, &join_op, &identity, stride](
-          Scalar& MADNESS_RESTRICT result,
-          typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
-          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
-        for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
-          Scalar temp = tensor_reduce(reduce_op, join_op, identity,
-                                      tensor1_data[i], tensors_data[i]...);
-          join_op(result, temp);
-        }
-      };
-
   Scalar result = identity;
-  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
-       ord += stride) {
-    Scalar temp = tensor_reduce_range(
-        result, tensor1.data() + tensor1.range().ordinal(ord),
-        (tensors.data() + tensors.range().ordinal(ord))...);
-    join_op(result, temp);
+
+  if constexpr (detail::has_member_function_data_anyreturn_v<T1> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(tensor1, tensors...);
+    auto tensor_reduce_range =
+        [&reduce_op, &join_op, &identity, stride](
+            Scalar& MADNESS_RESTRICT result,
+            typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
+            typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
+          for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
+            Scalar temp = tensor_reduce(reduce_op, join_op, identity,
+                                        tensor1_data[i], tensors_data[i]...);
+            join_op(result, temp);
+          }
+        };
+
+    for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume;
+         ord += stride) {
+      Scalar temp = tensor_reduce_range(
+          result, tensor1.data() + tensor1.range().ordinal(ord),
+          (tensors.data() + tensors.range().ordinal(ord))...);
+      join_op(result, temp);
+    }
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& t1_rng = tensor1.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto t1_lobound = signed_idx_t(t1_rng.lobound());
+    for (auto&& idx : t1_rng) {
+      using namespace container::operators;
+      signed_idx_t relidx = idx - t1_lobound;
+
+      Scalar temp =
+          tensor_reduce(reduce_op, join_op, identity, tensor1[idx],
+                        (tensors[idx - t1_lobound +
+                                 signed_idx_t(tensors.range().lobound())])...);
+      join_op(result, temp);
+    }
   }
 
-  return identity;
+  return result;
 }
 
 }  // namespace detail

@@ -44,6 +44,7 @@
 
 #include <TiledArray/utility.h>
 #include <madness/world/archive.h>
+#include "TiledArray/error.h"
 
 namespace TiledArray {
 
@@ -92,6 +93,32 @@ constexpr auto iv(Int i0, Ints... rest) {
   detail::iv_assign(result, 0, i0, rest...);
   return result;
 }
+
+namespace operators {
+
+template <typename T1, std::size_t N1, typename T2, std::size_t N2>
+decltype(auto) operator+(const boost::container::small_vector<T1, N1>& v1,
+                         const boost::container::small_vector<T2, N2>& v2) {
+  TA_ASSERT(v1.size() == v2.size());
+  boost::container::small_vector<std::common_type_t<T1, T2>, std::max(N1, N2)>
+      result(v1.size());
+  std::transform(v1.begin(), v1.end(), v2.begin(), result.begin(),
+                 [](auto&& a, auto&& b) { return a + b; });
+  return result;
+}
+
+template <typename T1, std::size_t N1, typename T2, std::size_t N2>
+decltype(auto) operator-(const boost::container::small_vector<T1, N1>& v1,
+                         const boost::container::small_vector<T2, N2>& v2) {
+  TA_ASSERT(v1.size() == v2.size());
+  boost::container::small_vector<std::common_type_t<T1, T2>, std::max(N1, N2)>
+      result(v1.size());
+  std::transform(v1.begin(), v1.end(), v2.begin(), result.begin(),
+                 [](auto&& a, auto&& b) { return a - b; });
+  return result;
+}
+
+}  // namespace operators
 
 }  // namespace container
 }  // namespace TiledArray
