@@ -168,9 +168,9 @@ inline decltype(auto) add(Left&& left, Right&& right, const Scalar factor,
 template <
     typename Result, typename Arg,
     typename = std::enable_if_t<
-        detail::has_member_function_add_to_anyreturn_v<Result&, const Arg&>>>
-inline Result& add_to(Result& result, const Arg& arg) {
-  return result.add_to(arg);
+        detail::has_member_function_add_to_anyreturn_v<Result&&, const Arg&>>>
+inline decltype(auto) add_to(Result&& result, const Arg& arg) {
+  return std::forward<Result>(result).add_to(arg);
 }
 
 /// Add and scale to the result tile
@@ -186,9 +186,10 @@ template <typename Result, typename Arg, typename Scalar,
           typename std::enable_if<
               detail::is_numeric_v<Scalar> &&
               detail::has_member_function_add_to_anyreturn_v<
-                  Result&, const Arg&, const Scalar>>::type* = nullptr>
-inline Result& add_to(Result& result, const Arg& arg, const Scalar factor) {
-  return result.add_to(arg, factor);
+                  Result&&, const Arg&, const Scalar>>::type* = nullptr>
+inline decltype(auto) add_to(Result&& result, const Arg& arg,
+                             const Scalar factor) {
+  return std::forward<Result>(result).add_to(arg, factor);
 }
 
 namespace tile_interface {

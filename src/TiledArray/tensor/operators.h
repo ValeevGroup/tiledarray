@@ -58,12 +58,16 @@ inline decltype(auto) operator+(T1&& left, T2&& right) {
 /// \param left The left-hand tensor argument
 /// \param right The right-hand tensor argument
 /// \return A tensor where element \c i is equal to <tt>left[i] - right[i]</tt>
-template <typename T1, typename T2,
-          typename std::enable_if<
-              detail::is_tensor<T1, T2>::value ||
-              detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
-inline auto operator-(const T1& left, const T2& right) {
-  return subt(left, right);
+template <
+    typename T1, typename T2,
+    typename std::enable_if<
+        detail::is_tensor<detail::remove_cvr_t<T1>,
+                          detail::remove_cvr_t<T2>>::value ||
+        detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
+                                    detail::remove_cvr_t<T2>>::value>::type* =
+        nullptr>
+inline decltype(auto) operator-(T1&& left, T2&& right) {
+  return subt(std::forward<T1>(left), std::forward<T2>(right));
 }
 
 /// Tensor multiplication operator
@@ -74,12 +78,16 @@ inline auto operator-(const T1& left, const T2& right) {
 /// \param left The left-hand tensor argument
 /// \param right The right-hand tensor argument
 /// \return A tensor where element \c i is equal to <tt>left[i] * right[i]</tt>
-template <typename T1, typename T2,
-          typename std::enable_if<
-              detail::is_tensor<T1, T2>::value ||
-              detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
-inline auto operator*(const T1& left, const T2& right) {
-  return mult(left, right);
+template <
+    typename T1, typename T2,
+    typename std::enable_if<
+        detail::is_tensor<detail::remove_cvr_t<T1>,
+                          detail::remove_cvr_t<T2>>::value ||
+        detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
+                                    detail::remove_cvr_t<T2>>::value>::type* =
+        nullptr>
+inline decltype(auto) operator*(T1&& left, T2&& right) {
+  return mult(std::forward<T1>(left), std::forward<T2>(right));
 }
 
 /// Create a copy of \c left that is scaled by \c right
@@ -91,11 +99,12 @@ inline auto operator*(const T1& left, const T2& right) {
 /// \param right The right-hand scalar argument
 /// \return A tensor where element \c i is equal to <tt> left[i] * right </tt>
 template <typename T, typename N,
-          typename std::enable_if<(detail::is_tensor<T>::value ||
-                                   detail::is_tensor_of_tensor<T>::value) &&
-                                  detail::is_numeric_v<N>>::type* = nullptr>
-inline auto operator*(const T& left, N right) {
-  return scale(left, right);
+          typename std::enable_if<
+              (detail::is_tensor<detail::remove_cvr_t<T>>::value ||
+               detail::is_tensor_of_tensor<detail::remove_cvr_t<T>>::value) &&
+              detail::is_numeric_v<N>>::type* = nullptr>
+inline decltype(auto) operator*(T&& left, N right) {
+  return scale(std::forward<T>(left), right);
 }
 
 /// Create a copy of \c right that is scaled by \c left
@@ -105,13 +114,15 @@ inline auto operator*(const T& left, N right) {
 /// \param left The left-hand scalar argument
 /// \param right The right-hand tensor argument
 /// \return A tensor where element \c i is equal to <tt> left * right[i] </tt>
-template <typename N, typename T,
-          typename std::enable_if<
-              detail::is_numeric_v<N> &&
-              (detail::is_tensor<T>::value ||
-               detail::is_tensor_of_tensor<T>::value)>::type* = nullptr>
-inline auto operator*(N left, const T& right) {
-  return scale(right, left);
+template <
+    typename N, typename T,
+    typename std::enable_if<
+        detail::is_numeric_v<N> &&
+        (detail::is_tensor<detail::remove_cvr_t<T>>::value ||
+         detail::is_tensor_of_tensor<detail::remove_cvr_t<T>>::value)>::type* =
+        nullptr>
+inline decltype(auto) operator*(N left, T&& right) {
+  return scale(std::forward<T>(right), left);
 }
 
 /// Create a negated copy of \c arg
@@ -119,11 +130,12 @@ inline auto operator*(N left, const T& right) {
 /// \tparam T The element type of \c arg
 /// \param arg The argument tensor
 /// \return A tensor where element \c i is equal to \c -arg[i]
-template <typename T, typename std::enable_if<detail::is_tensor<T>::value ||
-                                              detail::is_tensor_of_tensor<
-                                                  T>::value>::type* = nullptr>
-inline auto operator-(const T& arg) -> decltype(arg.neg()) {
-  return neg(arg);
+template <typename T, typename std::enable_if<
+                          detail::is_tensor<detail::remove_cvr_t<T>>::value ||
+                          detail::is_tensor_of_tensor<
+                              detail::remove_cvr_t<T>>::value>::type* = nullptr>
+inline decltype(auto) operator-(T&& arg) {
+  return neg(std::forward<T>(arg));
 }
 
 /// Create a permuted copy of \c arg
@@ -131,11 +143,12 @@ inline auto operator-(const T& arg) -> decltype(arg.neg()) {
 /// \tparam T The argument tensor type
 /// \param perm The permutation to be applied to \c arg
 /// \param arg The argument tensor to be permuted
-template <typename T, typename std::enable_if<detail::is_tensor<T>::value ||
-                                              detail::is_tensor_of_tensor<
-                                                  T>::value>::type* = nullptr>
-inline auto operator*(const Permutation& perm, const T& arg) {
-  return permute(arg, perm);
+template <typename T, typename std::enable_if<
+                          detail::is_tensor<detail::remove_cvr_t<T>>::value ||
+                          detail::is_tensor_of_tensor<
+                              detail::remove_cvr_t<T>>::value>::type* = nullptr>
+inline decltype(auto) operator*(const Permutation& perm, T&& arg) {
+  return permute(std::forward<T>(arg), perm);
 }
 
 /// Tensor plus operator
@@ -148,10 +161,11 @@ inline auto operator*(const Permutation& perm, const T& arg) {
 /// \return A tensor where element \c i is equal to <tt>left[i] + right[i]</tt>
 template <typename T1, typename T2,
           typename std::enable_if<
-              detail::is_tensor<T1, T2>::value ||
-              detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
-inline auto operator+=(T1& left, const T2& right) {
-  return add_to(left, right);
+              detail::is_tensor<detail::remove_cvr_t<T1>, T2>::value ||
+              detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
+                                          T2>::value>::type* = nullptr>
+inline decltype(auto) operator+=(T1&& left, const T2& right) {
+  return add_to(std::forward<T1>(left), right);
 }
 
 /// Tensor minus operator
@@ -164,10 +178,11 @@ inline auto operator+=(T1& left, const T2& right) {
 /// \return A reference to \c left
 template <typename T1, typename T2,
           typename std::enable_if<
-              detail::is_tensor<T1, T2>::value ||
-              detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
-inline auto operator-=(T1& left, const T2& right) {
-  return sub_to(left, right);
+              detail::is_tensor<detail::remove_cvr_t<T1>, T2>::value ||
+              detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
+                                          T2>::value>::type* = nullptr>
+inline decltype(auto) operator-=(T1&& left, const T2& right) {
+  return subt_to(std::forward<T1>(left), right);
 }
 
 /// In place tensor multiplication
@@ -180,10 +195,11 @@ inline auto operator-=(T1& left, const T2& right) {
 /// \return A reference to \c left
 template <typename T1, typename T2,
           typename std::enable_if<
-              detail::is_tensor<T1, T2>::value ||
-              detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
-inline auto operator*=(T1& left, const T2& right) {
-  return mult_to(left, right);
+              detail::is_tensor<detail::remove_cvr_t<T1>, T2>::value ||
+              detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
+                                          T2>::value>::type* = nullptr>
+inline decltype(auto) operator*=(T1&& left, const T2& right) {
+  return mult_to(std::forward<T1>(left), right);
 }
 
 /// In place tensor add constant
@@ -195,11 +211,12 @@ inline auto operator*=(T1& left, const T2& right) {
 /// \param right The right-hand scalar argument
 /// \return A reference to \c left
 template <typename T, typename N,
-          typename std::enable_if<(detail::is_tensor<T>::value ||
-                                   detail::is_tensor_of_tensor<T>::value) &&
-                                  detail::is_numeric_v<N>>::type* = nullptr>
-inline auto operator+=(T& left, N right) {
-  return add_to(left, right);
+          typename std::enable_if<
+              (detail::is_tensor<detail::remove_cvr_t<T>>::value ||
+               detail::is_tensor_of_tensor<detail::remove_cvr_t<T>>::value) &&
+              detail::is_numeric_v<N>>::type* = nullptr>
+inline decltype(auto) operator+=(T&& left, N right) {
+  return add_to(std::forward<T>(left), right);
 }
 
 /// In place tensor subtract constant
@@ -211,11 +228,12 @@ inline auto operator+=(T& left, N right) {
 /// \param right The right-hand scalar argument
 /// \return A reference to \c left
 template <typename T, typename N,
-          typename std::enable_if<(detail::is_tensor<T>::value ||
-                                   detail::is_tensor_of_tensor<T>::value) &&
-                                  detail::is_numeric_v<N>>::type* = nullptr>
-inline auto operator-=(T& left, N right) {
-  return subt_to(left, right);
+          typename std::enable_if<
+              (detail::is_tensor<detail::remove_cvr_t<T>>::value ||
+               detail::is_tensor_of_tensor<detail::remove_cvr_t<T>>::value) &&
+              detail::is_numeric_v<N>>::type* = nullptr>
+inline decltype(auto) operator-=(T&& left, N right) {
+  return subt_to(std::forward<T>(left), right);
 }
 
 /// In place tensor scale
@@ -227,11 +245,12 @@ inline auto operator-=(T& left, N right) {
 /// \param right The right-hand scalar argument
 /// \return A reference to \c left
 template <typename T, typename N,
-          typename std::enable_if<(detail::is_tensor<T>::value ||
-                                   detail::is_tensor_of_tensor<T>::value) &&
-                                  detail::is_numeric_v<N>>::type* = nullptr>
-inline auto operator*=(T& left, N right) {
-  return scale_to(left, right);
+          typename std::enable_if<
+              (detail::is_tensor<detail::remove_cvr_t<T>>::value ||
+               detail::is_tensor_of_tensor<detail::remove_cvr_t<T>>::value) &&
+              detail::is_numeric_v<N>>::type* = nullptr>
+inline decltype(auto) operator*=(T&& left, N right) {
+  return scale_to(std::forward<T>(left), right);
 }
 
 }  // namespace TiledArray

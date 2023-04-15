@@ -372,8 +372,8 @@ inline auto subt(const Arg& arg, const Scalar value, const Perm& perm) {
 /// \param arg The argument to be subtracted from the result
 /// \return A tile that is equal to <tt>result[i] -= arg[i]</tt>
 template <typename Result, typename Arg>
-inline Result& subt_to(Result& result, const Arg& arg) {
-  return result.subt_to(arg);
+inline decltype(auto) subt_to(Result&& result, const Arg& arg) {
+  return std::forward<Result>(result).subt_to(arg);
 }
 
 /// Subtract and scale from the result tile
