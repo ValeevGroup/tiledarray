@@ -91,14 +91,16 @@ class umpire_allocator_impl {
       : umpalloc_(umpalloc) {}
 
   template <class U>
-  umpire_allocator_impl(const umpire_allocator_impl<U>& rhs) noexcept
+  umpire_allocator_impl(
+      const umpire_allocator_impl<U, StaticLock>& rhs) noexcept
       : umpalloc_(rhs.umpalloc_) {}
 
   /// allocates memory using umpire dynamic pool
   pointer allocate(size_t n) {
     TA_ASSERT(umpalloc_);
 
-    size_t nbytes = n * sizeof(T);
+    // QuickPool::allocate_internal does not handle zero-size allocations
+    size_t nbytes = n == 0 ? 1 : n * sizeof(T);
     pointer result = nullptr;
     auto* allocation_strategy = umpalloc_->getAllocationStrategy();
 
@@ -117,7 +119,8 @@ class umpire_allocator_impl {
   void deallocate(pointer ptr, size_t n) {
     TA_ASSERT(umpalloc_);
 
-    const auto nbytes = n * sizeof(T);
+    // QuickPool::allocate_internal does not handle zero-size allocations
+    const auto nbytes = n == 0 ? 1 : n * sizeof(T);
     auto* allocation_strategy = umpalloc_->getAllocationStrategy();
 
     // N.B. with multiple threads would have to do this test in
@@ -137,15 +140,15 @@ class umpire_allocator_impl {
   umpire::Allocator* umpalloc_;
 };  // class umpire_allocator
 
-template <class T1, class T2>
-bool operator==(const umpire_allocator_impl<T1>& lhs,
-                const umpire_allocator_impl<T2>& rhs) noexcept {
+template <class T1, class T2, class StaticLock>
+bool operator==(const umpire_allocator_impl<T1, StaticLock>& lhs,
+                const umpire_allocator_impl<T2, StaticLock>& rhs) noexcept {
   return lhs.umpire_allocator() == rhs.umpire_allocator();
 }
 
-template <class T1, class T2>
-bool operator!=(const umpire_allocator_impl<T1>& lhs,
-                const umpire_allocator_impl<T2>& rhs) noexcept {
+template <class T1, class T2, class StaticLock>
+bool operator!=(const umpire_allocator_impl<T1, StaticLock>& lhs,
+                const umpire_allocator_impl<T2, StaticLock>& rhs) noexcept {
   return !(lhs == rhs);
 }
 

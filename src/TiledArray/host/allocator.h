@@ -53,7 +53,9 @@ class host_allocator_impl
 
   template <class U>
   host_allocator_impl(const host_allocator_impl<U>& rhs) noexcept
-      : base_type(static_cast<const umpire_allocator_impl<U>&>(rhs)) {}
+      : base_type(static_cast<
+                  const umpire_allocator_impl<U, detail::MutexLock<hostEnv>>&>(
+            rhs)) {}
 
   template <typename T1, typename T2>
   friend bool operator==(const host_allocator_impl<T1>& lhs,
