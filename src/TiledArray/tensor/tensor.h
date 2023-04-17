@@ -552,6 +552,10 @@ class Tensor {
       result = detail::tensor_op<Tensor>(
           [](const numeric_type value) -> numeric_type { return value; },
           *this);
+    } else if (range_) {  // corner case: data_ = null implies range_.volume()
+                          // == 0;
+      TA_ASSERT(range_.volume() == 0);
+      result = Tensor(range_);
     }
     return result;
   }
