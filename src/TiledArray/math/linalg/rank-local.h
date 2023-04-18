@@ -71,4 +71,26 @@ void householder_qr(Matrix<T> &V, Matrix<T> &R);
 
 }  // namespace TiledArray::math::linalg::rank_local
 
+namespace madness::archive {
+
+/// Serialize (deserialize) an lapack::Error
+
+/// \tparam Archive The archive type.
+template <class Archive>
+struct ArchiveSerializeImpl<Archive, lapack::Error> {
+  static inline void serialize(const Archive &ar, lapack::Error &e) {
+    MAD_ARCHIVE_DEBUG(std::cout << "(de)serialize lapack::Error" << std::endl);
+    if constexpr (is_output_archive_v<Archive>) {  // serialize
+      const std::string msg = e.what();
+      ar &msg;
+    } else {
+      std::string msg;
+      ar &msg;
+      e = lapack::Error(msg);
+    }
+  }
+};
+
+}  // namespace madness::archive
+
 #endif  // TILEDARRAY_MATH_LINALG_RANK_LOCAL_H__INCLUDED
