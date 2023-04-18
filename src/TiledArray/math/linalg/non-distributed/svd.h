@@ -75,9 +75,7 @@ auto svd(const Array& A, TiledRange u_trange = TiledRange(),
   if constexpr (need_u) U = std::make_unique<Matrix>();
   if constexpr (need_vt) VT = std::make_unique<Matrix>();
 
-  if (world.rank() == 0) {
-    linalg::rank_local::svd(A_eig, S, U.get(), VT.get());
-  }
+  TA_LAPACK_ON_RANK_ZERO(svd, world, A_eig, S, U.get(), VT.get());
 
   world.gop.broadcast_serializable(S, 0);
   if (U) world.gop.broadcast_serializable(*U, 0);

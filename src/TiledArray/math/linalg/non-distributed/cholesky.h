@@ -42,9 +42,7 @@ auto rank_local_cholesky(const DistArray<Tile, Policy>& A) {
 
   World& world = A.world();
   auto A_eig = detail::make_matrix(A);
-  if (world.rank() == 0) {
-    linalg::rank_local::cholesky(A_eig);
-  }
+  TA_LAPACK_ON_RANK_ZERO(cholesky, world, A_eig);
   world.gop.broadcast_serializable(A_eig, 0);
   return A_eig;
 }
@@ -140,11 +138,20 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
   // if need to return L use its copy to compute inverse
   decltype(L_eig) L_inv_eig;
 
+  std::optional<lapack::Error> error_opt;
   if (world.rank() == 0) {
-    if (Both) L_inv_eig = L_eig;
-    auto& L_inv_eig_ref = Both ? L_inv_eig : L_eig;
-    linalg::rank_local::cholesky_linv(L_inv_eig_ref);
-    detail::zero_out_upper_triangle(L_inv_eig_ref);
+    try {
+      if (Both) L_inv_eig = L_eig;
+      auto& L_inv_eig_ref = Both ? L_inv_eig : L_eig;
+      linalg::rank_local::cholesky_linv(L_inv_eig_ref);
+      detail::zero_out_upper_triangle(L_inv_eig_ref);
+    } catch (lapack::Error& err) {
+      error_opt = err;
+    }
+  }
+  world.gop.broadcast_serializable(error_opt, 0);
+  if (error_opt) {
+    throw error_opt.value();
   }
   world.gop.broadcast_serializable(Both ? L_inv_eig : L_eig, 0);
 
@@ -169,9 +176,7 @@ auto cholesky_solve(const Array& A, const Array& B,
   auto A_eig = detail::make_matrix(A);
   auto X_eig = detail::make_matrix(B);
   World& world = A.world();
-  if (world.rank() == 0) {
-    linalg::rank_local::cholesky_solve(A_eig, X_eig);
-  }
+  TA_LAPACK_ON_RANK_ZERO(cholesky_solve, world, A_eig, X_eig);
   world.gop.broadcast_serializable(X_eig, 0);
   if (x_trange.rank() == 0) x_trange = B.trange();
   return eigen_to_array<Array>(world, x_trange, X_eig);
@@ -192,9 +197,7 @@ auto cholesky_lsolve(Op transpose, const Array& A, const Array& B,
                 "scalar types");
 
   auto X_eig = detail::make_matrix(B);
-  if (world.rank() == 0) {
-    linalg::rank_local::cholesky_lsolve(transpose, L_eig, X_eig);
-  }
+  TA_LAPACK_ON_RANK_ZERO(cholesky_lsolve, world, transpose, L_eig, X_eig);
   world.gop.broadcast_serializable(X_eig, 0);
   if (l_trange.rank() == 0) l_trange = A.trange();
   if (x_trange.rank() == 0) x_trange = B.trange();

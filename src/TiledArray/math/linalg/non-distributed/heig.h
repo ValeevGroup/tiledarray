@@ -56,9 +56,7 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
   World& world = A.world();
   auto A_eig = detail::make_matrix(A);
   std::vector<scalar_type> evals;
-  if (world.rank() == 0) {
-    linalg::rank_local::heig(A_eig, evals);
-  }
+  TA_LAPACK_ON_RANK_ZERO(heig, world, A_eig, evals);
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
   if (evec_trange.rank() == 0) evec_trange = A.trange();
@@ -99,9 +97,7 @@ auto heig(const ArrayA& A, const ArrayB& B,
   auto A_eig = detail::make_matrix(A);
   auto B_eig = detail::make_matrix(B);
   std::vector<scalar_type> evals;
-  if (world.rank() == 0) {
-    linalg::rank_local::heig(A_eig, B_eig, evals);
-  }
+  TA_LAPACK_ON_RANK_ZERO(heig, world, A_eig, B_eig, evals);
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
   if (evec_trange.rank() == 0) evec_trange = A.trange();

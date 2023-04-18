@@ -93,4 +93,20 @@ struct ArchiveSerializeImpl<Archive, lapack::Error> {
 
 }  // namespace madness::archive
 
+/// TA_LAPACK_ON_RANK_ZERO(fn,args...) invokes  linalg::rank_local::fn(args...)
+/// on rank 0 and broadcasts/rethrows the exception, if any
+#define TA_LAPACK_ON_RANK_ZERO(fn, world, args...) \
+  std::optional<lapack::Error> error_opt;          \
+  if (world.rank() == 0) {                         \
+    try {                                          \
+      linalg::rank_local::fn(args);                \
+    } catch (lapack::Error & err) {                \
+      error_opt = err;                             \
+    }                                              \
+  }                                                \
+  world.gop.broadcast_serializable(error_opt, 0);  \
+  if (error_opt) {                                 \
+    throw error_opt.value();                       \
+  }
+
 #endif  // TILEDARRAY_MATH_LINALG_RANK_LOCAL_H__INCLUDED
