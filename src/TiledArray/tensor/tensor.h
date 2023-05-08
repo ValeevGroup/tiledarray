@@ -163,7 +163,7 @@ class Tensor {
 #endif
       allocator.deallocate(ptr, size);
     };
-    this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
+    this->data_ = std::shared_ptr<value_type[]>(ptr, std::move(deleter));
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
@@ -201,7 +201,7 @@ class Tensor {
 #endif
       allocator.deallocate(ptr, size);
     };
-    this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
+    this->data_ = std::shared_ptr<value_type[]>(ptr, std::move(deleter));
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
@@ -216,7 +216,7 @@ class Tensor {
   /// Number of `range_`-sized blocks in `data_`
   /// \note this is not used for (in)equality comparison
   size_t batch_size_ = 1;
-  std::shared_ptr<value_type> data_;  ///< Shared pointer to the data
+  std::shared_ptr<value_type[]> data_;  ///< Shared pointer to the data
 
  public:
   /// constructs an empty (null) Tensor
@@ -308,9 +308,10 @@ class Tensor {
 
   /// Construct a tensor with a fill op that takes an element index
 
-  /// \tparam ElementIndexOp callable of signature `value_type(const
-  /// Range::index_type&)` \param range An array with the size of of each
-  /// dimension \param element_idx_op a callable of type ElementIndexOp
+  /// \tparam ElementIndexOp callable of signature
+  /// `value_type(const Range::index_type&)`
+  /// \param range An array with the size of of each dimension
+  /// \param element_idx_op a callable of type ElementIndexOp
   template <typename ElementIndexOp,
             typename = std::enable_if_t<std::is_invocable_r_v<
                 value_type, ElementIndexOp, const Range::index_type&>>>
@@ -491,13 +492,27 @@ class Tensor {
   /// \param batch_size The batch size
   /// \param data shared pointer to the data
   Tensor(const range_type& range, size_t batch_size,
-         std::shared_ptr<value_type> data)
-      : range_(range), batch_size_(batch_size), data_(data) {
+         std::shared_ptr<value_type[]> data)
+      : range_(range), batch_size_(batch_size), data_(std::move(data)) {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
           this, make_string("TA::Tensor(range, batch_size, data)::data_.get()=",
                             data_.get()));
+    }
+#endif
+  }
+
+  /// Construct a tensor with a range equal to \c range using existing data
+  /// assuming unit batch size \param range The range of the tensor \param data
+  /// shared pointer to the data
+  Tensor(const range_type& range, std::shared_ptr<value_type[]> data)
+      : range_(range), batch_size_(1), data_(std::move(data)) {
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->insert(
+          this,
+          make_string("TA::Tensor(range, data)::data_.get()=", data_.get()));
     }
 #endif
   }
@@ -513,8 +528,8 @@ class Tensor {
   /// the batch
   Tensor batch(size_t idx) const {
     TA_ASSERT(idx < this->batch_size());
-    std::shared_ptr<value_type> data(this->data_,
-                                     this->data_.get() + idx * this->size());
+    std::shared_ptr<value_type[]> data(this->data_,
+                                       this->data_.get() + idx * this->size());
     return Tensor(this->range(), 1, data);
   }
 
@@ -537,6 +552,10 @@ class Tensor {
       result = detail::tensor_op<Tensor>(
           [](const numeric_type value) -> numeric_type { return value; },
           *this);
+    } else if (range_) {  // corner case: data_ = null implies range_.volume()
+                          // == 0;
+      TA_ASSERT(range_.volume() == 0);
+      result = Tensor(range_);
     }
     return result;
   }
@@ -962,12 +981,14 @@ class Tensor {
   /// Read-only shared_ptr to the data
 
   /// \return A const shared_ptr to the tensor data
-  std::shared_ptr<const value_type> data_shared() const { return this->data_; }
+  std::shared_ptr<const value_type[]> data_shared() const {
+    return this->data_;
+  }
 
   /// Mutable shared_ptr to the data
 
   /// \return A mutable shared_ptr to the tensor data
-  std::shared_ptr<value_type> data_shared() { return this->data_; }
+  std::shared_ptr<value_type[]> data_shared() { return this->data_; }
 
   /// Test if the tensor is empty
 
@@ -1478,7 +1499,7 @@ class Tensor {
 
   // Addition operations
 
-  /// Add this and \c other to construct a new tensors
+  /// Add this and \c other to construct a new tensor
 
   /// \tparam Right The right-hand tensor type
   /// \param right The tensor that will be added to this tensor
@@ -1486,12 +1507,25 @@ class Tensor {
   /// \c this and \c other
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  Tensor add(const Right& right) const {
+  Tensor add(const Right& right) const& {
     return binary(
         right,
         [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
           return l + r;
         });
+  }
+
+  /// Add this and \c other to construct a new tensor
+
+  /// \tparam Right The right-hand tensor type
+  /// \param right The tensor that will be added to this tensor
+  /// \return A new tensor where the elements are the sum of the elements of
+  /// \c this and \c other
+  template <typename Right,
+            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+  Tensor add(const Right& right) && {
+    add_to(right);
+    return std::move(*this);
   }
 
   /// Add this and \c other to construct a new, permuted tensor

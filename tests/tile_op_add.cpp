@@ -26,6 +26,7 @@
 #include "../src/TiledArray/tile_op/add.h"
 #include "../src/tiledarray.h"
 #include "range_fixture.h"
+#include "sparse_tile.h"
 #include "unit_test_config.h"
 
 // using TiledArray::detail::Add;
@@ -49,8 +50,7 @@ struct AddFixture : public RangeFixture {
 
 };  // AddFixture
 
-BOOST_FIXTURE_TEST_SUITE(tile_op_add_suite, AddFixture,
-                         TA_UT_LABEL_SERIAL)
+BOOST_FIXTURE_TEST_SUITE(tile_op_add_suite, AddFixture, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions
@@ -396,6 +396,86 @@ BOOST_AUTO_TEST_CASE(binary_add_right_zero_perm_consume_right) {
   for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i]);
   }
+}
+
+BOOST_AUTO_TEST_CASE(binary_add_heterogeneous) {
+  TensorD a(RangeFixture::r, [](auto&) { return TiledArray::drand(); });
+  EigenSparseTile<double> b(RangeFixture::r);
+
+  /////////////////
+  // dense + sparse
+  /////////////////
+  {{// a is persistent
+    auto c = add(a, b);
+
+  // Check that the result range is correct
+  BOOST_CHECK_EQUAL(c.range(), a.range());
+
+  // Check that a nor b were consumed
+  BOOST_CHECK_NE(a.data(), nullptr);
+  BOOST_CHECK_NE(c.data(), a.data());
+
+  // Check that the data in the new tile is correct
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
+    BOOST_CHECK_EQUAL(c[i], a[i] + b[i]);
+  }
+}
+{  // a is consumed
+  auto a_copy = a.clone();
+  if (r.rank() == 3) a.shift({-7, 7, 0});
+  auto c = add(std::move(a), std::move(b));
+
+  // Check that the result range is correct
+  BOOST_CHECK_EQUAL(c.range(), b.range());
+
+  // Check that a was consumed
+  BOOST_CHECK_EQUAL(a.data(), nullptr);
+
+  // Check that the data in the new tile is correct
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
+    BOOST_CHECK_EQUAL(c[i], a_copy[i] + b[i]);
+  }
+  a = a_copy;
+}
+}
+
+/////////////////
+// sparse + dense
+/////////////////
+{
+  {  // a is persistent
+    auto c = add(b, a);
+
+    // Check that the result range is correct
+    BOOST_CHECK_EQUAL(c.range(), b.range());
+
+    // Check that a was not consumed
+    BOOST_CHECK_NE(a.data(), nullptr);
+    BOOST_CHECK_NE(c.data(), a.data());
+
+    // Check that the data in the new tile is correct
+    for (std::size_t i = 0ul; i < r.volume(); ++i) {
+      BOOST_CHECK_EQUAL(c[i], b[i] + a[i]);
+    }
+  }
+  {  // a is consumed
+    auto a_copy = a.clone();
+    if (r.rank() == 3) a.shift({-7, 7, 0});
+    auto c = add(std::move(b), std::move(a));
+
+    // Check that the result range is correct
+    BOOST_CHECK_EQUAL(c.range(), b.range());
+
+    // Check that a was consumed
+    BOOST_CHECK_EQUAL(a.data(), nullptr);
+
+    // Check that the data in the new tile is correct
+    for (std::size_t i = 0ul; i < r.volume(); ++i) {
+      BOOST_CHECK_EQUAL(c[i], b[i] + a_copy[i]);
+    }
+    a = a_copy;
+  }
+}
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -267,7 +267,7 @@ Array diagonal_array(World &world, TiledRange const &trange, T val = 1) {
 /// \param[in] diagonals_begin the begin iterator of the range of the diagonals
 /// \param[in] diagonals_end the end iterator of the range of the diagonals;
 ///            if not given, default initialized and thus will not be checked
-/// \return a constant diagonal DistArray
+/// \return a diagonal DistArray
 template <typename Array, typename RandomAccessIterator>
 std::enable_if_t<detail::is_iterator<RandomAccessIterator>::value, Array>
 diagonal_array(World &world, TiledRange const &trange,

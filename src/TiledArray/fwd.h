@@ -117,6 +117,11 @@ namespace symmetry {
 class Permutation;
 }
 
+// shapes
+class DenseShape;
+template <typename T = float>
+class SparseShape;
+
 // TiledArray Arrays
 template <typename, typename>
 class DistArray;

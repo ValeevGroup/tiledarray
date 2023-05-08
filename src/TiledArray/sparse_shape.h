@@ -26,6 +26,8 @@
 #ifndef TILEDARRAY_SPARSE_SHAPE_H__INCLUDED
 #define TILEDARRAY_SPARSE_SHAPE_H__INCLUDED
 
+#include <TiledArray/fwd.h>
+
 #include <TiledArray/tensor.h>
 #include <TiledArray/tensor/shift_wrapper.h>
 #include <TiledArray/tensor/tensor_interface.h>

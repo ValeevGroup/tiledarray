@@ -28,6 +28,7 @@
 
 #include <TiledArray/tensor/permute.h>
 #include <TiledArray/tensor/utility.h>
+#include <TiledArray/util/vector.h>
 
 namespace TiledArray {
 
@@ -107,12 +108,14 @@ inline TR tensor_op(Op&& op, const Permutation& perm, const T1& tensor1,
 }
 
 /// provides transform functionality to class \p T, useful for nonintrusive
-/// extension of a tensor type \p T to be usable as element type \p T in \c
-/// Tensor<T> \tparam T a tensor type \note The default implementation
+/// extension of a tensor type \p T to be usable as element type \p T in
+/// \c Tensor<T>
+/// \tparam T a tensor type
+/// \note The default implementation
 /// constructs T, then computes it by coiterating over elements of the argument
 /// tensors and transforming with the transform \c Op .
-///       This should be specialized for classes like TiledArray::Tensor that
-///       already include the appropriate transform constructors already
+/// This should be specialized for classes like TiledArray::Tensor that
+/// already include the appropriate transform constructors already
 template <typename T>
 struct transform {
   /// creates a result tensor in which element \c i is obtained by \c
@@ -283,29 +286,23 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
 /// \endcode
 /// The expected signature of the output
 /// operations is:
-/// \code void op(TR::value_type::value_type*, const
+/// \code
+/// void op(TR::value_type::value_type*, const
 /// TR::value_type::value_type)
 /// \endcode
-/// \tparam InputOp The input operation
-/// type
+/// \tparam InputOp The input operation type
 /// \tparam OutputOp The output operation type
-/// \tparam TR The result tensor
-/// type
+/// \tparam TR The result tensor type
 /// \tparam T1 The first argument tensor type
-/// \tparam Ts The remaining
-/// argument tensor types
+/// \tparam Ts The remaining argument tensor types
 /// \param[in] input_op The operation that is used to
 /// generate the output value from the input arguments
-/// \param[in] output_op The
-/// operation that is used to set the value of the result tensor given the
-/// element pointer and the result value
-/// \param[in] perm The permutation applied
-/// to the argument tensors
+/// \param[in] output_op The operation that is used to set the value
+/// of the result tensor given the element pointer and the result value
+/// \param[in] perm The permutation applied to the argument tensors
 /// \param[in,out] result The result tensor
-/// \param[in]
-/// tensor1 The first argument tensor
-/// \param[in] tensors The remaining argument
-/// tensors
+/// \param[in] tensor1 The first argument tensor
+/// \param[in] tensors The remaining argument tensors
 template <typename InputOp, typename OutputOp, typename TR, typename T1,
           typename... Ts,
           typename std::enable_if<
@@ -357,13 +354,26 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
 
-  const auto stride = inner_size(result, tensors...);
   const auto volume = result.range().volume();
 
-  for (decltype(result.range().volume()) i = 0ul; i < volume; i += stride)
-    math::inplace_vector_op(std::forward<Op>(op), stride,
-                            result.data() + result.range().ordinal(i),
-                            (tensors.data() + tensors.range().ordinal(i))...);
+  if constexpr (detail::has_member_function_data_anyreturn_v<TR> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(result, tensors...);
+    for (std::decay_t<decltype(volume)> i = 0ul; i < volume; i += stride)
+      math::inplace_vector_op(std::forward<Op>(op), stride,
+                              result.data() + result.range().ordinal(i),
+                              (tensors.data() + tensors.range().ordinal(i))...);
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& result_rng = result.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto result_lobound = signed_idx_t(result_rng.lobound());
+    for (auto&& idx : result_rng) {
+      using namespace container::operators;
+      std::forward<Op>(op)(
+          result[idx], (tensors[idx - result_lobound +
+                                signed_idx_t(tensors.range().lobound())])...);
+    }
+  }
 }
 
 /// In-place tensor of tensors operations with non-contiguous data
@@ -384,20 +394,33 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
 
-  const auto stride = inner_size(result, tensors...);
   const auto volume = result.range().volume();
 
-  auto inplace_tensor_range =
-      [&op, stride](
-          typename TR::pointer MADNESS_RESTRICT const result_data,
-          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
-        for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
-          inplace_tensor_op(op, result_data[i], tensors_data[i]...);
-      };
+  if constexpr (detail::has_member_function_data_anyreturn_v<TR> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(result, tensors...);
+    auto inplace_tensor_range =
+        [&op, stride](
+            typename TR::pointer MADNESS_RESTRICT const result_data,
+            typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
+          for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
+            inplace_tensor_op(op, result_data[i], tensors_data[i]...);
+        };
 
-  for (decltype(result.range().volume()) ord = 0ul; ord < volume; ord += stride)
-    inplace_tensor_range(result.data() + result.range().ordinal(ord),
-                         (tensors.data() + tensors.range().ordinal(ord))...);
+    for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume; ord += stride)
+      inplace_tensor_range(result.data() + result.range().ordinal(ord),
+                           (tensors.data() + tensors.range().ordinal(ord))...);
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& result_rng = result.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto result_lobound = signed_idx_t(result_rng.lobound());
+    for (auto&& idx : result_rng) {
+      using namespace container::operators;
+      std::forward<Op>(op)(
+          result[idx], (tensors[idx - result_lobound +
+                                signed_idx_t(tensors.range().lobound())])...);
+    }
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -407,8 +430,9 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
 /// Initialize tensor with contiguous tensor arguments
 
 /// This function initializes the \c i -th element of \c result with the result
-/// of \c op(tensors[i]...) \pre The memory of \c tensor1 has been allocated but
-/// not initialized. \tparam Op The element initialization operation type
+/// of \c op(tensors[i]...)
+/// \pre The memory of \c tensor1 has been allocated but not initialized.
+/// \tparam Op The element initialization operation type
 /// \tparam TR The result tensor type
 /// \tparam Ts The argument tensor types
 /// \param[in] op The result tensor element initialization operation
@@ -437,8 +461,7 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 
 /// This function initializes the \c i -th element of \c result with the result
 /// of \c op(tensors[i]...)
-/// \pre The memory of \c tensor1 has been allocated but
-/// not initialized.
+/// \pre The memory of \c tensor1 has been allocated but not initialized.
 /// \tparam Op The element initialization operation type
 /// \tparam TR The result tensor type
 /// \tparam Ts The argument tensor types
@@ -467,21 +490,15 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// of \c op(tensor1[i], tensors[i]...)
 /// \pre The memory of \c result has been
 /// allocated but not initialized.
-/// \tparam Op The element initialization
-/// operation type
+/// \tparam Op The element initialization operation type
 /// \tparam TR The result tensor type
-/// \tparam T1 The first
-/// argument tensor type
+/// \tparam T1 The first argument tensor type
 /// \tparam Ts The argument tensor types
-/// \param[in] op The
-/// result tensor element initialization operation
-/// \param[in] perm The
-/// permutation that will be applied to tensor2
-/// \param[out] result The result
-/// tensor
+/// \param[in] op The result tensor element initialization operation
+/// \param[in] perm The permutation that will be applied to tensor2
+/// \param[out] result The result tensor
 /// \param[in] tensor1 The first argument tensor
-/// \param[in] tensors The
-/// argument tensors
+/// \param[in] tensors The argument tensors
 template <
     typename Op, typename TR, typename T1, typename... Ts,
     typename std::enable_if<is_tensor<TR, T1, Ts...>::value>::type* = nullptr>
@@ -505,8 +522,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 
 /// This function initializes the \c i -th element of \c result with the result
 /// of \c op(tensor1[i], tensors[i]...)
-/// \pre The memory of \c result has been
-/// allocated but not initialized.
+/// \pre The memory of \c result has been allocated but not initialized.
 /// \tparam Op The element initialization operation type
 /// \tparam Perm A permutation type
 /// \tparam TR The result tensor type
@@ -546,18 +562,13 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 
 /// This function initializes the \c i -th element of \c result with the result
 /// of \c op(tensor1[i], tensors[i]...)
-/// \pre The memory of \c tensor1 has been
-/// allocated but not initialized.
-/// \tparam Op The element initialization
-/// operation type
+/// \pre The memory of \c tensor1 has been allocated but not initialized.
+/// \tparam Op The element initialization operation type
 /// \tparam T1 The result tensor type
-/// \tparam Ts The argument
-/// tensor types
-/// \param[in] op The result tensor element initialization
-/// operation
+/// \tparam Ts The argument tensor types
+/// \param[in] op The result tensor element initialization operation
 /// \param[out] result The result tensor
-/// \param[in] tensor1 The first
-/// argument tensor
+/// \param[in] tensor1 The first argument tensor
 /// \param[in] tensors The argument tensors
 template <
     typename Op, typename TR, typename T1, typename... Ts,
@@ -569,7 +580,6 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
 
-  const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
   auto wrapper_op = [&op](typename TR::pointer MADNESS_RESTRICT result_ptr,
@@ -578,11 +588,27 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
     new (result_ptr) typename T1::value_type(op(value1, values...));
   };
 
-  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
-       ord += stride)
-    math::vector_ptr_op(wrapper_op, stride, result.data() + ord,
-                        (tensor1.data() + tensor1.range().ordinal(ord)),
-                        (tensors.data() + tensors.range().ordinal(ord))...);
+  if constexpr (detail::has_member_function_data_anyreturn_v<TR> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(tensor1, tensors...);
+    for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
+         ord += stride)
+      math::vector_ptr_op(wrapper_op, stride, result.data() + ord,
+                          (tensor1.data() + tensor1.range().ordinal(ord)),
+                          (tensors.data() + tensors.range().ordinal(ord))...);
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& result_rng = result.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto result_lobound = signed_idx_t(result_rng.lobound());
+    for (auto&& idx : result_rng) {
+      using namespace container::operators;
+      const signed_idx_t relidx = idx - result_lobound;
+      wrapper_op(
+          &(result[idx]),
+          tensor1[relidx + signed_idx_t(tensor1.range().lobound())],
+          (tensors[relidx + signed_idx_t(tensors.range().lobound())])...);
+    }
+  }
 }
 
 /// Initialize tensor with one or more non-contiguous tensor arguments
@@ -591,13 +617,10 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
 /// of \c op(tensor1[i],tensors[i]...)
 /// \pre The memory of \c tensor1 has been
 /// allocated but not initialized.
-/// \tparam Op The element initialization
-/// operation type
+/// \tparam Op The element initialization operation type
 /// \tparam T1 The result tensor type
-/// \tparam Ts The argument
-/// tensor types
-/// \param[in] op The result tensor element initialization
-/// operation
+/// \tparam Ts The argument tensor types
+/// \param[in] op The result tensor element initialization operation
 /// \param[out] result The result tensor
 /// \param[in] tensor1 The first
 /// argument tensor
@@ -612,24 +635,40 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
 
-  const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
-  auto inplace_tensor_range =
-      [&op, stride](
-          typename TR::pointer MADNESS_RESTRICT const result_data,
-          typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
-          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
-        for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
-          new (result_data + i)
-              typename TR::value_type(tensor_op<typename TR::value_type>(
-                  op, tensor1_data[i], tensors_data[i]...));
-      };
+  if constexpr (detail::has_member_function_data_anyreturn_v<TR> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(tensor1, tensors...);
+    auto inplace_tensor_range =
+        [&op, stride](
+            typename TR::pointer MADNESS_RESTRICT const result_data,
+            typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
+            typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
+          for (std::decay_t<decltype(volume)> i = 0ul; i < stride; ++i)
+            new (result_data + i)
+                typename TR::value_type(tensor_op<typename TR::value_type>(
+                    op, tensor1_data[i], tensors_data[i]...));
+        };
 
-  for (decltype(volume) ord = 0ul; ord < volume; ord += stride)
-    inplace_tensor_range(result.data() + ord,
-                         (tensor1.data() + tensor1.range().ordinal(ord)),
-                         (tensors.data() + tensors.range().ordinal(ord))...);
+    for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume; ord += stride)
+      inplace_tensor_range(result.data() + ord,
+                           (tensor1.data() + tensor1.range().ordinal(ord)),
+                           (tensors.data() + tensors.range().ordinal(ord))...);
+  } else {
+    auto& result_rng = result.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto result_lobound = signed_idx_t(result_rng.lobound());
+    for (auto&& idx : result_rng) {
+      using namespace container::operators;
+      const signed_idx_t relidx = idx - result_lobound;
+
+      new (&(result[idx]))
+          typename TR::value_type(tensor_op<typename TR::value_type>(
+              op, tensor1[relidx + signed_idx_t(tensor1.range().lobound())],
+              (tensors[relidx + signed_idx_t(tensors.range().lobound())])...));
+    }
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -639,12 +678,11 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
 
 /// Perform an element-wise reduction of the tensors by
 /// executing <tt>join_op(result, reduce_op(result, &tensor1[i],
-/// &tensors[i]...))</tt> for each \c i in the index range of \c tensor1 . \c
-/// result is initialized to \c identity . If HAVE_INTEL_TBB is defined, the
-/// reduction will be executed in an undefined order, otherwise will execute in
-/// the order of increasing \c i .
-/// \tparam ReduceOp The element-wise reduction
-/// operation type
+/// &tensors[i]...))</tt> for each \c i in the index range of \c tensor1 .
+/// \c result is initialized to \c identity . If `HAVE_INTEL_TBB` is defined,
+/// the reduction will be executed in an undefined order, otherwise will
+/// execute in the order of increasing \c i .
+/// \tparam ReduceOp The element-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Identity A type that can be used as an argument to ReduceOp
 /// \tparam T1 The first argument tensor type
@@ -708,10 +746,10 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
 
 /// Perform reduction of the tensor-of-tensors' elements by
 /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for
-/// each \c i in the index range of \c tensor1 . \c result is initialized to \c
-/// identity . This will execute serially, in the order of increasing \c i (each
-/// element's reduction can however be executed in parallel, depending on the
-/// element type).
+/// each \c i in the index range of \c tensor1 . \c result is initialized to
+/// \c identity . This will execute serially, in the order of increasing
+/// \c i (each element's reduction can however be executed in parallel,
+/// depending on the element type).
 /// \tparam ReduceOp The tensor-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
@@ -751,10 +789,10 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
 
 /// Perform an element-wise reduction of the tensors by
 /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for
-/// each \c i in the index range of \c tensor1 . \c result is initialized to \c
-/// identity . This will execute serially, in the order of increasing \c i (each
-/// element-wise reduction can however be executed in parallel, depending on the
-/// element type).
+/// each \c i in the index range of \c tensor1 . \c result is initialized to
+/// \c identity . This will execute serially, in the order of increasing
+/// \c i (each element-wise reduction can however be executed in parallel,
+/// depending on the element type).
 /// \tparam ReduceOp The element-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
@@ -777,17 +815,31 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
   auto result = identity;
-  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
-       ord += stride) {
-    auto temp = identity;
-    math::reduce_op(reduce_op, join_op, identity, stride, temp,
-                    tensor1.data() + tensor1.range().ordinal(ord),
-                    (tensors.data() + tensors.range().ordinal(ord))...);
-    join_op(result, temp);
+  if constexpr (detail::has_member_function_data_anyreturn_v<T1> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(tensor1, tensors...);
+    for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume;
+         ord += stride) {
+      auto temp = identity;
+      math::reduce_op(reduce_op, join_op, identity, stride, temp,
+                      tensor1.data() + tensor1.range().ordinal(ord),
+                      (tensors.data() + tensors.range().ordinal(ord))...);
+      join_op(result, temp);
+    }
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& t1_rng = tensor1.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto t1_lobound = signed_idx_t(t1_rng.lobound());
+    for (auto&& idx : t1_rng) {
+      using namespace container::operators;
+      signed_idx_t relidx = idx - t1_lobound;
+      reduce_op(result, tensor1[idx],
+                (tensors[idx - t1_lobound +
+                         signed_idx_t(tensors.range().lobound())])...);
+    }
   }
 
   return result;
@@ -797,10 +849,11 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
 
 /// Perform an element-wise reduction of the tensors by
 /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for
-/// each \c i in the index range of \c tensor1 . \c result is initialized to \c
-/// identity . This will execute serially, in the order of increasing \c i (each
-/// element-wise reduction can however be executed in parallel, depending on the
-/// element type). \tparam ReduceOp The element-wise reduction operation type
+/// each \c i in the index range of \c tensor1 . \c result is initialized to
+/// \c identity . This will execute serially, in the order of increasing
+/// \c i (each element-wise reduction can however be executed in parallel,
+/// depending on the element type).
+/// \tparam ReduceOp The element-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
 /// \tparam T1 The first argument tensor type
@@ -822,31 +875,49 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
-  auto tensor_reduce_range =
-      [&reduce_op, &join_op, &identity, stride](
-          Scalar& MADNESS_RESTRICT result,
-          typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
-          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
-        for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
-          Scalar temp = tensor_reduce(reduce_op, join_op, identity,
-                                      tensor1_data[i], tensors_data[i]...);
-          join_op(result, temp);
-        }
-      };
-
   Scalar result = identity;
-  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume;
-       ord += stride) {
-    Scalar temp = tensor_reduce_range(
-        result, tensor1.data() + tensor1.range().ordinal(ord),
-        (tensors.data() + tensors.range().ordinal(ord))...);
-    join_op(result, temp);
+
+  if constexpr (detail::has_member_function_data_anyreturn_v<T1> &&
+                (detail::has_member_function_data_anyreturn_v<Ts> && ...)) {
+    const auto stride = inner_size(tensor1, tensors...);
+    auto tensor_reduce_range =
+        [&reduce_op, &join_op, &identity, stride](
+            Scalar& MADNESS_RESTRICT result,
+            typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
+            typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
+          for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
+            Scalar temp = tensor_reduce(reduce_op, join_op, identity,
+                                        tensor1_data[i], tensors_data[i]...);
+            join_op(result, temp);
+          }
+        };
+
+    for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume;
+         ord += stride) {
+      Scalar temp = tensor_reduce_range(
+          result, tensor1.data() + tensor1.range().ordinal(ord),
+          (tensors.data() + tensors.range().ordinal(ord))...);
+      join_op(result, temp);
+    }
+  } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    auto& t1_rng = tensor1.range();
+    using signed_idx_t = Range::index_difference_type;
+    auto t1_lobound = signed_idx_t(t1_rng.lobound());
+    for (auto&& idx : t1_rng) {
+      using namespace container::operators;
+      signed_idx_t relidx = idx - t1_lobound;
+
+      Scalar temp =
+          tensor_reduce(reduce_op, join_op, identity, tensor1[idx],
+                        (tensors[idx - t1_lobound +
+                                 signed_idx_t(tensors.range().lobound())])...);
+      join_op(result, temp);
+    }
   }
 
-  return identity;
+  return result;
 }
 
 }  // namespace detail

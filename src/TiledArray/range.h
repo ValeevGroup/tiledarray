@@ -49,9 +49,12 @@ class Range {
   typedef Range Range_;                ///< This object type
   typedef TA_1INDEX_TYPE index1_type;  ///< 1-index type, to conform to
                                        ///< Tensor Working Group (TWG) spec
+  typedef std::make_signed_t<TA_1INDEX_TYPE>
+      index1_difference_type;  ///< type representing difference of 1-indices
   typedef container::svector<index1_type>
-      index_type;            ///< Coordinate index type, to conform to
-                             ///< TWG spec
+      index_type;  ///< Coordinate index type, to conform to
+                   ///< TWG spec
+  typedef container::svector<index1_difference_type> index_difference_type;
   typedef index_type index;  ///< Coordinate index type (deprecated)
   typedef detail::SizeArray<const index1_type>
       index_view_type;  ///< Non-owning variant of index_type

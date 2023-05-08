@@ -158,7 +158,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   using rebind_numeric_t = typename rebind_numeric<Numeric>::type;
 
  private:
-  pimpl_type pimpl_;  ///< managed ptr to Array implementation
+  pimpl_type pimpl_ = {};  ///< managed ptr to Array implementation
   bool defer_deleter_to_next_fence_ =
       false;  ///< if true, the impl object is scheduled to be destroyed in the
               ///< next fence
@@ -277,7 +277,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// array is uninitialized, but these arrays may be assign via a tensor
   /// expression assignment or the copy construction.
 
-  DistArray() : pimpl_() {}
+  DistArray() = default;
 
   /// Copy constructor
 
@@ -298,6 +298,19 @@ class DistArray : public madness::archive::ParallelSerializableObject {
             const std::shared_ptr<const pmap_interface>& pmap = {})
       : pimpl_(init(world, trange, shape_type(1, trange), pmap)) {}
 
+  /// Dense array constructor
+
+  /// Constructs an array with the given meta data in default World.
+  /// This constructor only initializes the array meta data;
+  /// the array tiles are empty and must be assigned by the user.
+  /// \param trange The tiled range object that will be used to set the array
+  /// tiling.
+  /// \param pmap The tile index -> process map
+  explicit DistArray(const trange_type& trange,
+                     const std::shared_ptr<const pmap_interface>& pmap = {})
+      : pimpl_(init(get_default_world(), trange, shape_type(1, trange), pmap)) {
+  }
+
   /// Sparse array constructor
 
   /// Constructs an array with the given meta data. This constructor only
@@ -311,6 +324,19 @@ class DistArray : public madness::archive::ParallelSerializableObject {
             const std::shared_ptr<const pmap_interface>& pmap =
                 std::shared_ptr<const pmap_interface>())
       : pimpl_(init(world, trange, shape, pmap)) {}
+
+  /// Sparse array constructor
+
+  /// Constructs an array with the given meta data in default World.
+  /// This constructor only initializes the array meta data; the array tiles
+  /// are empty and must be assigned by the user.
+  /// \param trange The tiled range object that will be used to set the array
+  /// tiling. \param shape The array shape that defines zero and non-zero tiles
+  /// \param pmap The tile index -> process map
+  DistArray(const trange_type& trange, const shape_type& shape,
+            const std::shared_ptr<const pmap_interface>& pmap =
+                std::shared_ptr<const pmap_interface>())
+      : pimpl_(init(get_default_world(), trange, shape, pmap)) {}
 
   /// \name Initializer list constructors
   /// \brief Creates a new tensor containing the elements in the provided
@@ -374,6 +400,41 @@ class DistArray : public madness::archive::ParallelSerializableObject {
               std::initializer_list<std::initializer_list<T>>>>>>
           il)
       : DistArray(array_from_il<DistArray>(world, il)) {}
+
+  template <typename T>
+  explicit DistArray(std::initializer_list<T> il)  // N.B. clang does not like
+                                                   // detail::vector_il<T> here
+      : DistArray(array_from_il<DistArray>(get_default_world(), il)) {}
+
+  template <typename T>
+  explicit DistArray(std::initializer_list<std::initializer_list<T>> il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), il)) {}
+
+  template <typename T>
+  explicit DistArray(
+      std::initializer_list<std::initializer_list<std::initializer_list<T>>> il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), il)) {}
+
+  template <typename T>
+  explicit DistArray(std::initializer_list<std::initializer_list<
+                         std::initializer_list<std::initializer_list<T>>>>
+                         il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), il)) {}
+
+  template <typename T>
+  explicit DistArray(
+      std::initializer_list<std::initializer_list<std::initializer_list<
+          std::initializer_list<std::initializer_list<T>>>>>
+          il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), il)) {}
+
+  template <typename T>
+  explicit DistArray(
+      std::initializer_list<
+          std::initializer_list<std::initializer_list<std::initializer_list<
+              std::initializer_list<std::initializer_list<T>>>>>>
+          il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), il)) {}
   ///@}
 
   /// \name Tiling initializer list constructors
@@ -440,6 +501,44 @@ class DistArray : public madness::archive::ParallelSerializableObject {
               std::initializer_list<std::initializer_list<T>>>>>>
           il)
       : DistArray(array_from_il<DistArray>(world, trange, il)) {}
+
+  template <typename T>
+  DistArray(const trange_type& trange, std::initializer_list<T> il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), trange, il)) {}
+
+  template <typename T>
+  DistArray(const trange_type& trange,
+            std::initializer_list<std::initializer_list<T>> il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), trange, il)) {}
+
+  template <typename T>
+  DistArray(
+      const trange_type& trange,
+      std::initializer_list<std::initializer_list<std::initializer_list<T>>> il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), trange, il)) {}
+
+  template <typename T>
+  DistArray(const trange_type& trange,
+            std::initializer_list<std::initializer_list<
+                std::initializer_list<std::initializer_list<T>>>>
+                il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), trange, il)) {}
+
+  template <typename T>
+  DistArray(const trange_type& trange,
+            std::initializer_list<std::initializer_list<std::initializer_list<
+                std::initializer_list<std::initializer_list<T>>>>>
+                il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), trange, il)) {}
+
+  template <typename T>
+  DistArray(
+      const trange_type& trange,
+      std::initializer_list<
+          std::initializer_list<std::initializer_list<std::initializer_list<
+              std::initializer_list<std::initializer_list<T>>>>>>
+          il)
+      : DistArray(array_from_il<DistArray>(get_default_world(), trange, il)) {}
   /// @}
 
   /// converting copy constructor

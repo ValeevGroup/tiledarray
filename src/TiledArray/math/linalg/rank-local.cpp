@@ -40,7 +40,7 @@ inline int ta_lapack_fortran_call(F f, Args... args) {
   return info;
 }
 
-#define TA_LAPACK_ERROR(F) throw std::runtime_error("lapack::" #F " failed")
+#define TA_LAPACK_ERROR(F) throw lapack::Error("lapack::" #F " failed")
 
 #define TA_LAPACK_FORTRAN_CALL(F, ARGS...) \
   ((ta_lapack_fortran_call(F, ARGS) == 0) || (TA_LAPACK_ERROR(F), 0))

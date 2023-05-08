@@ -109,6 +109,34 @@ inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
                     r2.extent_data());
 }
 
+/// Test if a BTAS range and a TA range are congruent
+
+/// This function tests that the rank and extent of
+/// \c r1 are equal to those of \c r2.
+/// \param r1 The first Range to compare
+/// \param r2 The second Range to compare
+template <blas::Layout Order, typename... Args>
+inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
+                         const TiledArray::Range& r2) {
+  return (r1.rank() == r2.rank()) &&
+         std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
+                    r2.extent_data());
+}
+
+/// Test if a TA range and a BTAS range are congruent
+
+/// This function tests that the rank and extent of
+/// \c r1 are equal to those of \c r2.
+/// \param r1 The first Range to compare
+/// \param r2 The second Range to compare
+template <blas::Layout Order, typename... Args>
+inline bool is_congruent(const TiledArray::Range& r1,
+                         const btas::RangeNd<Order, Args...>& r2) {
+  return (r1.rank() == r2.rank()) &&
+         std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
+                    r2.extent_data());
+}
+
 template <typename T, typename Range, typename Storage>
 decltype(auto) make_ti(const btas::Tensor<T, Range, Storage>& arg) {
   return TiledArray::detail::TensorInterface<const T, TiledArray::Range,
