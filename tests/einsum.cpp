@@ -714,7 +714,55 @@ BOOST_AUTO_TEST_CASE(xxx) {
   BOOST_CHECK(are_equal);
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_SUITE_END()  // einsum_tot
+
+BOOST_AUTO_TEST_SUITE(einsum_tot_t)
+
+BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
+  using t_type = DistArray<Tensor<double>, SparsePolicy>;
+  using tot_type = DistArray<Tensor<Tensor<double>>, SparsePolicy>;
+  using matrix_il = TiledArray::detail::matrix_il<Tensor<double>>;
+  auto& world = TiledArray::get_default_world();
+  Tensor<double> lhs_elem_0_0(
+      Range{7, 2}, {49, 73, 28, 46, 12, 83, 29, 61, 61, 98, 57, 28, 96, 57});
+  Tensor<double> lhs_elem_0_1(
+      Range{7, 2}, {78, 15, 69, 55, 87, 94, 28, 94, 79, 30, 26, 88, 48, 74});
+  Tensor<double> lhs_elem_1_0(
+      Range{7, 2}, {70, 32, 25, 71, 6, 56, 4, 13, 72, 50, 15, 95, 52, 89});
+  Tensor<double> lhs_elem_1_1(
+      Range{7, 2}, {12, 29, 17, 68, 37, 79, 5, 52, 13, 35, 53, 54, 78, 71});
+  Tensor<double> lhs_elem_2_0(
+      Range{7, 2}, {77, 39, 34, 94, 16, 82, 63, 27, 75, 12, 14, 59, 3, 14});
+  Tensor<double> lhs_elem_2_1(
+      Range{7, 2}, {65, 90, 37, 41, 65, 75, 59, 16, 44, 85, 86, 11, 40, 24});
+  Tensor<double> lhs_elem_3_0(
+      Range{7, 2}, {77, 53, 11, 6, 99, 63, 46, 68, 83, 56, 76, 86, 91, 79});
+  Tensor<double> lhs_elem_3_1(
+      Range{7, 2}, {56, 11, 33, 90, 36, 38, 33, 54, 60, 21, 16, 28, 6, 97});
+  matrix_il lhs_il{{lhs_elem_0_0, lhs_elem_0_1},
+                   {lhs_elem_1_0, lhs_elem_1_1},
+                   {lhs_elem_2_0, lhs_elem_2_1},
+                   {lhs_elem_3_0, lhs_elem_3_1}};
+  TiledRange lhs_trange{{0, 2, 4}, {0, 2}};
+  tot_type lhs(world, lhs_trange, lhs_il);
+
+  TiledRange rhs_trange{{0, 2}, {0, 2, 4, 6}};
+  t_type rhs(world, rhs_trange);
+  rhs.fill_random();
+
+  TiledRange ref_result_trange{lhs_trange.dim(0), rhs_trange.dim(1),
+                               rhs_trange.dim(0)};
+  tot_type ref_result(world, ref_result_trange);
+  // TODO compute ref_result
+
+  tot_type result;
+  BOOST_REQUIRE_NO_THROW(result("i,k,j;m,n") = lhs("i,j;m,n") * rhs("j,k"));
+  // dist_array_t out = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,k;m,n");
+  // const bool are_equal = ToTArrayFixture::are_equal(corr, out);
+  // BOOST_CHECK(are_equal);
+}
+
+BOOST_AUTO_TEST_SUITE_END()  // einsum_tot_t
 
 // Eigen einsum indices
 BOOST_AUTO_TEST_SUITE(einsum_index, TA_UT_LABEL_SERIAL)
@@ -740,7 +788,7 @@ BOOST_AUTO_TEST_CASE(einsum_index) {
   BOOST_CHECK((v.range() == Range{src}));
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_SUITE_END()  // einsum_index
 
 #include "TiledArray/einsum/eigen.h"
 
@@ -919,7 +967,7 @@ BOOST_AUTO_TEST_CASE(einsum_eigen_hji_jih_hj) {
   BOOST_CHECK(isApprox(reference, result));
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_SUITE_END()  // einsum_eigen
 
 // TiledArray einsum expressions
 BOOST_AUTO_TEST_SUITE(einsum_tiledarray)
@@ -1098,4 +1146,4 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_dot) {
 //   BOOST_CHECK(hik_hkj_hji == hkj_hji_hik);
 // }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_SUITE_END()  // einsum_tiledarray
