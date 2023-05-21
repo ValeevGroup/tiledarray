@@ -73,7 +73,7 @@ class ExprEngine : private NO_DEFAULTS {
   World* world_;  ///< The world where this expression will be evaluated
   BipartiteIndexList
       indices_;  ///< The index list of this expression; bipartite due to need
-                 ///< to support recursive tensors (i.e. Tensor-of-Tensor)
+                 ///< to support nested tensors (e.g. tensors of tensors)
   bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
                         ///< tile)
   /// The permutation that will be applied to the outer tensor of tensors
