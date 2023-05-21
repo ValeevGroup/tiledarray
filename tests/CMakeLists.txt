@@ -34,6 +34,7 @@ set(executable ta_test)
 set(ta_test_src_files  ta_test.cpp
     range1.cpp
     range.cpp
+    type_traits.cpp
     tensor.cpp
     tensor_of_tensor.cpp
     tensor_tensor_view.cpp
