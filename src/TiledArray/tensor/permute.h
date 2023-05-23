@@ -97,10 +97,14 @@ inline void fuse_dimensions(SizeType* MADNESS_RESTRICT const fused_size,
 
 /// The expected signature of the input operations is:
 /// \code
-/// Result::value_type input_op(const Arg0::value_type, const
-/// Args::value_type...) \endcode The expected signature of the output
-/// operations is: \code void output_op(Result::value_type*, const
-/// Result::value_type) \endcode \tparam InputOp The input operation type
+/// Result::value_type input_op(const Arg0::value_type,
+///                             const Args::value_type...)
+/// \endcode
+/// The expected signature of the output
+/// operations is:
+/// \code void output_op(Result::value_type*, const Result::value_type)
+/// \endcode
+/// \tparam InputOp The input operation type
 /// \tparam OutputOp The output operation type
 /// \tparam Result The result tensor type
 /// \tparam Arg0 The first tensor argument type
@@ -152,7 +156,7 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
 
       // Copy the block
       math::vector_ptr_op(op, block_size, result.data() + perm_index,
-                          arg0.data() + index, (args.data() + index)...);
+                          &arg0[index], &args[index]...);
     }
 
   } else {
@@ -194,8 +198,8 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
 
         math::transpose(input_op, output_op, other_fused_size[1],
                         other_fused_size[3], result_outer_stride,
-                        result.data() + perm_index, other_fused_weight[1],
-                        arg0.data() + index, (args.data() + index)...);
+                        &result[perm_index], other_fused_weight[1],
+                        &arg0[index], &args[index]...);
       }
     }
   }

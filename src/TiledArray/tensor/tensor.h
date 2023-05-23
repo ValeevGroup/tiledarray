@@ -100,6 +100,8 @@ class Tensor {
 
  private:
   template <typename X>
+  using value_t = typename X::value_type;
+  template <typename X>
   using numeric_t = typename TiledArray::detail::numeric_type<X>::type;
 
   template <typename... Ts>
@@ -350,6 +352,12 @@ class Tensor {
   /// \param other The tensor to be copied
   /// \note this constructor is disabled if \p T1 already has a conversion
   ///       operator to this type
+  /// \warning if `T1` is a tensor of tensors its elements are _cloned_ rather
+  ///          than copied to make the semantics of  this to be consistent
+  ///          between tensors of scalars and tensors of scalars; specifically,
+  ///          if `T1` is a tensor of scalars the constructed tensor is
+  ///          is independent of \p other, thus should apply clone to inner
+  ///          tensor nests to behave similarly for nested tensors
   template <
       typename T1,
       typename std::enable_if<
@@ -357,7 +365,13 @@ class Tensor {
           !detail::has_conversion_operator_v<T1, Tensor>>::type* = nullptr>
   explicit Tensor(const T1& other)
       : Tensor(detail::clone_range(other), 1, default_construct{false}) {
-    auto op = [](const numeric_t<T1> arg) -> numeric_t<T1> { return arg; };
+    auto op = [](const value_type& arg) -> decltype(auto) {
+      // clone nested tensors
+      if constexpr (detail::is_tensor_v<value_type>)
+        return arg.clone();
+      else
+        return arg;
+    };
 
     detail::tensor_init(op, *this, other);
   }
@@ -368,13 +382,25 @@ class Tensor {
   /// \tparam Perm A permutation type
   /// \param other The tensor to be copied
   /// \param perm The permutation that will be applied to the copy
+  /// \warning if `T1` is a tensor of tensors its elements are _cloned_ rather
+  ///          than copied to make the semantics of  this to be consistent
+  ///          between tensors of scalars and tensors of scalars; specifically,
+  ///          if `T1` is a tensor of scalars the constructed tensor is
+  ///          is independent of \p other, thus should apply clone to inner
+  ///          tensor nests to behave similarly for nested tensors
   template <
       typename T1, typename Perm,
-      typename std::enable_if<is_tensor<T1>::value &&
+      typename std::enable_if<detail::is_nested_tensor_v<T1> &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor(const T1& other, const Perm& perm)
       : Tensor(outer(perm) * other.range(), 1, default_construct{false}) {
-    auto op = [](const numeric_t<T1> arg) -> numeric_t<T1> { return arg; };
+    auto op = [](const value_type& arg) -> decltype(auto) {
+      // clone nested tensors
+      if constexpr (detail::is_tensor_v<value_type>)
+        return arg.clone();
+      else
+        return arg;
+    };
 
     detail::tensor_init(op, outer(perm), *this, other);
 
@@ -448,7 +474,7 @@ class Tensor {
   /// \param right The right-hand tensor argument
   /// \param op The element-wise operation
   template <typename T1, typename T2, typename Op,
-            typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
+            typename = std::enable_if_t<detail::is_nested_tensor_v<T1, T2>>>
   Tensor(const T1& left, const T2& right, Op&& op)
       : Tensor(detail::clone_range(left), 1, default_construct{false}) {
     detail::tensor_init(op, *this, left, right);
@@ -1331,8 +1357,10 @@ class Tensor {
   /// \c op(*this[i],other[i])
   template <typename Right, typename Op,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  Tensor binary(const Right& right, Op&& op) const {
-    return Tensor(*this, right, op);
+  auto binary(const Right& right, Op&& op) const {
+    using result_value_type = decltype(op(
+        std::declval<const T&>(), std::declval<const value_t<Right>&>()));
+    return Tensor<result_value_type>(*this, right, op);
   }
 
   /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -1341,7 +1369,7 @@ class Tensor {
   /// \tparam Op The binary operation type
   /// \tparam Perm A permutation tile
   /// \param right The right-hand argument in the binary operation
-  /// \param op The binary, element-wise operation
+  /// \param op The binary element-wise operation
   /// \param perm The permutation to be applied to this tensor
   /// \return A tensor where element \c i of the new tensor is equal to
   /// \c op(*this[i],other[i])
@@ -1349,7 +1377,7 @@ class Tensor {
       typename Right, typename Op, typename Perm,
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
-  Tensor binary(const Right& right, Op&& op, const Perm& perm) const {
+  auto binary(const Right& right, Op&& op, const Perm& perm) const {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
     [[maybe_unused]] constexpr bool is_bperm =
         detail::is_bipartite_permutation_v<Perm>;
@@ -1357,16 +1385,19 @@ class Tensor {
     // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
     // not match Tensor");
     if constexpr (!is_tot) {
+      using result_value_type = decltype(op(
+          std::declval<const T&>(), std::declval<const value_t<Right>&>()));
+      using ResultTensor = Tensor<result_value_type>;
       if constexpr (is_bperm) {
         TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
-        return Tensor(*this, right, op, outer(perm));
+        return ResultTensor(*this, right, op, outer(perm));
       } else
-        return Tensor(*this, right, op, perm);
+        return ResultTensor(*this, right, op, perm);
     } else {
       // AFAIK the other branch fundamentally relies on raw pointer arithmetic,
       // which won't work for ToTs.
       auto temp = binary(right, std::forward<Op>(op));
-      Permute<Tensor, Tensor> p;
+      Permute<decltype(temp), decltype(temp)> p;
       return p(temp, perm);
     }
     abort();  // unreachable
@@ -1377,7 +1408,7 @@ class Tensor {
   /// \tparam Right The right-hand tensor type
   /// \tparam Op The binary operation type
   /// \param right The right-hand argument in the binary operation
-  /// \param op The binary, element-wise operation
+  /// \param op The binary element-wise operation
   /// \return A reference to this object
   /// \throw TiledArray::Exception When this tensor is empty.
   /// \throw TiledArray::Exception When \c other is empty.
@@ -1385,7 +1416,8 @@ class Tensor {
   /// to the range of \c other.
   /// \throw TiledArray::Exception When this and \c other are the same.
   template <typename Right, typename Op,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+            typename std::enable_if<detail::is_nested_tensor_v<Right>>::type* =
+                nullptr>
   Tensor& inplace_binary(const Right& right, Op&& op) {
     detail::inplace_tensor_op(op, *this, right);
     return *this;
@@ -1394,7 +1426,7 @@ class Tensor {
   /// Use a unary, element wise operation to construct a new tensor
 
   /// \tparam Op The unary operation type
-  /// \param op The unary, element-wise operation
+  /// \param op The unary element-wise operation
   /// \return A tensor where element \c i of the new tensor is equal to
   /// \c op(*this[i])
   /// \throw TiledArray::Exception When this tensor is empty.
@@ -1407,7 +1439,7 @@ class Tensor {
 
   /// \tparam Op The unary operation type
   /// \tparam Perm A permutation tile
-  /// \param op The unary operation
+  /// \param op The unary element-wise operation
   /// \param perm The permutation to be applied to this tensor
   /// \return A permuted tensor with elements that have been modified by \c op
   /// \throw TiledArray::Exception When this tensor is empty.
@@ -1459,7 +1491,7 @@ class Tensor {
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor scale(const Scalar factor) const {
-    return unary([factor](const numeric_type a) -> numeric_type {
+    return unary([factor](const value_type& a) -> decltype(auto) {
       using namespace TiledArray::detail;
       return a * factor;
     });
@@ -1494,7 +1526,7 @@ class Tensor {
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& scale_to(const Scalar factor) {
     return inplace_unary(
-        [factor](numeric_type& MADNESS_RESTRICT res) { res *= factor; });
+        [factor](value_type& MADNESS_RESTRICT res) { res *= factor; });
   }
 
   // Addition operations
@@ -1510,7 +1542,7 @@ class Tensor {
   Tensor add(const Right& right) const& {
     return binary(
         right,
-        [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
+        [](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
           return l + r;
         });
   }
@@ -1543,7 +1575,7 @@ class Tensor {
   Tensor add(const Right& right, const Perm& perm) const {
     return binary(
         right,
-        [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
+        [](const value_type& l, const value_type& r) -> decltype(auto) {
           return l + r;
         },
         perm);
@@ -1562,9 +1594,11 @@ class Tensor {
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor add(const Right& right, const Scalar factor) const {
-    return binary(right,
-                  [factor](const numeric_type l, const numeric_t<Right> r)
-                      -> numeric_type { return (l + r) * factor; });
+    return binary(
+        right,
+        [factor](const value_type& l, const value_type& r) -> decltype(auto) {
+          return (l + r) * factor;
+        });
   }
 
   /// Scale and add this and \c other to construct a new, permuted tensor
@@ -1584,8 +1618,9 @@ class Tensor {
   Tensor add(const Right& right, const Scalar factor, const Perm& perm) const {
     return binary(
         right,
-        [factor](const numeric_type l, const numeric_t<Right> r)
-            -> numeric_type { return (l + r) * factor; },
+        [factor](const value_type& l, const value_type& r) -> decltype(auto) {
+          return (l + r) * factor;
+        },
         perm);
   }
 
@@ -1622,8 +1657,8 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor& add_to(const Right& right) {
-    return inplace_binary(right, [](numeric_type& MADNESS_RESTRICT l,
-                                    const numeric_t<Right> r) { l += r; });
+    return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
+                                    const value_t<Right> r) { l += r; });
   }
 
   /// Add \c other to this tensor, and scale the result
@@ -1639,8 +1674,8 @@ class Tensor {
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& add_to(const Right& right, const Scalar factor) {
     return inplace_binary(
-        right, [factor](numeric_type& MADNESS_RESTRICT l,
-                        const numeric_t<Right> r) { (l += r) *= factor; });
+        right, [factor](value_type& MADNESS_RESTRICT l,
+                        const value_t<Right> r) { (l += r) *= factor; });
   }
 
   /// Add a constant to this tensor
@@ -1661,11 +1696,11 @@ class Tensor {
   /// \return A new tensor where the elements are the different between the
   /// elements of \c this and \c right
   template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+            typename = std::enable_if<
+                detail::tensors_have_equal_nested_rank_v<Tensor<T>, Right>>>
   Tensor subt(const Right& right) const {
     return binary(
-        right,
-        [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
+        right, [](const value_type& l, const value_type& r) -> decltype(auto) {
           return l - r;
         });
   }
@@ -1685,7 +1720,7 @@ class Tensor {
   Tensor subt(const Right& right, const Perm& perm) const {
     return binary(
         right,
-        [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
+        [](const value_type& l, const value_type& r) -> decltype(auto) {
           return l - r;
         },
         perm);
@@ -1705,9 +1740,11 @@ class Tensor {
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor subt(const Right& right, const Scalar factor) const {
-    return binary(right,
-                  [factor](const numeric_type l, const numeric_t<Right> r)
-                      -> numeric_type { return (l - r) * factor; });
+    return binary(
+        right,
+        [factor](const value_type& l, const value_type& r) -> decltype(auto) {
+          return (l - r) * factor;
+        });
   }
 
   /// Subtract \c right from this and return the result scaled by a scaling \c
@@ -1728,8 +1765,9 @@ class Tensor {
   Tensor subt(const Right& right, const Scalar factor, const Perm& perm) const {
     return binary(
         right,
-        [factor](const numeric_type l, const numeric_t<Right> r)
-            -> numeric_type { return (l - r) * factor; },
+        [factor](const value_type& l, const value_type& r) -> decltype(auto) {
+          return (l - r) * factor;
+        },
         perm);
   }
 
@@ -1760,8 +1798,8 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor& subt_to(const Right& right) {
-    return inplace_binary(right, [](numeric_type& MADNESS_RESTRICT l,
-                                    const numeric_t<Right> r) { l -= r; });
+    return inplace_binary(
+        right, [](auto& MADNESS_RESTRICT l, const auto& r) { l -= r; });
   }
 
   /// Subtract \c right from and scale this tensor
@@ -1776,9 +1814,10 @@ class Tensor {
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& subt_to(const Right& right, const Scalar factor) {
-    return inplace_binary(
-        right, [factor](numeric_type& MADNESS_RESTRICT l,
-                        const numeric_t<Right> r) { (l -= r) *= factor; });
+    return inplace_binary(right,
+                          [factor](auto& MADNESS_RESTRICT l, const auto& r) {
+                            (l -= r) *= factor;
+                          });
   }
 
   /// Subtract a constant from this tensor
@@ -1795,11 +1834,12 @@ class Tensor {
   /// \return A new tensor where the elements are the product of the elements
   /// of \c this and \c right
   template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  Tensor mult(const Right& right) const {
+            typename std::enable_if<detail::is_nested_tensor_v<Right>>::type* =
+                nullptr>
+  decltype(auto) mult(const Right& right) const {
     return binary(
         right,
-        [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
+        [](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
           return l * r;
         });
   }
@@ -1814,12 +1854,12 @@ class Tensor {
   /// of \c this and \c right
   template <
       typename Right, typename Perm,
-      typename std::enable_if<is_tensor<Right>::value &&
+      typename std::enable_if<detail::is_nested_tensor_v<Right> &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
-  Tensor mult(const Right& right, const Perm& perm) const {
+  decltype(auto) mult(const Right& right, const Perm& perm) const {
     return binary(
         right,
-        [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
+        [](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
           return l * r;
         },
         perm);
@@ -1835,12 +1875,12 @@ class Tensor {
   /// of \c this and \c right, scaled by \c factor
   template <
       typename Right, typename Scalar,
-      typename std::enable_if<is_tensor<Right>::value &&
+      typename std::enable_if<detail::is_nested_tensor_v<Right> &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
-  Tensor mult(const Right& right, const Scalar factor) const {
+  decltype(auto) mult(const Right& right, const Scalar factor) const {
     return binary(right,
-                  [factor](const numeric_type l, const numeric_t<Right> r)
-                      -> numeric_type { return (l * r) * factor; });
+                  [factor](const value_type& l, const value_t<Right>& r)
+                      -> decltype(auto) { return (l * r) * factor; });
   }
 
   /// Scale and multiply this by \c right to create a new, permuted tensor
@@ -1853,15 +1893,17 @@ class Tensor {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the product of the elements
   /// of \c this and \c right, scaled by \c factor
-  template <typename Right, typename Scalar, typename Perm,
-            typename std::enable_if<
-                is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
-                detail::is_permutation_v<Perm>>::type* = nullptr>
-  Tensor mult(const Right& right, const Scalar factor, const Perm& perm) const {
+  template <
+      typename Right, typename Scalar, typename Perm,
+      typename std::enable_if<detail::is_nested_tensor_v<Right> &&
+                              detail::is_numeric_v<Scalar> &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  decltype(auto) mult(const Right& right, const Scalar factor,
+                      const Perm& perm) const {
     return binary(
         right,
-        [factor](const numeric_type l, const numeric_t<Right> r)
-            -> numeric_type { return (l * r) * factor; },
+        [factor](const value_type& l, const value_t<Right>& r)
+            -> decltype(auto) { return (l * r) * factor; },
         perm);
   }
 
@@ -1871,10 +1913,11 @@ class Tensor {
   /// \param right The tensor that will be multiplied by this tensor
   /// \return A reference to this tensor
   template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+            typename std::enable_if<detail::is_nested_tensor_v<Right>>::type* =
+                nullptr>
   Tensor& mult_to(const Right& right) {
-    return inplace_binary(right, [](numeric_type& MADNESS_RESTRICT l,
-                                    const numeric_t<Right> r) { l *= r; });
+    return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
+                                    const value_t<Right>& r) { l *= r; });
   }
 
   /// Scale and multiply this tensor by \c right
@@ -1886,12 +1929,12 @@ class Tensor {
   /// \return A reference to this tensor
   template <
       typename Right, typename Scalar,
-      typename std::enable_if<is_tensor<Right>::value &&
+      typename std::enable_if<detail::is_nested_tensor_v<Right> &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& mult_to(const Right& right, const Scalar factor) {
     return inplace_binary(
-        right, [factor](numeric_type& MADNESS_RESTRICT l,
-                        const numeric_t<Right> r) { (l *= r) *= factor; });
+        right, [factor](value_type& MADNESS_RESTRICT l,
+                        const value_t<Right>& r) { (l *= r) *= factor; });
   }
 
   // Negation operations

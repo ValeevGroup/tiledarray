@@ -755,11 +755,17 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
   tot_type ref_result(world, ref_result_trange);
   // TODO compute ref_result
 
-  tot_type result;
-  BOOST_REQUIRE_NO_THROW(result("i,k,j;m,n") = lhs("i,j;m,n") * rhs("j,k"));
-  // dist_array_t out = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,k;m,n");
-  // const bool are_equal = ToTArrayFixture::are_equal(corr, out);
-  // BOOST_CHECK(are_equal);
+  /////////////////////////////////////////////////////////
+  // ToT * T
+
+  // this is not supported by the expression layer since this is a
+  // - general product w.r.t. outer indices
+  // - involves ToT * T
+  // tot_type result;
+  // BOOST_REQUIRE_NO_THROW(result("i,k,j;m,n") = lhs("i,j;m,n") * rhs("j,k"));
+
+  // will try to make this work
+  // tot_type out = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,j,k;m,n");
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // einsum_tot_t
