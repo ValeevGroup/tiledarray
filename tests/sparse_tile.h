@@ -48,6 +48,7 @@ class EigenSparseTile {
   typedef T numeric_type;  // The scalar type that is compatible with value_type
   typedef size_t size_type;  // Size type
   typedef const T& const_reference;
+  typedef size_type ordinal_type;
   // other typedefs
   typedef Eigen::SparseMatrix<T, Eigen::RowMajor> matrix_type;
 
@@ -158,6 +159,14 @@ class EigenSparseTile {
     auto start = range().lobound_data();
     auto* ptr = coeffPtr(idx[0] - start[0], idx[1] - start[1]);
     return ptr == nullptr ? zero : *ptr;
+  }
+
+  const value_type& at_ordinal(const ordinal_type index_ordinal) const {
+    return this->operator[](index_ordinal);
+  }
+
+  value_type& at_ordinal(const ordinal_type index_ordinal) {
+    return this->operator[](index_ordinal);
   }
 
   /// Maximum # of elements in the tile
