@@ -214,6 +214,20 @@ class Tensor {
 #endif
   }
 
+  template <typename T_>
+  static decltype(auto) value_converter(const T_& arg) {
+    using arg_type = detail::remove_cvr_t<decltype(arg)>;
+    if constexpr (detail::is_tensor_v<arg_type>)  // clone nested tensors
+      return arg.clone();
+    else if constexpr (!std::is_same_v<arg_type, value_type>) {  // convert
+      if constexpr (std::is_convertible_v<arg_type, value_type>)
+        return static_cast<value_type>(arg);
+      else
+        return conversions::to<value_type, arg_type>()(arg);
+    } else
+      return arg;
+  };
+
   range_type range_;  ///< Range
   /// Number of `range_`-sized blocks in `data_`
   /// \note this is not used for (in)equality comparison
@@ -365,15 +379,7 @@ class Tensor {
           !detail::has_conversion_operator_v<T1, Tensor>>::type* = nullptr>
   explicit Tensor(const T1& other)
       : Tensor(detail::clone_range(other), 1, default_construct{false}) {
-    auto op = [](const value_type& arg) -> decltype(auto) {
-      // clone nested tensors
-      if constexpr (detail::is_tensor_v<value_type>)
-        return arg.clone();
-      else
-        return arg;
-    };
-
-    detail::tensor_init(op, *this, other);
+    detail::tensor_init(value_converter<typename T1::value_type>, *this, other);
   }
 
   /// Construct a permuted tensor copy
@@ -394,15 +400,8 @@ class Tensor {
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor(const T1& other, const Perm& perm)
       : Tensor(outer(perm) * other.range(), 1, default_construct{false}) {
-    auto op = [](const value_type& arg) -> decltype(auto) {
-      // clone nested tensors
-      if constexpr (detail::is_tensor_v<value_type>)
-        return arg.clone();
-      else
-        return arg;
-    };
-
-    detail::tensor_init(op, outer(perm), *this, other);
+    detail::tensor_init(value_converter<typename T1::value_type>, outer(perm),
+                        *this, other);
 
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
