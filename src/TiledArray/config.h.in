@@ -74,6 +74,9 @@
 /* Define if TA has enabled ScaLAPACK Bindings */
 #cmakedefine TILEDARRAY_HAS_SCALAPACK 1
 
+/* Define if TA has enabled SLATE Bindings */
+#cmakedefine TILEDARRAY_HAS_SLATE 1
+
 /* Define if TiledArray configured with CUDA support */
 #cmakedefine TILEDARRAY_HAS_CUDA @TILEDARRAY_HAS_CUDA@
 #cmakedefine TILEDARRAY_CHECK_CUDA_ERROR @TILEDARRAY_CHECK_CUDA_ERROR@

@@ -458,6 +458,26 @@ BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
 
+#if TILEDARRAY_HAS_SLATE
+#warning "DIE DIE DIE"
+
+BOOST_AUTO_TEST_CASE(dense_tiled_array_to_slate_matrix_test) {
+  GlobalFixture::world->gop.fence();
+    std::cout<< "HERE" << std::endl;
+
+  auto trange = gen_trange(N, {static_cast<size_t>(128)});
+  auto ref_ta = TA::make_array<TA::TArray<double>>(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+
+  GlobalFixture::world->gop.fence();
+}
+
+#endif // TILEDARRAY_HAS_SLATE
+
 BOOST_AUTO_TEST_CASE(heig_same_tiling) {
   GlobalFixture::world->gop.fence();
 
