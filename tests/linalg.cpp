@@ -29,6 +29,10 @@ namespace scalapack = TA::math::linalg::scalapack;
 #define TILEDARRAY_SCALAPACK_TEST(...)
 #endif
 
+#if TILEDARRAY_HAS_SLATE
+#include <slate/slate.hh>
+#endif
+
 #if TILEDARRAY_HAS_TTG
 #include "TiledArray/math/linalg/ttg/cholesky.h"
 #define TILEDARRAY_TTG_TEST(F, E)    \
