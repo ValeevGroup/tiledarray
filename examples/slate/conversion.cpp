@@ -25,10 +25,8 @@
  */
 
 #include <tiledarray.h>
-//#include <TiledArray/math/linalg/scalapack/block_cyclic.h>
 #include <random>
-
-//namespace scalapack = TiledArray::math::linalg::scalapack;
+#include <slate/slate.hh>
 
 template <typename Integral1, typename Integral2>
 int64_t div_ceil(Integral1 x, Integral2 y) {
@@ -61,12 +59,150 @@ TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
   return TA::TiledRange(ranges.begin(), ranges.end());
 };
 
+
+
+auto make_square_proc_grid(MPI_Comm comm) {
+    int mpi_size; MPI_Comm_size(comm, &mpi_size);
+    int p,q;
+    for(p = int( sqrt( mpi_size ) ); p > 0; --p) {
+        q = int( mpi_size / p );
+        if(p*q == mpi_size) break;
+    }
+    return std::make_pair(p,q);
+}
+
+
 int main(int argc, char** argv) {
   auto& world = TA::initialize(argc, argv);
   {
-    size_t N = argc > 1 ? std::stoi(argv[1]) : 1000;
-    size_t NB = argc > 2 ? std::stoi(argv[2]) : 128;
+    int64_t N = argc > 1 ? std::stoi(argv[1]) : 1000;
+    int64_t NB = argc > 2 ? std::stoi(argv[2]) : 128;
 
+    auto make_ta_reference = 
+      [&](TA::Tensor<double>& t, TA::Range const& range) {
+
+        t = TA::Tensor<double>(range, 0.0);
+        auto lo = range.lobound_data();
+        auto up = range.upbound_data();
+        for (int m = lo[0]; m < up[0]; ++m) {
+          for (int n = lo[1]; n < up[1]; ++n) {
+            t(m, n) = m - n;
+          }
+        }
+
+        return t.norm();
+      };
+
+    // Generate Reference TA tensor.
+    auto trange = gen_trange(N, {NB});
+    auto ref_ta =
+        TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
+
+
+    #if 0
+    ref_ta.make_replicated();
+    world.gop.fence();
+    auto ref_eigen = TA::array_to_eigen(ref_ta);
+    if(!world.rank()) std::cout << "REF\n" << ref_eigen << std::endl;
+    world.gop.fence();
+
+    // Generate Slate Matrix
+    slate::Matrix<double> A(N,N, NB, world.size(), 1, MPI_COMM_WORLD);
+    A.insertLocalTiles();
+    for (int64_t j = 0; j < A.nt(); ++j) {
+        for (int64_t i = 0; i < A.mt(); ++i) {
+            if (A.tileIsLocal( i, j )) {
+                auto T = A( i, j );
+                for(int ii = 0; ii < T.mb(); ++ii)
+                for(int jj = 0; jj < T.nb(); ++jj) {
+                    T.data()[ii + jj*T.stride()] = (i*NB + ii) - (j*NB + jj);
+                }
+            }
+        }
+    }
+    world.gop.fence();
+
+
+    // Slate matrix to eigen
+    Eigen::MatrixXd slate_eigen = Eigen::MatrixXd::Zero(N,N);
+    for (int64_t j = 0; j < A.nt(); ++j) 
+    for (int64_t i = 0; i < A.mt(); ++i) {
+        A.tileBcast(i,j, A, slate::Layout::ColMajor);
+        auto T = A(i,j);
+        Eigen::Map<Eigen::MatrixXd> T_map( T.data(), T.mb(), T.nb() );
+        slate_eigen.block(i*NB,j*NB,T.mb(), T.nb()) = T_map; 
+    }
+    world.gop.fence();
+    if(!world.rank()) {
+    std::cout << "SLATE\n" << slate_eigen << std::endl;
+    }
+    #else
+
+    // MB functor
+    std::function< int64_t(int64_t) >
+    tileMb = [trange](int64_t i) {
+        return trange.dim(0).tile(i).extent();
+    };
+    // NB functor
+    std::function< int64_t(int64_t) >
+    tileNb = [trange](int64_t j) {
+        return trange.dim(1).tile(j).extent();
+    };
+    std::function< int( std::tuple<int64_t,int64_t> ) >
+    tileRank = [pmap = ref_ta.get_pmap(),trange](std::tuple<int64_t,int64_t> ij) {
+        auto [i,j] = ij;
+        return pmap->owner(i*trange.dim(1).tile_extent() + j);
+    };
+
+    std::function< int(std::tuple<int64_t,int64_t>) >
+    tileDevice = [](auto) { return 0; };
+    slate::Matrix<double> A(N,N, tileNb, tileMb, tileRank, tileDevice,
+        MPI_COMM_WORLD);
+    A.insertLocalTiles();
+
+#if 0
+    for(int it = 0; it < A.mt(); ++it)
+    for(int jt = 0; jt < A.nt(); ++jt) {
+        auto ordinal = it * trange.dim(1).tile_extent() + jt;
+        if(A.tileIsLocal(it,jt)) {
+        printf("[RANK %d] Tile(%d,%d): %lu %lu / %lu %lu - %lu\n",
+            world.rank(),
+            it, jt, A(it,jt).mb(), A(it,jt).nb(),
+            trange.dim(0).tile(it).extent(), 
+            trange.dim(1).tile(jt).extent(),
+            ref_ta.pmap()->owner(ordinal));
+        }
+    }
+#endif
+    
+    // Populte tiles directly
+    for(int it = 0; it < A.mt(); ++it)
+    for(int jt = 0; jt < A.nt(); ++jt) {
+        if(A.tileIsLocal(it, jt)) {
+            auto T = A(it, jt);
+            for(int ii = 0; ii < T.mb(); ++ii)
+            for(int jj = 0; jj < T.nb(); ++jj) {
+                T.at(ii,jj) = (it*NB + ii) - (jt*NB + jj);
+            }
+        }
+    }
+    // Slate matrix to eigen
+    Eigen::MatrixXd slate_eigen = Eigen::MatrixXd::Zero(N,N);
+    for (int64_t j = 0; j < A.nt(); ++j) 
+    for (int64_t i = 0; i < A.mt(); ++i) {
+        A.tileBcast(i,j, A, slate::Layout::ColMajor);
+        auto T = A(i,j);
+        Eigen::Map<Eigen::MatrixXd> T_map( T.data(), T.mb(), T.nb() );
+        slate_eigen.block(i*NB,j*NB,T.mb(), T.nb()) = T_map; 
+    }
+    world.gop.fence();
+    if(!world.rank()) {
+    std::cout << "SLATE\n" << slate_eigen << std::endl;
+    }
+
+    #endif
+
+    
   }
 
   TA::finalize();
