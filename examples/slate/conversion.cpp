@@ -158,12 +158,14 @@ int main(int argc, char** argv) {
     tileDevice = [](auto) { return 0; };
     slate::Matrix<double> A(N,N, tileNb, tileMb, tileRank, tileDevice,
         MPI_COMM_WORLD);
-    A.insertLocalTiles();
 
 #if 0
+    A.insertLocalTiles();
     for(int it = 0; it < A.mt(); ++it)
     for(int jt = 0; jt < A.nt(); ++jt) {
-        auto ordinal = it * trange.dim(1).tile_extent() + jt;
+        //auto ordinal = it * trange.dim(1).tile_extent() + jt;
+        auto ordinal = trange.tiles_range().ordinal(it,jt);
+        if( ordinal != it * trange.dim(1).tile_extent() + jt ) throw "die die die";
         if(A.tileIsLocal(it,jt)) {
         printf("[RANK %d] Tile(%d,%d): %lu %lu / %lu %lu - %lu\n",
             world.rank(),
@@ -175,7 +177,11 @@ int main(int argc, char** argv) {
     }
 #endif
     
+#if 1
+
+    #if 0
     // Populte tiles directly
+    A.insertLocalTiles();
     for(int it = 0; it < A.mt(); ++it)
     for(int jt = 0; jt < A.nt(); ++jt) {
         if(A.tileIsLocal(it, jt)) {
@@ -186,6 +192,24 @@ int main(int argc, char** argv) {
             }
         }
     }
+    #else
+    A.insertLocalTiles();
+    for(auto local_ordinal : *ref_ta.pmap()) {
+        auto local_coordinate = trange.tiles_range().idx(local_ordinal);
+        auto it = local_coordinate[0];
+        auto jt = local_coordinate[1];
+        if(!A.tileIsLocal(it,jt)) throw std::runtime_error("Something Went Horribly Wrong");
+
+        auto& local_tile = ref_ta.find_local(local_ordinal).get();
+        Eigen::Map<Eigen::Matrix<double,-1,-1,Eigen::RowMajor>> 
+            local_tile_map(local_tile.data(), local_tile.range().dim(0).extent(), local_tile.range().dim(1).extent());
+
+        auto local_tile_slate = A(it,jt);
+        Eigen::Map<Eigen::MatrixXd> local_tile_slate_map( local_tile_slate.data(),
+            local_tile_slate.mb(), local_tile_slate.nb() );
+        local_tile_slate_map = local_tile_map;
+    }
+    #endif
     // Slate matrix to eigen
     Eigen::MatrixXd slate_eigen = Eigen::MatrixXd::Zero(N,N);
     for (int64_t j = 0; j < A.nt(); ++j) 
@@ -199,6 +223,7 @@ int main(int argc, char** argv) {
     if(!world.rank()) {
     std::cout << "SLATE\n" << slate_eigen << std::endl;
     }
+#endif
 
     #endif
 
