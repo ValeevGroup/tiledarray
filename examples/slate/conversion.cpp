@@ -71,6 +71,101 @@ auto make_square_proc_grid(MPI_Comm comm) {
     return std::make_pair(p,q);
 }
 
+template <typename Array>
+slate::Matrix<typename std::remove_cv_t<Array>::element_type>
+array_to_slate( const Array& array ) {
+
+    using slate_int = int64_t;
+    using slate_process_idx = std::tuple<slate_int, slate_int>;
+    using dim_functor_t  = std::function<slate_int(slate_int)>;
+    using tile_functor_t = std::function<int(slate_process_idx)>;
+    using element_type   = typename std::remove_cv_t<Array>::element_type;
+    using slate_matrix_t = typename slate::Matrix<element_type>;
+
+    using col_major_mat_t = Eigen::Matrix<element_type,-1,-1,Eigen::ColMajor>;
+    using row_major_mat_t = Eigen::Matrix<element_type,-1,-1,Eigen::RowMajor>;
+
+    using col_major_map_t = Eigen::Map<col_major_mat_t>;
+    using row_major_map_t = Eigen::Map<const row_major_mat_t>;
+
+    /*******************************/
+    /*** Generate SLATE Functors ***/
+    /*******************************/
+    auto&       world  = array.world();
+    const auto& trange = array.trange();
+    auto        pmap   = array.pmap();
+    if( trange.rank() != 2 )
+        throw std::runtime_error("Cannot Convert General Tensor to SLATE (RANK != 2)");
+
+    // Tile row dimension (MB)
+    dim_functor_t tileMb = [&](slate_int i){ 
+        return trange.dim(0).tile(i).extent();
+    }; 
+
+    // Tile col dimension (MB)
+    dim_functor_t tileNb = [&](slate_int i){ 
+        return trange.dim(1).tile(i).extent();
+    }; 
+
+    // Tile rank assignment
+    tile_functor_t tileRank = [pmap, &trange] (slate_process_idx ij) {
+        auto [i,j] = ij;
+        return pmap->owner(trange.tiles_range().ordinal(i,j));
+    };
+
+    // Tile device assignment
+    // TODO: Needs to be more robust
+    tile_functor_t tileDevice = [&](slate_process_idx ij) { return 0; };
+
+
+    /*********************************/
+    /*** Create empty slate matrix ***/
+    /*********************************/
+    const auto M = trange.dim(0).extent();
+    const auto N = trange.dim(1).extent();
+    slate_matrix_t matrix(M, N, tileMb, tileNb, tileRank, tileDevice,
+        world.mpi.comm().Get_mpi_comm());
+    
+    /************************/
+    /*** Copy TA -> SLATE ***/
+    /************************/
+    matrix.insertLocalTiles();
+
+    // Loop over local tiles via ordinal
+    // TODO: Make async
+    for( auto local_ordinal : *pmap ) {
+        // Compute coordinate of tile ordinal
+        auto local_coordinate = trange.tiles_range().idx(local_ordinal);
+        const auto it = local_coordinate[0];
+        const auto jt = local_coordinate[1];
+
+        // Sanity Check
+        if(!matrix.tileIsLocal(it,jt))
+            throw std::runtime_error("SLATE PMAP is not valid");
+
+        // Extract shallow copy of local SLATE tile and create
+        // data map
+        auto local_tile_slate = matrix(it,jt);
+        auto local_m = local_tile_slate.mb();
+        auto local_n = local_tile_slate.nb();
+        col_major_map_t slate_map(local_tile_slate.data(), local_m, local_n);
+
+        // Create data map for TA tile
+        // TODO: This should be async in a MADNESS task
+        auto& local_tile = array.find_local(local_ordinal).get();
+        auto  local_m_ta = local_tile.range().dim(0).extent();
+        auto  local_n_ta = local_tile.range().dim(1).extent();
+        row_major_map_t ta_map(local_tile.data(), local_m_ta, local_n_ta);
+
+        // Copy TA tile to SLATE tile
+        // XXX: This will error out if the dimensions aren't consistent
+        slate_map = ta_map;
+    } // Loop over local tiles
+
+    return matrix;
+
+}
+
 
 int main(int argc, char** argv) {
   auto& world = TA::initialize(argc, argv);
@@ -193,6 +288,7 @@ int main(int argc, char** argv) {
         }
     }
     #else
+    #if 0
     A.insertLocalTiles();
     for(auto local_ordinal : *ref_ta.pmap()) {
         auto local_coordinate = trange.tiles_range().idx(local_ordinal);
@@ -209,6 +305,10 @@ int main(int argc, char** argv) {
             local_tile_slate.mb(), local_tile_slate.nb() );
         local_tile_slate_map = local_tile_map;
     }
+    #else
+    auto tmpA = array_to_slate( ref_ta );
+    A = std::move(tmpA);
+    #endif
     #endif
     // Slate matrix to eigen
     Eigen::MatrixXd slate_eigen = Eigen::MatrixXd::Zero(N,N);
