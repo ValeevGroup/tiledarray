@@ -87,12 +87,12 @@ class UserPmap : public Pmap {
 
   virtual bool known_local_size() const { return known_local_size_; }
 
-  virtual const_iterator begin() const {
-    return Iterator(*this, 0, this->size_, 0, false);
-  }
-  virtual const_iterator end() const {
-    return Iterator(*this, 0, this->size_, this->size_, false);
-  }
+  //virtual const_iterator begin() const {
+  //  return Iterator(*this, 0, this->size_, 0, false);
+  //}
+  //virtual const_iterator end() const {
+  //  return Iterator(*this, 0, this->size_, this->size_, false);
+  //}
 
  private:
   bool known_local_size_ = false;

@@ -27,6 +27,7 @@
 #include <tiledarray.h>
 #include <random>
 #include <slate/slate.hh>
+#include <TiledArray/pmap/user_pmap.h>
 
 template <typename Integral1, typename Integral2>
 int64_t div_ceil(Integral1 x, Integral2 y) {
@@ -71,9 +72,22 @@ auto make_square_proc_grid(MPI_Comm comm) {
     return std::make_pair(p,q);
 }
 
+
+
+
+
+
+
+
 template <typename Array>
-slate::Matrix<typename std::remove_cv_t<Array>::element_type>
-array_to_slate( const Array& array ) {
+using slate_from_array_t = 
+    typename slate::Matrix<typename std::remove_cv_t<Array>::element_type>;
+
+
+
+
+template <typename Array>
+slate_from_array_t<Array> array_to_slate( const Array& array ) {
 
     using slate_int = int64_t;
     using slate_process_idx = std::tuple<slate_int, slate_int>;
@@ -165,6 +179,101 @@ array_to_slate( const Array& array ) {
     return matrix;
 
 }
+
+
+template <typename Array>
+auto slate_to_array( slate_from_array_t<Array>& matrix, TA::World& world ) {
+
+
+    static_assert(TA::is_dense<Array>::value, "SLATE -> TA Only For Dense Array");
+    using value_type = typename Array::value_type; // Tile type
+    using element_type   = typename std::remove_cv_t<Array>::element_type;
+    using slate_matrix_t = typename slate::Matrix<element_type>;
+
+    using col_major_mat_t = Eigen::Matrix<element_type,-1,-1,Eigen::ColMajor>;
+    using row_major_mat_t = Eigen::Matrix<element_type,-1,-1,Eigen::RowMajor>;
+
+    using col_major_map_t = Eigen::Map<const col_major_mat_t>;
+    using row_major_map_t = Eigen::Map<row_major_mat_t>;
+
+    // Compute SLATE Tile Statistics
+    size_t total_tiles = matrix.nt() * matrix.mt();
+    size_t local_tiles = 0;
+
+    // Create a map from tile ordinal to rank
+    // to avoid lifetime issues in the internal
+    // TA Pmap
+    std::vector<size_t> tile2rank(total_tiles);
+    for (int64_t it = 0; it < matrix.mt(); ++it)
+    for (int64_t jt = 0; jt < matrix.nt(); ++jt) {
+        size_t ordinal = it*matrix.nt() + jt; // TODO: Use Range
+        tile2rank[ordinal] = matrix.tileRank( it, jt );
+        if(matrix.tileIsLocal(it,jt)) local_tiles++;
+    }
+    
+
+    // Create TA PMap
+    std::function<size_t(size_t)> ta_tile_functor = 
+        [t2r = std::move(tile2rank)](size_t ordinal) {
+            return t2r[ordinal];
+        };
+
+    std::shared_ptr<TA::Pmap> slate_pmap = 
+        std::make_shared<TA::detail::UserPmap>(world, total_tiles, local_tiles, 
+            ta_tile_functor);
+
+    // Create TiledRange
+    std::vector<size_t> row_tiling(matrix.mt()+1), col_tiling(matrix.nt()+1);
+
+    row_tiling[0] = 0;
+    for(auto i = 0; i < matrix.mt(); ++i) 
+        row_tiling[i+1] = row_tiling[i] + matrix.tileMb(i);
+    
+    col_tiling[0] = 0;
+    for(auto i = 0; i < matrix.nt(); ++i) 
+        col_tiling[i+1] = col_tiling[i] + matrix.tileNb(i);
+
+
+    std::vector<TA::TiledRange1> ranges = {
+        TA::TiledRange1(row_tiling.begin(), row_tiling.end()),
+        TA::TiledRange1(col_tiling.begin(), col_tiling.end())
+    };
+    TA::TiledRange trange(ranges.begin(), ranges.end());
+
+    // Create TArray
+    Array array(world, trange, slate_pmap);
+    for (int64_t it = 0; it < matrix.mt(); ++it)
+    for (int64_t jt = 0; jt < matrix.nt(); ++jt) 
+    if( matrix.tileIsLocal(it,jt) ) {
+        auto local_ordinal = trange.tiles_range().ordinal(it,jt);
+
+        auto tile = world.taskq.add(
+            [=](slate::Tile<double> slate_tile, TA::Range const& range) {
+                // Create tile
+                value_type tile(range, 0.0);
+
+                // Create Maps                
+                auto local_m = slate_tile.mb();
+                auto local_n = slate_tile.nb();
+                col_major_map_t slate_map(slate_tile.data(), local_m, local_n);
+
+                auto  local_m_ta = range.dim(0).extent();
+                auto  local_n_ta = range.dim(1).extent();
+                row_major_map_t ta_map(tile.data(), local_m_ta, local_n_ta);
+
+                // Copy data
+                ta_map = slate_map;
+
+                return tile;
+            }, matrix(it,jt), trange.make_tile_range(local_ordinal));
+        
+        array.set(local_ordinal, tile);
+    }
+
+    world.gop.fence();
+    return array;
+}
+
 
 
 int main(int argc, char** argv) {
@@ -308,6 +417,8 @@ int main(int argc, char** argv) {
     #else
     auto tmpA = array_to_slate( ref_ta );
     A = std::move(tmpA);
+
+    auto A_ta = slate_to_array<TA::TArray<double>>(A, world);
     #endif
     #endif
     // Slate matrix to eigen
@@ -323,6 +434,15 @@ int main(int argc, char** argv) {
     if(!world.rank()) {
     std::cout << "SLATE\n" << slate_eigen << std::endl;
     }
+
+    //ref_ta.make_replicated();
+    //std::cout << ref_ta << std::endl;
+    //world.gop.fence();
+    A_ta.make_replicated();
+    world.gop.fence();
+    auto A_eigen = TA::array_to_eigen(A_ta);
+    if(!world.rank()) std::cout << "TA\n" << A_eigen << std::endl;
+    world.gop.fence();
 #endif
 
     #endif
