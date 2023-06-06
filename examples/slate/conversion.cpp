@@ -182,7 +182,8 @@ slate_from_array_t<Array> array_to_slate( const Array& array ) {
 
 
 template <typename Array>
-auto slate_to_array( slate_from_array_t<Array>& matrix, TA::World& world ) {
+auto slate_to_array( /*const*/ slate_from_array_t<Array>& matrix, TA::World& world ) {
+    // TODO: SLATE Tile accessor is not const-accessible, opened an issue...
 
 
     static_assert(TA::is_dense<Array>::value, "SLATE -> TA Only For Dense Array");
