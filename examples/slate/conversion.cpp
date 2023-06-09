@@ -24,10 +24,13 @@
  *
  */
 
+#include <TiledArray/conversions/slate.h>
+
 #include <tiledarray.h>
 #include <random>
 #include <slate/slate.hh>
 #include <TiledArray/pmap/user_pmap.h>
+
 
 template <typename Integral1, typename Integral2>
 int64_t div_ceil(Integral1 x, Integral2 y) {
@@ -86,6 +89,7 @@ using slate_from_array_t =
 
 
 
+#if 0
 template <typename Array>
 slate_from_array_t<Array> array_to_slate( const Array& array ) {
 
@@ -181,6 +185,7 @@ slate_from_array_t<Array> array_to_slate( const Array& array ) {
 }
 
 
+
 template <typename Array>
 auto slate_to_array( /*const*/ slate_from_array_t<Array>& matrix, TA::World& world ) {
     // TODO: SLATE Tile accessor is not const-accessible, opened an issue...
@@ -274,6 +279,7 @@ auto slate_to_array( /*const*/ slate_from_array_t<Array>& matrix, TA::World& wor
     world.gop.fence();
     return array;
 }
+#endif
 
 
 
@@ -416,10 +422,10 @@ int main(int argc, char** argv) {
         local_tile_slate_map = local_tile_map;
     }
     #else
-    auto tmpA = array_to_slate( ref_ta );
+    auto tmpA = TA::array_to_slate( ref_ta );
     A = std::move(tmpA);
 
-    auto A_ta = slate_to_array<TA::TArray<double>>(A, world);
+    auto A_ta = TA::slate_to_array<TA::TArray<double>>(A, world);
     #endif
     #endif
     // Slate matrix to eigen
@@ -432,9 +438,9 @@ int main(int argc, char** argv) {
         slate_eigen.block(i*NB,j*NB,T.mb(), T.nb()) = T_map; 
     }
     world.gop.fence();
-    if(!world.rank()) {
-    std::cout << "SLATE\n" << slate_eigen << std::endl;
-    }
+    //if(!world.rank()) {
+    //std::cout << "SLATE\n" << slate_eigen << std::endl;
+    //}
 
     //ref_ta.make_replicated();
     //std::cout << ref_ta << std::endl;
@@ -442,8 +448,9 @@ int main(int argc, char** argv) {
     A_ta.make_replicated();
     world.gop.fence();
     auto A_eigen = TA::array_to_eigen(A_ta);
-    if(!world.rank()) std::cout << "TA\n" << A_eigen << std::endl;
+    //if(!world.rank()) std::cout << "TA\n" << A_eigen << std::endl;
     world.gop.fence();
+    std::cout << (A_eigen - slate_eigen).norm() << std::endl;
 #endif
 
     #endif
