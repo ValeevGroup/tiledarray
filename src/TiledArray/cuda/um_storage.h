@@ -24,8 +24,8 @@
 #ifndef TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
 #define TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
 
+#include <TiledArray/cuda/allocators.h>
 #include <TiledArray/cuda/thrust.h>
-#include <TiledArray/cuda/um_allocator.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
