@@ -220,9 +220,11 @@ template <class Archive, typename T, typename A>
 struct ArchiveLoadImpl<Archive, TiledArray::default_init_allocator<T, A>> {
   static inline void load(const Archive& ar,
                           TiledArray::default_init_allocator<T, A>& allocator) {
-    A base_allocator;
-    ar& base_allocator;
-    allocator = TiledArray::default_init_allocator<T, A>(base_allocator);
+    if constexpr (!std::allocator_traits<A>::is_always_equal::value) {
+      A base_allocator;
+      ar& base_allocator;
+      allocator = TiledArray::default_init_allocator<T, A>(base_allocator);
+    }
   }
 };
 
@@ -231,7 +233,9 @@ struct ArchiveStoreImpl<Archive, TiledArray::default_init_allocator<T, A>> {
   static inline void store(
       const Archive& ar,
       const TiledArray::default_init_allocator<T, A>& allocator) {
-    ar& static_cast<const A&>(allocator);
+    if constexpr (!std::allocator_traits<A>::is_always_equal::value) {
+      ar& static_cast<const A&>(allocator);
+    }
   }
 };
 
