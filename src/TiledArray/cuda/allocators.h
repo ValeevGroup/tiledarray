@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_UM_ALLOCATOR_H___INCLUDED
-#define TILEDARRAY_CUDA_UM_ALLOCATOR_H___INCLUDED
+#ifndef TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
+#define TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -93,7 +93,7 @@ struct get_um_allocator {
 
 struct get_pinned_allocator {
   umpire::Allocator& operator()() {
-    return cudaEnv::instance()->um_allocator();
+    return cudaEnv::instance()->pinned_allocator();
   }
 };
 
@@ -132,4 +132,4 @@ struct ArchiveStoreImpl<Archive, TiledArray::cuda_allocator_impl<
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_CUDA_UM_ALLOCATOR_H___INCLUDED
+#endif  // TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
