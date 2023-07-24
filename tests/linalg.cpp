@@ -525,6 +525,31 @@ BOOST_AUTO_TEST_CASE(dense_tiled_array_to_slate_matrix_test) {
   GlobalFixture::world->gop.fence();
 }
 
+BOOST_AUTO_TEST_CASE(slate_matrix_to_dense_tiled_array_test) {
+  GlobalFixture::world->gop.fence();
+
+  auto trange = gen_trange(N, {static_cast<size_t>(128)});
+  auto ref_ta = TA::make_array<TA::TArray<double>>(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  TA::SlateFunctors slate_functors( trange, ref_ta.pmap() );
+  auto ref_slate = this->make_ref_slate(N, slate_functors, MPI_COMM_WORLD);
+
+  
+  GlobalFixture::world->gop.fence();
+  auto test_ta = TA::slate_to_array<TA::TArray<double>>(ref_slate, *GlobalFixture::world);
+  GlobalFixture::world->gop.fence();
+
+  auto norm_diff =
+      (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
+
+  BOOST_CHECK_SMALL(norm_diff, std::numeric_limits<double>::epsilon());
+
+  GlobalFixture::world->gop.fence();
+}
 #endif // TILEDARRAY_HAS_SLATE
 
 BOOST_AUTO_TEST_CASE(heig_same_tiling) {
