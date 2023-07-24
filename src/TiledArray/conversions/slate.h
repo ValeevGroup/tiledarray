@@ -71,6 +71,43 @@ private:
     tile_functor_t tileRank_, tileDevice_;
 };
 
+
+
+
+
+template <typename SlateMatrixType>
+std::shared_ptr<TA::Pmap> make_pmap_from_slate( SlateMatrixType&& matrix, World& world ) {
+
+    // Compute SLATE Tile Statistics
+    size_t total_tiles = matrix.nt() * matrix.mt();
+    size_t local_tiles = 0;
+
+    // Create a map from tile ordinal to rank
+    // to avoid lifetime issues in the internal
+    // TA Pmap
+    std::vector<size_t> tile2rank(total_tiles);
+    for (int64_t it = 0; it < matrix.mt(); ++it)
+    for (int64_t jt = 0; jt < matrix.nt(); ++jt) {
+        size_t ordinal = it*matrix.nt() + jt; // TODO: Use Range
+        tile2rank[ordinal] = matrix.tileRank( it, jt );
+        if(matrix.tileIsLocal(it,jt)) local_tiles++;
+    }
+    
+
+    // Create TA PMap
+    std::function<size_t(size_t)> ta_tile_functor = 
+        [t2r = std::move(tile2rank)](size_t ordinal) {
+            return t2r[ordinal];
+        };
+
+    return std::make_shared<TA::detail::UserPmap>(world, total_tiles, local_tiles, 
+            ta_tile_functor);
+}
+
+
+
+
+
 /**
  * @brief Convert Array to SLATE matrix
  *
@@ -99,33 +136,11 @@ array_to_slate( const Array& array ) {
     const auto& trange = array.trange();
     auto        pmap   = array.pmap();
 
-#if 0
-    // Tile row dimension (MB)
-    dim_functor_t tileMb = [&](slate_int i){ 
-        return trange.dim(0).tile(i).extent();
-    }; 
-
-    // Tile col dimension (NB)
-    dim_functor_t tileNb = [&](slate_int i){ 
-        return trange.dim(1).tile(i).extent();
-    }; 
-
-    // Tile rank assignment
-    tile_functor_t tileRank = [pmap, &trange] (slate_process_idx ij) {
-        auto [i,j] = ij;
-        return pmap->owner(trange.tiles_range().ordinal(i,j));
-    };
-
-    // Tile device assignment
-    // TODO: Needs to be more robust
-    tile_functor_t tileDevice = [&](slate_process_idx ij) { return 0; };
-#else
     SlateFunctors slate_functors( trange, pmap );
     auto& tileMb = slate_functors.tileMb();
     auto& tileNb = slate_functors.tileNb();
     auto& tileRank = slate_functors.tileRank();
     auto& tileDevice = slate_functors.tileDevice();
-#endif
 
 
     /*********************************/
@@ -193,6 +208,7 @@ auto slate_to_array( /*const*/ detail::slate_type_from_array_t<Array>& matrix, W
     using col_major_map_t = Eigen::Map<const col_major_mat_t>;
     using row_major_map_t = Eigen::Map<row_major_mat_t>;
 
+#if 0
     // Compute SLATE Tile Statistics
     size_t total_tiles = matrix.nt() * matrix.mt();
     size_t local_tiles = 0;
@@ -218,6 +234,9 @@ auto slate_to_array( /*const*/ detail::slate_type_from_array_t<Array>& matrix, W
     std::shared_ptr<TA::Pmap> slate_pmap = 
         std::make_shared<TA::detail::UserPmap>(world, total_tiles, local_tiles, 
             ta_tile_functor);
+#else
+    auto slate_pmap = make_pmap_from_slate(matrix, world);
+#endif
 
     // Create TiledRange
     std::vector<size_t> row_tiling(matrix.mt()+1), col_tiling(matrix.nt()+1);
