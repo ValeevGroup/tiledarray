@@ -64,7 +64,7 @@ array_to_slate( const Array& array ) {
         return trange.dim(0).tile(i).extent();
     }; 
 
-    // Tile col dimension (MB)
+    // Tile col dimension (NB)
     dim_functor_t tileNb = [&](slate_int i){ 
         return trange.dim(1).tile(i).extent();
     }; 

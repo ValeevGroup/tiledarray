@@ -31,6 +31,7 @@ namespace scalapack = TA::math::linalg::scalapack;
 
 #if TILEDARRAY_HAS_SLATE
 #include <slate/slate.hh>
+#include <TiledArray/conversions/slate.h>
 #endif
 
 #if TILEDARRAY_HAS_TTG
@@ -119,6 +120,47 @@ struct LinearAlgebraFixture : ReferenceFixture {
     }
   }
 #endif
+
+#if TILEDARRAY_HAS_SLATE
+
+  using slate_dim_functor = std::function<int64_t(int64_t)>;
+  using slate_proc_index  = std::tuple<int64_t, int64_t>;
+  using slate_affinity_functor = std::function<int(slate_proc_index)>;
+
+  LinearAlgebraFixture(int64_t N = 1000) : ReferenceFixture(N) {}
+
+  slate::Matrix<double> make_ref_slate(int64_t N, slate_dim_functor tileMb,
+    slate_dim_functor tileNb, slate_affinity_functor tileRank,
+    MPI_Comm comm) {
+
+    slate_affinity_functor tileDev = [](slate_proc_index) { return 0; };
+    slate::Matrix<double> A(N, N, tileMb, tileNb, tileRank, tileDev, comm);
+    
+    A.insertLocalTiles();
+    int64_t j_off = 0;
+    for (int64_t j = 0; j < A.nt(); ++j) {
+
+      int64_t i_off = 0;
+      for (int64_t i = 0; i < A.mt(); ++i) {
+
+        if(A.tileIsLocal(i,j)) {
+          auto T = A(i,j);
+          for(auto jj = 0; jj < T.nb(); ++jj)
+          for(auto ii = 0; ii < T.mb(); ++ii) {
+            T.at(ii,jj) = matrix_element_generator(i_off+ii,j_off+jj);
+          }
+        }
+
+        i_off += A.tileMbFunc()(i);
+      }
+
+      j_off += A.tileNbFunc()(j);
+    }
+
+    return A;
+  }
+#endif
+
 
   template <class A>
   static void compare(const char* context, const A& non_dist, const A& result,
@@ -463,11 +505,9 @@ BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {
 #endif  // TILEDARRAY_HAS_SCALAPACK
 
 #if TILEDARRAY_HAS_SLATE
-#warning "DIE DIE DIE"
 
 BOOST_AUTO_TEST_CASE(dense_tiled_array_to_slate_matrix_test) {
   GlobalFixture::world->gop.fence();
-    std::cout<< "HERE" << std::endl;
 
   auto trange = gen_trange(N, {static_cast<size_t>(128)});
   auto ref_ta = TA::make_array<TA::TArray<double>>(
@@ -476,6 +516,17 @@ BOOST_AUTO_TEST_CASE(dense_tiled_array_to_slate_matrix_test) {
         return this->make_ta_reference(t, range);
       });
 
+  GlobalFixture::world->gop.fence();
+  auto slate_matrix = TA::array_to_slate(ref_ta);
+  GlobalFixture::world->gop.fence();
+
+  auto ref_slate = this->make_ref_slate(N, slate_matrix.tileMbFunc(),
+    slate_matrix.tileNbFunc(), slate_matrix.tileRankFunc(),
+    MPI_COMM_WORLD);
+
+  slate::add( 1.0, ref_slate, -1.0, slate_matrix );
+  auto norm_diff = slate::norm(slate::Norm::Fro, slate_matrix);
+  BOOST_CHECK_SMALL(norm_diff, std::numeric_limits<double>::epsilon());
 
   GlobalFixture::world->gop.fence();
 }
