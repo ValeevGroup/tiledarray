@@ -25,6 +25,52 @@ using slate_type_from_array_t =
 
 } // namespace TiledArray::detail
 
+class SlateFunctors {
+
+public:
+
+    using slate_int = int64_t;
+    using slate_process_idx = std::tuple<slate_int, slate_int>;
+    using dim_functor_t  = std::function<slate_int(slate_int)>;
+    using tile_functor_t = std::function<int(slate_process_idx)>;
+
+    SlateFunctors( const dim_functor_t& Mb, const dim_functor_t& Nb,
+      const tile_functor_t& Rank, const tile_functor_t& Dev ) :
+      tileMb_(Mb), tileNb_(Nb), tileRank_(Rank), tileDevice_(Dev) { }
+
+    template <typename PMapInterfacePointer>
+    SlateFunctors( TiledRange trange, PMapInterfacePointer pmap_ptr ) {
+    if( trange.rank() != 2 )
+        throw std::runtime_error("Cannot Convert General Tensor to SLATE (RANK != 2)");
+      // Tile row dimension (MB)
+      tileMb_ = [trange](slate_int i) { return trange.dim(0).tile(i).extent(); };
+
+      // Tile col dimension (NB)
+      tileNb_ = [trange](slate_int i) { return trange.dim(1).tile(i).extent(); };
+
+      // Tile rank assignment
+      tileRank_ = [pmap_ptr, trange] (slate_process_idx ij) {
+        auto [i,j] = ij;
+        return pmap_ptr->owner(trange.tiles_range().ordinal(i,j));
+      };
+
+      // Tile device assignment
+      // TODO: Needs to be more robust
+      tileDevice_ = [](slate_process_idx) { return 0; };
+     
+    }
+
+  auto& tileMb() { return tileMb_; }
+  auto& tileNb() { return tileNb_; }
+  auto& tileRank() { return tileRank_; }
+  auto& tileDevice() { return tileDevice_; }
+
+private:
+
+    dim_functor_t tileMb_, tileNb_;
+    tile_functor_t tileRank_, tileDevice_;
+};
+
 /**
  * @brief Convert Array to SLATE matrix
  *
@@ -37,10 +83,6 @@ template <typename Array>
 detail::slate_type_from_array_t<Array>
 array_to_slate( const Array& array ) {
 
-    using slate_int = int64_t;
-    using slate_process_idx = std::tuple<slate_int, slate_int>;
-    using dim_functor_t  = std::function<slate_int(slate_int)>;
-    using tile_functor_t = std::function<int(slate_process_idx)>;
     using element_type   = typename std::remove_cv_t<Array>::element_type;
     using slate_matrix_t = typename slate::Matrix<element_type>;
 
@@ -56,9 +98,8 @@ array_to_slate( const Array& array ) {
     auto&       world  = array.world();
     const auto& trange = array.trange();
     auto        pmap   = array.pmap();
-    if( trange.rank() != 2 )
-        throw std::runtime_error("Cannot Convert General Tensor to SLATE (RANK != 2)");
 
+#if 0
     // Tile row dimension (MB)
     dim_functor_t tileMb = [&](slate_int i){ 
         return trange.dim(0).tile(i).extent();
@@ -78,6 +119,13 @@ array_to_slate( const Array& array ) {
     // Tile device assignment
     // TODO: Needs to be more robust
     tile_functor_t tileDevice = [&](slate_process_idx ij) { return 0; };
+#else
+    SlateFunctors slate_functors( trange, pmap );
+    auto& tileMb = slate_functors.tileMb();
+    auto& tileNb = slate_functors.tileNb();
+    auto& tileRank = slate_functors.tileRank();
+    auto& tileDevice = slate_functors.tileDevice();
+#endif
 
 
     /*********************************/

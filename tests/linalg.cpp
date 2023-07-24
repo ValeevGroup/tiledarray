@@ -123,18 +123,13 @@ struct LinearAlgebraFixture : ReferenceFixture {
 
 #if TILEDARRAY_HAS_SLATE
 
-  using slate_dim_functor = std::function<int64_t(int64_t)>;
-  using slate_proc_index  = std::tuple<int64_t, int64_t>;
-  using slate_affinity_functor = std::function<int(slate_proc_index)>;
-
   LinearAlgebraFixture(int64_t N = 1000) : ReferenceFixture(N) {}
 
-  slate::Matrix<double> make_ref_slate(int64_t N, slate_dim_functor tileMb,
-    slate_dim_functor tileNb, slate_affinity_functor tileRank,
+  slate::Matrix<double> make_ref_slate(int64_t N, TA::SlateFunctors& slate_functors,
     MPI_Comm comm) {
 
-    slate_affinity_functor tileDev = [](slate_proc_index) { return 0; };
-    slate::Matrix<double> A(N, N, tileMb, tileNb, tileRank, tileDev, comm);
+    slate::Matrix<double> A(N, N, slate_functors.tileMb(), slate_functors.tileNb(), 
+      slate_functors.tileRank(), slate_functors.tileDevice(), comm);
     
     A.insertLocalTiles();
     int64_t j_off = 0;
@@ -520,9 +515,8 @@ BOOST_AUTO_TEST_CASE(dense_tiled_array_to_slate_matrix_test) {
   auto slate_matrix = TA::array_to_slate(ref_ta);
   GlobalFixture::world->gop.fence();
 
-  auto ref_slate = this->make_ref_slate(N, slate_matrix.tileMbFunc(),
-    slate_matrix.tileNbFunc(), slate_matrix.tileRankFunc(),
-    MPI_COMM_WORLD);
+  TA::SlateFunctors slate_functors( trange, ref_ta.pmap() );
+  auto ref_slate = this->make_ref_slate(N, slate_functors, MPI_COMM_WORLD);
 
   slate::add( 1.0, ref_slate, -1.0, slate_matrix );
   auto norm_diff = slate::norm(slate::Norm::Fro, slate_matrix);
