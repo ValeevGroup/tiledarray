@@ -63,10 +63,12 @@ auto cholesky(const Array& A) {
   zero_triangle(::slate::Uplo::Upper, matrix);
   world.gop.fence();  // stage SLATE execution
 
-  // Convert back to TA
+  // Convert L to TA and return 
   return slate_to_array<Array>(matrix, world);
 
 }
+
+
 
 template <bool Both, typename Array>
 auto cholesky_linv(const Array& A) {
@@ -98,11 +100,79 @@ auto cholesky_linv(const Array& A) {
   auto Linv = slate_to_array<Array>(matrix, world);
   world.gop.fence();  // Make sure copy is done before return
 
+  // Return Linv or L + Linv (in that order)
   if constexpr (Both) {
     return std::make_tuple( *L_ptr, Linv );
   } else {
     return Linv;
   }
+
+}
+
+
+
+
+template <typename AArray, typename BArray>
+auto cholesky_solve(const AArray& A, const BArray& B) {
+
+  using element_type   = typename std::remove_cv_t<AArray>::element_type;
+  auto& world = A.world();
+  /*
+  if( world != B.world() ) {
+    TA_EXCEPTION("A and B must be distributed on same MADWorld context");
+  }
+  */
+
+  // Convert to SLATE
+  auto A_slate = array_to_slate(A);
+  auto B_slate = array_to_slate(B);
+
+  // Solve linear system
+  world.gop.fence();  // stage SLATE execution
+  ::slate::HermitianMatrix<element_type> AH(::slate::Uplo::Lower, A_slate);
+  ::slate::posv( AH, B_slate );
+
+  // Convert solution to TA
+  return slate_to_array<BArray>(B_slate, world);
+
+}
+
+
+
+template <typename AArray, typename BArray>
+auto cholseky_lsolve(Op trans, const AArray& A, const BArray& B) {
+
+  using element_type   = typename std::remove_cv_t<AArray>::element_type;
+  auto& world = A.world();
+  /*
+  if( world != B.world() ) {
+    TA_EXCEPTION("A and B must be distributed on same MADWorld context");
+  }
+  */
+
+  // Convert to SLATE
+  auto A_slate = array_to_slate(A);
+  auto B_slate = array_to_slate(B);
+  world.gop.fence();  // stage SLATE execution
+
+  // Factorize A
+  ::slate::HermitianMatrix<element_type> AH(::slate::Uplo::Lower, A_slate);
+  ::slate::potrf(AH);
+
+  // Solve linear system OP(L) * X = B
+  ::slate::TriangularMatrix<element_type> L_slate(::slate::Uplo::Lower, 
+    ::slate::Diag::NonUnit, A_slate);
+  if( trans == Op::Trans )     L_slate = ::slate::transpose(L_slate);
+  if( trans == Op::ConjTrans ) L_slate = ::slate::conj_transpose(L_slate);
+  ::slate::trsm( ::slate::Side::Left, 1.0, L_slate, B_slate );
+    
+  // Zero out the upper triangle
+  zero_triangle(::slate::Uplo::Upper, A_slate);
+  
+  // Convert solution and L to TA
+  auto L = slate_to_array<AArray>(A_slate, world);
+  auto X = slate_to_array<BArray>(B_slate, world);
+  return std::make_tuple(L, X);
 
 }
 
