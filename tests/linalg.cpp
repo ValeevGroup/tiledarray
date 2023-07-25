@@ -32,6 +32,7 @@ namespace scalapack = TA::math::linalg::scalapack;
 #if TILEDARRAY_HAS_SLATE
 #include <TiledArray/conversions/slate.h>
 #include <TiledArray/math/linalg/slate/cholesky.h>
+#include <TiledArray/math/linalg/slate/lu.h>
 namespace slate_la = TA::math::linalg::slate;
 #define TILEDARRAY_SLATE_TEST(F, E)                           \
   GlobalFixture::world->gop.fence();                              \
@@ -889,6 +890,7 @@ BOOST_AUTO_TEST_CASE(lu_solve) {
 
   BOOST_CHECK_SMALL(norm, epsilon);
   TILEDARRAY_SCALAPACK_TEST(lu_solve(ref_ta, ref_ta), epsilon);
+  TILEDARRAY_SLATE_TEST(lu_solve(ref_ta, ref_ta), epsilon);
 
   GlobalFixture::world->gop.fence();
 }
