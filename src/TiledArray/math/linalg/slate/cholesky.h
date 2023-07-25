@@ -44,18 +44,19 @@ namespace TiledArray::math::linalg::slate {
  *
  *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
  *
- *  @param[in] A Input array to be diagonalized. Must be rank-2
+ *  @param[in] A Input array to be factorized. Must be rank-2
  *
  *  @returns The lower triangular Cholesky factor L in TA format
  */
 template <typename Array>
-auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
+auto cholesky(const Array& A) {
 
+  using element_type   = typename std::remove_cv_t<Array>::element_type;
   auto& world = A.world();
   // Convert to SLATE
   auto matrix = array_to_slate(A);
-  using element_type   = typename std::remove_cv_t<Array>::element_type;
 
+  // Perform POTRF
   world.gop.fence();  // stage SLATE execution
   ::slate::HermitianMatrix<element_type> AH(::slate::Uplo::Lower, matrix);
   ::slate::potrf(AH);
@@ -64,6 +65,44 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
 
   // Convert back to TA
   return slate_to_array<Array>(matrix, world);
+
+}
+
+template <bool Both, typename Array>
+auto cholesky_linv(const Array& A) {
+
+  using element_type   = typename std::remove_cv_t<Array>::element_type;
+  auto& world = A.world();
+  auto matrix = array_to_slate(A);
+
+  // Perform POTRF
+  world.gop.fence();  // stage SLATE execution
+  ::slate::HermitianMatrix<element_type> AH(::slate::Uplo::Lower, matrix);
+  ::slate::potrf(AH);
+  zero_triangle(::slate::Uplo::Upper, matrix);
+
+  // Copy L if needed
+  using matrix_type = std::decay_t<decltype(matrix)>;
+  std::shared_ptr<Array> L_ptr = nullptr;
+  if constexpr (Both) {
+    L_ptr = std::make_shared<Array>(slate_to_array<Array>(matrix,world));
+    world.gop.fence();  // Make sure copy is done before inverting L 
+  }
+
+  // Perform TRTRI
+  ::slate::TriangularMatrix<element_type> L_slate(::slate::Uplo::Lower, 
+    ::slate::Diag::NonUnit, matrix);
+  ::slate::trtri(L_slate);
+
+  // Convert Linv to TA
+  auto Linv = slate_to_array<Array>(matrix, world);
+  world.gop.fence();  // Make sure copy is done before return
+
+  if constexpr (Both) {
+    return std::make_tuple( *L_ptr, Linv );
+  } else {
+    return Linv;
+  }
 
 }
 

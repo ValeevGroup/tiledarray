@@ -739,6 +739,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
   BOOST_CHECK_SMALL(norm, epsilon);
 
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv<false>(Acopy), epsilon);
+  TILEDARRAY_SLATE_TEST(cholesky_linv<false>(Acopy), epsilon);
 
   TILEDARRAY_TTG_TEST(cholesky_linv<false>(Acopy), epsilon);
 }
@@ -779,6 +780,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
   BOOST_CHECK_SMALL(norm, epsilon);
 
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv<true>(A), epsilon);
+  TILEDARRAY_SLATE_TEST(cholesky_linv<true>(A), epsilon);
 
   TILEDARRAY_TTG_TEST(cholesky_linv<true>(A), epsilon);
 }
