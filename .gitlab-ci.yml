@@ -65,7 +65,7 @@ ubuntu:
         TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
         RUNNER_TAGS: [ linux ]
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
-        CXX: [ g++, clang++-9 ]
+        CXX: [ g++, clang++-13 ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
         RUNNER_TAGS: [ linux ]
