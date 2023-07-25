@@ -30,8 +30,16 @@ namespace scalapack = TA::math::linalg::scalapack;
 #endif
 
 #if TILEDARRAY_HAS_SLATE
-#include <slate/slate.hh>
 #include <TiledArray/conversions/slate.h>
+#include <TiledArray/math/linalg/slate/cholesky.h>
+namespace slate_la = TA::math::linalg::slate;
+#define TILEDARRAY_SLATE_TEST(F, E)                           \
+  GlobalFixture::world->gop.fence();                              \
+  compare("TiledArray::slate", non_dist::F, slate_la::F, E); \
+  GlobalFixture::world->gop.fence();                              \
+  compare("TiledArray", non_dist::F, TiledArray::F, E);
+#else
+#define TILEDARRAY_SLATE_TEST(...)
 #endif
 
 #if TILEDARRAY_HAS_TTG
@@ -689,6 +697,7 @@ BOOST_AUTO_TEST_CASE(cholesky) {
   BOOST_CHECK_SMALL(L_diff("i,j").norm().get(), epsilon);
 
   TILEDARRAY_SCALAPACK_TEST(cholesky(A), epsilon);
+  TILEDARRAY_SLATE_TEST(cholesky(A), epsilon);
 
   TILEDARRAY_TTG_TEST(cholesky(A), epsilon);
 }
