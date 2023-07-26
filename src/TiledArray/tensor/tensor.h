@@ -60,9 +60,9 @@ template <typename T, typename Allocator>
 class Tensor {
   // meaningful error if T& is not assignable, see
   // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=48101
-  static_assert(
-      std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
-      "Tensor<T>: T must be an assignable type (e.g. cannot be const)");
+  static_assert(std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
+                "Tensor<T,Allocator>: T must be an assignable type (e.g. "
+                "cannot be const)");
 
 #ifdef TA_TENSOR_MEM_TRACE
   template <typename... Ts>
@@ -80,16 +80,17 @@ class Tensor {
   typedef typename range_type::ordinal_type
       size_type;  ///< Size type (to meet the container concept)
   typedef Allocator allocator_type;  ///< Allocator type
-  typedef
-      typename allocator_type::value_type value_type;  ///< Array element type
-  typedef
-      typename allocator_type::reference reference;  ///< Element reference type
-  typedef typename allocator_type::const_reference
-      const_reference;                               ///< Element reference type
-  typedef typename allocator_type::pointer pointer;  ///< Element pointer type
-  typedef typename allocator_type::const_pointer
+  typedef typename std::allocator_traits<allocator_type>::value_type
+      value_type;  ///< Array element type
+  typedef std::add_lvalue_reference_t<value_type>
+      reference;  ///< Element (lvalue) reference type
+  typedef std::add_lvalue_reference_t<std::add_const_t<value_type>>
+      const_reference;  ///< Element (const lvalue) reference type
+  typedef typename std::allocator_traits<allocator_type>::pointer
+      pointer;  ///< Element pointer type
+  typedef typename std::allocator_traits<allocator_type>::const_pointer
       const_pointer;  ///< Element const pointer type
-  typedef typename allocator_type::difference_type
+  typedef typename std::allocator_traits<allocator_type>::difference_type
       difference_type;                   ///< Difference type
   typedef pointer iterator;              ///< Element iterator type
   typedef const_pointer const_iterator;  ///< Element const iterator type
@@ -1359,7 +1360,9 @@ class Tensor {
   auto binary(const Right& right, Op&& op) const {
     using result_value_type = decltype(op(
         std::declval<const T&>(), std::declval<const value_t<Right>&>()));
-    return Tensor<result_value_type>(*this, right, op);
+    using result_allocator_type = typename std::allocator_traits<
+        Allocator>::template rebind_alloc<result_value_type>;
+    return Tensor<result_value_type, result_allocator_type>(*this, right, op);
   }
 
   /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -1386,7 +1389,9 @@ class Tensor {
     if constexpr (!is_tot) {
       using result_value_type = decltype(op(
           std::declval<const T&>(), std::declval<const value_t<Right>&>()));
-      using ResultTensor = Tensor<result_value_type>;
+      using result_allocator_type = typename std::allocator_traits<
+          Allocator>::template rebind_alloc<result_value_type>;
+      using ResultTensor = Tensor<result_value_type, result_allocator_type>;
       if constexpr (is_bperm) {
         TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
         return ResultTensor(*this, right, op, outer(perm));
@@ -1696,7 +1701,7 @@ class Tensor {
   /// elements of \c this and \c right
   template <typename Right,
             typename = std::enable_if<
-                detail::tensors_have_equal_nested_rank_v<Tensor<T>, Right>>>
+                detail::tensors_have_equal_nested_rank_v<Tensor, Right>>>
   Tensor subt(const Right& right) const {
     return binary(
         right, [](const value_type& l, const value_type& r) -> decltype(auto) {
@@ -2490,8 +2495,8 @@ std::size_t Tensor<T, A>::trace_if_larger_than_ =
     std::numeric_limits<std::size_t>::max();
 #endif
 
-template <typename T>
-Tensor<T> operator*(const Permutation& p, const Tensor<T>& t) {
+template <typename T, typename A>
+Tensor<T, A> operator*(const Permutation& p, const Tensor<T, A>& t) {
   return t.permute(p);
 }
 
@@ -2543,11 +2548,11 @@ template <typename Alpha, typename... As, typename... Bs, typename Beta,
           typename... Cs>
 void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
           Beta beta, Tensor<Cs...>& C, const math::GemmHelper& gemm_helper) {
-  static_assert(
-      !detail::is_tensor_of_tensor_v<Tensor<As...>, Tensor<Bs...>,
-                                     Tensor<Cs...>>,
-      "TA::Tensor<T>::gemm without custom element op is only applicable to "
-      "plain tensors");
+  static_assert(!detail::is_tensor_of_tensor_v<Tensor<As...>, Tensor<Bs...>,
+                                               Tensor<Cs...>>,
+                "TA::Tensor<T,Allocator>::gemm without custom element op is "
+                "only applicable to "
+                "plain tensors");
   {
     // Check that tensor C is not empty and has the correct rank
     TA_ASSERT(!C.empty());
@@ -2705,16 +2710,16 @@ bool operator!=(const Tensor<T, A>& a, const Tensor<T, A>& b) {
 
 namespace detail {
 
-/// Implements taking the trace of a Tensor<T> (\c T is a numeric type)
+/// Implements taking the trace of a Tensor<T,A>
 ///
 /// \tparam T The type of the elements in the tensor. For this specialization
 ///           to be considered must satisfy the concept of numeric type.
 /// \tparam A The type of the allocator for the tensor
 template <typename T, typename A>
 struct Trace<Tensor<T, A>, detail::enable_if_numeric_t<T>> {
-  decltype(auto) operator()(const Tensor<T>& t) const {
-    using size_type = typename Tensor<T>::size_type;
-    using value_type = typename Tensor<T>::value_type;
+  decltype(auto) operator()(const Tensor<T, A>& t) const {
+    using size_type = typename Tensor<T, A>::size_type;
+    using value_type = typename Tensor<T, A>::value_type;
     const auto range = t.range();
 
     // Get pointers to the range data

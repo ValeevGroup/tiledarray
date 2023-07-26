@@ -724,6 +724,20 @@ BOOST_AUTO_TEST_CASE(block) {
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(allocator) {
+  TensorD x(r, 1.0);
+  Tensor<double, std::allocator<double>> y(r, 1.0);
+  static_assert(std::is_same_v<decltype(x.add(y)), TensorD>);
+  static_assert(std::is_same_v<decltype(y.add(x)), decltype(y)>);
+  static_assert(std::is_same_v<decltype(x.subt(y)), TensorD>);
+  static_assert(std::is_same_v<decltype(y.subt(x)), decltype(y)>);
+  static_assert(std::is_same_v<decltype(x.mult(y)), TensorD>);
+  static_assert(std::is_same_v<decltype(y.mult(x)), decltype(y)>);
+  BOOST_REQUIRE_NO_THROW(x.add_to(y));
+  BOOST_REQUIRE_NO_THROW(x.subt_to(y));
+  BOOST_REQUIRE_NO_THROW(x.mult_to(y));
+}
+
 BOOST_AUTO_TEST_CASE(rebind) {
   static_assert(
       std::is_same_v<TensorD::rebind_t<std::complex<double>>, TensorZ>);
