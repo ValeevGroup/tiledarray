@@ -267,20 +267,23 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
           } else {
             std::array<size_t, 2> lo{i, j};
             std::array<size_t, 2> up{i_last, j_last};
+            // N.B. send instead of task guarantees progress
             madness::Future<Tensor<T>> remtile_fut = world_base_t::send(
                 owner(i, j),
                 &BlockCyclicMatrix<T>::template extract_submatrix<Tensor<T>>,
                 lo, up);
 
+            // N.B. Future::get(dowork=false) since calling from within a task
+            // and PaRSEC gets sad otherwise
             if constexpr (TiledArray::detail::is_ta_tensor_v<Tile>)
-              tile.block(lo, up) = remtile_fut.get();
+              tile.block(lo, up) = remtile_fut.get(/* dowork = */ false);
             else {
               auto tile_blk_range = TiledArray::BlockRange(
                   TiledArray::detail::make_ta_range(tile.range()), lo, up);
               using std::data;
               auto tile_blk_view =
                   TiledArray::make_map(data(tile), tile_blk_range);
-              tile_blk_view = remtile_fut.get();
+              tile_blk_view = remtile_fut.get(/* dowork = */ false);
             }
           }
         }
