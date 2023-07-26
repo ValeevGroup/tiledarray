@@ -27,6 +27,8 @@
 #include <TiledArray/cuda/btas_um_tensor.h>
 #include "unit_test_config.h"
 
+#include <GpuUtils.h>
+
 struct LibreTTFixture {
   //  LibreTTFixture()
   //      : A(100),
@@ -70,6 +72,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem) {
 
   librettHandle plan;
   librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   status =
@@ -119,6 +122,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
 
   librettHandle plan;
   librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -178,6 +182,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
 
   librettHandle plan;
   librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent3{int(A), int(B), int(C)};
@@ -241,6 +246,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
 
   librettHandle plan;
   librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent({A, B, C});
@@ -298,6 +304,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
 
   librettHandle plan;
   librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent({A, A});
@@ -348,6 +355,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
 
   librettHandle plan;
   librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -398,6 +406,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
 
   librettHandle plan;
   librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   // b(k,i,j) = a(i,j,k)
