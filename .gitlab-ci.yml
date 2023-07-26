@@ -52,6 +52,7 @@ ubuntu:
     - build/CMakeCache.txt
     - build/CMakeFiles/CMakeOutput.log
     - build/CMakeFiles/CMakeError.log
+    - build/CMakeFiles/CMakeConfigureLog.yaml
     reports:
       metrics: build/metrics.txt
   parallel:
