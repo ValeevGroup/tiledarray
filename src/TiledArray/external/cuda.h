@@ -191,11 +191,11 @@ inline void synchronize_stream(const cudaStream_t* stream) {
 }
 
 /**
- * cudaEnv set up global environment
+ * cudaEnv maintains the CUDA-related part of the runtime environment,
+ * such as CUDA-specific memory allocators
  *
- * Singleton class
+ * \note this is a Singleton
  */
-
 class cudaEnv {
  public:
   ~cudaEnv() {
@@ -210,19 +210,31 @@ class cudaEnv {
   cudaEnv& operator=(const cudaEnv&) = delete;
   cudaEnv& operator=(cudaEnv&&) = delete;
 
-  /// access to static member
+  /// access the singleton instance; if not initialized will be
+  /// initialized via cudaEnv::initialize() with the default params
   static std::unique_ptr<cudaEnv>& instance() {
-    static std::unique_ptr<cudaEnv> instance_{nullptr};
-    if (!instance_) {
-      initialize(instance_, TiledArray::get_default_world());
+    if (!instance_accessor()) {
+      initialize();
     }
-    return instance_;
+    return instance_accessor();
   }
 
-  /// initialize static member
-  static void initialize(std::unique_ptr<cudaEnv>& instance, World& world) {
-    // initialize only when not initialized
-    if (instance == nullptr) {
+  // clang-format off
+  /// initialize the instance using explicit params
+  /// \param world the world to use for initialization
+  /// \param page_size memory added to the pools supporting `this->um_allocator()`, `this->device_allocator()`, and `this->pinned_allocator()` in chunks of at least
+  ///                  this size (bytes) [default=2^25]
+  /// \param pinned_alloc_limit the maximum total amount of memory (in bytes) that
+  ///        allocator returned by `this->pinned_allocator()` can allocate;
+  ///        this allocator is not used by default [default=0]
+  // clang-format on
+  static void initialize(World& world = TiledArray::get_default_world(),
+                         const std::uint64_t page_size = (1ul << 25),
+                         const std::uint64_t pinned_alloc_limit = (1ul << 40)) {
+    static std::mutex mtx;  // to make initialize() reentrant
+    std::scoped_lock lock{mtx};
+    // only the winner of the lock race gets to initialize
+    if (instance_accessor() == nullptr) {
       int num_streams = detail::num_cuda_streams();
       int num_devices = detail::num_cuda_devices();
       int device_id = detail::current_cuda_device_id(world);
@@ -248,27 +260,35 @@ class cudaEnv {
       constexpr auto introspect = false;
 #endif
 
-      // allocate all free memory for UM pool
-      // subsequent allocs will use 1/10 of the total device memory
-      auto alloc_grain = mem_total_free.second / 10;
+      // allocate all currently-free memory for UM pool
       auto um_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "UMDynamicPool", rm.getAllocator("UM"), mem_total_free.second,
-              alloc_grain);
+              pinned_alloc_limit);
 
-      // allocate zero memory for device pool, same grain for subsequent allocs
+      // allocate zero memory for device pool
       auto dev_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
               "size_limited_alloc", rm.getAllocator("DEVICE"),
               mem_total_free.first);
       auto dev_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
-              "CUDADynamicPool", dev_size_limited_alloc, 0, alloc_grain);
+              "CUDADynamicPool", dev_size_limited_alloc, 0, pinned_alloc_limit);
+
+      // allocate pinned_alloc_limit in pinned memory
+      auto pinned_size_limited_alloc =
+          rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
+              "SizeLimited_PINNED", rm.getAllocator("PINNED"),
+              pinned_alloc_limit);
+      auto pinned_dynamic_pool =
+          rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
+              "QuickPool_SizeLimited_PINNED", pinned_size_limited_alloc,
+              page_size, page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
 
       auto cuda_env = std::unique_ptr<cudaEnv>(
           new cudaEnv(world, num_devices, device_id, num_streams,
-                      um_dynamic_pool, dev_dynamic_pool));
-      instance = std::move(cuda_env);
+                      um_dynamic_pool, dev_dynamic_pool, pinned_dynamic_pool));
+      instance_accessor() = std::move(cuda_env);
     }
   }
 
@@ -361,12 +381,33 @@ class cudaEnv {
         ->getActualHighwaterMark();
   }
 
+  /// @return an Umpire allocator that allocates from a
+  ///         pinned memory pool
+  /// @warning this is not a thread-safe allocator, should be only used when
+  ///          wrapped into umpire_allocator_impl
+  umpire::Allocator& pinned_allocator() { return pinned_allocator_; }
+
+  // clang-format off
+  /// @return the max actual amount of memory held by pinned_allocator()
+  /// @details returns the value provided by `umpire::strategy::QuickPool::getHighWatermark()`
+  /// @note if there is only 1 Umpire allocator using PINNED memory this should be identical to the value returned by `umpire::ResourceManager::getInstance().getAllocator("PINNED").getHighWatermark()`
+  // clang-format on
+  std::size_t pinned_allocator_getActualHighWatermark() {
+    TA_ASSERT(dynamic_cast<umpire::strategy::QuickPool*>(
+                  pinned_allocator_.getAllocationStrategy()) != nullptr);
+    return dynamic_cast<umpire::strategy::QuickPool*>(
+               pinned_allocator_.getAllocationStrategy())
+        ->getActualHighwaterMark();
+  }
+
  protected:
   cudaEnv(World& world, int num_devices, int device_id, int num_streams,
-          umpire::Allocator um_alloc, umpire::Allocator device_alloc)
+          umpire::Allocator um_alloc, umpire::Allocator device_alloc,
+          umpire::Allocator pinned_alloc)
       : world_(&world),
         um_allocator_(um_alloc),
         device_allocator_(device_alloc),
+        pinned_allocator_(pinned_alloc),
         num_cuda_devices_(num_devices),
         current_cuda_device_id_(device_id),
         num_cuda_streams_(num_streams) {
@@ -411,6 +452,9 @@ class cudaEnv {
   /// allocator backed by a (non-thread-safe) dynamically-sized pool for device
   /// memory
   umpire::Allocator device_allocator_;
+  // allocates from a dynamic, size-limited pinned memory pool
+  // N.B. not thread safe, so must be wrapped into umpire_allocator_impl
+  umpire::Allocator pinned_allocator_;
 
   int num_cuda_devices_;
   int current_cuda_device_id_;
@@ -418,6 +462,11 @@ class cudaEnv {
 
   int num_cuda_streams_;
   std::vector<cudaStream_t> cuda_streams_;
+
+  inline static std::unique_ptr<cudaEnv>& instance_accessor() {
+    static std::unique_ptr<cudaEnv> instance_{nullptr};
+    return instance_;
+  }
 };
 
 namespace detail {

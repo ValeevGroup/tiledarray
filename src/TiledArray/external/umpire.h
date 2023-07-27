@@ -33,6 +33,8 @@
 #include <umpire/strategy/QuickPool.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
 
+#include <madness/world/archive.h>
+
 #include <memory>
 #include <stdexcept>
 
@@ -45,7 +47,7 @@ struct NullLock {
   static void unlock() {}
 };
 
-template <typename Tag = void>
+template <typename Tag>
 class MutexLock {
   static std::mutex mtx_;
 
@@ -138,7 +140,7 @@ class umpire_allocator_impl {
 
  private:
   umpire::Allocator* umpalloc_;
-};  // class umpire_allocator
+};  // class umpire_allocator_impl
 
 template <class T1, class T2, class StaticLock>
 bool operator==(const umpire_allocator_impl<T1, StaticLock>& lhs,
@@ -172,6 +174,9 @@ class default_init_allocator : public A {
 
   using A::A;
 
+  default_init_allocator(A const& a) noexcept : A(a) {}
+  default_init_allocator(A&& a) noexcept : A(std::move(a)) {}
+
   template <typename U>
   void construct(U* ptr) noexcept(
       std::is_nothrow_default_constructible<U>::value) {
@@ -185,4 +190,56 @@ class default_init_allocator : public A {
 
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_CUDA_UM_ALLOCATOR_H___INCLUDED
+namespace madness {
+namespace archive {
+
+template <class Archive, class T, class StaticLock>
+struct ArchiveLoadImpl<Archive,
+                       TiledArray::umpire_allocator_impl<T, StaticLock>> {
+  static inline void load(
+      const Archive& ar,
+      TiledArray::umpire_allocator_impl<T, StaticLock>& allocator) {
+    std::string allocator_name;
+    ar& allocator_name;
+    allocator = TiledArray::umpire_allocator_impl<T, StaticLock>(
+        umpire::ResourceManager::getInstance().getAllocator(allocator_name));
+  }
+};
+
+template <class Archive, class T, class StaticLock>
+struct ArchiveStoreImpl<Archive,
+                        TiledArray::umpire_allocator_impl<T, StaticLock>> {
+  static inline void store(
+      const Archive& ar,
+      const TiledArray::umpire_allocator_impl<T, StaticLock>& allocator) {
+    ar& allocator.umpire_allocator()->getName();
+  }
+};
+
+template <class Archive, typename T, typename A>
+struct ArchiveLoadImpl<Archive, TiledArray::default_init_allocator<T, A>> {
+  static inline void load(const Archive& ar,
+                          TiledArray::default_init_allocator<T, A>& allocator) {
+    if constexpr (!std::allocator_traits<A>::is_always_equal::value) {
+      A base_allocator;
+      ar& base_allocator;
+      allocator = TiledArray::default_init_allocator<T, A>(base_allocator);
+    }
+  }
+};
+
+template <class Archive, typename T, typename A>
+struct ArchiveStoreImpl<Archive, TiledArray::default_init_allocator<T, A>> {
+  static inline void store(
+      const Archive& ar,
+      const TiledArray::default_init_allocator<T, A>& allocator) {
+    if constexpr (!std::allocator_traits<A>::is_always_equal::value) {
+      ar& static_cast<const A&>(allocator);
+    }
+  }
+};
+
+}  // namespace archive
+}  // namespace madness
+
+#endif  // TILEDARRAY_EXTERNAL_UMPIRE_H___INCLUDED

@@ -106,6 +106,15 @@ if(CUDA_FOUND)
     list(APPEND ta_test_src_files librett.cpp expressions_cuda_um.cpp tensor_um.cpp)
 endif()
 
+# if using C++20 must use Boost 1.74 or later:
+# - https://en.cppreference.com/w/cpp/io/basic_ostream/operator_ltlt2
+# - https://github.com/boostorg/test/commit/db6b98c72783351e0acd3c558691323a7a103ba9
+if (CMAKE_CXX_STANDARD GREATER_EQUAL 20 AND DEFINED Boost_VERSION)
+  if (Boost_VERSION VERSION_LESS 1.74.0)
+     message(FATAL_ERROR "Boost 1.74 or later required to build TA unit tests when using C++20 or higher")
+  endif()
+endif()
+
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
 if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE)
   add_ta_executable(${executable} "${ta_test_src_files}" "MADworld;${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")

@@ -463,7 +463,7 @@ inline std::enable_if_t<is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// want to modify the elements of the array to be equal to the square
 /// root of the original value:
 /// \code
-/// foreach(array, [] (TiledArray::TensorD& tile) {
+/// foreach_inplace(array, [] (TiledArray::TensorD& tile) {
 ///   tile.inplace_unary([&] (double& value) { value = std::sqrt(value); });
 /// });
 /// \endcode
@@ -561,7 +561,7 @@ inline std::enable_if_t<!is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// example, if we want to modify the elements of the array to be equal to the
 /// square root of the original value:
 /// \code
-/// foreach(array, [] (auto& tile) -> float {
+/// foreach_inplace(array, [] (auto& tile) -> float {
 ///   double norm_squared = 0.0;
 ///   tile.inplace_unary([&] (double& value) {
 ///     norm_squared += value; // Assume value >= 0
