@@ -24,8 +24,8 @@
 #ifndef TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
 #define TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
 
+#include <TiledArray/cuda/allocators.h>
 #include <TiledArray/cuda/thrust.h>
-#include <TiledArray/cuda/um_allocator.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
@@ -142,26 +142,6 @@ template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
   static inline void store(const Archive& ar,
                            const TiledArray::cuda_um_thrust_vector<T>& x) {
-    ar& x.size();
-    for (const auto& xi : x) ar& xi;
-  }
-};
-
-template <class Archive, typename T>
-struct ArchiveLoadImpl<Archive, TiledArray::cuda_um_btas_varray<T>> {
-  static inline void load(const Archive& ar,
-                          TiledArray::cuda_um_btas_varray<T>& x) {
-    typename TiledArray::cuda_um_btas_varray<T>::size_type n(0);
-    ar& n;
-    x.resize(n);
-    for (auto& xi : x) ar& xi;
-  }
-};
-
-template <class Archive, typename T>
-struct ArchiveStoreImpl<Archive, TiledArray::cuda_um_btas_varray<T>> {
-  static inline void store(const Archive& ar,
-                           const TiledArray::cuda_um_btas_varray<T>& x) {
     ar& x.size();
     for (const auto& xi : x) ar& xi;
   }

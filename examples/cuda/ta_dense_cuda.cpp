@@ -215,7 +215,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
   using CUDATile = btas::Tensor<T, TA::Range, Storage>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
-  using TAMatrix = TA::DistArray<TA::Tensor<T>>;
+  using PinnedTile =
+      btas::Tensor<T, TA::Range,
+                   ::btas::varray<typename Storage::value_type,
+                                  TiledArray::cuda_pinned_allocator<T>>>;
+  using PinnedMatrix = TA::DistArray<TA::Tile<PinnedTile>>;
+  // using TAMatrix = TA::DistArray<TA::Tensor<T>>;
 
   CUDAMatrix c(world, trange_c);
   auto val_a = 0.03;
@@ -224,8 +229,8 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   {
     // Construct and initialize arrays
 
-    TAMatrix a_host(world, trange_a);
-    TAMatrix b_host(world, trange_b);
+    PinnedMatrix a_host(world, trange_a);
+    PinnedMatrix b_host(world, trange_b);
 
     a_host.fill(val_a);
     b_host.fill(val_b);
