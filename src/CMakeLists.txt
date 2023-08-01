@@ -223,7 +223,7 @@ if(CUDA_FOUND)
      TiledArray/cuda/kernel/reduce_kernel_impl.h
      TiledArray/cuda/platform.h
      TiledArray/cuda/thrust.h
-     TiledArray/cuda/um_allocator.h
+     TiledArray/cuda/allocators.h
      TiledArray/cuda/um_storage.h)
 
 endif(CUDA_FOUND)

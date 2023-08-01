@@ -22,7 +22,7 @@
  */
 
 
-#include <TiledArray/cuda/um_allocator.h>
+#include <TiledArray/cuda/allocators.h>
 #include <TiledArray/cuda/thrust.h>
 
 #ifdef TILEDARRAY_HAS_CUDA

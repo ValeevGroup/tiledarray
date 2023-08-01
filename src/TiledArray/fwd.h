@@ -84,14 +84,34 @@ typedef Tensor<std::complex<float>> TensorC;
 // CUDA tensor
 #ifdef TILEDARRAY_HAS_CUDA
 
-template <class T>
-class cuda_um_allocator_impl;
+class cudaEnv;
+
+template <class T, class StaticLock, typename UmpireAllocatorAccessor>
+class cuda_allocator_impl;
 
 template <typename T, typename A = std::allocator<T>>
 class default_init_allocator;
 
+namespace detail {
+struct get_um_allocator;
+struct get_pinned_allocator;
+struct NullLock;
+template <typename Tag = void>
+class MutexLock;
+}  // namespace detail
+
+/// pooled thread-safe CUDA UM allocator
 template <typename T>
-using cuda_um_allocator = default_init_allocator<T, cuda_um_allocator_impl<T>>;
+using cuda_um_allocator =
+    default_init_allocator<T, cuda_allocator_impl<T, detail::MutexLock<cudaEnv>,
+                                                  detail::get_um_allocator>>;
+
+/// pooled thread-safe CUDA-based pinned host memory allocator
+template <typename T>
+using cuda_pinned_allocator =
+    default_init_allocator<T,
+                           cuda_allocator_impl<T, detail::MutexLock<cudaEnv>,
+                                               detail::get_pinned_allocator>>;
 
 /// \brief a vector that lives in CUDA Unified Memory, with most operations
 /// implemented on the CPU

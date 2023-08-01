@@ -27,6 +27,8 @@
 #include <TiledArray/cuda/btas_um_tensor.h>
 #include "unit_test_config.h"
 
+#include <GpuUtils.h>
+
 struct LibreTTFixture {
   //  LibreTTFixture()
   //      : A(100),
@@ -69,10 +71,12 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem) {
   TiledArray::permutation_to_col_major(perm);
 
   librettHandle plan;
-  //librettResult_t status;
+  librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
-  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
+  status =
+      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -117,7 +121,8 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
   cudaMemcpy(a_device, a_host, A * B * sizeof(int), cudaMemcpyHostToDevice);
 
   librettHandle plan;
-  //librettResult_t status;
+  librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -126,7 +131,8 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
+  status =
+      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -175,7 +181,8 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
   // b(j,i,k) = a(i,j,k)
 
   librettHandle plan;
-  //librettResult_t status;
+  librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent3{int(A), int(B), int(C)};
@@ -183,8 +190,8 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
   std::vector<int> perm3{1, 0, 2};
   //  std::vector<int> perm3{0, 2, 1};
 
-  status = librettPlanMeasure(&plan, 3, extent3.data(), perm3.data(), sizeof(int),
-                           0, a_device, b_device);
+  status = librettPlanMeasure(&plan, 3, extent3.data(), perm3.data(),
+                              sizeof(int), stream, a_device, b_device);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -238,7 +245,8 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
   // b(j,i,k) = a(i,j,k)
 
   librettHandle plan;
-  //librettResult_t status;
+  librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent({A, B, C});
@@ -247,8 +255,8 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
   std::vector<int> perm({1, 0, 2});
   TiledArray::permutation_to_col_major(perm);
 
-  status = librettPlanMeasure(&plan, 3, extent.data(), perm.data(), sizeof(int), 0,
-                           a_device, b_device);
+  status = librettPlanMeasure(&plan, 3, extent.data(), perm.data(), sizeof(int),
+                              stream, a_device, b_device);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -295,7 +303,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
   }
 
   librettHandle plan;
-  //librettResult_t status;
+  librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent({A, A});
@@ -304,7 +313,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
+  status =
+      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -344,7 +354,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
   }
 
   librettHandle plan;
-  //librettResult_t status;
+  librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -353,7 +364,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
+  status =
+      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -393,7 +405,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
   }
 
   librettHandle plan;
-  //librettResult_t status;
+  librett_gpuStream_t stream;
+  cudaCheck(cudaStreamCreate(&stream));
   librettResult status;
 
   // b(k,i,j) = a(i,j,k)
@@ -404,7 +417,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
   std::vector<int> perm({2, 0, 1});
   TiledArray::permutation_to_col_major(perm);
 
-  status = librettPlan(&plan, 3, extent.data(), perm.data(), sizeof(int), 0);
+  status =
+      librettPlan(&plan, 3, extent.data(), perm.data(), sizeof(int), stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 

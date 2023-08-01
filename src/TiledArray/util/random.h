@@ -20,11 +20,12 @@
 #ifndef TILEDARRAY_RANDOM_H__INCLUDED
 #define TILEDARRAY_RANDOM_H__INCLUDED
 
+#include <boost/random/mersenne_twister.hpp>
+
 #include <complex>      // for std::complex
+#include <cstdint>      // for std::int64_t
 #include <cstdlib>      // for std::rand
 #include <type_traits>  // for true_type, false_type, and enable_if
-
-#include <boost/random/mersenne_twister.hpp>
 
 namespace TiledArray {
 

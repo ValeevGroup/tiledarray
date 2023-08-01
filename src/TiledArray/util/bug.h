@@ -29,6 +29,7 @@
 #define TILEDARRAY_UTIL_BUG_H_
 
 #include <cassert>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
