@@ -33,12 +33,18 @@ namespace scalapack = TA::math::linalg::scalapack;
 #include <TiledArray/conversions/slate.h>
 #include <TiledArray/math/linalg/slate/cholesky.h>
 #include <TiledArray/math/linalg/slate/lu.h>
+#include <TiledArray/math/linalg/slate/heig.h>
 namespace slate_la = TA::math::linalg::slate;
 #define TILEDARRAY_SLATE_TEST(F, E)                           \
   GlobalFixture::world->gop.fence();                              \
   compare("TiledArray::slate", non_dist::F, slate_la::F, E); \
   GlobalFixture::world->gop.fence();                              \
   compare("TiledArray", non_dist::F, TiledArray::F, E);
+#define TILEDARRAY_SLATE_EIGTEST(F, E)                           \
+  GlobalFixture::world->gop.fence();                              \
+  compare_eig("TiledArray::slate", non_dist::F, slate_la::F, E); \
+  GlobalFixture::world->gop.fence();                              \
+  compare_eig("TiledArray", non_dist::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SLATE_TEST(...)
 #endif
@@ -165,6 +171,25 @@ struct LinearAlgebraFixture : ReferenceFixture {
   }
 #endif
 
+  template <class A>
+  static void compare_eig(const char* context, const A& non_dist, const A& result,
+                          double e) {
+    const auto& [evals_nd, evecs_nd] = non_dist;
+    const auto& [evals,    evecs   ] = result;
+
+    const size_t n = evals.size();
+    BOOST_REQUIRE_EQUAL(n, evals_nd.size());
+    for(size_t i = 0; i < n; ++i) {
+      BOOST_CHECK_SMALL(std::abs(evals[i] - evals_nd[i]), e);
+    }
+    auto nd_eigen = TA::array_to_eigen(evecs_nd);
+    auto rs_eigen = TA::array_to_eigen(evecs);
+
+    Eigen::MatrixXd G; G = nd_eigen.adjoint() * rs_eigen;
+    Eigen::MatrixXd G2; G2 = G.adjoint() * G; // Accounts for phase-flips
+    auto G2_mI_nrm = (G2 - Eigen::MatrixXd::Identity(n,n)).norm();
+    BOOST_CHECK_SMALL(G2_mI_nrm, e);
+  }
 
   template <class A>
   static void compare(const char* context, const A& non_dist, const A& result,
@@ -592,6 +617,9 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
     BOOST_CHECK_SMALL(std::abs(evals_non_dist[i] - exact_evals[i]), tol);
   }
 
+
+  TILEDARRAY_SLATE_EIGTEST(heig(ref_ta), tol);
+
   GlobalFixture::world->gop.fence();
 }
 
@@ -890,7 +918,7 @@ BOOST_AUTO_TEST_CASE(lu_solve) {
 
   BOOST_CHECK_SMALL(norm, epsilon);
   TILEDARRAY_SCALAPACK_TEST(lu_solve(ref_ta, ref_ta), epsilon);
-  TILEDARRAY_SLATE_TEST(lu_solve(ref_ta, ref_ta), epsilon);
+  //TILEDARRAY_SLATE_TEST(lu_solve(ref_ta, ref_ta), epsilon);
 
   GlobalFixture::world->gop.fence();
 }

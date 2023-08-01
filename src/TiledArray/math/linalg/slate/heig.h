@@ -23,53 +23,51 @@
  *  Created:    24 July, 2023
  *
  */
-#ifndef TILEDARRAY_MATH_LINALG_SLATE_LU_H__INCLUDED
-#define TILEDARRAY_MATH_LINALG_SLATE_LU_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SLATE_HEIG_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SLATE_HEIG_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SLATE
 
 #include <TiledArray/conversions/slate.h>
 #include <TiledArray/math/linalg/slate/util.h>
+#include <TiledArray/math/linalg/forward.h>
+
 namespace TiledArray::math::linalg::slate {
 
-template <typename ArrayA, typename ArrayB>
-auto lu_solve(const ArrayA& A, const ArrayB& B) {
+template <typename Array>
+auto heig( const Array& A) {
 
-  using element_type   = typename std::remove_cv_t<ArrayA>::element_type;
+  using element_type   = typename std::remove_cv_t<Array>::element_type;
   auto& world = A.world();
-  /*
-  if( world != B.world() ) {
-    TA_EXCEPTION("A and B must be distributed on same MADWorld context");
-  }
-  */
 
   // Convert to SLATE
-  world.gop.fence();  // stage SLATE execution
-  auto A_slate = array_to_slate(A);
-  auto B_slate = array_to_slate(B);
-  world.gop.fence();  // stage SLATE execution
+  auto matrix = array_to_slate(A);
 
-  //for(auto it = 0; it < A_slate.mt(); ++it)
-  //for(auto jt = 0; jt < A_slate.nt(); ++jt) {
-  //  auto T = B_slate(it,jt);
-  //  std::cout << "TILE(" << it << "," << jt << "): ";
-  //  for( auto i = 0; i < T.mb()*T.nb(); ++i )
-  //     printf("%.10f ", T.data()[i]);
-  //  std::cout << std::endl;
-  //}
+  // Allocate space for singular values
+  const auto M = matrix.m();
+  const auto N = matrix.n();
+  if (M != N) TA_EXCEPTION("Matrix must be square for EVP");
 
-  // Solve Linear System
-  ::slate::lu_solve( A_slate, B_slate );
+  std::vector<::blas::real_type<element_type>> W(N);
 
-  // Convert solution to TA
-  auto X = slate_to_array<ArrayB>(B_slate, world);
+  // Perform Eigenvalue Decomposition
   world.gop.fence();  // stage SLATE execution
 
-  return X;
+  ::slate::HermitianMatrix<element_type> AH(::slate::Uplo::Lower, matrix);
+  auto Z = matrix.emptyLike(); Z.insertLocalTiles();
+  ::slate::eig(AH, W, Z); 
+
+
+  // Convert eigenvectors back to TA
+  auto Z_ta = slate_to_array<Array>(Z, world);
+  world.gop.fence(); // Maintain lifetimes of SLATE data
+
+  return std::tuple(W, Z_ta);
 }
 
-}  // namespace TiledArray::math::linalg::scalapack
+} // namespace TiledArray::math::linalg::slate
 
-#endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_LU_H__INCLUDED
+#endif // TILEDARRAY_HAS_SLATE
+
+#endif // TILEDARRAY_MATH_LINALG_SLATE_HEIG_H__INCLUDED
