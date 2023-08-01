@@ -25,8 +25,14 @@ namespace scalapack = TA::math::linalg::scalapack;
   compare("TiledArray::scalapack", non_dist::F, scalapack::F, E); \
   GlobalFixture::world->gop.fence();                              \
   compare("TiledArray", non_dist::F, TiledArray::F, E);
+#define TILEDARRAY_SCALAPACK_EIGTEST(F, E)                           \
+  GlobalFixture::world->gop.fence();                              \
+  compare_eig("TiledArray::scalapack", non_dist::F, scalapack::F, E); \
+  GlobalFixture::world->gop.fence();                              \
+  compare_eig("TiledArray", non_dist::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SCALAPACK_TEST(...)
+#define TILEDARRAY_SCALAPACK_EIGTEST(...)
 #endif
 
 #if TILEDARRAY_HAS_SLATE
@@ -47,6 +53,7 @@ namespace slate_la = TA::math::linalg::slate;
   compare_eig("TiledArray", non_dist::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SLATE_TEST(...)
+#define TILEDARRAY_SLATE_EIGTEST(...)
 #endif
 
 #if TILEDARRAY_HAS_TTG
@@ -174,6 +181,11 @@ struct LinearAlgebraFixture : ReferenceFixture {
   template <class A>
   static void compare_eig(const char* context, const A& non_dist, const A& result,
                           double e) {
+    // clang-format off
+    BOOST_TEST_CONTEXT(context)
+    ;
+    // clang-format on
+
     const auto& [evals_nd, evecs_nd] = non_dist;
     const auto& [evals,    evecs   ] = result;
 
@@ -185,6 +197,8 @@ struct LinearAlgebraFixture : ReferenceFixture {
     auto nd_eigen = TA::array_to_eigen(evecs_nd);
     auto rs_eigen = TA::array_to_eigen(evecs);
 
+    // The test problem for the unit tests has a non-degenerate spectrum
+    // we only need to check for phase-flips in this check
     Eigen::MatrixXd G; G = nd_eigen.adjoint() * rs_eigen;
     Eigen::MatrixXd G2; G2 = G.adjoint() * G; // Accounts for phase-flips
     auto G2_mI_nrm = (G2 - Eigen::MatrixXd::Identity(n,n)).norm();
@@ -618,6 +632,7 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
   }
 
 
+  TILEDARRAY_SCALAPACK_EIGTEST(heig(ref_ta), tol);
   TILEDARRAY_SLATE_EIGTEST(heig(ref_ta), tol);
 
   GlobalFixture::world->gop.fence();
