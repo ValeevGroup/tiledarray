@@ -176,6 +176,19 @@ using Array
 
 enum class HostExecutor { Thread, MADWorld, Default = MADWorld };
 
+namespace conversions {
+
+/// user defined conversions
+
+/// must define
+/// \code
+///  To operator()(From&& from);
+/// \endcode
+template <typename To, typename From>
+struct to;
+
+}  // namespace conversions
+
 }  // namespace TiledArray
 
 #ifndef TILEDARRAY_DISABLE_NAMESPACE_TA

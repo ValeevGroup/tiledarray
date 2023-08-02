@@ -61,13 +61,14 @@ struct transform;
 /// \param tensor1 The first argument tensor
 /// \param tensors The remaining argument tensors
 template <typename TR, typename Op, typename T1, typename... Ts,
-          typename std::enable_if<
-              is_tensor<TR, T1, Ts...>::value ||
-              is_tensor_of_tensor<TR, T1, Ts...>::value>::type* = nullptr>
+          typename = std::enable_if_t<
+              detail::is_nested_tensor_v<TR, T1, Ts...> ||
+              std::is_invocable_r_v<TR, Op, const T1&, const Ts&...>>>
 inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
   if constexpr (std::is_invocable_r_v<TR, Op, const T1&, const Ts&...>) {
     return std::forward<Op>(op)(tensor1, tensors...);
   } else {
+    static_assert(detail::is_nested_tensor_v<TR, T1, Ts...>);
     return TiledArray::detail::transform<TR>()(std::forward<Op>(op), tensor1,
                                                tensors...);
   }
@@ -93,8 +94,7 @@ inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
 /// \param[in] tensors The remaining argument tensors
 template <typename TR, typename Op, typename T1, typename... Ts,
           typename std::enable_if<
-              (is_tensor<T1, Ts...>::value ||
-               is_tensor_of_tensor<TR, T1, Ts...>::value) &&
+              is_nested_tensor_v<T1, Ts...> &&
               is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
 inline TR tensor_op(Op&& op, const Permutation& perm, const T1& tensor1,
                     const Ts&... tensors) {
@@ -219,7 +219,7 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
 /// \param[in] tensors The argument tensors
 template <typename Op, typename TR, typename... Ts,
           typename std::enable_if<
-              is_tensor_of_tensor<TR, Ts...>::value &&
+              !is_tensor_v<TR, Ts...> &&
               is_contiguous_tensor<TR, Ts...>::value>::type* = nullptr>
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
@@ -228,7 +228,11 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   const auto volume = result.range().volume();
 
   for (decltype(result.range().volume()) ord = 0ul; ord < volume; ++ord) {
-    inplace_tensor_op(op, result.at_ordinal(ord), tensors.at_ordinal(ord)...);
+    if constexpr (std::is_invocable_r_v<void, Op, typename TR::value_type&,
+                                        typename Ts::value_type...>)
+      op(result.at_ordinal(ord), tensors.at_ordinal(ord)...);
+    else
+      inplace_tensor_op(op, result.at_ordinal(ord), tensors.at_ordinal(ord)...);
   }
 }
 
@@ -457,7 +461,7 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
                       tensors.data()...);
 }
 
-/// Initialize tensor of tensors with contiguous tensor arguments
+/// Initialize nested tensor with contiguous tensor arguments
 
 /// This function initializes the \c i -th element of \c result with the result
 /// of \c op(tensors[i]...)
@@ -470,7 +474,8 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// \param[in] tensors The argument tensors
 template <
     typename Op, typename TR, typename... Ts,
-    typename std::enable_if<is_tensor_of_tensor<TR, Ts...>::value &&
+    typename std::enable_if<(is_nested_tensor<TR, Ts...>::value &&
+                             !is_tensor<TR, Ts...>::value) &&
                             is_contiguous_tensor<TR>::value>::type* = nullptr>
 inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
@@ -478,9 +483,13 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 
   const auto volume = result.range().volume();
 
-  for (decltype(result.range().volume()) ord = 0ul; ord < volume; ++ord) {
-    new (result.data() + ord) typename TR::value_type(
-        tensor_op<typename TR::value_type>(op, tensors.at_ordinal(ord)...));
+  if constexpr (std::is_invocable_r_v<TR, Op, const Ts&...>) {
+    result = std::forward<Op>(op)(tensors...);
+  } else {
+    for (decltype(result.range().volume()) ord = 0ul; ord < volume; ++ord) {
+      new (result.data() + ord) typename TR::value_type(
+          tensor_op<typename TR::value_type>(op, tensors.at_ordinal(ord)...));
+    }
   }
 }
 

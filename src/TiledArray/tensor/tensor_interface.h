@@ -219,25 +219,43 @@ class TensorInterface {
 
   /// Element subscript accessor
 
-  /// \param index The ordinal element index
-  /// \return A const reference to the element at \c index.
-  const_reference operator[](const ordinal_type index) const {
-    TA_ASSERT(range_.includes(index));
-    return data_[range_.ordinal(index)];
+  /// \param index_ordinal The ordinal element index
+  /// \return A const reference to the element at \c index_ordinal.
+  const_reference operator[](const ordinal_type index_ordinal) const {
+    TA_ASSERT(range_.includes(index_ordinal));
+    return data_[range_.ordinal(index_ordinal)];
   }
 
   /// Element subscript accessor
 
   /// \param index The ordinal element index
-  /// \return A const reference to the element at \c index.
-  reference operator[](const ordinal_type index) {
-    TA_ASSERT(range_.includes(index));
-    return data_[range_.ordinal(index)];
+  /// \return A const reference to the element at \c index_ordinal.
+  reference operator[](const ordinal_type index_ordinal) {
+    TA_ASSERT(range_.includes(index_ordinal));
+    return data_[range_.ordinal(index_ordinal)];
   }
 
   /// Element accessor
 
-  /// \tparam Index An integral type pack or a single coodinate index type
+  /// \param index_ordinal The ordinal element index
+  /// \return A const reference to the element at \c index_ordinal.
+  const_reference at_ordinal(const ordinal_type index_ordinal) const {
+    TA_ASSERT(range_.includes(index_ordinal));
+    return data_[range_.ordinal(index_ordinal)];
+  }
+
+  /// Element accessor
+
+  /// \param index_ordinal The ordinal element index
+  /// \return A const reference to the element at \c index_ordinal.
+  reference at_ordinal(const ordinal_type index_ordinal) {
+    TA_ASSERT(range_.includes(index_ordinal));
+    return data_[range_.ordinal(index_ordinal)];
+  }
+
+  /// Element accessor
+
+  /// \tparam Index An integral type pack or a single coordinate index type
   /// \param idx The index pack
   template <typename... Index>
   reference operator()(const Index&... idx) {
@@ -247,7 +265,7 @@ class TensorInterface {
 
   /// Element accessor
 
-  /// \tparam Index An integral type pack or a single coodinate index type
+  /// \tparam Index An integral type pack or a single coordinate index type
   /// \param idx The index pack
   template <typename... Index>
   const_reference operator()(const Index&... idx) const {

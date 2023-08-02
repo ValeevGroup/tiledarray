@@ -47,7 +47,10 @@ struct TensorOfTensorFixture {
   TensorOfTensorFixture()
       : a(make_rand_tensor_of_tensor(Range(size))),
         b(make_rand_tensor_of_tensor(Range(size))),
-        c(a - b)
+        c(a - b),
+        aa(make_rand_tensor(Range(size))),
+        bb(make_rand_tensor(Range(size))),
+        cc(aa - bb)
 #ifdef TILEDARRAY_HAS_BTAS
         ,
         d(make_rand_TobT(Range(size))),
@@ -123,13 +126,15 @@ struct TensorOfTensorFixture {
   static const BipartitePermutation bperm;
 
   Tensor<Tensor<int>> a, b, c;
+  Tensor<int> aa, bb, cc;
 #ifdef TILEDARRAY_HAS_BTAS
   Tensor<bTensorI> d, e, f, g, h;
 #endif  // defined(TILEDARRAY_HAS_BTAS)
 
   template <typename T>
   Tensor<T>& ToT(size_t idx);
-
+  template <typename T>
+  T& ToS(size_t idx);
 };  // TensorOfTensorFixture
 
 template <>
@@ -158,6 +163,18 @@ Tensor<bTensorI>& TensorOfTensorFixture::ToT<bTensorI>(size_t idx) {
 }
 #endif
 
+template <>
+Tensor<int>& TensorOfTensorFixture::ToS<Tensor<int>>(size_t idx) {
+  if (idx == 0)
+    return aa;
+  else if (idx == 1)
+    return bb;
+  else if (idx == 2)
+    return cc;
+  else
+    throw std::range_error("idx out of range");
+}
+
 const std::array<std::size_t, 2> TensorOfTensorFixture::size{{10, 11}};
 const Permutation TensorOfTensorFixture::perm{1, 0};
 const BipartitePermutation TensorOfTensorFixture::bperm(Permutation{1, 0, 3, 2},
@@ -171,6 +188,7 @@ typedef boost::mpl::list<TiledArray::Tensor<int>, bTensorI> itensor_types;
 #else
 typedef boost::mpl::list<TiledArray::Tensor<int>> itensor_types;
 #endif
+typedef boost::mpl::list<TiledArray::Tensor<int>> itensor_nobtas_types;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(default_constructor, ITensor, itensor_types) {
   BOOST_CHECK_NO_THROW(Tensor<ITensor> t);
@@ -959,6 +977,46 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(scal_mult_to, ITensor, itensor_types) {
       for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
         BOOST_CHECK_EQUAL(t(i, j)[index],
                           (a(i, j)[index] * b(i, j)[index]) * 3);
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(mixed_mult_TxS, ITensor, itensor_nobtas_types) {
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToS<ITensor>(0);
+  Tensor<ITensor> t;
+  BOOST_CHECK_NO_THROW(t = a.mult(b));
+
+  BOOST_CHECK(!t.empty());
+  BOOST_CHECK_EQUAL(t.range(), a.range());
+
+  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+      BOOST_CHECK(!t(i, j).empty());
+      BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
+      for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
+        BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] * b(i, j));
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(mixed_mult_SxT, ITensor, itensor_nobtas_types) {
+  const auto& a = ToS<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
+  BOOST_CHECK_NO_THROW(t = a.mult(b));
+
+  BOOST_CHECK(!t.empty());
+  BOOST_CHECK_EQUAL(t.range(), a.range());
+
+  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+      BOOST_CHECK(!t(i, j).empty());
+      BOOST_CHECK_EQUAL(t(i, j).range(), b(i, j).range());
+      for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
+        BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j) * b(i, j)[index]);
       }
     }
   }

@@ -27,6 +27,7 @@
 #define TILEDARRAY_SRC_TILEDARRAY_TENSOR_COMPLEX_H__INCLUDED
 
 #include <TiledArray/config.h>
+#include <TiledArray/fwd.h>
 #include <TiledArray/type_traits.h>
 
 namespace TiledArray {
@@ -301,6 +302,19 @@ TILEDARRAY_FORCE_INLINE
 }
 
 }  // namespace detail
+
+namespace conversions {
+
+template <typename T>
+struct to<T, std::complex<T>> {
+  T operator()(const std::complex<T>& v) {
+    TA_ASSERT(v.imag() == 0);
+    return v.real();
+  }
+};
+
+}  // namespace conversions
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_SRC_TILEDARRAY_TENSOR_COMPLEX_H__INCLUDED

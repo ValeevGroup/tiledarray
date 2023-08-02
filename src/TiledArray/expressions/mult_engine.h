@@ -189,12 +189,14 @@ struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result>> {
 /// Multiplication expression engine
 
 /// This implements any expression encoded with the multiplication operator.
-/// This includes Hadamard product, e.g. \code (c("i,j")=)a("i,j")*b("i,j")
-/// \endcode , and pure contractions, e.g. \code (c("i,j")=)a("i,k")*b("k,j")
-/// \endcode . \internal mixed Hadamard-contraction case, e.g. \code
-/// c("i,j,l")=a("i,l,k")*b("j,l,k") \endcode , is not supported since
-///   this requires that the result labels are assigned by user (currently they
-///   are computed by this engine)
+/// This includes Hadamard product, e.g.
+/// \code (c("i,j")=)a("i,j")*b("i,j") \endcode ,
+/// and pure contractions, e.g. \code (c("i,j")=)a("i,k")*b("k,j") \endcode .
+/// \internal mixed Hadamard-contraction case, e.g.
+/// \code c("i,j,l")=a("i,l,k")*b("j,l,k") \endcode ,
+/// is not supported since
+/// this requires that the result labels are assigned by user (currently they
+/// are computed by this engine)
 /// \tparam Left The left-hand engine type
 /// \tparam Right The right-hand engine type
 /// \tparam Result The result tile type
