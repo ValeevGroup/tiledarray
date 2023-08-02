@@ -186,8 +186,11 @@ struct LinearAlgebraFixture : ReferenceFixture {
     ;
     // clang-format on
 
-    const auto& [evals_nd, evecs_nd] = non_dist;
-    const auto& [evals,    evecs   ] = result;
+    auto [evals_nd, evecs_nd] = non_dist;
+    auto [evals,    evecs   ] = result;
+
+    evecs.make_replicated();
+    evecs_nd.make_replicated();
 
     const size_t n = evals.size();
     BOOST_REQUIRE_EQUAL(n, evals_nd.size());
