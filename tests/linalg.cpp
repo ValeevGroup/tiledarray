@@ -30,9 +30,15 @@ namespace scalapack = TA::math::linalg::scalapack;
   compare_eig("TiledArray::scalapack", non_dist::F, scalapack::F, E); \
   GlobalFixture::world->gop.fence();                              \
   compare_eig("TiledArray", non_dist::F, TiledArray::F, E);
+#define TILEDARRAY_SCALAPACK_SVDTEST(Vs,F, E) \
+  GlobalFixture::world->gop.fence();                              \
+  compare_svd<Vs>("TiledArray::scalapack", non_dist::F, scalapack::F, E); \
+  GlobalFixture::world->gop.fence();                              \
+  compare_svd<Vs>("TiledArray", non_dist::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SCALAPACK_TEST(...)
 #define TILEDARRAY_SCALAPACK_EIGTEST(...)
+#define TILEDARRAY_SCALAPACK_SVDTEST(...)
 #endif
 
 #if TILEDARRAY_HAS_SLATE
@@ -208,6 +214,40 @@ struct LinearAlgebraFixture : ReferenceFixture {
     BOOST_CHECK_SMALL(G2_mI_nrm, e);
   }
 
+  template <class A>
+  static void compare_svdvals(const char* context, const A& S_nd, const A& S,
+                          double e) {
+    // clang-format off
+    BOOST_TEST_CONTEXT(context)
+    ;
+    // clang-format on
+
+    const size_t n = S.size();
+    BOOST_REQUIRE_EQUAL(n, S_nd.size());
+    for(size_t i = 0; i < n; ++i) {
+      BOOST_CHECK_SMALL(std::abs(S[i] - S_nd[i]), e);
+    }
+  }
+
+  template <TA::SVD::Vectors Vectors, class A>
+  static void compare_svd(const char* context, const A& non_dist, const A& result,
+                          double e) {
+    // clang-format off
+    BOOST_TEST_CONTEXT(context)
+    ;
+    // clang-format on
+
+    std::cout << "COMPARE SVD" << std::endl;
+    if constexpr (Vectors == TA::SVD::ValuesOnly) {
+      compare_svdvals(context, non_dist, result, e);
+      return;
+    } else {
+      const auto& S = std::get<0>(result);
+      const auto& S_nd = std::get<0>(non_dist);
+      compare_svdvals(context, S_nd, S, e);
+    }
+
+  }
   template <class A>
   static void compare(const char* context, const A& non_dist, const A& result,
                       double e) {
@@ -1002,6 +1042,8 @@ BOOST_AUTO_TEST_CASE(svd_values_only) {
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(S[i] - exact_singular_values[i]), tol);
   GlobalFixture::world->gop.fence();
+
+  TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::ValuesOnly, svd<TA::SVD::ValuesOnly>(ref_ta, trange, trange), tol);
 }
 
 BOOST_AUTO_TEST_CASE(svd_leftvectors) {
@@ -1026,6 +1068,8 @@ BOOST_AUTO_TEST_CASE(svd_leftvectors) {
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(S[i] - exact_singular_values[i]), tol);
   GlobalFixture::world->gop.fence();
+
+  TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::LeftVectors, svd<TA::SVD::LeftVectors>(ref_ta, trange, trange), tol);
 }
 
 BOOST_AUTO_TEST_CASE(svd_rightvectors) {
@@ -1050,6 +1094,8 @@ BOOST_AUTO_TEST_CASE(svd_rightvectors) {
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(S[i] - exact_singular_values[i]), tol);
   GlobalFixture::world->gop.fence();
+
+  TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::RightVectors, svd<TA::SVD::RightVectors>(ref_ta, trange, trange), tol);
 }
 
 BOOST_AUTO_TEST_CASE(svd_allvectors) {
@@ -1074,6 +1120,8 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(S[i] - exact_singular_values[i]), tol);
   GlobalFixture::world->gop.fence();
+
+  TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::AllVectors, svd<TA::SVD::AllVectors>(ref_ta, trange, trange), tol);
 }
 #endif
 
