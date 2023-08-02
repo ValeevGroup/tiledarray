@@ -28,9 +28,9 @@
 
 #include <TiledArray/config.h>
 
+#include <TiledArray/fwd.h>
 #include <TiledArray/type_traits.h>
 #include <type_traits>
-#include <TiledArray/fwd.h>
 
 namespace Eigen {
 
@@ -60,10 +60,23 @@ class ShiftWrapper;
 // Note: These type traits help differentiate different implementation
 // functions for tensors, so a tensor of tensors is not considered a tensor.
 
+/// is true type if all `Ts...` are tensors of scalars
 template <typename... Ts>
 struct is_tensor;
+/// is true type if all `Ts...` are tensors of tensors of scalars
 template <typename... Ts>
 struct is_tensor_of_tensor;
+/// is true type if all `Ts...` are _nested_ tensors; a nested tensor is a
+/// tensors of scalars or tensors of nested tensors
+template <typename... Ts>
+struct is_nested_tensor;
+/// is true type if `T1`, `T2`, and `Ts...` are tensors of same nested
+/// rank, i.e. they are all tensors of scalars or tensors of tensors of scalars,
+/// etc. ;
+/// \warning the types must be tensors, hence
+/// `tensors_have_equal_nested_rank<Scalar1,Scalar2>` is false
+template <typename T1, typename T2, typename... Ts>
+struct tensors_have_equal_nested_rank;
 
 template <typename>
 struct is_tensor_helper : public std::false_type {};
@@ -83,23 +96,41 @@ struct is_tensor_helper<ShiftWrapper<const T>> : public is_tensor_helper<T> {};
 template <typename T>
 struct is_tensor_helper<Tile<T>> : public is_tensor_helper<T> {};
 
+////////////////////////////////////////////////////////////////////////////////
+
+template <>
+struct is_nested_tensor<> : public std::false_type {};
+
 template <typename T>
+struct is_nested_tensor<T> : is_tensor_helper<T> {};
+
+template <typename T1, typename T2, typename... Ts>
+struct is_nested_tensor<T1, T2, Ts...> {
+  static constexpr bool value =
+      is_tensor_helper<T1>::value && is_nested_tensor<T2, Ts...>::value;
+};
+
+/// @tparam Ts a parameter pack
+/// @c is_nested_tensor_v<Ts...> is an alias for @c
+/// is_nested_tensor<Ts...>::value
+template <typename... Ts>
+constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T, typename Enabler = void>
 struct is_tensor_of_tensor_helper : public std::false_type {};
 
-template <typename T, typename A>
-struct is_tensor_of_tensor_helper<Tensor<T, A>> : public is_tensor_helper<T> {};
-
-template <typename T, typename... Args>
-struct is_tensor_of_tensor_helper<TensorInterface<T, Args...>>
-    : public is_tensor_helper<T> {};
-
 template <typename T>
-struct is_tensor_of_tensor_helper<ShiftWrapper<T>>
-    : public is_tensor_of_tensor_helper<T> {};
+struct is_tensor_of_tensor_helper<
+    T, std::enable_if_t<is_tensor_helper<T>::value>> {
+  static constexpr bool value =
+      is_tensor_helper<detail::remove_cvr_t<typename T::value_type>>::value &&
+      !is_tensor_of_tensor_helper<
+          detail::remove_cvr_t<typename T::value_type>>::value;
+};
 
-template <typename T>
-struct is_tensor_of_tensor_helper<Tile<T>>
-    : public is_tensor_of_tensor_helper<T> {};
+////////////////////////////////////////////////////////////////////////////////
 
 template <>
 struct is_tensor<> : public std::false_type {};
@@ -121,6 +152,8 @@ struct is_tensor<T1, T2, Ts...> {
 template <typename... Ts>
 constexpr const bool is_tensor_v = is_tensor<Ts...>::value;
 
+////////////////////////////////////////////////////////////////////////////////
+
 template <>
 struct is_tensor_of_tensor<> : public std::false_type {};
 
@@ -141,6 +174,42 @@ struct is_tensor_of_tensor<T1, T2, Ts...> {
 template <typename... Ts>
 constexpr const bool is_tensor_of_tensor_v = is_tensor_of_tensor<Ts...>::value;
 
+////////////////////////////////////////////////////////////////////////////////
+
+template <typename T1, typename T2, typename Enabler = void>
+struct tensors_have_equal_nested_rank_helper : std::false_type {};
+
+template <typename T1, typename T2>
+struct tensors_have_equal_nested_rank_helper<
+    T1, T2, std::enable_if_t<is_nested_tensor_v<T1, T2>>> {
+  static constexpr bool value =
+      tensors_have_equal_nested_rank_helper<
+          detail::remove_cvr_t<typename T1::value_type>,
+          detail::remove_cvr_t<typename T2::value_type>>::value ||
+      (detail::is_numeric_v<detail::remove_cvr_t<typename T1::value_type>> &&
+       detail::is_numeric_v<detail::remove_cvr_t<typename T2::value_type>>);
+};
+
+template <typename T1, typename T2>
+struct tensors_have_equal_nested_rank<T1, T2>
+    : tensors_have_equal_nested_rank_helper<T1, T2> {};
+
+template <typename T1, typename T2, typename T3, typename... Ts>
+struct tensors_have_equal_nested_rank<T1, T2, T3, Ts...> {
+  static constexpr bool value =
+      tensors_have_equal_nested_rank<T1, T2>::value &&
+      tensors_have_equal_nested_rank<T2, T3, Ts...>::value;
+};
+
+/// @tparam Ts a parameter pack
+/// @c tensors_have_equal_nested_rank_v<Ts...> is an alias for @c
+/// tensors_have_equal_nested_rank<Ts...>::value
+template <typename T1, typename T2, typename... Ts>
+constexpr const bool tensors_have_equal_nested_rank_v =
+    tensors_have_equal_nested_rank<T1, T2, Ts...>::value;
+
+////////////////////////////////////////////////////////////////////////////////
+
 template <typename T, typename Enabler = void>
 struct is_ta_tensor : public std::false_type {};
 
@@ -149,6 +218,8 @@ struct is_ta_tensor<Tensor<T, A>> : public std::true_type {};
 
 template <typename T>
 constexpr const bool is_ta_tensor_v = is_ta_tensor<T>::value;
+
+////////////////////////////////////////////////////////////////////////////////
 
 // Test if the tensor is contiguous
 
@@ -197,6 +268,8 @@ struct is_contiguous_tensor<T1, T2, Ts...> {
 template <typename... Ts>
 constexpr const bool is_contiguous_tensor_v =
     is_contiguous_tensor<Ts...>::value;
+
+////////////////////////////////////////////////////////////////////////////////
 
 // Test if the tensor is shifted
 

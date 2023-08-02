@@ -252,13 +252,13 @@ class Expr {
                               >::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
                 const std::shared_ptr<Op>& op) const {
-    auto eval_tile_fn =
-        &Expr_::template eval_tile<typename A::value_type, const T&,
-                                   TiledArray::Cast<typename A::value_type, T>,
-                                   Op>;
-    array.set(index, array.world().taskq.add(
-                         eval_tile_fn, tile,
-                         TiledArray::Cast<typename A::value_type, T>(), op));
+    auto eval_tile_fn = &Expr_::template eval_tile<
+        typename A::value_type, const T&,
+        TiledArray::Cast<typename Op::argument_type, T>, Op>;
+    array.set(index,
+              array.world().taskq.add(
+                  eval_tile_fn, tile,
+                  TiledArray::Cast<typename Op::argument_type, T>(), op));
   }
 
 #ifdef TILEDARRAY_HAS_CUDA
@@ -278,13 +278,13 @@ class Expr {
                 ::TiledArray::detail::is_cuda_tile_v<T>>::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
                 const std::shared_ptr<Op>& op) const {
-    auto eval_tile_fn =
-        &Expr_::template eval_tile<typename A::value_type, const T&,
-                                   TiledArray::Cast<typename A::value_type, T>,
-                                   Op>;
-    array.set(index, madness::add_cuda_task(
-                         array.world(), eval_tile_fn, tile,
-                         TiledArray::Cast<typename A::value_type, T>(), op));
+    auto eval_tile_fn = &Expr_::template eval_tile<
+        typename A::value_type, const T&,
+        TiledArray::Cast<typename Op::argument_type, T>, Op>;
+    array.set(index,
+              madness::add_cuda_task(
+                  array.world(), eval_tile_fn, tile,
+                  TiledArray::Cast<typename Op::argument_type, T>(), op));
   }
 #endif
 

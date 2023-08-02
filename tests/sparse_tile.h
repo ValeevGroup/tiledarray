@@ -47,6 +47,8 @@ class EigenSparseTile {
   typedef T value_type;                  // Element type
   typedef T numeric_type;  // The scalar type that is compatible with value_type
   typedef size_t size_type;  // Size type
+  typedef const T& const_reference;
+  typedef size_type ordinal_type;
   // other typedefs
   typedef Eigen::SparseMatrix<T, Eigen::RowMajor> matrix_type;
 
@@ -139,19 +141,32 @@ class EigenSparseTile {
   }
 
   /// data read-only accessor
-  template <typename Index, typename = std::enable_if_t<
-                                detail::is_integral_sized_range_v<Index>>>
-  value_type operator[](const Index& idx) const {
+  template <typename Index>
+  std::enable_if_t<detail::is_integral_sized_range_v<Index>, const value_type&>
+  operator[](const Index& idx) const {
+    static const value_type zero = 0;
     auto start = range().lobound_data();
-    return matrix().coeff(idx[0] - start[0], idx[1] - start[1]);
+    auto* ptr = coeffPtr(idx[0] - start[0], idx[1] - start[1]);
+    return ptr == nullptr ? zero : *ptr;
   }
 
   /// data read-only accessor
-  template <typename Ordinal, std::enable_if_t<std::is_integral_v<Ordinal>>>
-  value_type operator[](const Ordinal& ord) const {
+  template <typename Ordinal,
+            typename = std::enable_if_t<std::is_integral_v<Ordinal>>>
+  const value_type& operator[](const Ordinal& ord) const {
+    static const value_type zero = 0;
     auto idx = range().idx(ord);
     auto start = range().lobound_data();
-    return matrix().coeff(idx[0] - start[0], idx[1] - start[1]);
+    auto* ptr = coeffPtr(idx[0] - start[0], idx[1] - start[1]);
+    return ptr == nullptr ? zero : *ptr;
+  }
+
+  const value_type& at_ordinal(const ordinal_type index_ordinal) const {
+    return this->operator[](index_ordinal);
+  }
+
+  value_type& at_ordinal(const ordinal_type index_ordinal) {
+    return this->operator[](index_ordinal);
   }
 
   /// Maximum # of elements in the tile
@@ -217,6 +232,32 @@ class EigenSparseTile {
 
  private:
   std::shared_ptr<impl_type> impl_;
+
+  // pointer-based coeffRef
+  const value_type* coeffPtr(Eigen::Index row, Eigen::Index col) const {
+    auto& mat = matrix();
+    constexpr bool IsRowMajor =
+        std::decay_t<decltype(mat)>::Flags & Eigen::RowMajorBit ? 1 : 0;
+    using Eigen::Index;
+    const Index outer = IsRowMajor ? row : col;
+    const Index inner = IsRowMajor ? col : row;
+
+    auto* outerIndexPtr = mat.outerIndexPtr();
+    auto* innerNonZeros = mat.innerNonZeroPtr();
+    const auto start = outerIndexPtr[outer];
+    const auto end = innerNonZeros ? outerIndexPtr[outer] + innerNonZeros[outer]
+                                   : outerIndexPtr[outer + 1];
+    TA_ASSERT(end >= start &&
+              "you probably called coeffRef on a non finalized matrix");
+    if (end <= start) return nullptr;
+    const Index p = mat.data().searchLowerIndex(
+        start, end - 1,
+        (typename std::decay_t<decltype(mat)>::StorageIndex)inner);
+    if ((p < end) && (mat.data().index(p) == inner))
+      return &(mat.data().value(p));
+    else
+      return nullptr;
+  }
 
 };  // class EigenSparseTile
 

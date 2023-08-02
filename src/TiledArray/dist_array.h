@@ -548,7 +548,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// initialized using TiledArray::Cast<Tile,OtherTile>
   /// \param other The array to be copied
   template <typename OtherTile, typename = enable_if_not_my_type<OtherTile>>
-  explicit DistArray(const DistArray<OtherTile, Policy>& other) : pimpl_() {
+  DistArray(const DistArray<OtherTile, Policy>& other) : pimpl_() {
     *this = foreach<Tile>(other, [](Tile& result, const OtherTile& source) {
       result = TiledArray::Cast<Tile, OtherTile>{}(source);
     });

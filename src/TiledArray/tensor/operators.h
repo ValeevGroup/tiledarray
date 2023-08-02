@@ -41,11 +41,8 @@ namespace TiledArray {
 /// \param right The right-hand tensor argument
 /// \return A tensor where element \c i is equal to <tt>left[i] + right[i]</tt>
 template <typename T1, typename T2,
-          typename = std::enable_if_t<
-              detail::is_tensor<detail::remove_cvr_t<T1>,
-                                detail::remove_cvr_t<T2>>::value ||
-              detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
-                                          detail::remove_cvr_t<T2>>::value>>
+          typename = std::enable_if_t<detail::tensors_have_equal_nested_rank_v<
+              detail::remove_cvr_t<T1>, detail::remove_cvr_t<T2>>>>
 inline decltype(auto) operator+(T1&& left, T2&& right) {
   return add(std::forward<T1>(left), std::forward<T2>(right));
 }
@@ -58,14 +55,9 @@ inline decltype(auto) operator+(T1&& left, T2&& right) {
 /// \param left The left-hand tensor argument
 /// \param right The right-hand tensor argument
 /// \return A tensor where element \c i is equal to <tt>left[i] - right[i]</tt>
-template <
-    typename T1, typename T2,
-    typename std::enable_if<
-        detail::is_tensor<detail::remove_cvr_t<T1>,
-                          detail::remove_cvr_t<T2>>::value ||
-        detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
-                                    detail::remove_cvr_t<T2>>::value>::type* =
-        nullptr>
+template <typename T1, typename T2,
+          typename = std::enable_if_t<detail::tensors_have_equal_nested_rank_v<
+              detail::remove_cvr_t<T1>, detail::remove_cvr_t<T2>>>>
 inline decltype(auto) operator-(T1&& left, T2&& right) {
   return subt(std::forward<T1>(left), std::forward<T2>(right));
 }
@@ -80,12 +72,8 @@ inline decltype(auto) operator-(T1&& left, T2&& right) {
 /// \return A tensor where element \c i is equal to <tt>left[i] * right[i]</tt>
 template <
     typename T1, typename T2,
-    typename std::enable_if<
-        detail::is_tensor<detail::remove_cvr_t<T1>,
-                          detail::remove_cvr_t<T2>>::value ||
-        detail::is_tensor_of_tensor<detail::remove_cvr_t<T1>,
-                                    detail::remove_cvr_t<T2>>::value>::type* =
-        nullptr>
+    typename std::enable_if<detail::is_nested_tensor_v<
+        detail::remove_cvr_t<T1>, detail::remove_cvr_t<T2>>>::type* = nullptr>
 inline decltype(auto) operator*(T1&& left, T2&& right) {
   return mult(std::forward<T1>(left), std::forward<T2>(right));
 }
@@ -100,8 +88,7 @@ inline decltype(auto) operator*(T1&& left, T2&& right) {
 /// \return A tensor where element \c i is equal to <tt> left[i] * right </tt>
 template <typename T, typename N,
           typename std::enable_if<
-              (detail::is_tensor<detail::remove_cvr_t<T>>::value ||
-               detail::is_tensor_of_tensor<detail::remove_cvr_t<T>>::value) &&
+              detail::is_nested_tensor_v<detail::remove_cvr_t<T>> &&
               detail::is_numeric_v<N>>::type* = nullptr>
 inline decltype(auto) operator*(T&& left, N right) {
   return scale(std::forward<T>(left), right);
@@ -118,9 +105,7 @@ template <
     typename N, typename T,
     typename std::enable_if<
         detail::is_numeric_v<N> &&
-        (detail::is_tensor<detail::remove_cvr_t<T>>::value ||
-         detail::is_tensor_of_tensor<detail::remove_cvr_t<T>>::value)>::type* =
-        nullptr>
+        detail::is_nested_tensor_v<detail::remove_cvr_t<T>>>::type* = nullptr>
 inline decltype(auto) operator*(N left, T&& right) {
   return scale(std::forward<T>(right), left);
 }

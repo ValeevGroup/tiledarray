@@ -97,10 +97,14 @@ inline void fuse_dimensions(SizeType* MADNESS_RESTRICT const fused_size,
 
 /// The expected signature of the input operations is:
 /// \code
-/// Result::value_type input_op(const Arg0::value_type, const
-/// Args::value_type...) \endcode The expected signature of the output
-/// operations is: \code void output_op(Result::value_type*, const
-/// Result::value_type) \endcode \tparam InputOp The input operation type
+/// Result::value_type input_op(const Arg0::value_type,
+///                             const Args::value_type...)
+/// \endcode
+/// The expected signature of the output
+/// operations is:
+/// \code void output_op(Result::value_type*, const Result::value_type)
+/// \endcode
+/// \tparam InputOp The input operation type
 /// \tparam OutputOp The output operation type
 /// \tparam Result The result tensor type
 /// \tparam Arg0 The first tensor argument type
@@ -146,13 +150,13 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
     };
 
     // Permute the data
-    for (typename Result::ordinal_type index = 0ul; index < volume;
-         index += block_size) {
-      const typename Result::ordinal_type perm_index = perm_index_op(index);
+    for (typename Result::ordinal_type ord = 0ul; ord < volume;
+         ord += block_size) {
+      const typename Result::ordinal_type perm_ord = perm_index_op(ord);
 
       // Copy the block
-      math::vector_ptr_op(op, block_size, result.data() + perm_index,
-                          arg0.data() + index, (args.data() + index)...);
+      math::vector_ptr_op(op, block_size, result.data() + perm_ord,
+                          &arg0.at_ordinal(ord), &args.at_ordinal(ord)...);
     }
 
   } else {
@@ -186,16 +190,16 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
     // Copy data from the input to the output matrix via a series of matrix
     // transposes.
     for (typename Result::ordinal_type i = 0ul; i < other_fused_size[0]; ++i) {
-      typename Result::ordinal_type index = i * other_fused_weight[0];
+      typename Result::ordinal_type ord = i * other_fused_weight[0];
       for (typename Result::ordinal_type j = 0ul; j < other_fused_size[2];
-           ++j, index += other_fused_weight[2]) {
+           ++j, ord += other_fused_weight[2]) {
         // Compute the ordinal index of the input and output matrices.
-        typename Result::ordinal_type perm_index = perm_index_op(index);
+        typename Result::ordinal_type perm_ord = perm_index_op(ord);
 
         math::transpose(input_op, output_op, other_fused_size[1],
                         other_fused_size[3], result_outer_stride,
-                        result.data() + perm_index, other_fused_weight[1],
-                        arg0.data() + index, (args.data() + index)...);
+                        &result.at_ordinal(perm_ord), other_fused_weight[1],
+                        &arg0.at_ordinal(ord), &args.at_ordinal(ord)...);
       }
     }
   }
