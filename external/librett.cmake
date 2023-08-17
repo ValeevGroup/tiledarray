@@ -133,7 +133,7 @@ else()
             ")
 
     # Add LibreTT dependency to External
-    add_dependencies(External-tiledarray librett-build)
+    add_dependencies(External-tiledarray librett)
 
     set(_LIBRETT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
