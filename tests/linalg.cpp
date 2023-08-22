@@ -727,6 +727,8 @@ BOOST_AUTO_TEST_CASE(heig_diff_tiling) {
     BOOST_CHECK_SMALL(std::abs(evals_non_dist[i] - exact_evals[i]), tol);
   }
 
+  TILEDARRAY_SCALAPACK_EIGTEST(heig(ref_ta), tol);
+  //TILEDARRAY_SLATE_EIGTEST(heig(ref_ta), tol);
   GlobalFixture::world->gop.fence();
 }
 
@@ -767,6 +769,8 @@ BOOST_AUTO_TEST_CASE(heig_generalized) {
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
 
+  TILEDARRAY_SCALAPACK_EIGTEST(heig(ref_ta, dense_iden), tol);
+  //TILEDARRAY_SLATE_EIGTEST(heig(ref_ta, dense_iden), tol);
   GlobalFixture::world->gop.fence();
 }
 
@@ -919,8 +923,12 @@ BOOST_AUTO_TEST_CASE(cholesky_solve) {
         }
   });
 
+  const auto epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = iden("i,j").norm(*GlobalFixture::world).get();
-  BOOST_CHECK_SMALL(norm, N * N * std::numeric_limits<double>::epsilon());
+  BOOST_CHECK_SMALL(norm, epsilon);
+
+  TILEDARRAY_SCALAPACK_TEST(cholesky_solve(A,A), epsilon);
+  //TILEDARRAY_SLATE_TEST(cholesky_solve(A), epsilon);
 
   GlobalFixture::world->gop.fence();
 }
@@ -955,8 +963,12 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
 
   X("i,j") -= L("j,i");
 
+  const auto epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = X("i,j").norm(*GlobalFixture::world).get();
-  BOOST_CHECK_SMALL(norm, N * N * std::numeric_limits<double>::epsilon());
+  BOOST_CHECK_SMALL(norm, epsilon);
+
+  TILEDARRAY_SCALAPACK_TEST(cholesky_lsolve(TA::NoTranspose, A, A), epsilon);
+  //TILEDARRAY_SLATE_TEST(cholesky_lsolve(TA::NoTranspose, A, A), epsilon);
 
   GlobalFixture::world->gop.fence();
 }
