@@ -46,6 +46,7 @@ namespace scalapack = TA::math::linalg::scalapack;
 #include <TiledArray/math/linalg/slate/cholesky.h>
 #include <TiledArray/math/linalg/slate/lu.h>
 #include <TiledArray/math/linalg/slate/heig.h>
+#include <TiledArray/math/linalg/slate/svd.h>
 namespace slate_la = TA::math::linalg::slate;
 #define TILEDARRAY_SLATE_TEST(F, E)                           \
   GlobalFixture::world->gop.fence();                              \
@@ -57,9 +58,15 @@ namespace slate_la = TA::math::linalg::slate;
   compare_eig("TiledArray::slate", non_dist::F, slate_la::F, E); \
   GlobalFixture::world->gop.fence();                              \
   compare_eig("TiledArray", non_dist::F, TiledArray::F, E);
+#define TILEDARRAY_SLATE_SVDTEST(Vs, F, E)                        \
+  GlobalFixture::world->gop.fence();                              \
+  compare_svd<Vs>("TiledArray::slate", non_dist::F, slate_la::F, E); \
+  GlobalFixture::world->gop.fence();                              \
+  compare_svd<Vs>("TiledArray", non_dist::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SLATE_TEST(...)
 #define TILEDARRAY_SLATE_EIGTEST(...)
+#define TILEDARRAY_SLATE_SVDTEST(...)
 #endif
 
 #if TILEDARRAY_HAS_TTG
@@ -184,38 +191,9 @@ struct LinearAlgebraFixture : ReferenceFixture {
   }
 #endif
 
-  template <class A>
-  static void compare_eig(const char* context, const A& non_dist, const A& result,
-                          double e) {
-    // clang-format off
-    BOOST_TEST_CONTEXT(context)
-    ;
-    // clang-format on
-
-    auto [evals_nd, evecs_nd] = non_dist;
-    auto [evals,    evecs   ] = result;
-
-    evecs.make_replicated();
-    evecs_nd.make_replicated();
-
-    const size_t n = evals.size();
-    BOOST_REQUIRE_EQUAL(n, evals_nd.size());
-    for(size_t i = 0; i < n; ++i) {
-      BOOST_CHECK_SMALL(std::abs(evals[i] - evals_nd[i]), e);
-    }
-    auto nd_eigen = TA::array_to_eigen(evecs_nd);
-    auto rs_eigen = TA::array_to_eigen(evecs);
-
-    // The test problem for the unit tests has a non-degenerate spectrum
-    // we only need to check for phase-flips in this check
-    Eigen::MatrixXd G; G = nd_eigen.adjoint() * rs_eigen;
-    Eigen::MatrixXd G2; G2 = G.adjoint() * G; // Accounts for phase-flips
-    auto G2_mI_nrm = (G2 - Eigen::MatrixXd::Identity(n,n)).norm();
-    BOOST_CHECK_SMALL(G2_mI_nrm, e);
-  }
 
   template <class A>
-  static void compare_svdvals(const char* context, const A& S_nd, const A& S,
+  static void compare_replicated_vector(const char* context, const A& S_nd, const A& S,
                           double e) {
     // clang-format off
     BOOST_TEST_CONTEXT(context)
@@ -229,6 +207,45 @@ struct LinearAlgebraFixture : ReferenceFixture {
     }
   }
 
+  template <class A>
+  static void compare_subspace(const char* context, const A& non_dist, const A& result,
+                               double e) {
+
+    // clang-format off
+    BOOST_TEST_CONTEXT(context)
+    ;
+    // clang-format on
+
+    auto nd_eigen = TA::array_to_eigen(non_dist);
+    auto rs_eigen = TA::array_to_eigen(result);
+
+    Eigen::MatrixXd G; G = nd_eigen.adjoint() * rs_eigen;
+    Eigen::MatrixXd G2; G2 = G.adjoint() * G; // Accounts for phase-flips
+    const auto n = G.rows();
+    auto G2_mI_nrm = (G2 - Eigen::MatrixXd::Identity(n,n)).norm();
+    BOOST_CHECK_SMALL(G2_mI_nrm, e);
+  }
+
+  template <class A>
+  static void compare_eig(const char* context, const A& non_dist, const A& result,
+                          double e) {
+    // clang-format off
+    BOOST_TEST_CONTEXT(context)
+    ;
+    // clang-format on
+
+    auto [evals_nd, evecs_nd] = non_dist;
+    auto [evals,    evecs   ] = result;
+
+    compare_replicated_vector(context, evals_nd, evals, e);
+
+    // The test problem for the unit tests has a non-degenerate spectrum
+    // we only need to check for phase-flips in this check
+    evecs.make_replicated(); // Need to be replicated for Eigen conversion
+    evecs_nd.make_replicated();
+    compare_subspace(context, evecs_nd, evecs, e);
+  }
+
   template <TA::SVD::Vectors Vectors, class A>
   static void compare_svd(const char* context, const A& non_dist, const A& result,
                           double e) {
@@ -237,14 +254,13 @@ struct LinearAlgebraFixture : ReferenceFixture {
     ;
     // clang-format on
 
-    std::cout << "COMPARE SVD" << std::endl;
     if constexpr (Vectors == TA::SVD::ValuesOnly) {
-      compare_svdvals(context, non_dist, result, e);
+      compare_replicated_vector(context, non_dist, result, e);
       return;
     } else {
       const auto& S = std::get<0>(result);
       const auto& S_nd = std::get<0>(non_dist);
-      compare_svdvals(context, S_nd, S, e);
+      compare_replicated_vector(context, S_nd, S, e);
     }
 
   }
@@ -1019,7 +1035,6 @@ BOOST_AUTO_TEST_CASE(lu_inv) {
   GlobalFixture::world->gop.fence();
 }
 
-#if 1
 BOOST_AUTO_TEST_CASE(svd_values_only) {
   GlobalFixture::world->gop.fence();
 
@@ -1044,6 +1059,7 @@ BOOST_AUTO_TEST_CASE(svd_values_only) {
   GlobalFixture::world->gop.fence();
 
   TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::ValuesOnly, svd<TA::SVD::ValuesOnly>(ref_ta, trange, trange), tol);
+  TILEDARRAY_SLATE_SVDTEST(TA::SVD::ValuesOnly, svd<TA::SVD::ValuesOnly>(ref_ta), tol);
 }
 
 BOOST_AUTO_TEST_CASE(svd_leftvectors) {
@@ -1123,7 +1139,6 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
 
   TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::AllVectors, svd<TA::SVD::AllVectors>(ref_ta, trange, trange), tol);
 }
-#endif
 
 template <bool use_scalapack, typename ArrayT>
 void householder_qr_q_only_test(const ArrayT& A, double tol) {
