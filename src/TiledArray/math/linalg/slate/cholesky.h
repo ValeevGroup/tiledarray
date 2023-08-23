@@ -140,7 +140,7 @@ auto cholesky_solve(const AArray& A, const BArray& B) {
 
 
 template <typename AArray, typename BArray>
-auto cholseky_lsolve(Op trans, const AArray& A, const BArray& B) {
+auto cholesky_lsolve(Op trans, const AArray& A, const BArray& B) {
 
   using element_type   = typename std::remove_cv_t<AArray>::element_type;
   auto& world = A.world();

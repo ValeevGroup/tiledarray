@@ -35,20 +35,20 @@ struct SLATELinearAlgebraFixture :
     return slate_la::cholesky_linv<RetL>(std::forward<Args>(args)...); 
   }
 
-  //template <typename... Args>
-  //static auto cholesky_solve(Args&&... args) { 
-  //  return slate_la::cholesky_solve(std::forward<Args>(args)...); 
-  //}
+  template <typename... Args>
+  static auto cholesky_solve(Args&&... args) { 
+    return slate_la::cholesky_solve(std::forward<Args>(args)...); 
+  }
 
-  //template <typename... Args>
-  //static auto cholesky_lsolve(Args&&... args) { 
-  //  return slate_la::cholesky_lsolve(std::forward<Args>(args)...); 
-  //}
+  template <typename... Args>
+  static auto cholesky_lsolve(Args&&... args) { 
+    return slate_la::cholesky_lsolve(std::forward<Args>(args)...); 
+  }
 
-  //template <typename... Args>
-  //static auto lu_solve(Args&&... args) { 
-  //  return slate_la::lu_solve(std::forward<Args>(args)...); 
-  //}
+  template <typename... Args>
+  static auto lu_solve(Args&&... args) { 
+    return slate_la::lu_solve(std::forward<Args>(args)...); 
+  }
 
   //template <typename... Args>
   //static auto lu_inv(Args&&... args) { 
@@ -78,11 +78,11 @@ LINALG_TEST_IMPL(heig_same_tiling);
 LINALG_TEST_IMPL(cholesky);
 LINALG_TEST_IMPL(cholesky_linv);
 LINALG_TEST_IMPL(cholesky_linv_retl);
-//LINALG_TEST_IMPL(cholesky_solve);
-//LINALG_TEST_IMPL(cholesky_lsolve);
+LINALG_TEST_IMPL(cholesky_solve);
+LINALG_TEST_IMPL(cholesky_lsolve);
 
 // LU tests
-//LINALG_TEST_IMPL(lu_solve);
+LINALG_TEST_IMPL(lu_solve);
 //LINALG_TEST_IMPL(lu_inv);
 
 // SVD tests
