@@ -17,7 +17,7 @@ struct ReferenceFixture {
   }
 
   template <typename Tile>
-  inline double make_ta_reference(Tile& t, TA::Range const& range) {
+  inline auto make_ta_reference(Tile& t, TA::Range const& range) {
     t = Tile(range, 0.0);
     auto lo = range.lobound_data();
     auto up = range.upbound_data();
@@ -30,6 +30,14 @@ struct ReferenceFixture {
     return norm(t);
   };
 
+  template <typename Array>
+  inline auto generate_ta_reference(TA::World& world, TA::TiledRange trange) {
+    return TA::make_array<Array>(world, trange,
+      [this](auto& t, TA::Range const& range) -> auto { 
+        return this->make_ta_reference(t,range);
+      });
+  }
+
   template <typename Tile>
   inline double make_ta_identity(Tile& t, TA::Range const& range) {
     t = Tile(range, 0.0);
@@ -40,6 +48,14 @@ struct ReferenceFixture {
         if (m == n) t(m, n) = 1.;
 
     return t.norm();
+  }
+
+  template <typename Array>
+  inline auto generate_ta_identity(TA::World& world, TA::TiledRange trange) {
+    return TA::make_array<Array>(world, trange,
+      [this](auto& t, TA::Range const& range) -> auto { 
+        return this->make_ta_identity(t,range);
+      });
   }
 
   ReferenceFixture(int64_t N = 1000)

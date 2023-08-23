@@ -25,11 +25,9 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto [evals, evecs] = non_dist::heig(A);
   BOOST_CHECK(evecs.trange() == A.trange());
@@ -58,11 +56,9 @@ BOOST_AUTO_TEST_CASE(heig_diff_tiling) {
   GlobalFixture::world->gop.fence();
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto new_trange = gen_trange(N, {64ul});
   auto [evals, evecs] = non_dist::heig(A, new_trange);
@@ -74,11 +70,7 @@ BOOST_AUTO_TEST_CASE(heig_diff_tiling) {
   compare_replicated_vector("TiledArray::non_dist", exact_evals, evals, tol);
 
   // Check eigenvectors
-  auto A_new = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, new_trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  auto A_new = generate_ta_reference<array_type>(*GlobalFixture::world, new_trange);
 
   TA::TArray<double> tmp;
   tmp("i,j")   = A_new("i,k") * evecs("k,j");
@@ -100,27 +92,30 @@ BOOST_AUTO_TEST_CASE(heig_generalized) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TSpArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
-  auto dense_iden = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_identity(t, range);
-      });
+  // Generate Identity Tensor in TA 
+  auto dense_iden = generate_ta_identity<array_type>(*GlobalFixture::world, trange);
 
   GlobalFixture::world->gop.fence();
   auto [evals, evecs] = non_dist::heig(A, dense_iden);
   BOOST_CHECK(evecs.trange() == A.trange());
 
-  // TODO: Check validity of eigenvectors, not crucial for the time being
-
   // Check eigenvalue correctness
   double tol = N * N * std::numeric_limits<double>::epsilon();
   compare_replicated_vector("TiledArray::non_dist", exact_evals, evals, tol);
+
+  // Check eigenvectors
+  TA::TArray<double> tmp;
+  tmp("i,j") = A("i,k") * evecs("k,j");
+  A("i,j")   = evecs("k,i").conj() * tmp("k,j");
+  subtract_diagonal_tensor_inplace(A, evals);
+
+  const auto norm = A("i,j").norm(*GlobalFixture::world).get();
+  BOOST_CHECK_SMALL(norm, tol);
+
 
   GlobalFixture::world->gop.fence();
 }
@@ -133,11 +128,9 @@ BOOST_AUTO_TEST_CASE(cholesky) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto L = non_dist::cholesky(A);
 
@@ -161,11 +154,9 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto Linv = non_dist::cholesky_linv<false>(A);
   BOOST_CHECK(Linv.trange() == A.trange());
@@ -190,11 +181,9 @@ BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto [L, Linv] = non_dist::cholesky_linv<true>(A);
 
@@ -220,11 +209,9 @@ BOOST_AUTO_TEST_CASE(cholesky_solve) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto iden = non_dist::cholesky_solve(A, A);
   BOOST_CHECK(iden.trange() == A.trange());
@@ -245,11 +232,9 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   // Should produce X = L**H
   auto [L, X] = non_dist::cholesky_lsolve(TA::NoTranspose, A, A);
@@ -273,11 +258,9 @@ BOOST_AUTO_TEST_CASE(lu_solve) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto iden = non_dist::lu_solve(A, A);
   BOOST_CHECK(iden.trange() == A.trange());
@@ -298,11 +281,9 @@ BOOST_AUTO_TEST_CASE(lu_inv) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   TA::TArray<double> iden(*GlobalFixture::world, trange);
 
@@ -325,11 +306,9 @@ BOOST_AUTO_TEST_CASE(svd_values_only) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto S = non_dist::svd<TA::SVD::ValuesOnly>(A, trange, trange);
 
@@ -349,11 +328,9 @@ BOOST_AUTO_TEST_CASE(svd_leftvectors) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto [S, U] = non_dist::svd<TA::SVD::LeftVectors>(A, trange, trange);
 
@@ -383,11 +360,9 @@ BOOST_AUTO_TEST_CASE(svd_rightvectors) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto [S, VT] = non_dist::svd<TA::SVD::RightVectors>(A, trange, trange);
 
@@ -419,11 +394,9 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto A = TA::make_array<TA::TArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // Generate Reference Tensor in TA
+  using array_type = TA::TArray<double>;
+  auto A = generate_ta_reference<array_type>(*GlobalFixture::world, trange);
 
   auto [S, U, VT] = non_dist::svd<TA::SVD::AllVectors>(A, trange, trange);
 
