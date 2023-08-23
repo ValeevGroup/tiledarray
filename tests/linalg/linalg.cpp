@@ -540,6 +540,7 @@ BOOST_AUTO_TEST_CASE(slate_matrix_to_random_dense_tiled_array_test) {
 }
 #endif // TILEDARRAY_HAS_SLATE
 
+#if 0
 BOOST_AUTO_TEST_CASE(heig_same_tiling) {
   GlobalFixture::world->gop.fence();
 
@@ -1113,9 +1114,9 @@ BOOST_AUTO_TEST_CASE(householder_qr_q_only) {
       });
 
   double tol = N * N * std::numeric_limits<double>::epsilon();
-  householder_qr_q_only_test<false>(ref_ta, tol);
+  linear_algebra_suite::householder_qr_q_only_test<false>(ref_ta, tol);
 #if TILEDARRAY_HAS_SCALAPACK
-  householder_qr_q_only_test<true>(ref_ta, tol);
+  linear_algebra_suite::householder_qr_q_only_test<true>(ref_ta, tol);
 #endif
 
   GlobalFixture::world->gop.fence();
@@ -1133,13 +1134,14 @@ BOOST_AUTO_TEST_CASE(householder_qr) {
       });
 
   double tol = N * N * std::numeric_limits<double>::epsilon();
-  householder_qr_test<false>(ref_ta, tol);
+  linear_algebra_suite::householder_qr_test<false>(ref_ta, tol);
 #if TILEDARRAY_HAS_SCALAPACK
-  householder_qr_test<true>(ref_ta, tol);
+  linear_algebra_suite::householder_qr_test<true>(ref_ta, tol);
 #endif
 
   GlobalFixture::world->gop.fence();
 }
+#endif
 
 template <typename ArrayT>
 void cholesky_qr_q_only_test(const ArrayT& A, double tol) {

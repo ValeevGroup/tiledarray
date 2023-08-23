@@ -2,6 +2,7 @@
 #include "cholesky_tests.h" // Cholesky tests
 #include "lu_tests.h"       // LU tests
 #include "svd_tests.h"      // SVD tests
+#include "qr_tests.h"       // QR tests
 
 // SLATE linear algebra utilities
 #include <TiledArray/conversions/slate.h>
@@ -58,6 +59,11 @@ struct SLATELinearAlgebraFixture :
   static auto svd(Args&&... args) {
     return slate_la::svd<Vectors>(std::forward<Args>(args)...);
   }
+
+  //template <bool QOnly, typename... Args>
+  //static auto householder_qr(Args&&... args) { 
+  //  return slate_la::householder_qr<QOnly>(std::forward<Args>(args)...); 
+  //}
 };
 
 
@@ -84,6 +90,10 @@ LINALG_TEST_IMPL(svd_values_only);
 //LINALG_TEST_IMPL(svd_leftvectors);
 //LINALG_TEST_IMPL(svd_rightvectors);
 //LINALG_TEST_IMPL(svd_allvectors);
+
+// QR tests
+//LINALG_TEST_IMPL(householder_qr_q_only);
+//LINALG_TEST_IMPL(householder_qr);
 
 BOOST_AUTO_TEST_SUITE_END()
 

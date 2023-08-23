@@ -36,7 +36,7 @@
 namespace TiledArray::math::linalg::slate {
 
 template <SVD::Vectors Vectors, typename Array>
-auto svd( const Array& A) {
+auto svd(const Array& A, TA::TiledRange , TA::TiledRange ) {
 
   constexpr bool need_uv = (Vectors == SVD::AllVectors);
   constexpr bool need_u = (Vectors == SVD::LeftVectors) or need_uv;

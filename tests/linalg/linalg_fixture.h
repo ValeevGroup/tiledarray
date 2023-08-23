@@ -103,6 +103,9 @@ struct ReferenceFixture {
   void svd_leftvectors_test(TA::World& world);
   void svd_rightvectors_test(TA::World& world);
   void svd_allvectors_test(TA::World& world);
+
+  void householder_qr_q_only_test(TA::World& world);
+  void householder_qr_test(TA::World& world);
 };
 
 // Macro to generate tests
