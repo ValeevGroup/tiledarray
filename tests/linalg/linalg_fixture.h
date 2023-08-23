@@ -1,6 +1,7 @@
 #pragma once
 #include <tiledarray.h>
 
+template <typename Derived = void>
 struct ReferenceFixture {
   size_t N;
   std::vector<double> htoeplitz_vector;
@@ -83,4 +84,28 @@ struct ReferenceFixture {
 
     std::sort(exact_evals.begin(), exact_evals.end());
   }
+
+
+  void heig_same_tiling_test(TA::World& world); 
+  void heig_diff_tiling_test(TA::World& world); 
+  void heig_generalized_test(TA::World& world); 
+
+  void cholesky_test(TA::World& world); 
+  void cholesky_linv_test(TA::World& world); 
+  void cholesky_linv_retl_test(TA::World& world); 
+  void cholesky_solve_test(TA::World& world); 
+  void cholesky_lsolve_test(TA::World& world); 
+
+  void lu_solve_test(TA::World& world); 
+  void lu_inv_test(TA::World& world); 
+
+  void svd_values_only_test(TA::World& world);
+  void svd_leftvectors_test(TA::World& world);
+  void svd_rightvectors_test(TA::World& world);
+  void svd_allvectors_test(TA::World& world);
 };
+
+// Macro to generate tests
+#define LINALG_TEST_IMPL(NAME) \
+BOOST_AUTO_TEST_CASE(NAME) { NAME##_##test(*GlobalFixture::world); }
+

@@ -83,7 +83,7 @@ namespace slate_la = TA::math::linalg::slate;
 #endif
 
 
-struct LinearAlgebraFixture : ReferenceFixture {
+struct LinearAlgebraFixture : ReferenceFixture<> {
 #if TILEDARRAY_HAS_SCALAPACK
 
   blacspp::Grid grid;
