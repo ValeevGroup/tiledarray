@@ -50,20 +50,36 @@ auto lu_solve(const ArrayA& A, const ArrayB& B) {
   auto B_slate = array_to_slate(B);
   world.gop.fence();  // stage SLATE execution
 
-  //for(auto it = 0; it < A_slate.mt(); ++it)
-  //for(auto jt = 0; jt < A_slate.nt(); ++jt) {
-  //  auto T = B_slate(it,jt);
-  //  std::cout << "TILE(" << it << "," << jt << "): ";
-  //  for( auto i = 0; i < T.mb()*T.nb(); ++i )
-  //     printf("%.10f ", T.data()[i]);
-  //  std::cout << std::endl;
-  //}
-
   // Solve Linear System
   ::slate::lu_solve( A_slate, B_slate );
 
   // Convert solution to TA
   auto X = slate_to_array<ArrayB>(B_slate, world);
+  world.gop.fence();  // stage SLATE execution
+
+  return X;
+}
+
+template <typename Array>
+auto lu_inv(const Array& A) {
+
+  using element_type   = typename std::remove_cv_t<Array>::element_type;
+  auto& world = A.world();
+
+  // Convert to SLATE
+  world.gop.fence();  // stage SLATE execution
+  auto A_slate = array_to_slate(A);
+  world.gop.fence();  // stage SLATE execution
+
+  // Perform LU Factorization 
+  ::slate::Pivots pivots;
+  ::slate::lu_factor(A_slate, pivots);
+
+  // Invert from factors
+  ::slate::lu_inverse_using_factor(A_slate, pivots);
+
+  // Convert inverse to TA
+  auto X = slate_to_array<Array>(A_slate, world);
   world.gop.fence();  // stage SLATE execution
 
   return X;

@@ -50,10 +50,10 @@ struct SLATELinearAlgebraFixture :
     return slate_la::lu_solve(std::forward<Args>(args)...); 
   }
 
-  //template <typename... Args>
-  //static auto lu_inv(Args&&... args) { 
-  //  return slate_la::lu_inv(std::forward<Args>(args)...); 
-  //}
+  template <typename... Args>
+  static auto lu_inv(Args&&... args) { 
+    return slate_la::lu_inv(std::forward<Args>(args)...); 
+  }
 
   template<TA::SVD::Vectors Vectors, typename... Args>
   static auto svd(Args&&... args) {
@@ -83,7 +83,7 @@ LINALG_TEST_IMPL(cholesky_lsolve);
 
 // LU tests
 LINALG_TEST_IMPL(lu_solve);
-//LINALG_TEST_IMPL(lu_inv);
+LINALG_TEST_IMPL(lu_inv);
 
 // SVD tests
 LINALG_TEST_IMPL(svd_values_only);
