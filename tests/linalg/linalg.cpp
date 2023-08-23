@@ -4,6 +4,10 @@
 //#include "range_fixture.h"
 #include "unit_test_config.h"
 
+#include "linalg_fixture.h"    // ReferenceFixture
+#include "compare_utilities.h" // Tensor comparison utilities
+#include "gen_trange.h"        // TiledRange generator
+
 #include "TiledArray/math/linalg/non-distributed/cholesky.h"
 #include "TiledArray/math/linalg/non-distributed/heig.h"
 #include "TiledArray/math/linalg/non-distributed/lu.h"
@@ -78,61 +82,6 @@ namespace slate_la = TA::math::linalg::slate;
 #define TILEDARRAY_TTG_TEST(...)
 #endif
 
-struct ReferenceFixture {
-  size_t N;
-  std::vector<double> htoeplitz_vector;
-  std::vector<double> exact_evals;
-
-  inline double matrix_element_generator(int64_t i, int64_t j) {
-#if 0
-    // Generates a Hankel matrix: absurd condition number
-    return i+j;
-#else
-    // Generates a Circulant matrix: good condition number
-    return htoeplitz_vector[std::abs(i - j)];
-#endif
-  }
-
-  template <typename Tile>
-  inline double make_ta_reference(Tile& t, TA::Range const& range) {
-    t = Tile(range, 0.0);
-    auto lo = range.lobound_data();
-    auto up = range.upbound_data();
-    for (auto m = lo[0]; m < up[0]; ++m) {
-      for (auto n = lo[1]; n < up[1]; ++n) {
-        t(m, n) = matrix_element_generator(m, n);
-      }
-    }
-
-    return norm(t);
-  };
-
-  ReferenceFixture(int64_t N = 1000)
-      : N(N), htoeplitz_vector(N), exact_evals(N) {
-    // Generate an hermitian Circulant vector
-    std::fill(htoeplitz_vector.begin(), htoeplitz_vector.begin(), 0);
-    htoeplitz_vector[0] = 100;
-    std::default_random_engine gen(0);
-    std::uniform_real_distribution<> dist(0., 1.);
-    for (int64_t i = 1; i <= (N / 2); ++i) {
-      double val = dist(gen);
-      htoeplitz_vector[i] = val;
-      htoeplitz_vector[N - i] = val;
-    }
-
-    // Compute exact eigenvalues
-    const double ff = 2. * M_PI / N;
-    for (int64_t j = 0; j < N; ++j) {
-      double val = htoeplitz_vector[0];
-      ;
-      for (int64_t k = 1; k < N; ++k)
-        val += htoeplitz_vector[N - k] * std::cos(ff * j * k);
-      exact_evals[j] = val;
-    }
-
-    std::sort(exact_evals.begin(), exact_evals.end());
-  }
-};
 
 struct LinearAlgebraFixture : ReferenceFixture {
 #if TILEDARRAY_HAS_SCALAPACK
@@ -190,134 +139,8 @@ struct LinearAlgebraFixture : ReferenceFixture {
     return A;
   }
 #endif
-
-
-  template <class A>
-  static void compare_replicated_vector(const char* context, const A& S_nd, const A& S,
-                          double e) {
-    // clang-format off
-    BOOST_TEST_CONTEXT(context)
-    ;
-    // clang-format on
-
-    const size_t n = S.size();
-    BOOST_REQUIRE_EQUAL(n, S_nd.size());
-    for(size_t i = 0; i < n; ++i) {
-      BOOST_CHECK_SMALL(std::abs(S[i] - S_nd[i]), e);
-    }
-  }
-
-  template <class A>
-  static void compare_subspace(const char* context, const A& non_dist, const A& result,
-                               double e) {
-
-    // clang-format off
-    BOOST_TEST_CONTEXT(context)
-    ;
-    // clang-format on
-
-    auto nd_eigen = TA::array_to_eigen(non_dist);
-    auto rs_eigen = TA::array_to_eigen(result);
-
-    Eigen::MatrixXd G; G = nd_eigen.adjoint() * rs_eigen;
-    Eigen::MatrixXd G2; G2 = G.adjoint() * G; // Accounts for phase-flips
-    const auto n = G.rows();
-    auto G2_mI_nrm = (G2 - Eigen::MatrixXd::Identity(n,n)).norm();
-    BOOST_CHECK_SMALL(G2_mI_nrm, e);
-  }
-
-  template <class A>
-  static void compare_eig(const char* context, const A& non_dist, const A& result,
-                          double e) {
-    // clang-format off
-    BOOST_TEST_CONTEXT(context)
-    ;
-    // clang-format on
-
-    auto [evals_nd, evecs_nd] = non_dist;
-    auto [evals,    evecs   ] = result;
-
-    compare_replicated_vector(context, evals_nd, evals, e);
-
-    // The test problem for the unit tests has a non-degenerate spectrum
-    // we only need to check for phase-flips in this check
-    evecs.make_replicated(); // Need to be replicated for Eigen conversion
-    evecs_nd.make_replicated();
-    compare_subspace(context, evecs_nd, evecs, e);
-  }
-
-  template <TA::SVD::Vectors Vectors, class A>
-  static void compare_svd(const char* context, const A& non_dist, const A& result,
-                          double e) {
-    // clang-format off
-    BOOST_TEST_CONTEXT(context)
-    ;
-    // clang-format on
-
-    if constexpr (Vectors == TA::SVD::ValuesOnly) {
-      compare_replicated_vector(context, non_dist, result, e);
-      return;
-    } else {
-      const auto& S = std::get<0>(result);
-      const auto& S_nd = std::get<0>(non_dist);
-      compare_replicated_vector(context, S_nd, S, e);
-    }
-
-  }
-  template <class A>
-  static void compare(const char* context, const A& non_dist, const A& result,
-                      double e) {
-    // clang-format off
-    BOOST_TEST_CONTEXT(context)
-    ;
-    // clang-format on
-    auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
-    BOOST_CHECK_SMALL(diff_with_non_dist, e);
-  }
-
-  template <typename T, typename F, int... Is>
-  static void for_each_pair_of_tuples_impl(T&& t1, T&& t2, F f,
-                                           std::integer_sequence<int, Is...>) {
-    auto l = {(f(std::get<Is>(t1), std::get<Is>(t2)), 0)...};
-  }
-
-  template <typename... Ts, typename F>
-  static void for_each_pair_of_tuples(std::tuple<Ts...> const& t1,
-                                      std::tuple<Ts...> const& t2, F f) {
-    for_each_pair_of_tuples_impl(
-        t1, t2, f, std::make_integer_sequence<int, sizeof...(Ts)>());
-  }
-
-  template <class... As>
-  static void compare(const char* context, const std::tuple<As...>& non_dist,
-                      const std::tuple<As...>& result, double e) {
-    for_each_pair_of_tuples(non_dist, result, [&](auto& arg1, auto& arg2) {
-      compare(context, arg1, arg2, e);
-    });
-  }
 };
 
-TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
-  TA_ASSERT(TA_NBs.size() > 0);
-
-  std::default_random_engine gen(0);
-  std::uniform_int_distribution<> dist(0, TA_NBs.size() - 1);
-  auto rand_indx = [&]() { return dist(gen); };
-  auto rand_nb = [&]() { return TA_NBs[rand_indx()]; };
-
-  std::vector<size_t> t_boundaries = {0};
-  auto TA_NB = rand_nb();
-  while (t_boundaries.back() + TA_NB < N) {
-    t_boundaries.emplace_back(t_boundaries.back() + TA_NB);
-    TA_NB = rand_nb();
-  }
-  t_boundaries.emplace_back(N);
-
-  std::vector<TA::TiledRange1> ranges(
-      2, TA::TiledRange1(t_boundaries.begin(), t_boundaries.end()));
-
-  return TA::TiledRange(ranges.begin(), ranges.end());
-};
 
 BOOST_FIXTURE_TEST_SUITE(linear_algebra_suite, LinearAlgebraFixture)
 
@@ -728,6 +551,8 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
         return this->make_ta_reference(t, range);
       });
 
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+/*
   auto [evals, evecs] = non_dist::heig(ref_ta);
   auto [evals_non_dist, evecs_non_dist] = non_dist::heig(ref_ta);
   // auto evals = heig( ref_ta );
@@ -742,11 +567,11 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
   //                  N * N * std::numeric_limits<double>::epsilon());
 
   // Check eigenvalue correctness
-  double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i) {
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
     BOOST_CHECK_SMALL(std::abs(evals_non_dist[i] - exact_evals[i]), tol);
   }
+*/
 
 
   TILEDARRAY_SCALAPACK_EIGTEST(heig(ref_ta), tol);
@@ -766,6 +591,9 @@ BOOST_AUTO_TEST_CASE(heig_diff_tiling) {
       });
 
   auto new_trange = gen_trange(N, {64ul});
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+
+#if 0
   auto [evals, evecs] = non_dist::heig(ref_ta, new_trange);
   auto [evals_non_dist, evecs_non_dist] = non_dist::heig(ref_ta, new_trange);
 
@@ -779,14 +607,14 @@ BOOST_AUTO_TEST_CASE(heig_diff_tiling) {
   //                  N * N * std::numeric_limits<double>::epsilon());
 
   // Check eigenvalue correctness
-  double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i) {
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
     BOOST_CHECK_SMALL(std::abs(evals_non_dist[i] - exact_evals[i]), tol);
   }
+#endif
 
-  TILEDARRAY_SCALAPACK_EIGTEST(heig(ref_ta), tol);
-  //TILEDARRAY_SLATE_EIGTEST(heig(ref_ta), tol);
+  TILEDARRAY_SCALAPACK_EIGTEST(heig(ref_ta,new_trange), tol);
+  //TILEDARRAY_SLATE_EIGTEST(heig(ref_ta,new_trange), tol);
   GlobalFixture::world->gop.fence();
 }
 
@@ -803,17 +631,12 @@ BOOST_AUTO_TEST_CASE(heig_generalized) {
 
   auto dense_iden = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        t = TA::Tensor<double>(range, 0.0);
-        auto lo = range.lobound_data();
-        auto up = range.upbound_data();
-        for (auto m = lo[0]; m < up[0]; ++m)
-          for (auto n = lo[1]; n < up[1]; ++n)
-            if (m == n) t(m, n) = 1.;
-
-        return t.norm();
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_identity(t, range);
       });
 
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+#if 0
   GlobalFixture::world->gop.fence();
   auto [evals, evecs] = non_dist::heig(ref_ta, dense_iden);
   // auto evals = heig( ref_ta );
@@ -823,9 +646,9 @@ BOOST_AUTO_TEST_CASE(heig_generalized) {
   // TODO: Check validity of eigenvectors, not crucial for the time being
 
   // Check eigenvalue correctness
-  double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
+#endif
 
   TILEDARRAY_SCALAPACK_EIGTEST(heig(ref_ta, dense_iden), tol);
   //TILEDARRAY_SLATE_EIGTEST(heig(ref_ta, dense_iden), tol);
@@ -843,6 +666,8 @@ BOOST_AUTO_TEST_CASE(cholesky) {
         return this->make_ta_reference(t, range);
       });
 
+  const double epsilon = N * N * std::numeric_limits<double>::epsilon();
+#if 0
   auto L = non_dist::cholesky(A);
 
   BOOST_CHECK(L.trange() == A.trange());
@@ -850,7 +675,6 @@ BOOST_AUTO_TEST_CASE(cholesky) {
   decltype(A) A_minus_LLt;
   A_minus_LLt("i,j") = A("i,j") - L("i,k") * L("j,k").conj();
 
-  const double epsilon = N * N * std::numeric_limits<double>::epsilon();
 
   BOOST_CHECK_SMALL(A_minus_LLt("i,j").norm().get(), epsilon);
 
@@ -860,11 +684,12 @@ BOOST_AUTO_TEST_CASE(cholesky) {
   L_diff("i,j") = L("i,j") - L_ref("i,j");
 
   BOOST_CHECK_SMALL(L_diff("i,j").norm().get(), epsilon);
+#endif
 
   TILEDARRAY_SCALAPACK_TEST(cholesky(A), epsilon);
   TILEDARRAY_SLATE_TEST(cholesky(A), epsilon);
-
   TILEDARRAY_TTG_TEST(cholesky(A), epsilon);
+  GlobalFixture::world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_linv) {
@@ -877,7 +702,8 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
-  decltype(A) Acopy = A.clone();
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
+#if 0
 
   auto Linv = TA::cholesky_linv(A);
 
@@ -898,15 +724,14 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
         }
   });
 
-  double epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = A("i,j").norm().get();
 
   BOOST_CHECK_SMALL(norm, epsilon);
-
-  TILEDARRAY_SCALAPACK_TEST(cholesky_linv<false>(Acopy), epsilon);
-  TILEDARRAY_SLATE_TEST(cholesky_linv<false>(Acopy), epsilon);
-
-  TILEDARRAY_TTG_TEST(cholesky_linv<false>(Acopy), epsilon);
+#endif
+  TILEDARRAY_SCALAPACK_TEST(cholesky_linv<false>(A), epsilon);
+  TILEDARRAY_SLATE_TEST(cholesky_linv<false>(A), epsilon);
+  TILEDARRAY_TTG_TEST(cholesky_linv<false>(A), epsilon);
+  GlobalFixture::world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
@@ -920,6 +745,8 @@ BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
         return this->make_ta_reference(t, range);
       });
 
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
+#if 0
   auto [L, Linv] = TA::cholesky_linv<true>(A);
 
   BOOST_CHECK(Linv.trange() == A.trange());
@@ -939,15 +766,16 @@ BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
         }
   });
 
-  double epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = tmp("i,j").norm(*GlobalFixture::world).get();
 
   BOOST_CHECK_SMALL(norm, epsilon);
+#endif
 
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv<true>(A), epsilon);
   TILEDARRAY_SLATE_TEST(cholesky_linv<true>(A), epsilon);
-
   TILEDARRAY_TTG_TEST(cholesky_linv<true>(A), epsilon);
+
+  GlobalFixture::world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_solve) {
@@ -961,6 +789,8 @@ BOOST_AUTO_TEST_CASE(cholesky_solve) {
         return this->make_ta_reference(t, range);
       });
 
+  const auto epsilon = N * N * std::numeric_limits<double>::epsilon();
+#if 0
   auto iden = non_dist::cholesky_solve(A, A);
   BOOST_CHECK(iden.trange() == A.trange());
 
@@ -984,7 +814,7 @@ BOOST_AUTO_TEST_CASE(cholesky_solve) {
   const auto epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = iden("i,j").norm(*GlobalFixture::world).get();
   BOOST_CHECK_SMALL(norm, epsilon);
-
+#endif
   TILEDARRAY_SCALAPACK_TEST(cholesky_solve(A,A), epsilon);
   //TILEDARRAY_SLATE_TEST(cholesky_solve(A), epsilon);
 
@@ -1002,6 +832,9 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
         return this->make_ta_reference(t, range);
       });
 
+  const auto epsilon = N * N * std::numeric_limits<double>::epsilon();
+
+#if 0
   // Should produce X = L**H
   auto [L, X] = non_dist::cholesky_lsolve(TA::NoTranspose, A, A);
   BOOST_CHECK(X.trange() == A.trange());
@@ -1021,9 +854,9 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
 
   X("i,j") -= L("j,i");
 
-  const auto epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = X("i,j").norm(*GlobalFixture::world).get();
   BOOST_CHECK_SMALL(norm, epsilon);
+#endif
 
   TILEDARRAY_SCALAPACK_TEST(cholesky_lsolve(TA::NoTranspose, A, A), epsilon);
   //TILEDARRAY_SLATE_TEST(cholesky_lsolve(TA::NoTranspose, A, A), epsilon);
@@ -1042,6 +875,8 @@ BOOST_AUTO_TEST_CASE(lu_solve) {
         return this->make_ta_reference(t, range);
       });
 
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
+#if 0
   auto iden = non_dist::lu_solve(ref_ta, ref_ta);
 
   BOOST_CHECK(iden.trange() == ref_ta.trange());
@@ -1057,10 +892,10 @@ BOOST_AUTO_TEST_CASE(lu_solve) {
         }
   });
 
-  double epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = iden("i,j").norm(*GlobalFixture::world).get();
 
   BOOST_CHECK_SMALL(norm, epsilon);
+#endif
   TILEDARRAY_SCALAPACK_TEST(lu_solve(ref_ta, ref_ta), epsilon);
   //TILEDARRAY_SLATE_TEST(lu_solve(ref_ta, ref_ta), epsilon);
 
@@ -1077,7 +912,8 @@ BOOST_AUTO_TEST_CASE(lu_inv) {
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
-
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
+#if 0
   TA::TArray<double> iden(*GlobalFixture::world, trange);
 
   auto Ainv = non_dist::lu_inv(ref_ta);
@@ -1096,10 +932,10 @@ BOOST_AUTO_TEST_CASE(lu_inv) {
         }
   });
 
-  double epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = iden("i,j").norm(*GlobalFixture::world).get();
 
   BOOST_CHECK_SMALL(norm, epsilon);
+#endif
   TILEDARRAY_SCALAPACK_TEST(lu_inv(ref_ta), epsilon);
 
   GlobalFixture::world->gop.fence();
@@ -1115,7 +951,9 @@ BOOST_AUTO_TEST_CASE(svd_values_only) {
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
+  double tol = N * N * std::numeric_limits<double>::epsilon();
 
+#if 0
   auto S = non_dist::svd<TA::SVD::ValuesOnly>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
@@ -1123,13 +961,14 @@ BOOST_AUTO_TEST_CASE(svd_values_only) {
             std::greater<double>());
 
   // Check singular value correctness
-  double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(S[i] - exact_singular_values[i]), tol);
   GlobalFixture::world->gop.fence();
+#endif
 
   TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::ValuesOnly, svd<TA::SVD::ValuesOnly>(ref_ta, trange, trange), tol);
   TILEDARRAY_SLATE_SVDTEST(TA::SVD::ValuesOnly, svd<TA::SVD::ValuesOnly>(ref_ta), tol);
+  GlobalFixture::world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE(svd_leftvectors) {
@@ -1142,7 +981,8 @@ BOOST_AUTO_TEST_CASE(svd_leftvectors) {
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
-
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+#if 0
   auto [S, U] = non_dist::svd<TA::SVD::LeftVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
@@ -1150,12 +990,13 @@ BOOST_AUTO_TEST_CASE(svd_leftvectors) {
             std::greater<double>());
 
   // Check singular value correctness
-  double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(S[i] - exact_singular_values[i]), tol);
   GlobalFixture::world->gop.fence();
-
+#endif
   TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::LeftVectors, svd<TA::SVD::LeftVectors>(ref_ta, trange, trange), tol);
+
+  GlobalFixture::world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE(svd_rightvectors) {
@@ -1168,7 +1009,8 @@ BOOST_AUTO_TEST_CASE(svd_rightvectors) {
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
-
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+#if 0
   auto [S, VT] = non_dist::svd<TA::SVD::RightVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
@@ -1176,12 +1018,13 @@ BOOST_AUTO_TEST_CASE(svd_rightvectors) {
             std::greater<double>());
 
   // Check singular value correctness
-  double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(S[i] - exact_singular_values[i]), tol);
   GlobalFixture::world->gop.fence();
-
+#endif
   TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::RightVectors, svd<TA::SVD::RightVectors>(ref_ta, trange, trange), tol);
+
+  GlobalFixture::world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE(svd_allvectors) {
@@ -1194,6 +1037,8 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+#if 0
 
   auto [S, U, VT] = non_dist::svd<TA::SVD::AllVectors>(ref_ta, trange, trange);
 
@@ -1202,12 +1047,13 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
             std::greater<double>());
 
   // Check singular value correctness
-  double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i)
     BOOST_CHECK_SMALL(std::abs(S[i] - exact_singular_values[i]), tol);
   GlobalFixture::world->gop.fence();
+#endif
 
   TILEDARRAY_SCALAPACK_SVDTEST(TA::SVD::AllVectors, svd<TA::SVD::AllVectors>(ref_ta, trange, trange), tol);
+  GlobalFixture::world->gop.fence();
 }
 
 template <bool use_scalapack, typename ArrayT>

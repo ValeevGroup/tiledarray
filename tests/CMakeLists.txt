@@ -98,7 +98,8 @@ set(ta_test_src_files  ta_test.cpp
   # t_tot_tot_contract_.cpp
   # tot_tot_tot_contract_.cpp
     einsum.cpp
-    linalg.cpp
+    linalg/linalg.cpp
+    linalg/non_dist.cpp
     cp.cpp
 )
 
