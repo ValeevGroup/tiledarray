@@ -87,9 +87,9 @@ LINALG_TEST_IMPL(lu_inv);
 
 // SVD tests
 LINALG_TEST_IMPL(svd_values_only);
-//LINALG_TEST_IMPL(svd_leftvectors);
-//LINALG_TEST_IMPL(svd_rightvectors);
-//LINALG_TEST_IMPL(svd_allvectors);
+LINALG_TEST_IMPL(svd_leftvectors);
+LINALG_TEST_IMPL(svd_rightvectors);
+LINALG_TEST_IMPL(svd_allvectors);
 
 // QR tests
 //LINALG_TEST_IMPL(householder_qr_q_only);
