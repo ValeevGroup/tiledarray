@@ -65,6 +65,12 @@ public:
   auto& tileRank() { return tileRank_; }
   auto& tileDevice() { return tileDevice_; }
 
+
+  template <typename SlateMatrixType>
+  SlateMatrixType make_matrix(int64_t M, int64_t N, MPI_Comm comm) {
+    return SlateMatrixType(M, N, tileMb_, tileNb_, tileRank_, tileDevice_, comm);
+  }
+
 private:
 
     dim_functor_t tileMb_, tileNb_;
@@ -137,10 +143,6 @@ array_to_slate( const Array& array ) {
     auto        pmap   = array.pmap();
 
     SlateFunctors slate_functors( trange, pmap );
-    auto& tileMb = slate_functors.tileMb();
-    auto& tileNb = slate_functors.tileNb();
-    auto& tileRank = slate_functors.tileRank();
-    auto& tileDevice = slate_functors.tileDevice();
 
 
     /*********************************/
@@ -148,8 +150,8 @@ array_to_slate( const Array& array ) {
     /*********************************/
     const auto M = trange.dim(0).extent();
     const auto N = trange.dim(1).extent();
-    slate_matrix_t matrix(M, N, tileMb, tileNb, tileRank, tileDevice,
-        world.mpi.comm().Get_mpi_comm());
+    auto matrix = slate_functors.make_matrix<slate_matrix_t>(M, N,
+          world.mpi.comm().Get_mpi_comm());
     
     /************************/
     /*** Copy TA -> SLATE ***/

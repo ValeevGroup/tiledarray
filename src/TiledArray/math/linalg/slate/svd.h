@@ -66,25 +66,15 @@ auto svd(const Array& A, TA::TiledRange u_trange, TA::TiledRange vt_trange) {
   SlateFunctors u_functors(u_trange, A.pmap());
   SlateFunctors vt_functors(vt_trange, A.pmap());
 
-  auto& u_tileMb = u_functors.tileMb();
-  auto& u_tileNb = u_functors.tileNb();
-  auto& u_tileRank = u_functors.tileRank();
-  auto& u_tileDevice = u_functors.tileDevice();
-
-  auto& vt_tileMb = vt_functors.tileMb();
-  auto& vt_tileNb = vt_functors.tileNb();
-  auto& vt_tileRank = vt_functors.tileRank();
-  auto& vt_tileDevice = vt_functors.tileDevice();
-
   slate_matrix_t U, VT;
 
   // Allocate if required 
   if(need_u) {
-    U = slate_matrix_t(M, SVD_SIZE, u_tileMb, u_tileNb, u_tileRank, u_tileDevice, comm);
+    U = u_functors.make_matrix<slate_matrix_t>(M, SVD_SIZE, comm);
     U.insertLocalTiles();
   }
   if(need_vt) {
-    VT = slate_matrix_t(SVD_SIZE, N, vt_tileMb, vt_tileNb, vt_tileRank, vt_tileDevice, comm);
+    VT = vt_functors.make_matrix<slate_matrix_t>(SVD_SIZE, N, comm);
     VT.insertLocalTiles();
   }
 
