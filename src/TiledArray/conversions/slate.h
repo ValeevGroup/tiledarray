@@ -347,36 +347,6 @@ auto slate_to_array( /*const*/ detail::slate_type_from_array_t<Array>& matrix, W
     TA::TiledRange trange(ranges.begin(), ranges.end());
 
     // Create TArray
-#if 0
-    Array array(world, trange, slate_pmap);
-    for (int64_t it = 0; it < matrix.mt(); ++it)
-    for (int64_t jt = 0; jt < matrix.nt(); ++jt) 
-    if( matrix.tileIsLocal(it,jt) ) {
-        auto local_ordinal = trange.tiles_range().ordinal(it,jt);
-
-        auto tile = world.taskq.add(
-            [=](slate::Tile<double> slate_tile, TA::Range const& range) {
-                // Create tile
-                value_type tile(range, 0.0);
-
-                // Create Maps                
-                auto local_m = slate_tile.mb();
-                auto local_n = slate_tile.nb();
-                col_major_map_t slate_map(slate_tile.data(), local_m, local_n);
-
-                auto  local_m_ta = range.dim(0).extent();
-                auto  local_n_ta = range.dim(1).extent();
-                row_major_map_t ta_map(tile.data(), local_m_ta, local_n_ta);
-
-                // Copy data
-                ta_map = slate_map;
-
-                return tile;
-            }, matrix(it,jt), trange.make_tile_range(local_ordinal));
-        
-        array.set(local_ordinal, tile);
-    }
-#else
     Array array;
     if constexpr (is_dense<Array>::value) {
       array = detail::make_array_from_slate_dense<Array>(matrix, 
@@ -385,7 +355,6 @@ auto slate_to_array( /*const*/ detail::slate_type_from_array_t<Array>& matrix, W
       array = detail::make_array_from_slate_sparse<Array>(matrix, 
           trange, slate_pmap, world);
     }
-#endif
 
     world.gop.fence();
     return array;
