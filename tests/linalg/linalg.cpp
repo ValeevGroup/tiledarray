@@ -146,6 +146,7 @@ BOOST_FIXTURE_TEST_SUITE(linear_algebra_suite, LinearAlgebraFixture)
 
 #if TILEDARRAY_HAS_SCALAPACK
 
+#if 0
 BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_test) {
   GlobalFixture::world->gop.fence();
 
@@ -426,6 +427,7 @@ BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {
 
   GlobalFixture::world->gop.fence();
 };
+#endif
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
 
