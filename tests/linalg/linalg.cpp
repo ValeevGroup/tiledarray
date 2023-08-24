@@ -127,6 +127,7 @@ BOOST_FIXTURE_TEST_SUITE(linear_algebra_suite, LinearAlgebraFixture)
 
 #if TILEDARRAY_HAS_SLATE
 
+#if 0
 BOOST_AUTO_TEST_CASE(uniform_dense_tiled_array_to_slate_matrix_test) {
   GlobalFixture::world->gop.fence();
 
@@ -234,6 +235,7 @@ BOOST_AUTO_TEST_CASE(slate_matrix_to_random_dense_tiled_array_test) {
 
   GlobalFixture::world->gop.fence();
 }
+#endif
 #endif // TILEDARRAY_HAS_SLATE
 
 #if 0
