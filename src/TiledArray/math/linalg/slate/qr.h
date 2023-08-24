@@ -34,12 +34,62 @@
 
 namespace TiledArray::math::linalg::slate {
 
-template <bool QOnly, typename ArrayV>
-auto householder_qr( const ArrayV& V ) {
+template <bool QOnly, typename Array>
+auto householder_qr( const Array& V, TiledRange q_trange = TiledRange(),
+                     TiledRange r_trange = TiledRange() ) {
+
+  if(q_trange.rank() == 0) {
+    q_trange = V.trange();
+  }
+
+  if(r_trange.rank() == 0) {
+    auto col_tiling = V.trange().dim(1);
+    r_trange = TiledRange( {col_tiling, col_tiling} );
+  }
 
   // SLATE does not yet have ORGQR/UNGQR
   // https://github.com/icl-utk-edu/slate/issues/80
-  TA_EXCEPTION("SLATE + QR NYI");
+
+  using element_type   = typename std::remove_cv_t<Array>::element_type;
+  auto& world = V.world();
+
+  // Convert to SLATE
+  auto matrix = array_to_slate(V);
+
+  // Perform GETRF
+  ::slate::TriangularFactors<element_type> T;
+  ::slate::geqrf(matrix, T);
+
+  // Form Q
+  auto Q = matrix.emptyLike(); Q.insertLocalTiles();
+  ::slate::set(0.0, 1.0, Q);
+  ::slate::unmqr(::slate::Side::Left, ::slate::Op::NoTrans, matrix, T, Q);
+
+  auto Q_ta = slate_to_array<Array>(Q, world);
+
+  if constexpr (QOnly) {
+    return Q_ta;
+  } else {
+    SlateFunctors r_functors( r_trange, V.pmap() );
+    const auto N = V.trange().dim(1).extent();
+    auto comm = world.mpi.comm().Get_mpi_comm();
+    auto R = r_functors.make_matrix<::slate::Matrix<element_type>>(N,N,comm);
+    R.insertLocalTiles();
+    ::slate::set(0.0, 0.0, R);
+
+    // Triangular views of target operand matrices
+    ::slate::TriangularMatrix<element_type> 
+      R_tri(::slate::Uplo::Upper, ::slate::Diag::NonUnit, R);
+    ::slate::TriangularMatrix<element_type> 
+      A_tri(::slate::Uplo::Upper, ::slate::Diag::NonUnit, matrix);
+
+    // Copy upper triangle of QR factors into R
+    ::slate::copy(A_tri, R_tri);
+
+    // Convert to TA
+    auto R_ta = slate_to_array<Array>(R, world);
+    return std::tuple(Q_ta, R_ta);
+  }
 
 }
 

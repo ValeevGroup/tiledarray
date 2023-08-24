@@ -10,6 +10,7 @@
 #include <TiledArray/math/linalg/slate/lu.h>
 #include <TiledArray/math/linalg/slate/heig.h>
 #include <TiledArray/math/linalg/slate/svd.h>
+#include <TiledArray/math/linalg/slate/qr.h>
 
 namespace TA = TiledArray;
 namespace slate_la = TA::math::linalg::slate;
@@ -60,10 +61,10 @@ struct SLATELinearAlgebraFixture :
     return slate_la::svd<Vectors>(std::forward<Args>(args)...);
   }
 
-  //template <bool QOnly, typename... Args>
-  //static auto householder_qr(Args&&... args) { 
-  //  return slate_la::householder_qr<QOnly>(std::forward<Args>(args)...); 
-  //}
+  template <bool QOnly, typename... Args>
+  static auto householder_qr(Args&&... args) { 
+    return slate_la::householder_qr<QOnly>(std::forward<Args>(args)...); 
+  }
 };
 
 
@@ -92,8 +93,8 @@ LINALG_TEST_IMPL(svd_rightvectors);
 LINALG_TEST_IMPL(svd_allvectors);
 
 // QR tests
-//LINALG_TEST_IMPL(householder_qr_q_only);
-//LINALG_TEST_IMPL(householder_qr);
+LINALG_TEST_IMPL(householder_qr_q_only);
+LINALG_TEST_IMPL(householder_qr);
 
 BOOST_AUTO_TEST_SUITE_END()
 

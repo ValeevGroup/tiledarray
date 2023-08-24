@@ -43,9 +43,6 @@ auto svd(const Array& A, TA::TiledRange u_trange, TA::TiledRange vt_trange) {
   constexpr bool need_vt = (Vectors == SVD::RightVectors) or need_uv;
   constexpr bool vals_only = not need_u and not need_vt;
 
-  //static_assert(vals_only, "SLATE + SVD Vectors NYI");
-  std::cout << "IN SLATE SVD" << std::endl;
-
   using element_type   = typename std::remove_cv_t<Array>::element_type;
   auto& world = A.world();
   auto comm   = world.mpi.comm().Get_mpi_comm();
@@ -60,9 +57,9 @@ auto svd(const Array& A, TA::TiledRange u_trange, TA::TiledRange vt_trange) {
   const auto SVD_SIZE = std::min(M,N);
   std::vector<::blas::real_type<element_type>> S(SVD_SIZE);
 
-  // Perform GESVD 
   world.gop.fence();  // stage SLATE execution
 
+  // Generate functors
   SlateFunctors u_functors(u_trange, A.pmap());
   SlateFunctors vt_functors(vt_trange, A.pmap());
 
@@ -79,6 +76,7 @@ auto svd(const Array& A, TA::TiledRange u_trange, TA::TiledRange vt_trange) {
   }
 
   // Do SVD
+  // If U/VT are default state, they will not be used
   ::slate::svd(matrix, S, U, VT); 
 
   Array U_ta, VT_ta;

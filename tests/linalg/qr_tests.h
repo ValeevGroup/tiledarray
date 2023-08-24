@@ -25,6 +25,7 @@ void ReferenceFixture<Derived>::householder_qr_q_only_test(TA::World& world) {
   Iden("i,j") = Q("k,i") * Q("k,j");
   subtract_identity_inplace(Iden);
   const auto norm = Iden("i,j").norm(world).get();
+  BOOST_CHECK_SMALL(norm, tol);
 
   world.gop.fence();
 }
@@ -54,6 +55,7 @@ void ReferenceFixture<Derived>::householder_qr_test(TA::World& world) {
   Iden("i,j") = Q("k,i") * Q("k,j");
   subtract_identity_inplace(Iden);
   const auto norm = Iden("i,j").norm(world).get();
+  BOOST_CHECK_SMALL(norm, tol);
 
   world.gop.fence();
 }
