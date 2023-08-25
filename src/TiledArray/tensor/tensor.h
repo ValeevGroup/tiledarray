@@ -2443,7 +2443,7 @@ class Tensor {
 
   /// \tparam Right The right-hand tensor type
   /// \param other The right-hand tensor to be reduced
-  /// \return The dot product of the this and \c other
+  /// \return The inner product of the this and \c other
   /// If numeric_type is real, this is equivalent to dot product
   /// \sa Tensor::dot
   template <typename Right,
