@@ -255,12 +255,20 @@ set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)
 
-  list(APPEND TILEDARRAY_SOURCE_FILES
+  set(TILEDARRAY_CUDA_SOURCE_FILES
           TiledArray/cuda/btas_um_tensor.cpp
           TiledArray/cuda/cpu_cuda_vector.cu
           TiledArray/cuda/kernel/mult_kernel.cu
           TiledArray/cuda/kernel/reduce_kernel.cu
           TiledArray/cuda/um_storage.cu)
+
+  list(APPEND TILEDARRAY_SOURCE_FILES "${TILEDARRAY_CUDA_SOURCE_FILES}")
+
+  foreach( f IN LISTS TILEDARRAY_CUDA_SOURCE_FILES )
+  set_source_files_properties( "${f}"
+          PROPERTIES
+          INCLUDE_DIRECTORIES "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}")
+  endforeach()
 
   set_source_files_properties(TiledArray/cuda/btas_um_tensor.cpp
           PROPERTIES
