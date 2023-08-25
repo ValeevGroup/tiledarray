@@ -156,8 +156,9 @@ public:
 
     template <typename PMapInterfacePointer>
     SlateFunctors( TiledRange trange, PMapInterfacePointer pmap_ptr ) {
-    if( trange.rank() != 2 )
-        throw std::runtime_error("Cannot Convert General Tensor to SLATE (RANK != 2)");
+      if( trange.rank() != 2 )
+          throw std::runtime_error("Cannot Convert General Tensor to SLATE (RANK != 2)");
+
       // Tile row dimension (MB)
       tileMb_ = [trange](slate_int i) { return trange.dim(0).tile(i).extent(); };
 
