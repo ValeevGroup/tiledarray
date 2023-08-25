@@ -267,7 +267,7 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray depends on
-  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_LIBRETT)
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvToolsExt TiledArray_LIBRETT)
 
 endif(CUDA_FOUND)
 

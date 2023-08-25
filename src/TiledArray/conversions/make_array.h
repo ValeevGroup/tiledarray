@@ -155,7 +155,7 @@ inline Array make_array(
   int task_count = 0;
   auto task = [&](const ordinal_type index) -> value_type {
     value_type tile;
-    tile_norms[index] = op(tile, trange.make_tile_range(index));
+    tile_norms.at_ordinal(index) = op(tile, trange.make_tile_range(index));
     ++counter;
     return tile;
   };
