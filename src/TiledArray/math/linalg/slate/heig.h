@@ -36,10 +36,11 @@
 namespace TiledArray::math::linalg::slate {
 
 template <typename Array>
-auto heig(const Array& A) {
+auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
 
   using element_type   = typename std::remove_cv_t<Array>::element_type;
   auto& world = A.world();
+
 
   // Convert to SLATE
   auto matrix = array_to_slate(A);
@@ -61,6 +62,9 @@ auto heig(const Array& A) {
 
   // Convert eigenvectors back to TA
   auto Z_ta = slate_to_array<Array>(Z, world);
+  if(evec_trange.rank() != 0 and evec_trange != A.trange()) {
+    Z_ta = retile(Z_ta, evec_trange);
+  }
   world.gop.fence(); // Maintain lifetimes of SLATE data
 
   return std::tuple(W, Z_ta);

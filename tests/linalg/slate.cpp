@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tiled_array_to_slate_random, array_type, ta_test_t
 
 // HEIG tests
 LINALG_TEST_IMPL(heig_same_tiling);
-//LINALG_TEST_IMPL(heig_diff_tiling);
+LINALG_TEST_IMPL(heig_diff_tiling);
 LINALG_TEST_IMPL(heig_generalized);
 
 // Cholesky tests
