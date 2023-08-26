@@ -109,6 +109,12 @@ struct ReferenceFixture {
 };
 
 // Macro to generate tests
-#define LINALG_TEST_IMPL(NAME) \
-BOOST_AUTO_TEST_CASE(NAME) { NAME##_##test(*GlobalFixture::world); }
+#define LINALG_TEST_IMPL_MPI_SAFE(NAME, SERIAL_ONLY)    \
+BOOST_AUTO_TEST_CASE(NAME) {                            \
+  const auto world_size = GlobalFixture::world->size(); \
+  if(SERIAL_ONLY and  world_size > 1) return;           \
+  NAME##_##test(*GlobalFixture::world);                 \
+}
+
+#define LINALG_TEST_IMPL(NAME) LINALG_TEST_IMPL_MPI_SAFE(NAME,false)
 

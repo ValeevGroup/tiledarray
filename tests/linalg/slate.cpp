@@ -181,10 +181,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tiled_array_to_slate_random, array_type, ta_test_t
   tiled_array_to_slate_test<array_type>(trange, *GlobalFixture::world);
 };
 
-// HEIG tests
-LINALG_TEST_IMPL(heig_same_tiling);
-LINALG_TEST_IMPL(heig_diff_tiling);
-LINALG_TEST_IMPL(heig_generalized);
+// HEIG tests (serial only)
+// TODO: Can make parallel-capable when the following issue is closed
+// https://github.com/icl-utk-edu/slate/issues/102
+LINALG_TEST_IMPL_MPI_SAFE(heig_same_tiling, true);
+LINALG_TEST_IMPL_MPI_SAFE(heig_diff_tiling, true);
+LINALG_TEST_IMPL_MPI_SAFE(heig_generalized, true);
 
 // Cholesky tests
 LINALG_TEST_IMPL(cholesky);
