@@ -36,7 +36,7 @@
 namespace TiledArray::math::linalg::slate {
 
 template <typename Array>
-auto heig( const Array& A) {
+auto heig(const Array& A) {
 
   using element_type   = typename std::remove_cv_t<Array>::element_type;
   auto& world = A.world();
@@ -61,6 +61,44 @@ auto heig( const Array& A) {
 
   // Convert eigenvectors back to TA
   auto Z_ta = slate_to_array<Array>(Z, world);
+  world.gop.fence(); // Maintain lifetimes of SLATE data
+
+  return std::tuple(W, Z_ta);
+}
+
+
+template <typename ArrayA, typename ArrayB>
+auto heig(const ArrayA& A, const ArrayB& B) {
+
+  using element_type   = typename std::remove_cv_t<ArrayB>::element_type;
+  auto& world = A.world();
+
+  // Convert to SLATE
+  auto matrix_A = array_to_slate(A);
+  auto matrix_B = array_to_slate(B);
+
+  // Allocate space for singular values
+  const auto M = matrix_A.m();
+  const auto N = matrix_A.n();
+  if (M != N) TA_EXCEPTION("Matrix must be square for EVP");
+  if (matrix_B.m() != matrix_B.n())
+    TA_EXCEPTION("Metric must be square for EVP");
+  if(matrix_B.m() != M)
+    TA_EXCEPTION("Matrix and Metric must be the same size");
+
+  std::vector<::blas::real_type<element_type>> W(N);
+
+  // Perform Eigenvalue Decomposition
+  world.gop.fence();  // stage SLATE execution
+
+  ::slate::HermitianMatrix<element_type> AH(::slate::Uplo::Lower, matrix_A);
+  ::slate::HermitianMatrix<element_type> BH(::slate::Uplo::Lower, matrix_B);
+  auto Z = matrix_A.emptyLike(); Z.insertLocalTiles();
+  ::slate::eig(1, AH, BH, W, Z); // AX = BXE 
+
+
+  // Convert eigenvectors back to TA
+  auto Z_ta = slate_to_array<ArrayA>(Z, world);
   world.gop.fence(); // Maintain lifetimes of SLATE data
 
   return std::tuple(W, Z_ta);
