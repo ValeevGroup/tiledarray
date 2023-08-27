@@ -7,6 +7,7 @@ default:
 
 variables:
   MAD_NUM_THREADS : 2
+  OMP_NUM_THREADS : 1
   TA_TARGETS : "tiledarray examples-tiledarray ta_test check-tiledarray"
   # Debug builds with ScaLAPACK=ON need increased TA_UT_CTEST_TIMEOUT
   TA_CONFIG : >

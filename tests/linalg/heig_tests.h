@@ -10,6 +10,7 @@ void ReferenceFixture<Derived>::heig_same_tiling_test(TA::World& world) {
   world.gop.fence(); // Start epoch
 
   auto trange = gen_trange(N, {128ul});
+  std::cout << "TRANGE = " << trange << std::endl;
 
   // Generate Reference Tensor in TA
   using array_type = TA::TArray<double>;
