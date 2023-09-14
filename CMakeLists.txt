@@ -76,6 +76,23 @@ project(TiledArray
         HOMEPAGE_URL "https://valeevgroup.github.io/tiledarray/")
 enable_language(C)  # C needed even for basic platform introspection
 
+# Set install paths ============================================================
+
+set(TILEDARRAY_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}"
+        CACHE PATH "TiledArray binary install directory")
+set(TILEDARRAY_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+        CACHE PATH "TiledArray INCLUDE install directory")
+set(TILEDARRAY_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}"
+        CACHE PATH "TiledArray LIB install directory")
+set(TILEDARRAY_INSTALL_SHAREDIR "share/tiledarray/${TILEDARRAY_EXT_VERSION}"
+        CACHE PATH "TiledArray DATA install directory")
+set(TILEDARRAY_INSTALL_DATADIR "${TILEDARRAY_INSTALL_SHAREDIR}/data"
+        CACHE PATH "TiledArray DATA install directory")
+set(TILEDARRAY_INSTALL_DOCDIR "${TILEDARRAY_INSTALL_SHAREDIR}/doc"
+        CACHE PATH "TiledArray DOC install directory")
+set(TILEDARRAY_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/tiledarray"
+        CACHE PATH "TiledArray CMAKE install directory")
+
 # Add module directory and modules =============================================
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
 include(CMakePushCheckState)
@@ -88,23 +105,6 @@ include(AddTAExecutable)
 include(FindPackageRegimport)
 init_package_regimport()
 include(LoadFetchContent)
-
-# Set install paths ============================================================
-
-set(TILEDARRAY_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}"
-    CACHE PATH "TiledArray binary install directory")
-set(TILEDARRAY_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
-    CACHE PATH "TiledArray INCLUDE install directory")
-set(TILEDARRAY_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}"
-    CACHE PATH "TiledArray LIB install directory")
-set(TILEDARRAY_INSTALL_SHAREDIR "share/tiledarray/${TILEDARRAY_EXT_VERSION}"
-    CACHE PATH "TiledArray DATA install directory")
-set(TILEDARRAY_INSTALL_DATADIR "${TILEDARRAY_INSTALL_SHAREDIR}/data"
-    CACHE PATH "TiledArray DATA install directory")
-set(TILEDARRAY_INSTALL_DOCDIR "${TILEDARRAY_INSTALL_SHAREDIR}/doc"
-    CACHE PATH "TiledArray DOC install directory")
-set(TILEDARRAY_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/tiledarray"
-    CACHE PATH "TiledArray CMAKE install directory")
 
 # Load extra CMake features ====================================================
 
