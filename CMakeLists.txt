@@ -78,20 +78,20 @@ enable_language(C)  # C needed even for basic platform introspection
 
 # Set install paths ============================================================
 
-set(TILEDARRAY_INSTALL_BINDIR "bin"
-    CACHE PATH "TiledArray binary install directory")
-set(TILEDARRAY_INSTALL_INCLUDEDIR "include"
-    CACHE PATH "TiledArray INCLUDE install directory")
-set(TILEDARRAY_INSTALL_LIBDIR "lib"
-    CACHE PATH "TiledArray LIB install directory")
-set(TILEDARRAY_INSTALL_SHAREDIR "share/tiledarray/${TILEDARRAY_EXT_VERSION}"
-    CACHE PATH "TiledArray DATA install directory")
+set(TILEDARRAY_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}"
+        CACHE PATH "TiledArray binary install directory")
+set(TILEDARRAY_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+        CACHE PATH "TiledArray INCLUDE install directory")
+set(TILEDARRAY_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}"
+        CACHE PATH "TiledArray LIB install directory")
+set(TILEDARRAY_INSTALL_SHAREDIR "${CMAKE_INSTALL_DATAROOTDIR}/tiledarray/${TILEDARRAY_EXT_VERSION}"
+        CACHE PATH "TiledArray DATA install directory")
 set(TILEDARRAY_INSTALL_DATADIR "${TILEDARRAY_INSTALL_SHAREDIR}/data"
-    CACHE PATH "TiledArray DATA install directory")
+        CACHE PATH "TiledArray DATA install directory")
 set(TILEDARRAY_INSTALL_DOCDIR "${TILEDARRAY_INSTALL_SHAREDIR}/doc"
-    CACHE PATH "TiledArray DOC install directory")
-set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
-    CACHE PATH "TiledArray CMAKE install directory")
+        CACHE PATH "TiledArray DOC install directory")
+set(TILEDARRAY_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/tiledarray"
+        CACHE PATH "TiledArray CMAKE install directory")
 
 # Add module directory and modules =============================================
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
@@ -431,7 +431,7 @@ CONFIGURE_FILE(
 
 # install config files
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
-    DESTINATION lib/pkgconfig)
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 
 # include extra cmake files
 install(FILES
