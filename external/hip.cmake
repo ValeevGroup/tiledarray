@@ -1,0 +1,36 @@
+# cmake 3.21 introduced HIP language support
+cmake_minimum_required(VERSION 3.21.0)
+set(CMAKE_HIP_STANDARD 17)
+set(CMAKE_HIP_EXTENSIONS OFF)
+set(CMAKE_HIP_STANDARD_REQUIRED ON)
+# N.B. need relaxed constexpr for std::complex
+# see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#constexpr-functions%5B/url%5D:
+if (DEFINED CMAKE_HIP_FLAGS)
+  set(CMAKE_HIP_FLAGS "--expt-relaxed-constexpr ${CMAKE_HIPE_FLAGS}")
+else()
+  set(CMAKE_HIP_FLAGS "--expt-relaxed-constexpr")
+endif()
+enable_language(HIP)
+
+set(HIP_FOUND TRUE)
+set(TILEDARRAY_HAS_HIP 1 CACHE BOOL "Whether TiledArray has HIP support")
+set(TILEDARRAY_CHECK_HIP_ERROR 1 CACHE BOOL "Whether TiledArray will check HIP errors")
+
+# find HIP components
+find_package(hipblas REQUIRED)
+
+foreach (library hipblas)
+  if (NOT TARGET roc::${library})
+    message(FATAL_ERROR "roc::${library} not found")
+  endif()
+endforeach()
+
+##
+## Umpire
+##
+include(external/umpire.cmake)
+
+##
+## LibreTT
+##
+include(external/librett.cmake)

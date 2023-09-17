@@ -329,7 +329,7 @@ Support for execution on CUDA-enabled hardware is controlled by the following va
 
 * `ENABLE_CUDA`  -- Set to `ON` to turn on CUDA support. [Default=OFF].
 * `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers used to be notorious for only being able to use specific C++ host compilers, but support for more recent C++ host compilers has improved. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
-* `ENABLE_CUDA_ERROR_CHECK` -- Set to `ON` to turn on assertions for successful completion of calls to CUDA runtime and libraries. [Default=OFF].
+* `ENABLE_HIP`  -- Set to `ON` to turn on HIP support. [Default=OFF].
 * `LIBRETT_INSTALL_DIR` -- the installation prefix of the pre-installed LibreTT library. This should not be normally needed; it is strongly recommended to let TiledArray build and install LibreTT.
 * `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library. This should not be normally needed; it is strongly recommended to let TiledArray build and install Umpire.
 
