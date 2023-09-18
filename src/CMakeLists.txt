@@ -208,10 +208,8 @@ TiledArray/util/vector.h
 )
 
 if(CUDA_FOUND)
-
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
-     TiledArray/external/librett.h
      TiledArray/cuda/cublas.h
      TiledArray/cuda/btas_cublas.h
      TiledArray/cuda/btas_um_tensor.h
@@ -225,8 +223,17 @@ if(CUDA_FOUND)
      TiledArray/cuda/thrust.h
      TiledArray/cuda/allocators.h
      TiledArray/cuda/um_storage.h)
-
 endif(CUDA_FOUND)
+
+if(HIP_FOUND)
+  list(APPEND TILEDARRAY_HEADER_FILES
+          TiledArray/external/hip.h)
+endif(CUDA_FOUND)
+
+if(HIP_FOUND OR CUDA_FOUND)
+  list(APPEND TILEDARRAY_HEADER_FILES
+          TiledArray/external/librett.h)
+endif()
 
 set(TILEDARRAY_SOURCE_FILES
 TiledArray/tiledarray.cpp
@@ -275,9 +282,18 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray depends on
-  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvToolsExt TiledArray_LIBRETT)
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvToolsExt)
 
 endif(CUDA_FOUND)
+
+if (HIP_FOUND)
+  list(APPEND _TILEDARRAY_DEPENDENCIES hip::host)
+endif()
+
+# LibreTT needed for either CUDA or HIP
+if(CUDA_FOUND OR HIP_FOUND)
+  list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_LIBRETT)
+endif()
 
 if( TARGET TiledArray_SCALAPACK )
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)
