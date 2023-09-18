@@ -128,6 +128,14 @@ inline World split(const World& w, int color, int key = 0) {
   return std::move(comm);
 }
 
+namespace detail {
+inline std::pair<int, int> mpi_local_rank_size(World& world) {
+  auto host_comm =
+      world.mpi.comm().Split_type(SafeMPI::Intracomm::SHARED_SPLIT_TYPE, 0);
+  return std::make_pair(host_comm.Get_rank(), host_comm.Get_size());
+}
+}  // namespace detail
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_EXTERNAL_MADNESS_H__INCLUDED
