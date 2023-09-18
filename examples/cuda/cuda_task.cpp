@@ -2,8 +2,8 @@
 // Created by Chong Peng on 11/14/18.
 //
 
-#include <TiledArray/cuda/btas_um_tensor.h>
-#include <TiledArray/cuda/cuda_task_fn.h>
+#include <TiledArray/device/btas_um_tensor.h>
+#include <TiledArray/device/device_task_fn.h>
 #include <tiledarray.h>
 
 using value_type = double;
@@ -28,8 +28,8 @@ void verify(const tile_type& tile, value_type value, std::size_t index) {
 
 tile_type scale(const tile_type& arg, value_type a, const cudaStream_t* stream,
                 std::size_t index) {
-  CudaSafeCall(
-      cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id()));
+  DeviceSafeCall(device::setDevice(
+      TiledArray::deviceEnv::instance()->current_device_id()));
   /// make result Tensor
   using Storage = typename tile_type::tensor_type::storage_type;
   Storage result_storage;
@@ -81,7 +81,7 @@ void process_task(madness::World* world,
     tile_type (*scale_fn)(const tile_type&, double, const cudaStream_t*,
                           std::size_t) = &::scale;
 
-    madness::Future<tile_type> scale_future = madness::add_cuda_task(
+    madness::Future<tile_type> scale_future = madness::add_device_task(
         *world, ::scale, tensor, scale_factor, &stream, ntask * iter + i);
 
     /// this should start until scale_taskfn is finished
@@ -98,7 +98,7 @@ int try_main(int argc, char** argv) {
   std::vector<cudaStream_t> streams(n_stream);
   for (auto& stream : streams) {
     // create the streams
-    CudaSafeCall(cudaStreamCreate(&stream));
+    DeviceSafeCall(cudaStreamCreate(&stream));
     //    std::cout << "stream: " << stream << "\n";
   }
 

@@ -123,12 +123,12 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
  private:
   /// Task function for evaluating tiles
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// \param i The tile index
   /// \param left The left-hand tile
   /// \param right The right-hand tile
   template <typename L, typename R, typename U = value_type>
-  std::enable_if_t<!detail::is_cuda_tile_v<U>, void> eval_tile(
+  std::enable_if_t<!detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, L left, R right) {
     DistEvalImpl_::set_tile(i, op_(left, right));
   }
@@ -137,11 +137,11 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \param left The left-hand tile
   /// \param right The right-hand tile
   template <typename L, typename R, typename U = value_type>
-  std::enable_if_t<detail::is_cuda_tile_v<U>, void> eval_tile(
+  std::enable_if_t<detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, L left, R right) {
     // TODO avoid copy the Op object
     auto result_tile =
-        madness::add_cuda_task(DistEvalImpl_::world(), op_, left, right);
+        madness::add_device_task(DistEvalImpl_::world(), op_, left, right);
     DistEvalImpl_::set_tile(i, result_tile);
   }
 #else

@@ -80,6 +80,17 @@
 /* Define if TiledArray configured with HIP support */
 #cmakedefine TILEDARRAY_HAS_HIP @TILEDARRAY_HAS_HIP@
 
+// Umpire and LibreTT limited to 1 device runtime at a time, so is TA
+#if defined(TILEDARRAY_HAS_HIP)
+#  define TILEDARRAY_HAS_DEVICE 1
+#  define TILEDARRAY_DEVICE_RUNTIME HIP
+#  define TILEDARRAY_DEVICE_RUNTIME_STR "HIP"
+#elif defined(TILEDARRAY_HAS_CUDA)
+#  define TILEDARRAY_HAS_DEVICE 1
+#  define TILEDARRAY_DEVICE_RUNTIME CUDA
+#  define TILEDARRAY_DEVICE_RUNTIME_STR "CUDA"
+#endif
+
 /* Is TA::Tensor memory profiling enabled? */
 #cmakedefine TA_TENSOR_MEM_PROFILE 1
 

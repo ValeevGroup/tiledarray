@@ -22,29 +22,29 @@
  */
 
 
-#include <TiledArray/cuda/allocators.h>
-#include <TiledArray/cuda/thrust.h>
+#include <TiledArray/device/allocators.h>
+#include <TiledArray/device/thrust.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
 namespace thrust {
 template<>
-void resize<double,TiledArray::cuda_um_allocator<double>>(
-    thrust::device_vector<double, TiledArray::cuda_um_allocator<double>>& dev_vec,
+void resize<double,TiledArray::device_um_allocator<double>>(
+    thrust::device_vector<double, TiledArray::device_um_allocator<double>>& dev_vec,
     size_t size) {
     dev_vec.resize(size);
 }
 template<>
-void resize<float,TiledArray::cuda_um_allocator<float>>(
-    thrust::device_vector<float, TiledArray::cuda_um_allocator<float>>& dev_vec,
+void resize<float,TiledArray::device_um_allocator<float>>(
+    thrust::device_vector<float, TiledArray::device_um_allocator<float>>& dev_vec,
     size_t size) {
     dev_vec.resize(size);
 }
 }
 
 namespace thrust {
-template class device_vector<double, TiledArray::cuda_um_allocator<double>>;
-template class device_vector<float, TiledArray::cuda_um_allocator<float>>;
+template class device_vector<double, TiledArray::device_um_allocator<double>>;
+template class device_vector<float, TiledArray::device_um_allocator<float>>;
 }
 
 #endif //TILEDARRAY_HAS_CUDA

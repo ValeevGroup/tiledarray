@@ -17,7 +17,7 @@
  *
  */
 
-#include <TiledArray/cuda/btas_um_tensor.h>
+#include <TiledArray/device/btas_um_tensor.h>
 #include <TiledArray/version.h>
 #include <tiledarray.h>
 #include <iostream>
@@ -186,7 +186,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
                          std::pow(n_uocc, 4) / std::pow(1024., 3);
 
   using CUDATile =
-      btas::Tensor<T, TA::Range, TiledArray::cuda_um_btas_varray<T>>;
+      btas::Tensor<T, TA::Range, TiledArray::device_um_btas_varray<T>>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
   // Construct tensors

@@ -21,8 +21,8 @@
  *
  */
 
-#include <TiledArray/cuda/kernel/mult_kernel.h>
-#include <TiledArray/cuda/kernel/mult_kernel_impl.h>
+#include <TiledArray/device/kernel/mult_kernel.h>
+#include <TiledArray/device/kernel/mult_kernel_impl.h>
 
 
 #ifdef TILEDARRAY_HAS_CUDA

@@ -81,13 +81,14 @@ typedef Tensor<long> TensorL;
 typedef Tensor<std::complex<double>> TensorZ;
 typedef Tensor<std::complex<float>> TensorC;
 
-// CUDA tensor
-#ifdef TILEDARRAY_HAS_CUDA
-
-class cudaEnv;
+#ifdef TILEDARRAY_HAS_DEVICE
+namespace device {
+class Env;
+}
+using deviceEnv = device::Env;
 
 template <class T, class StaticLock, typename UmpireAllocatorAccessor>
-class cuda_allocator_impl;
+class umpire_based_allocator;
 
 template <typename T, typename A = std::allocator<T>>
 class default_init_allocator;
@@ -100,32 +101,32 @@ template <typename Tag = void>
 class MutexLock;
 }  // namespace detail
 
-/// pooled thread-safe CUDA UM allocator
+/// pooled thread-safe unified memory (UM) allocator for device computing
 template <typename T>
-using cuda_um_allocator =
-    default_init_allocator<T, cuda_allocator_impl<T, detail::MutexLock<cudaEnv>,
-                                                  detail::get_um_allocator>>;
+using device_um_allocator = default_init_allocator<
+    T, umpire_based_allocator<T, detail::MutexLock<deviceEnv>,
+                              detail::get_um_allocator>>;
 
-/// pooled thread-safe CUDA-based pinned host memory allocator
+/// pooled thread-safe pinned host memory allocator for device computing
 template <typename T>
-using cuda_pinned_allocator =
-    default_init_allocator<T,
-                           cuda_allocator_impl<T, detail::MutexLock<cudaEnv>,
-                                               detail::get_pinned_allocator>>;
+using device_pinned_allocator = default_init_allocator<
+    T, umpire_based_allocator<T, detail::MutexLock<deviceEnv>,
+                              detail::get_pinned_allocator>>;
 
-/// \brief a vector that lives in CUDA Unified Memory, with most operations
+/// \brief a vector that lives in UM, with most operations
 /// implemented on the CPU
 template <typename T>
-using cuda_um_btas_varray = ::btas::varray<T, TiledArray::cuda_um_allocator<T>>;
+using device_um_btas_varray =
+    ::btas::varray<T, TiledArray::device_um_allocator<T>>;
 
 /**
- * btas::Tensor with UM storage cuda_um_btas_varray
+ * btas::Tensor with UM storage device_um_btas_varray
  */
 template <typename T, typename Range = TiledArray::Range>
 using btasUMTensorVarray =
-    ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
+    ::btas::Tensor<T, Range, TiledArray::device_um_btas_varray<T>>;
 
-#endif
+#endif  // TILEDARRAY_HAS_DEVICE
 
 template <typename>
 class Tile;

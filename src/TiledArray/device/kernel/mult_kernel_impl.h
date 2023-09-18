@@ -34,7 +34,7 @@ namespace TiledArray {
 template <typename T>
 void mult_to_cuda_kernel_impl(T *result, const T *arg, std::size_t n,
                               cudaStream_t stream, int device_id) {
-  CudaSafeCall(cudaSetDevice(device_id));
+  DeviceSafeCall(device::setDevice(device_id));
 
   thrust::multiplies<T> mul_op;
   thrust::transform(
@@ -47,7 +47,7 @@ void mult_to_cuda_kernel_impl(T *result, const T *arg, std::size_t n,
 template <typename T>
 void mult_cuda_kernel_impl(T *result, const T *arg1, const T *arg2,
                            std::size_t n, cudaStream_t stream, int device_id) {
-  CudaSafeCall(cudaSetDevice(device_id));
+  DeviceSafeCall(device::setDevice(device_id));
 
   thrust::multiplies<T> mul_op;
   thrust::transform(

@@ -23,7 +23,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/cuda/btas_um_tensor.h>
+#include <TiledArray/device/btas_um_tensor.h>
 #include <tiledarray.h>
 
 #include <iostream>

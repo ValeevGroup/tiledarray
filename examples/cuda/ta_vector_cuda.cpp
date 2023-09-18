@@ -24,8 +24,8 @@
 // clang-format off
 
 #include <tiledarray.h>
-#include <TiledArray/cuda/btas_um_tensor.h>
-#include "TiledArray/cuda/cpu_cuda_vector.h"
+#include <TiledArray/device/btas_um_tensor.h>
+#include "TiledArray/device/cpu_cuda_vector.h"
 #include <TiledArray/external/btas.h>
 // clang-format on
 
@@ -316,13 +316,13 @@ int try_main(int argc, char **argv) {
             << runtimeVersion << std::endl;
 
   {  // print device properties
-    int num_cuda_devices = TA::cudaEnv::instance()->num_cuda_devices();
+    int num_cuda_devices = TA::deviceEnv::instance()->num_cuda_devices();
 
     if (num_cuda_devices <= 0) {
       throw std::runtime_error("No CUDA-Enabled GPUs Found!\n");
     }
 
-    int cuda_device_id = TA::cudaEnv::instance()->current_cuda_device_id();
+    int cuda_device_id = TA::deviceEnv::instance()->current_device_id();
 
     int mpi_size = world.size();
     int mpi_rank = world.rank();
@@ -349,9 +349,9 @@ int try_main(int argc, char **argv) {
         error = cudaDeviceGetAttribute(
             &result, cudaDevAttrConcurrentManagedAccess, cuda_device_id);
         std::cout << "  attrConcurrentManagedAccess = " << result << std::endl;
-        error = cudaSetDevice(cuda_device_id);
+        error = device::setDevice(cuda_device_id);
         if (error != cudaSuccess) {
-          std::cout << "error(cudaSetDevice) = " << error << std::endl;
+          std::cout << "error(device::setDevice) = " << error << std::endl;
         }
         size_t free_mem, total_mem;
         error = cudaMemGetInfo(&free_mem, &total_mem);

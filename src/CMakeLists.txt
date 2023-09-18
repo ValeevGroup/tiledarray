@@ -207,33 +207,29 @@ TiledArray/util/time.h
 TiledArray/util/vector.h
 )
 
+if(HIP_FOUND OR CUDA_FOUND)
+  list(APPEND TILEDARRAY_HEADER_FILES
+          TiledArray/external/device.h
+          TiledArray/external/librett.h)
+endif()
+
 if(CUDA_FOUND)
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
-     TiledArray/cuda/cublas.h
-     TiledArray/cuda/btas_cublas.h
-     TiledArray/cuda/btas_um_tensor.h
-     TiledArray/cuda/cpu_cuda_vector.h
-     TiledArray/cuda/cuda_task_fn.h
-     TiledArray/cuda/kernel/mult_kernel.h
-     TiledArray/cuda/kernel/mult_kernel_impl.h
-     TiledArray/cuda/kernel/reduce_kernel.h
-     TiledArray/cuda/kernel/reduce_kernel_impl.h
-     TiledArray/cuda/platform.h
-     TiledArray/cuda/thrust.h
-     TiledArray/cuda/allocators.h
-     TiledArray/cuda/um_storage.h)
+     TiledArray/device/cublas.h
+     TiledArray/device/btas_cublas.h
+     TiledArray/device/btas_um_tensor.h
+     TiledArray/device/cpu_cuda_vector.h
+     TiledArray/device/device_task_fn.h
+     TiledArray/device/kernel/mult_kernel.h
+     TiledArray/device/kernel/mult_kernel_impl.h
+     TiledArray/device/kernel/reduce_kernel.h
+     TiledArray/device/kernel/reduce_kernel_impl.h
+     TiledArray/device/platform.h
+     TiledArray/device/thrust.h
+     TiledArray/device/allocators.h
+     TiledArray/device/um_storage.h)
 endif(CUDA_FOUND)
-
-if(HIP_FOUND)
-  list(APPEND TILEDARRAY_HEADER_FILES
-          TiledArray/external/hip.h)
-endif(CUDA_FOUND)
-
-if(HIP_FOUND OR CUDA_FOUND)
-  list(APPEND TILEDARRAY_HEADER_FILES
-          TiledArray/external/librett.h)
-endif()
 
 set(TILEDARRAY_SOURCE_FILES
 TiledArray/tiledarray.cpp
@@ -263,11 +259,11 @@ set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers
 if(CUDA_FOUND)
 
   set(TILEDARRAY_CUDA_SOURCE_FILES
-          TiledArray/cuda/btas_um_tensor.cpp
-          TiledArray/cuda/cpu_cuda_vector.cu
-          TiledArray/cuda/kernel/mult_kernel.cu
-          TiledArray/cuda/kernel/reduce_kernel.cu
-          TiledArray/cuda/um_storage.cu)
+          TiledArray/device/btas_um_tensor.cpp
+          TiledArray/device/cpu_cuda_vector.cu
+          TiledArray/device/kernel/mult_kernel.cu
+          TiledArray/device/kernel/reduce_kernel.cu
+          TiledArray/device/um_storage.cu)
 
   list(APPEND TILEDARRAY_SOURCE_FILES "${TILEDARRAY_CUDA_SOURCE_FILES}")
 
@@ -277,7 +273,7 @@ if(CUDA_FOUND)
           INCLUDE_DIRECTORIES "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}")
   endforeach()
 
-  set_source_files_properties(TiledArray/cuda/btas_um_tensor.cpp
+  set_source_files_properties(TiledArray/device/btas_um_tensor.cpp
           PROPERTIES
           LANGUAGE CUDA)
 

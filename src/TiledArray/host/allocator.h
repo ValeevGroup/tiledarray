@@ -39,9 +39,9 @@ namespace TiledArray {
 /// pooled, thread-safe allocator for host memory
 template <class T>
 class host_allocator_impl
-    : public umpire_allocator_impl<T, detail::MutexLock<hostEnv>> {
+    : public umpire_based_allocator_impl<T, detail::MutexLock<hostEnv>> {
  public:
-  using base_type = umpire_allocator_impl<T, detail::MutexLock<hostEnv>>;
+  using base_type = umpire_based_allocator_impl<T, detail::MutexLock<hostEnv>>;
   using typename base_type::const_pointer;
   using typename base_type::const_reference;
   using typename base_type::pointer;
@@ -53,9 +53,8 @@ class host_allocator_impl
 
   template <class U>
   host_allocator_impl(const host_allocator_impl<U>& rhs) noexcept
-      : base_type(static_cast<
-                  const umpire_allocator_impl<U, detail::MutexLock<hostEnv>>&>(
-            rhs)) {}
+      : base_type(static_cast<const umpire_based_allocator_impl<
+                      U, detail::MutexLock<hostEnv>>&>(rhs)) {}
 
   template <typename T1, typename T2>
   friend bool operator==(const host_allocator_impl<T1>& lhs,

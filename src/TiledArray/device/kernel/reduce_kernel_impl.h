@@ -26,7 +26,7 @@
 
 #include <limits>
 
-#include <TiledArray/external/cuda.h>
+#include <TiledArray/external/device.h>
 #include <TiledArray/type_traits.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
@@ -57,7 +57,7 @@ struct absolute_value
 template <typename T, typename ReduceOp>
 T reduce_cuda_kernel_impl(ReduceOp &&op, const T *arg, std::size_t n, T init,
                           cudaStream_t stream, int device_id) {
-  CudaSafeCall(cudaSetDevice(device_id));
+  DeviceSafeCall(device::setDevice(device_id));
 
   auto arg_p = thrust::device_pointer_cast(arg);
 
@@ -107,7 +107,7 @@ TiledArray::detail::scalar_t<T> absmax_reduce_cuda_kernel_impl(
   thrust::maximum<TR> max_op;
   detail::absolute_value<T> abs_op;
 
-  CudaSafeCall(cudaSetDevice(device_id));
+  DeviceSafeCall(device::setDevice(device_id));
 
   auto arg_p = thrust::device_pointer_cast(arg);
 
@@ -125,7 +125,7 @@ TiledArray::detail::scalar_t<T> absmin_reduce_cuda_kernel_impl(
   thrust::minimum<TR> min_op;
   detail::absolute_value<T> abs_op;
 
-  CudaSafeCall(cudaSetDevice(device_id));
+  DeviceSafeCall(device::setDevice(device_id));
 
   auto arg_p = thrust::device_pointer_cast(arg);
 

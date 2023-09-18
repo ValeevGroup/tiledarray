@@ -21,8 +21,8 @@
  *
  */
 
-#include <TiledArray/cuda/kernel/reduce_kernel.h>
-#include <TiledArray/cuda/kernel/reduce_kernel_impl.h>
+#include <TiledArray/device/kernel/reduce_kernel.h>
+#include <TiledArray/device/kernel/reduce_kernel_impl.h>
 
 
 #ifdef TILEDARRAY_HAS_CUDA

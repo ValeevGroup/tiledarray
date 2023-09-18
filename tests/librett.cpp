@@ -22,9 +22,9 @@
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
-#include <TiledArray/cuda/btas_um_tensor.h>
+#include <TiledArray/device/btas_um_tensor.h>
 #include "unit_test_config.h"
 
 struct LibreTTFixture {
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem) {
   TiledArray::permutation_to_col_major(perm);
 
   librettHandle plan;
-  auto stream = TiledArray::cudaEnv::instance()->cuda_stream(0);
+  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   status =
@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
   cudaMemcpy(a_device, a_host, A * B * sizeof(int), cudaMemcpyHostToDevice);
 
   librettHandle plan;
-  auto stream = TiledArray::cudaEnv::instance()->cuda_stream(0);
+  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
   // b(j,i,k) = a(i,j,k)
 
   librettHandle plan;
-  auto stream = TiledArray::cudaEnv::instance()->cuda_stream(0);
+  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent3{int(A), int(B), int(C)};
@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
   // b(j,i,k) = a(i,j,k)
 
   librettHandle plan;
-  auto stream = TiledArray::cudaEnv::instance()->cuda_stream(0);
+  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent({A, B, C});
@@ -297,7 +297,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
   }
 
   librettHandle plan;
-  auto stream = TiledArray::cudaEnv::instance()->cuda_stream(0);
+  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent({A, A});
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
   }
 
   librettHandle plan;
-  auto stream = TiledArray::cudaEnv::instance()->cuda_stream(0);
+  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -397,7 +397,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
   }
 
   librettHandle plan;
-  auto stream = TiledArray::cudaEnv::instance()->cuda_stream(0);
+  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   // b(k,i,j) = a(i,j,k)

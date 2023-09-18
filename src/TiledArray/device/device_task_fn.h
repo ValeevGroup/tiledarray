@@ -7,23 +7,22 @@
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
-#include <TiledArray/external/cuda.h>
+#include <TiledArray/external/device.h>
 #include <TiledArray/util/time.h>
-#include <cuda_runtime.h>
 #include <madness/world/taskfn.h>
 
 namespace TiledArray {
 namespace detail {
 
 template <int64_t CallabackId>
-std::atomic<int64_t>& cuda_callback_duration_ns() {
+std::atomic<int64_t>& device_callback_duration_ns() {
   static std::atomic<int64_t> value{0};
   return value;
 }
 
-inline std::atomic<int64_t>& cuda_taskfn_callback_duration_ns() {
+inline std::atomic<int64_t>& device_taskfn_callback_duration_ns() {
   static std::atomic<int64_t> value{0};
   return value;
 }
@@ -34,8 +33,8 @@ inline std::atomic<int64_t>& cuda_taskfn_callback_duration_ns() {
 namespace madness {
 
 ///
-/// cudaTaskFn class
-/// represent a task that calls an async cuda kernel
+/// deviceTaskFn class
+/// represent a task that calls an async device kernel
 /// the task must call synchronize_stream function to tell which stream it
 /// used
 ///
@@ -44,55 +43,55 @@ template <typename fnT, typename arg1T = void, typename arg2T = void,
           typename arg3T = void, typename arg4T = void, typename arg5T = void,
           typename arg6T = void, typename arg7T = void, typename arg8T = void,
           typename arg9T = void>
-struct cudaTaskFn : public TaskInterface {
-  static_assert(not(std::is_const<arg1T>::value ||
-                    std::is_reference<arg1T>::value),
-                "improper instantiation of cudaTaskFn, arg1T cannot be a const "
-                "or reference type");
-  static_assert(not(std::is_const<arg2T>::value ||
-                    std::is_reference<arg2T>::value),
-                "improper instantiation of cudaTaskFn, arg2T cannot be a const "
-                "or reference type");
-  static_assert(not(std::is_const<arg3T>::value ||
-                    std::is_reference<arg3T>::value),
-                "improper instantiation of cudaTaskFn, arg3T cannot be a const "
-                "or reference type");
-  static_assert(not(std::is_const<arg4T>::value ||
-                    std::is_reference<arg4T>::value),
-                "improper instantiation of cudaTaskFn, arg4T cannot be a const "
-                "or reference type");
-  static_assert(not(std::is_const<arg5T>::value ||
-                    std::is_reference<arg5T>::value),
-                "improper instantiation of cudaTaskFn, arg5T cannot be a const "
-                "or reference type");
-  static_assert(not(std::is_const<arg6T>::value ||
-                    std::is_reference<arg6T>::value),
-                "improper instantiation of cudaTaskFn, arg6T cannot be a const "
-                "or reference type");
-  static_assert(not(std::is_const<arg7T>::value ||
-                    std::is_reference<arg7T>::value),
-                "improper instantiation of cudaTaskFn, arg7T cannot be a const "
-                "or reference type");
-  static_assert(not(std::is_const<arg8T>::value ||
-                    std::is_reference<arg8T>::value),
-                "improper instantiation of cudaTaskFn, arg8T cannot be a const "
-                "or reference type");
-  static_assert(not(std::is_const<arg9T>::value ||
-                    std::is_reference<arg9T>::value),
-                "improper instantiation of cudaTaskFn, arg9T cannot be a const "
-                "or reference type");
+struct deviceTaskFn : public TaskInterface {
+  static_assert(
+      not(std::is_const<arg1T>::value || std::is_reference<arg1T>::value),
+      "improper instantiation of deviceTaskFn, arg1T cannot be a const "
+      "or reference type");
+  static_assert(
+      not(std::is_const<arg2T>::value || std::is_reference<arg2T>::value),
+      "improper instantiation of deviceTaskFn, arg2T cannot be a const "
+      "or reference type");
+  static_assert(
+      not(std::is_const<arg3T>::value || std::is_reference<arg3T>::value),
+      "improper instantiation of deviceTaskFn, arg3T cannot be a const "
+      "or reference type");
+  static_assert(
+      not(std::is_const<arg4T>::value || std::is_reference<arg4T>::value),
+      "improper instantiation of deviceTaskFn, arg4T cannot be a const "
+      "or reference type");
+  static_assert(
+      not(std::is_const<arg5T>::value || std::is_reference<arg5T>::value),
+      "improper instantiation of deviceTaskFn, arg5T cannot be a const "
+      "or reference type");
+  static_assert(
+      not(std::is_const<arg6T>::value || std::is_reference<arg6T>::value),
+      "improper instantiation of deviceTaskFn, arg6T cannot be a const "
+      "or reference type");
+  static_assert(
+      not(std::is_const<arg7T>::value || std::is_reference<arg7T>::value),
+      "improper instantiation of deviceTaskFn, arg7T cannot be a const "
+      "or reference type");
+  static_assert(
+      not(std::is_const<arg8T>::value || std::is_reference<arg8T>::value),
+      "improper instantiation of deviceTaskFn, arg8T cannot be a const "
+      "or reference type");
+  static_assert(
+      not(std::is_const<arg9T>::value || std::is_reference<arg9T>::value),
+      "improper instantiation of deviceTaskFn, arg9T cannot be a const "
+      "or reference type");
 
  private:
   /// This class type
-  typedef cudaTaskFn<fnT, arg1T, arg2T, arg3T, arg4T, arg5T, arg6T, arg7T,
-                     arg8T, arg9T>
-      cudaTaskFn_;
+  typedef deviceTaskFn<fnT, arg1T, arg2T, arg3T, arg4T, arg5T, arg6T, arg7T,
+                       arg8T, arg9T>
+      deviceTaskFn_;
 
   friend class AsyncTaskInterface;
 
-  /// internal Task structure that wraps the Async cuda function
+  /// internal Task structure that wraps the Async device function
   struct AsyncTaskInterface : public madness::TaskInterface {
-    AsyncTaskInterface(cudaTaskFn_* task, int ndepend = 0,
+    AsyncTaskInterface(deviceTaskFn_* task, int ndepend = 0,
                        const TaskAttributes attr = TaskAttributes())
         : TaskInterface(ndepend, attr), task_(task) {}
 
@@ -105,7 +104,7 @@ struct cudaTaskFn : public TaskInterface {
       task_->run_async();
 
       // get the stream used by async function
-      auto stream = TiledArray::tls_cudastream_accessor();
+      auto stream = TiledArray::device::tls_stream_accessor();
 
       //      TA_ASSERT(stream != nullptr);
 
@@ -113,32 +112,33 @@ struct cudaTaskFn : public TaskInterface {
       if (stream == nullptr) {
         task_->notify();
       } else {
-        // TODO should we use cuda callback or cuda events??
-        // insert cuda callback
-        cudaLaunchHostFunc(*stream, cuda_callback, task_);
+        // TODO should we use device callback or device events??
+        // insert device callback
+        TiledArray::device::launchHostFunc(*stream, device_callback, task_);
         // reset stream to nullptr
-        TiledArray::synchronize_stream(nullptr);
+        TiledArray::device::synchronize_stream(nullptr);
       }
     }
 
    private:
-    static void CUDART_CB cuda_callback(void* userData) {
+    static void DEVICERT_CB device_callback(void* userData) {
       TA_ASSERT(!madness::is_madness_thread());
       const auto t0 = TiledArray::now();
       // convert void * to AsyncTaskInterface*
-      auto* callback = static_cast<cudaTaskFn_*>(userData);
+      auto* callback = static_cast<deviceTaskFn_*>(userData);
       //      std::stringstream address;
       //      address << (void*) callback;
-      //      std::string message = "callback on cudaTaskFn: " + address.str() +
+      //      std::string message = "callback on deviceTaskFn: " + address.str()
+      //      +
       //        '\n'; std::cout << message;
       callback->notify();
       const auto t1 = TiledArray::now();
 
-      TiledArray::detail::cuda_taskfn_callback_duration_ns() +=
+      TiledArray::detail::device_taskfn_callback_duration_ns() +=
           TiledArray::duration_in_ns(t0, t1);
     }
 
-    cudaTaskFn_* task_;
+    deviceTaskFn_* task_;
   };
 
  public:
@@ -160,7 +160,7 @@ struct cudaTaskFn : public TaskInterface {
   futureT result_;             ///< The task Future result
   const functionT func_;       ///< The task function
   TaskInterface* async_task_;  ///< The internal AsyncTaskInterface that wraps
-  ///< the async cuda function
+  ///< the async device function
   futureT async_result_;  ///< the future returned from the async task
 
   // If the value of the argument is known at the time the
@@ -258,7 +258,7 @@ struct cudaTaskFn : public TaskInterface {
 
   /// Check dependencies and register callbacks where necessary
   void check_dependencies() {
-    this->inc();  // the current cudaTaskFn depends on the internal
+    this->inc();  // the current deviceTaskFn depends on the internal
     // AsyncTaskInterface, dependency = 1
     check_dependency(arg1_);
     check_dependency(arg2_);
@@ -272,13 +272,14 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   // Copies are not allowed.
-  cudaTaskFn(const cudaTaskFn_&);
-  cudaTaskFn_ operator=(cudaTaskFn_&);
+  deviceTaskFn(const deviceTaskFn_&);
+  deviceTaskFn_ operator=(deviceTaskFn_&);
 
  public:
 #if MADNESS_TASKQ_VARIADICS
 
-  cudaTaskFn(const futureT& result, functionT func, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -298,8 +299,8 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   template <typename a1T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -319,8 +320,8 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   template <typename a1T, typename a2T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -340,8 +341,8 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   template <typename a1T, typename a2T, typename a3T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
-             a3T&& a3, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
+               a3T&& a3, const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -361,8 +362,8 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   template <typename a1T, typename a2T, typename a3T, typename a4T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
-             a3T&& a3, a4T&& a4, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
+               a3T&& a3, a4T&& a4, const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -383,8 +384,8 @@ struct cudaTaskFn : public TaskInterface {
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
-             a3T&& a3, a4T&& a4, a5T&& a5, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
+               a3T&& a3, a4T&& a4, a5T&& a5, const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -405,8 +406,9 @@ struct cudaTaskFn : public TaskInterface {
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T, typename a6T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
-             a3T&& a3, a4T&& a4, a5T&& a5, a6T&& a6, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
+               a3T&& a3, a4T&& a4, a5T&& a5, a6T&& a6,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -427,9 +429,9 @@ struct cudaTaskFn : public TaskInterface {
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T, typename a6T, typename a7T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
-             a3T&& a3, a4T&& a4, a5T&& a5, a6T&& a6, a7T&& a7,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
+               a3T&& a3, a4T&& a4, a5T&& a5, a6T&& a6, a7T&& a7,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -450,9 +452,9 @@ struct cudaTaskFn : public TaskInterface {
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T, typename a6T, typename a7T, typename a8T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
-             a3T&& a3, a4T&& a4, a5T&& a5, a6T&& a6, a7T&& a7, a8T&& a8,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
+               a3T&& a3, a4T&& a4, a5T&& a5, a6T&& a6, a7T&& a7, a8T&& a8,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -474,9 +476,9 @@ struct cudaTaskFn : public TaskInterface {
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T, typename a6T, typename a7T, typename a8T,
             typename a9T>
-  cudaTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
-             a3T&& a3, a4T&& a4, a5T&& a5, a6T&& a6, a7T&& a7, a8T&& a8,
-             a9T&& a9, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, a1T&& a1, a2T&& a2,
+               a3T&& a3, a4T&& a4, a5T&& a5, a6T&& a6, a7T&& a7, a8T&& a8,
+               a9T&& a9, const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -495,8 +497,9 @@ struct cudaTaskFn : public TaskInterface {
     check_dependencies();
   }
 
-  cudaTaskFn(const futureT& result, functionT func, const TaskAttributes& attr,
-             archive::BufferInputArchive& input_arch)
+  deviceTaskFn(const futureT& result, functionT func,
+               const TaskAttributes& attr,
+               archive::BufferInputArchive& input_arch)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -514,7 +517,8 @@ struct cudaTaskFn : public TaskInterface {
     check_dependencies();
   }
 #else   // MADNESS_TASKQ_VARIADICS
-  cudaTaskFn(const futureT& result, functionT func, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -534,8 +538,8 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   template <typename a1T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -555,8 +559,8 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   template <typename a1T, typename a2T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const a2T& a2, const TaskAttributes& attr = TaskAttributes())
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const a2T& a2, const TaskAttributes& attr = TaskAttributes())
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -576,8 +580,8 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   template <typename a1T, typename a2T, typename a3T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const a2T& a2, const a3T& a3, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const a2T& a2, const a3T& a3, const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -597,9 +601,9 @@ struct cudaTaskFn : public TaskInterface {
   }
 
   template <typename a1T, typename a2T, typename a3T, typename a4T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const a2T& a2, const a3T& a3, const a4T& a4,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const a2T& a2, const a3T& a3, const a4T& a4,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -620,9 +624,9 @@ struct cudaTaskFn : public TaskInterface {
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -643,9 +647,9 @@ struct cudaTaskFn : public TaskInterface {
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T, typename a6T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
-             const a6T& a6, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
+               const a6T& a6, const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -666,9 +670,9 @@ struct cudaTaskFn : public TaskInterface {
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T, typename a6T, typename a7T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
-             const a6T& a6, const a7T& a7, const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
+               const a6T& a6, const a7T& a7, const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -689,10 +693,10 @@ struct cudaTaskFn : public TaskInterface {
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T, typename a6T, typename a7T, typename a8T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
-             const a6T& a6, const a7T& a7, const a8T& a8,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
+               const a6T& a6, const a7T& a7, const a8T& a8,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -714,10 +718,10 @@ struct cudaTaskFn : public TaskInterface {
   template <typename a1T, typename a2T, typename a3T, typename a4T,
             typename a5T, typename a6T, typename a7T, typename a8T,
             typename a9T>
-  cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
-             const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
-             const a6T& a6, const a7T& a7, const a8T& a8, const a9T& a9,
-             const TaskAttributes& attr)
+  deviceTaskFn(const futureT& result, functionT func, const a1T& a1,
+               const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
+               const a6T& a6, const a7T& a7, const a8T& a8, const a9T& a9,
+               const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -736,8 +740,9 @@ struct cudaTaskFn : public TaskInterface {
     check_dependencies();
   }
 
-  cudaTaskFn(const futureT& result, functionT func, const TaskAttributes& attr,
-             archive::BufferInputArchive& input_arch)
+  deviceTaskFn(const futureT& result, functionT func,
+               const TaskAttributes& attr,
+               archive::BufferInputArchive& input_arch)
       : TaskInterface(attr),
         result_(result),
         func_(func),
@@ -757,7 +762,7 @@ struct cudaTaskFn : public TaskInterface {
 #endif  // MADNESS_TASKQ_VARIADICS
 
   // no need to delete async_task_, as it will be deleted by the TaskQueue
-  virtual ~cudaTaskFn() = default;
+  virtual ~deviceTaskFn() = default;
 
   const futureT& result() const { return result_; }
 
@@ -770,16 +775,16 @@ struct cudaTaskFn : public TaskInterface {
   }
 #else
  protected:
-  /// when this cudaTaskFn gets run, it means the AsyncTaskInterface is done
+  /// when this deviceTaskFn gets run, it means the AsyncTaskInterface is done
   /// set the result with async_result_, which is finished
   void run(const TaskThreadEnv& env) override {
     result_.set(std::move(async_result_));
   }
 #endif  // HAVE_INTEL_TBB
 
-};  // class cudaTaskFn
+};  // class deviceTaskFn
 
-/// add a cudaTaskFn object to World
+/// add a deviceTaskFn object to World
 /// \tparam fnT A function pointer or functor
 /// \tparam a1T Type of argument 1.
 /// \tparam a2T Type of argument 2.
@@ -794,15 +799,15 @@ struct cudaTaskFn : public TaskInterface {
 /// \return Description needed.
 template <typename fnT, typename a1T, typename a2T, typename a3T, typename a4T,
           typename a5T, typename a6T, typename a7T, typename a8T, typename a9T>
-typename cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
-add_cuda_taskfn(
+typename deviceTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
+add_device_taskfn(
     madness::World& world,
-    cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>* t) {
-  typename cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
-      res(t->result());
-  // add the internal async task in cuda task as well
+    deviceTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>* t) {
+  typename deviceTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T,
+                        a9T>::futureT res(t->result());
+  // add the internal async task in device task as well
   world.taskq.add(t->async_task());
-  // add the cuda task
+  // add the device task
   world.taskq.add(static_cast<TaskInterface*>(t));
   return res;
 }
@@ -815,13 +820,13 @@ template <
     typename fnT, typename... argsT,
     typename = std::enable_if_t<!meta::taskattr_is_last_arg<argsT...>::value>>
 typename detail::function_enabler<fnT(future_to_ref_t<argsT>...)>::type
-add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
-  /// type of cudaTaskFn object
+add_device_task(madness::World& world, fnT&& fn, argsT&&... args) {
+  /// type of deviceTaskFn object
   using taskT =
-      cudaTaskFn<std::decay_t<fnT>,
-                 std::remove_const_t<std::remove_reference_t<argsT>>...>;
+      deviceTaskFn<std::decay_t<fnT>,
+                   std::remove_const_t<std::remove_reference_t<argsT>>...>;
 
-  return add_cuda_taskfn(
+  return add_device_taskfn(
       world, new taskT(typename taskT::futureT(), std::forward<fnT>(fn),
                        std::forward<argsT>(args)..., TaskAttributes()));
 }
@@ -835,13 +840,13 @@ template <
     typename = std::enable_if_t<meta::taskattr_is_last_arg<argsT...>::value>>
 typename meta::drop_last_arg_and_apply_callable<
     detail::function_enabler, fnT, future_to_ref_t<argsT>...>::type::type
-add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
-  /// type of cudaTaskFn object
+add_device_task(madness::World& world, fnT&& fn, argsT&&... args) {
+  /// type of deviceTaskFn object
   using taskT = typename meta::drop_last_arg_and_apply<
-      cudaTaskFn, std::decay_t<fnT>,
+      deviceTaskFn, std::decay_t<fnT>,
       std::remove_const_t<std::remove_reference_t<argsT>>...>::type;
 
-  return add_cuda_taskfn(
+  return add_device_taskfn(
       world, new taskT(typename taskT::futureT(), std::forward<fnT>(fn),
                        std::forward<argsT>(args)...));
 }
@@ -852,14 +857,14 @@ add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
 /// \tparam argsT   variadic template for arguments
 /// \return A future to the result
 template <typename objT, typename memfnT, typename... argsT>
-typename detail::memfunc_enabler<objT, memfnT>::type add_cuda_task(
+typename detail::memfunc_enabler<objT, memfnT>::type add_device_task(
     madness::World& world, objT&& obj, memfnT memfn, argsT&&... args) {
-  return add_cuda_task(world,
-                       detail::wrap_mem_fn(std::forward<objT>(obj), memfn),
-                       std::forward<argsT>(args)...);
+  return add_device_task(world,
+                         detail::wrap_mem_fn(std::forward<objT>(obj), memfn),
+                         std::forward<argsT>(args)...);
 }
 
 }  // namespace madness
 
-#endif  // TILDARRAY_HAS_CUDA
+#endif  // TILDARRAY_HAS_DEVICE
 #endif  // TILEDARRAY_CUDA_CUDA_TASK_FN_H__INCLUDED

@@ -31,9 +31,9 @@ enum class MemorySpace {
   // MemorySpace is represented as a bitfield to compute unions and
   // intersections easier
   Null = 0b00,
-  CPU = 0b01,
-  CUDA = 0b10,
-  CUDA_UM = CPU | CUDA  // union of CPU and CUDA spaces
+  Host = 0b01,
+  Device = 0b10,
+  Device_UM = Host | Device  // union of host and device spaces
 };
 
 // customization point: in_memory_space<S>(O) -> bool
@@ -55,7 +55,7 @@ constexpr bool overlap(MemorySpace space1, MemorySpace space2) {
 }
 
 /// enumerates the execution spaces
-enum class ExecutionSpace { CPU, CUDA };
+enum class ExecutionSpace { Host, Device };
 
 // customization point: to_execution_space<S>(O) -> void
 // "moves" O to execution space S

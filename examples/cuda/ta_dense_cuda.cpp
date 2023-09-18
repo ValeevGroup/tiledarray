@@ -24,8 +24,8 @@
 // clang-format off
 
 #include <tiledarray.h>
-#include <TiledArray/cuda/btas_um_tensor.h>
-#include "TiledArray/cuda/cpu_cuda_vector.h"
+#include <TiledArray/device/btas_um_tensor.h>
+#include "TiledArray/device/cpu_cuda_vector.h"
 #include <TiledArray/external/btas.h>
 // clang-format on
 
@@ -98,7 +98,7 @@ void to_host(
         // do norm on GPU
         auto tile_norm = norm(tile.tensor());
 
-        TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
+        TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
             tile.tensor().storage(), stream);
 
         return tile_norm;
@@ -120,7 +120,7 @@ void to_device(
           btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>> &tile) {
         auto &stream = detail::get_stream_based_on_range(tile.range());
 
-        TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+        TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
             tile.tensor().storage(), stream);
 
         return norm(tile.tensor());
@@ -218,7 +218,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   using PinnedTile =
       btas::Tensor<T, TA::Range,
                    ::btas::varray<typename Storage::value_type,
-                                  TiledArray::cuda_pinned_allocator<T>>>;
+                                  TiledArray::device_pinned_allocator<T>>>;
   using PinnedMatrix = TA::DistArray<TA::Tile<PinnedTile>>;
   // using TAMatrix = TA::DistArray<TA::Tensor<T>>;
 
@@ -339,7 +339,7 @@ int try_main(int argc, char **argv) {
               << std::endl
               << "Usage: " << argv[0]
               << " Nm Bm Nn Bn Nk Bk [# of repetitions = 5] [scalar = double] "
-                 "[storage type = cuda_um_btas_varray]\n";
+                 "[storage type = device_um_btas_varray]\n";
     return 0;
   }
   const long Nm = atol(argv[1]);
@@ -376,15 +376,15 @@ int try_main(int argc, char **argv) {
     return 1;
   }
 
-  const auto storage_type =
-      (argc >= 10) ? std::string(argv[9]) : std::string{"cuda_um_btas_varray"};
+  const auto storage_type = (argc >= 10) ? std::string(argv[9])
+                                         : std::string{"device_um_btas_varray"};
 
-  if (storage_type != "cuda_um_btas_varray" &&
+  if (storage_type != "device_um_btas_varray" &&
       storage_type != "cuda_um_thrust_vector" &&
       storage_type != "cpu_cuda_vector") {
     std::cerr << "Error: invalid storage type: " << storage_type
               << "\n Valid option includes: cuda_um_vector or "
-                 "cuda_um_btas_varray or cuda_um_thrust_vector "
+                 "device_um_btas_varray or cuda_um_thrust_vector "
                  "or cpu_cuda_vector. \n";
   }
   std::cout << "Storage type: " << storage_type << "<" << scalar_type_str << ">"
@@ -407,13 +407,13 @@ int try_main(int argc, char **argv) {
             << runtimeVersion << std::endl;
 
   {  // print device properties
-    int num_cuda_devices = TA::cudaEnv::instance()->num_cuda_devices();
+    int num_cuda_devices = TA::deviceEnv::instance()->num_cuda_devices();
 
     if (num_cuda_devices <= 0) {
       throw std::runtime_error("No CUDA-Enabled GPUs Found!\n");
     }
 
-    int cuda_device_id = TA::cudaEnv::instance()->current_cuda_device_id();
+    int cuda_device_id = TA::deviceEnv::instance()->current_device_id();
 
     int mpi_size = world.size();
     int mpi_rank = world.rank();
@@ -440,9 +440,9 @@ int try_main(int argc, char **argv) {
         error = cudaDeviceGetAttribute(
             &result, cudaDevAttrConcurrentManagedAccess, cuda_device_id);
         std::cout << "  attrConcurrentManagedAccess = " << result << std::endl;
-        error = cudaSetDevice(cuda_device_id);
+        error = device::setDevice(cuda_device_id);
         if (error != cudaSuccess) {
-          std::cout << "error(cudaSetDevice) = " << error << std::endl;
+          std::cout << "error(device::setDevice) = " << error << std::endl;
         }
         size_t free_mem, total_mem;
         error = cudaMemGetInfo(&free_mem, &total_mem);
@@ -462,19 +462,19 @@ int try_main(int argc, char **argv) {
   //      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn,
   //      Bn,
   //                                                       Nk, Bk, nrepeat);
-  //  } else if (storage_type == "cuda_um_btas_varray") {
-  if (storage_type == "cuda_um_btas_varray") {
+  //  } else if (storage_type == "device_um_btas_varray") {
+  if (storage_type == "device_um_btas_varray") {
     if (scalar_type_str == "double")
-      do_main_body<TiledArray::cuda_um_btas_varray<double>>(
+      do_main_body<TiledArray::device_um_btas_varray<double>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
     else if (scalar_type_str == "float")
-      do_main_body<TiledArray::cuda_um_btas_varray<float>>(world, Nm, Bm, Nn,
-                                                           Bn, Nk, Bk, nrepeat);
+      do_main_body<TiledArray::device_um_btas_varray<float>>(
+          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
     else if (scalar_type_str == "zdouble")
-      do_main_body<TiledArray::cuda_um_btas_varray<std::complex<double>>>(
+      do_main_body<TiledArray::device_um_btas_varray<std::complex<double>>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
     else if (scalar_type_str == "zfloat")
-      do_main_body<TiledArray::cuda_um_btas_varray<std::complex<float>>>(
+      do_main_body<TiledArray::device_um_btas_varray<std::complex<float>>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
     else {
       abort();  // unreachable
