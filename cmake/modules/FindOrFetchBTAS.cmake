@@ -17,8 +17,14 @@ if (NOT TARGET BTAS::BTAS)
     set(_linalgpp_use_standard_linalg_kits TRUE)
   endif(DEFINED BLA_VENDOR)
 
-  if (NOT TILEDARRAY_HAS_CUDA)
-    # tell BLAS++/LAPACK++ to ignore CUDA
+  if (TILEDARRAY_HAS_CUDA)
+    # tell BLAS++/LAPACK++ to also look for CUDA
+    set(gpu_backend cuda CACHE STRING "The device backend to use for Linalg++")
+  elseif (TILEDARRAY_HAS_HIP)
+    # tell BLAS++/LAPACK++ to also look for HIP
+    set(gpu_backend hip CACHE STRING "The device backend to use for Linalg++")
+  else ()
+    # tell BLAS++/LAPACK++ to not look for device backends
     set(gpu_backend none CACHE STRING "The device backend to use for Linalg++")
   endif()
 
