@@ -32,7 +32,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
-- [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.18 or higher is required.
+- [CMake](https://cmake.org/), version 3.15 or higher; if {CUDA,HIP} support is needed, CMake {3.18,3.21} or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org/), version 3.3.5 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.59 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
@@ -63,8 +63,11 @@ Compiling BTAS requires the following prerequisites:
   - BLAS and LAPACK libraries
 
 Optional prerequisites:
-- [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 11 or later is required. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
-  - [LibreTT](github.com/victor-anisimov/LibreTT) -- free tensor transpose library for CUDA, HIP, and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) extended to provide thread-safety improvements (via github.com/ValeevGroup/cutt) and extended to non-CUDA platforms by [@victor-anisimov](github.com/victor-anisimov) (tag 354e0ccee54aeb2f191c3ce2c617ebf437e49d83).
+- for execution on GPGPUs:
+  - device programming runtime:
+    - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on NVIDIA's CUDA-enabled accelerators. CUDA 11 or later is required.
+    - [HIP/ROCm compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on AMD's ROCm-enabled accelerators. Note that TiledArray does not use ROCm directly but its C++ Heterogeneous-Compute Interface for Portability, `HIP`; although HIP can also be used to program CUDA-enabled devices, in TiledArray it is used only to program ROCm devices, hence ROCm and HIP will be used interchangeably.
+  - [LibreTT](github.com/victor-anisimov/LibreTT) -- free tensor transpose library for CUDA, ROCm, and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) extended to provide thread-safety improvements (via github.com/ValeevGroup/cutt) and extended to non-CUDA platforms by [@victor-anisimov](github.com/victor-anisimov) (tag 354e0ccee54aeb2f191c3ce2c617ebf437e49d83).
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f9640e0fa4245691cdd434e4f719ac5f7d455f82).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
@@ -323,17 +326,18 @@ To discover and configure the use of Intel MKL consider these suggestions:
 
 Also note that even if OpenMP or TBB backends are used, TiledArray will be default set the number of threads to be used by MKL kernels to 1, regardless of the value of environment variables `MKL_NUM_THREADS`/`OMP_NUM_THREADS`. It is possible to change the number of threads to be used programmatically in your application by calling MKL function `mkl_set_num_threads()`.
 
-## CUDA
+## GPGPU support
 
-Support for execution on CUDA-enabled hardware is controlled by the following variables:
+Support for execution on NVIDIA and AMD GPGPUs is controlled by the following variables:
 
 * `ENABLE_CUDA`  -- Set to `ON` to turn on CUDA support. [Default=OFF].
 * `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers used to be notorious for only being able to use specific C++ host compilers, but support for more recent C++ host compilers has improved. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
-* `ENABLE_HIP`  -- Set to `ON` to turn on HIP support. [Default=OFF].
+* `ENABLE_HIP`  -- Set to `ON` to turn on HIP/ROCm support. [Default=OFF].
 * `LIBRETT_INSTALL_DIR` -- the installation prefix of the pre-installed LibreTT library. This should not be normally needed; it is strongly recommended to let TiledArray build and install LibreTT.
 * `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library. This should not be normally needed; it is strongly recommended to let TiledArray build and install Umpire.
 
-For the CUDA compiler and toolkit to be discoverable the CUDA compiler (`nvcc`) should be in the `PATH` environment variable. Refer to the [FindCUDAToolkit module](https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html) for more info.
+- For the CUDA compiler and toolkit to be discoverable the CUDA compiler (`nvcc`) should be in the `PATH` environment variable. Refer to the [FindCUDAToolkit module](https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html) for more info.
+- For the ROCm platform to be discoverable add its prefix path (e.g., `/opt/rocm`) to `CMAKE_PREFIX_PATH`
 
 ## Eigen 3
 
