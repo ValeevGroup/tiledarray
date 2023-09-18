@@ -35,6 +35,11 @@ else()
         set(LIBRETT_TAG ${TA_TRACKED_LIBRETT_TAG})
     endif (NOT LIBRETT_TAG)
 
+    if (CMAKE_PREFIX_PATH)
+        set(LIBRETT_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+    endif()
+    list(APPEND LIBRETT_CMAKE_PREFIX_PATH ${_UMPIRE_INSTALL_DIR})
+
     message("** Will clone LibreTT from ${LIBRETT_URL}")
 
     set(LIBRETT_CMAKE_ARGS
@@ -61,7 +66,7 @@ else()
         # N.B. ThreadSafeUMDynamicPool this no longer exists!!! Must teach LibreTT to take allocate/deallocate methods
         # from the user code
         -DLIBRETT_USES_THIS_UMPIRE_ALLOCATOR=ThreadSafeUMDynamicPool
-        -DCMAKE_PREFIX_PATH=${_UMPIRE_INSTALL_DIR}
+        -DCMAKE_PREFIX_PATH=${LIBRETT_CMAKE_PREFIX_PATH}
         -DENABLE_NO_ALIGNED_ALLOC=ON
         )
     if (ENABLE_CUDA)
