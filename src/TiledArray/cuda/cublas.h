@@ -40,14 +40,12 @@
 
 inline void __cublasSafeCall(cublasStatus_t err, const char *file,
                              const int line) {
-#ifdef TILEDARRAY_CHECK_CUDA_ERROR
   if (CUBLAS_STATUS_SUCCESS != err) {
     std::stringstream ss;
     ss << "cublasSafeCall() failed at: " << file << "(" << line << ")";
     std::string what = ss.str();
     throw std::runtime_error(what);
   }
-#endif
 
   return;
 }

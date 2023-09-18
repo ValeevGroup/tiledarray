@@ -52,27 +52,22 @@
 #define CudaCheckError() __cudaCheckError(__FILE__, __LINE__)
 
 inline void __cudaSafeCall(cudaError err, const char* file, const int line) {
-#ifdef TILEDARRAY_CHECK_CUDA_ERROR
   if (cudaSuccess != err) {
     std::stringstream ss;
     ss << "cudaSafeCall() failed at: " << file << ":" << line;
     std::string what = ss.str();
     throw thrust::system_error(err, thrust::cuda_category(), what);
   }
-#endif
 }
 
 inline void __cudaSafeCallNoThrow(cudaError err, const char* file,
                                   const int line) {
-#ifdef TILEDARRAY_CHECK_CUDA_ERROR
   if (cudaSuccess != err) {
     madness::print_error("cudaSafeCallNoThrow() failed at: ", file, ":", line);
   }
-#endif
 }
 
 inline void __cudaCheckError(const char* file, const int line) {
-#ifdef TILEDARRAY_CHECK_CUDA_ERROR
   cudaError err = cudaGetLastError();
   if (cudaSuccess != err) {
     std::stringstream ss;
@@ -80,7 +75,6 @@ inline void __cudaCheckError(const char* file, const int line) {
     std::string what = ss.str();
     throw thrust::system_error(err, thrust::cuda_category(), what);
   }
-#endif
 }
 
 namespace TiledArray {
