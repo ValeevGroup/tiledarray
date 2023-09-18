@@ -3,13 +3,6 @@ cmake_minimum_required(VERSION 3.21.0)
 set(CMAKE_HIP_STANDARD 17)
 set(CMAKE_HIP_EXTENSIONS OFF)
 set(CMAKE_HIP_STANDARD_REQUIRED ON)
-# N.B. need relaxed constexpr for std::complex
-# see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#constexpr-functions%5B/url%5D:
-if (DEFINED CMAKE_HIP_FLAGS)
-  set(CMAKE_HIP_FLAGS "--expt-relaxed-constexpr ${CMAKE_HIPE_FLAGS}")
-else()
-  set(CMAKE_HIP_FLAGS "--expt-relaxed-constexpr")
-endif()
 enable_language(HIP)
 
 set(HIP_FOUND TRUE)
