@@ -131,6 +131,20 @@ using deviceAttr_t = cudaDeviceAttr;
   cudaDevAttrConcurrentManagedAccess
 #define DEVICERT_CB CUDART_CB
 
+enum MemAttach {
+  MemAttachGlobal = cudaMemAttachGlobal,
+  MemAttachHost = cudaMemAttachHost,
+  MemAttachSingle = cudaMemAttachSingle
+};
+
+enum MemcpyKind {
+  MemcpyHostToHost = cudaMemcpyHostToHost,
+  MemcpyHostToDevice = cudaMemcpyHostToDevice,
+  MemcpyDeviceToHost = cudaMemcpyDeviceToHost,
+  MemcpyDeviceToDevice = cudaMemcpyDeviceToDevice,
+  MemcpyDefault = cudaMemcpyDefault
+};
+
 enum FuncCache {
   FuncCachePreferNone = cudaFuncCachePreferNone,
   FuncCachePreferShared = cudaFuncCachePreferShared,
@@ -146,30 +160,78 @@ enum StreamCreateFlags {
 inline error_t launchHostFunc(stream_t stream, hostFn_t fn, void* userData) {
   return cudaLaunchHostFunc(stream, fn, userData);
 }
+
 inline error_t streamDestroy(stream_t stream) {
   return cudaStreamDestroy(stream);
 }
+
 inline error_t setDevice(int device) { return device::setDevice(device); }
+
 inline error_t deviceSetCacheConfig(FuncCache cache_config) {
   return cudaDeviceSetCacheConfig(static_cast<cudaFuncCache>(cache_config));
 }
+
 inline error_t memGetInfo(size_t* free, size_t* total) {
   return cudaMemGetInfo(free, total);
 }
+
 inline error_t getDeviceProperties(deviceProp_t* prop, int device) {
   return cudaGetDeviceProperties(prop, device);
 }
+
 inline error_t deviceGetAttribute(int* value, deviceAttr_t attr, int device) {
   return cudaDeviceGetAttribute(value, attr, device);
 }
+
 inline error_t streamCreateWithFlags(stream_t* pStream,
                                      StreamCreateFlags flags) {
   return cudaStreamCreateWithFlags(pStream, flags);
 }
+
 inline error_t deviceSynchronize() { return cudaDeviceSynchronize(); }
 inline error_t streamSynchronize(stream_t stream) {
   return cudaStreamSynchronize(stream);
 }
+
+template <typename T>
+inline error_t malloc(T** devPtr, size_t size) {
+  return cudaMalloc(devPtr, size);
+}
+
+template <typename T>
+inline error_t mallocHost(T** devPtr, size_t size) {
+  return cudaMallocHost(devPtr, size);
+}
+
+template <typename T>
+inline error_t mallocManaged(T** devPtr, size_t size,
+                             unsigned int flag = MemAttachGlobal) {
+  return cudaMallocManaged(devPtr, size, flag);
+}
+
+template <typename T>
+error_t free(T* devPtr) {
+  return cudaFree(devPtr);
+}
+
+template <typename T>
+error_t memcpy(T* dst, const T* src, size_t count, MemcpyKind kind) {
+  return cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(kind));
+}
+
+template <typename T>
+error_t memcpyAsync(T* dst, const T* src, size_t count, MemcpyKind kind,
+                    stream_t stream = 0) {
+  return cudaMemcpyAsync(dst, src, count, static_cast<cudaMemcpyKind>(kind),
+                         stream);
+}
+
+template <typename T>
+error_t memPrefetchAsync(const T* devPtr, size_t count, int dstDevice,
+                         stream_t stream = 0) {
+  return cudaMemPrefetchAsync(devPtr, count, dstDevice, stream);
+}
+
 }  // namespace cuda
 #elif defined(TILEDARRAY_HAS_HIP)
 inline namespace hip {
@@ -181,6 +243,20 @@ using deviceAttr_t = hipDeviceAttribute_t;
 #define DeviceAttributeConcurrentManagedAccess \
   hipDeviceAttributeConcurrentManagedAccess
 #define DEVICERT_CB
+
+enum MemcpyKind {
+  MemcpyHostToHost = hipMemcpyHostToHost,
+  MemcpyHostToDevice = hipMemcpyHostToDevice,
+  MemcpyDeviceToHost = hipMemcpyDeviceToHost,
+  MemcpyDeviceToDevice = hipMemcpyDeviceToDevice,
+  MemcpyDefault = hipMemcpyDefault
+};
+
+enum MemAttach {
+  MemAttachGlobal = hipMemAttachGlobal,
+  MemAttachHost = hipMemAttachHost,
+  MemAttachSingle = hipMemAttachSingle
+};
 
 enum FuncCache {
   FuncCachePreferNone = hipFuncCachePreferNone,
@@ -197,30 +273,79 @@ enum StreamCreateFlags {
 inline error_t launchHostFunc(stream_t stream, hostFn_t fn, void* userData) {
   return hipLaunchHostFunc(stream, fn, userData);
 }
+
 inline error_t streamDestroy(stream_t stream) {
   return hipStreamDestroy(stream);
 }
+
 inline error_t setDevice(int device) { return hipSetDevice(device); }
+
 inline error_t deviceSetCacheConfig(FuncCache cache_config) {
   return hipDeviceSetCacheConfig(static_cast<hipFuncCache_t>(cache_config));
 }
+
 inline error_t memGetInfo(size_t* free, size_t* total) {
   return hipMemGetInfo(free, total);
 }
+
 inline error_t getDeviceProperties(deviceProp_t* prop, int device) {
   return hipGetDeviceProperties(prop, device);
 }
+
 inline error_t deviceGetAttribute(int* value, deviceAttr_t attr, int device) {
   return hipDeviceGetAttribute(value, attr, device);
 }
+
 inline error_t streamCreateWithFlags(stream_t* pStream,
                                      StreamCreateFlags flags) {
   return hipStreamCreateWithFlags(pStream, flags);
 }
+
 inline error_t deviceSynchronize() { return hipDeviceSynchronize(); }
+
 inline error_t streamSynchronize(stream_t stream) {
   return hipStreamSynchronize(stream);
 }
+
+template <typename T>
+inline error_t malloc(T** devPtr, size_t size) {
+  return hipMalloc(devPtr, size);
+}
+
+template <typename T>
+inline error_t mallocHost(T** devPtr, size_t size) {
+  return hipMallocHost(devPtr, size);
+}
+
+template <typename T>
+inline error_t mallocManaged(T** devPtr, size_t size,
+                             unsigned int flag = MemAttachGlobal) {
+  return hipMallocManaged(devPtr, size, flag);
+}
+
+template <typename T>
+error_t free(T* devPtr) {
+  return hipFree(devPtr);
+}
+
+template <typename T>
+error_t memcpy(T* dst, const T* src, size_t count, MemcpyKind kind) {
+  return hipMemcpy(dst, src, count, static_cast<hipMemcpyKind>(kind));
+}
+
+template <typename T>
+error_t memcpyAsync(T* dst, const T* src, size_t count, MemcpyKind kind,
+                    stream_t stream = 0) {
+  return hipMemcpyAsync(dst, src, count, static_cast<hipMemcpyKind>(kind),
+                        stream);
+}
+
+template <typename T>
+error_t memPrefetchAsync(const T* devPtr, size_t count, int dstDevice,
+                         stream_t stream = 0) {
+  return hipMemPrefetchAsync(devPtr, count, dstDevice, stream);
+}
+
 }  // namespace hip
 #endif
 
