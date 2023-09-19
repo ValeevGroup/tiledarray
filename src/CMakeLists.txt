@@ -283,7 +283,7 @@ if(CUDA_FOUND)
 endif(CUDA_FOUND)
 
 if (HIP_FOUND)
-  list(APPEND _TILEDARRAY_DEPENDENCIES hip::host)
+  list(APPEND _TILEDARRAY_DEPENDENCIES hip::host roc::rocthrust)
 endif()
 
 # LibreTT needed for either CUDA or HIP

@@ -26,9 +26,12 @@
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
+#ifdef TILEDARRAY_HAS_CUDA
 #include <cuda_runtime_api.h>
+#endif
+
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
@@ -38,10 +41,12 @@ namespace thrust {
 
 // thrust::device_malloc_allocator name changed to device_allocator after
 // version 10
+#ifdef TILEDARRAY_HAS_CUDA
 #if CUDART_VERSION < 10000
 template <typename T>
 using device_allocator = thrust::device_malloc_allocator<T>;
 #endif
+#endif  // TILEDARRAY_HAS_CUDA
 
 template <typename T, typename Alloc>
 const T* data(const thrust::device_vector<T, Alloc>& dev_vec) {
@@ -57,6 +62,6 @@ template <typename T, typename Alloc>
 void resize(thrust::device_vector<T, Alloc>& dev_vec, size_t size);
 }  // namespace thrust
 
-#endif  // TILEDARRAY_HAS_CUDA
+#endif  // TILEDARRAY_HAS_DEVICE
 
 #endif  // TILEDARRAY_DEVICE_THRUST_H__INCLUDED

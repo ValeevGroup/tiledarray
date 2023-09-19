@@ -11,8 +11,10 @@ set(TILEDARRAY_CHECK_HIP_ERROR 1 CACHE BOOL "Whether TiledArray will check HIP e
 
 # find HIP components
 find_package(hipblas REQUIRED)
+find_package(rocprim REQUIRED)  # for rocthrust, per https://github.com/ROCmSoftwarePlatform/rocThrust#using-rocthrust-in-a-project
+find_package(rocthrust REQUIRED)
 
-foreach (library hipblas)
+foreach (library hipblas;rocthrust)
   if (NOT TARGET roc::${library})
     message(FATAL_ERROR "roc::${library} not found")
   endif()
