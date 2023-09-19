@@ -28,7 +28,7 @@ void verify(const tile_type& tile, value_type value, std::size_t index) {
 
 tile_type scale(const tile_type& arg, value_type a, const cudaStream_t* stream,
                 std::size_t index) {
-  DeviceSafeCall(device::setDevice(
+  DeviceSafeCall(TiledArray::device::setDevice(
       TiledArray::deviceEnv::instance()->current_device_id()));
   /// make result Tensor
   using Storage = typename tile_type::tensor_type::storage_type;
@@ -40,8 +40,7 @@ tile_type scale(const tile_type& arg, value_type a, const cudaStream_t* stream,
                                          std::move(result_storage));
 
   /// copy the original Tensor
-  const auto& handle = TiledArray::cuBLASHandlePool::handle();
-  CublasSafeCall(cublasSetStream(handle, *stream));
+  const auto& handle = TiledArray::BLASQueuePool::handle(*stream);
 
   CublasSafeCall(TiledArray::cublasCopy(handle, result.size(), arg.data(), 1,
                                         device_data(result.storage()), 1));
@@ -51,7 +50,7 @@ tile_type scale(const tile_type& arg, value_type a, const cudaStream_t* stream,
 
   //  cudaStreamSynchronize(stream);
 
-  TiledArray::synchronize_stream(stream);
+  TiledArray::device::synchronize_stream(stream);
 
   //  std::stringstream stream_str;
   //  stream_str << *stream;

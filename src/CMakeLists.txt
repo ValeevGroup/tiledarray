@@ -216,7 +216,8 @@ endif()
 if(CUDA_FOUND)
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
-     TiledArray/device/cublas.h
+     TiledArray/device/blas.cpp
+     TiledArray/device/blas.h
      TiledArray/device/btas_cublas.h
      TiledArray/device/btas_um_tensor.h
      TiledArray/device/cpu_cuda_vector.h

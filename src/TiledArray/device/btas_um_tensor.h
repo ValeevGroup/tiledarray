@@ -139,7 +139,8 @@ btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range> &arg,
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
 
   // @important select the stream using the shifted range
-  auto &stream = detail::get_stream_based_on_range(result_range);
+  auto &queue = detail::get_blasqueue_based_on_range(result_range);
+  auto &stream = queue.stream();
 
   typename btasUMTensorVarray<T, Range>::storage_type result_storage;
 
@@ -147,12 +148,8 @@ btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range> &arg,
   btasUMTensorVarray<T, Range> result(std::move(result_range),
                                       std::move(result_storage));
 
-  // call cublasCopy
-  const auto &handle = cuBLASHandlePool::handle();
-  CublasSafeCall(cublasSetStream(handle, stream));
-
-  CublasSafeCall(cublasCopy(handle, result.size(), device_data(arg.storage()),
-                            1, device_data(result.storage()), 1));
+  blas::copy(result.size(), device_data(arg.storage()), 1,
+             device_data(result.storage()), 1, queue);
 
   device::synchronize_stream(&stream);
   return result;

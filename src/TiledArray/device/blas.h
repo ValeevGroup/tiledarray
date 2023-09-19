@@ -21,34 +21,19 @@
  *
  */
 
-#ifndef TILEDARRAY_MATH_CUBLAS_H__INCLUDED
-#define TILEDARRAY_MATH_CUBLAS_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_BLAS_H__INCLUDED
+#define TILEDARRAY_DEVICE_BLAS_H__INCLUDED
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
+
+#include <TiledArray/external/device.h>
 
 #include <TiledArray/error.h>
 #include <TiledArray/tensor/complex.h>
-#include <cublas_v2.h>
-#include <thrust/system/cuda/error.h>
-#include <thrust/system_error.h>
 
 #include <TiledArray/math/blas.h>
-
-#define CublasSafeCall(err) __cublasSafeCall(err, __FILE__, __LINE__)
-
-inline void __cublasSafeCall(cublasStatus_t err, const char *file,
-                             const int line) {
-  if (CUBLAS_STATUS_SUCCESS != err) {
-    std::stringstream ss;
-    ss << "cublasSafeCall() failed at: " << file << "(" << line << ")";
-    std::string what = ss.str();
-    throw std::runtime_error(what);
-  }
-
-  return;
-}
 
 namespace TiledArray {
 
@@ -76,87 +61,32 @@ auto cublasPointer(T *std_complex_ptr) {
  */
 
 /**
- * cuBLASHandlePool
- *
- * assign 1 cuBLAS handle / thread, use thread-local storage to manage
- *
+ * BLASQueuePool is a singleton controlling a pool of blas::Queue objects:
+ * - queues map to stream 1-to-1, so do not call Queue::set_stream to maintain
+ * this invariant
+ * - can access queues by the corresponding stream ordinal a la
+ * deviceEnv::stream()
  */
-class cuBLASHandlePool {
- public:
-  static const cublasHandle_t &handle() {
-    static thread_local cublasHandle_t *handle_{nullptr};
-    if (handle_ == nullptr) {
-      handle_ = new cublasHandle_t;
-      CublasSafeCall(cublasCreate(handle_));
-      CublasSafeCall(cublasSetPointerMode(*handle_, CUBLAS_POINTER_MODE_HOST));
-    }
-    return *handle_;
-  }
+struct BLASQueuePool {
+  static bool initialized();
+  static void initialize();
+  static void finalize();
+
+  static blas::Queue &queue(std::size_t ordinal = 0);
+  static blas::Queue &queue(const device::stream_t &stream);
+
+ private:
+  static std::vector<std::unique_ptr<blas::Queue>> queues_;
 };
-// thread_local cublasHandle_t *cuBLASHandlePool::handle_;
 
-inline cublasOperation_t to_cublas_op(math::blas::Op cblas_op) {
-  cublasOperation_t result{};
-  switch (cblas_op) {
-    case math::blas::Op::NoTrans:
-      result = CUBLAS_OP_N;
-      break;
-    case math::blas::Op::Trans:
-      result = CUBLAS_OP_T;
-      break;
-    case math::blas::Op::ConjTrans:
-      result = CUBLAS_OP_C;
-      break;
-  }
-  return result;
+namespace detail {
+template <typename Range>
+blas::Queue &get_blasqueue_based_on_range(const Range &range) {
+  // TODO better way to get stream based on the id of tensor
+  auto stream_ord = range.offset() % device::Env::instance()->num_streams();
+  return BLASQueuePool::queue(stream_ord);
 }
-
-/// GEMM interface functions
-
-template <typename T>
-cublasStatus_t cublasGemm(cublasHandle_t handle, cublasOperation_t transa,
-                          cublasOperation_t transb, int m, int n, int k,
-                          const T *alpha, const T *A, int lda, const T *B,
-                          int ldb, const T *beta, T *C, int ldc);
-template <>
-inline cublasStatus_t cublasGemm<float>(
-    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-    int m, int n, int k, const float *alpha, const float *A, int lda,
-    const float *B, int ldb, const float *beta, float *C, int ldc) {
-  return cublasSgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb,
-                     beta, C, ldc);
-}
-template <>
-inline cublasStatus_t cublasGemm<double>(
-    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-    int m, int n, int k, const double *alpha, const double *A, int lda,
-    const double *B, int ldb, const double *beta, double *C, int ldc) {
-  return cublasDgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb,
-                     beta, C, ldc);
-}
-template <>
-inline cublasStatus_t cublasGemm<std::complex<float>>(
-    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-    int m, int n, int k, const std::complex<float> *alpha,
-    const std::complex<float> *A, int lda, const std::complex<float> *B,
-    int ldb, const std::complex<float> *beta, std::complex<float> *C, int ldc) {
-  using detail::cublasPointer;
-  return cublasCgemm(handle, transa, transb, m, n, k, cublasPointer(alpha),
-                     cublasPointer(A), lda, cublasPointer(B), ldb,
-                     cublasPointer(beta), cublasPointer(C), ldc);
-}
-template <>
-inline cublasStatus_t cublasGemm<std::complex<double>>(
-    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
-    int m, int n, int k, const std::complex<double> *alpha,
-    const std::complex<double> *A, int lda, const std::complex<double> *B,
-    int ldb, const std::complex<double> *beta, std::complex<double> *C,
-    int ldc) {
-  using detail::cublasPointer;
-  return cublasZgemm(handle, transa, transb, m, n, k, cublasPointer(alpha),
-                     cublasPointer(A), lda, cublasPointer(B), ldb,
-                     cublasPointer(beta), cublasPointer(C), ldc);
-}
+}  // namespace detail
 
 /// AXPY interface functions
 
@@ -314,26 +244,6 @@ inline cublasStatus_t cublasAxpy<double, detail::ComplexConjugate<double>>(
   return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
 }
 
-/// DOT interface functions
-
-template <typename T>
-cublasStatus_t cublasDot(cublasHandle_t handle, int n, const T *x, int incx,
-                         const T *y, int incy, T *result);
-template <>
-inline cublasStatus_t cublasDot<float>(cublasHandle_t handle, int n,
-                                       const float *x, int incx, const float *y,
-                                       int incy, float *result) {
-  return cublasSdot(handle, n, x, incx, y, incy, result);
-}
-
-template <>
-inline cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n,
-                                        const double *x, int incx,
-                                        const double *y, int incy,
-                                        double *result) {
-  return cublasDdot(handle, n, x, incx, y, incy, result);
-}
-
 /// SCAL interface function
 template <typename T, typename Scalar>
 cublasStatus_t cublasScal(cublasHandle_t handle, int n, const Scalar *alpha,
@@ -468,25 +378,8 @@ inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<double>>(
   return cublasDscal(handle, n, &alpha_double, x, incx);
 }
 
-/// COPY inerface function
-template <typename T>
-cublasStatus_t cublasCopy(cublasHandle_t handle, int n, const T *x, int incx,
-                          T *y, int incy);
+}  // namespace TiledArray
 
-template <>
-inline cublasStatus_t cublasCopy(cublasHandle_t handle, int n, const float *x,
-                                 int incx, float *y, int incy) {
-  return cublasScopy(handle, n, x, incx, y, incy);
-}
+#endif  // TILEDARRAY_HAS_DEVICE
 
-template <>
-inline cublasStatus_t cublasCopy(cublasHandle_t handle, int n, const double *x,
-                                 int incx, double *y, int incy) {
-  return cublasDcopy(handle, n, x, incx, y, incy);
-}
-
-}  // end of namespace TiledArray
-
-#endif  // TILEDARRAY_HAS_CUDA
-
-#endif  // TILEDARRAY_MATH_CUBLAS_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_BLAS_H__INCLUDED

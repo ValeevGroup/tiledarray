@@ -8,7 +8,7 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 #ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/device/cublas.h>
+#include <TiledArray/device/blas.h>
 #endif
 #include <TiledArray/external/device.h>
 #include <librett.h>
@@ -29,8 +29,8 @@ namespace {
 inline void device_initialize() {
   /// initialize deviceEnv
   deviceEnv::instance();
-#if defined(TILEDARRAY_HAS_CUDA)
-  cuBLASHandlePool::handle();
+#if defined(TILEDARRAY_HAS_DEVICE)
+  BLASQueuePool::initialize();
 #endif
   // initialize LibreTT
   librettInitialize();
@@ -40,9 +40,8 @@ inline void device_initialize() {
 inline void device_finalize() {
   DeviceSafeCall(device::deviceSynchronize());
   librettFinalize();
-#if defined(TILEDARRAY_HAS_CUDA)
-  cublasDestroy(cuBLASHandlePool::handle());
-  delete &cuBLASHandlePool::handle();
+#if defined(TILEDARRAY_HAS_DEVICE)
+  BLASQueuePool::finalize();
 #endif
   // although TA::deviceEnv is a singleton, must explicitly delete it so
   // that the device runtime is not finalized before the deviceEnv dtor is
