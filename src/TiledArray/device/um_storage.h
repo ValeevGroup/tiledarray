@@ -25,7 +25,6 @@
 #define TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED
 
 #include <TiledArray/device/allocators.h>
-#include <TiledArray/device/thrust.h>
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
@@ -38,12 +37,6 @@
 #include <madness/world/archive.h>
 
 namespace TiledArray {
-
-#ifdef TILEDARRAY_HAS_CUDA
-template <typename T>
-using cuda_um_thrust_vector =
-    thrust::device_vector<T, TiledArray::device_um_allocator<T>>;
-#endif  // TILEDARRAY_HAS_CUDA
 
 /// @return true if @c dev_vec is present in space @space
 template <MemorySpace Space, typename Storage>
@@ -125,37 +118,6 @@ const typename Storage::value_type* device_data(const Storage& storage) {
 }
 
 }  // namespace TiledArray
-
-namespace madness {
-namespace archive {
-
-#ifdef TILEDARRAY_HAS_CUDA
-
-template <class Archive, typename T>
-struct ArchiveLoadImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
-  static inline void load(const Archive& ar,
-                          TiledArray::cuda_um_thrust_vector<T>& x) {
-    typename thrust::device_vector<
-        T, TiledArray::device_um_allocator<T>>::size_type n(0);
-    ar& n;
-    x.resize(n);
-    for (auto& xi : x) ar& xi;
-  }
-};
-
-template <class Archive, typename T>
-struct ArchiveStoreImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
-  static inline void store(const Archive& ar,
-                           const TiledArray::cuda_um_thrust_vector<T>& x) {
-    ar& x.size();
-    for (const auto& xi : x) ar& xi;
-  }
-};
-
-#endif  // TILEDARRAY_HAS_CUDA
-
-}  // namespace archive
-}  // namespace madness
 
 #endif  // TILEDARRAY_HAS_CUDA
 
