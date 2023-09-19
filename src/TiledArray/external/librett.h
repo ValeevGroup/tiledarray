@@ -74,11 +74,12 @@ inline void permutation_to_col_major(std::vector<int>& perm) {
  * @param outData pointer to data in output Tensor, must be accessible on GPU
  * @param range the Range of input Tensor inData
  * @param perm  the permutation object
- * @param stream  the CUDA stream this permutation will be submitted to
+ * @param stream  the device stream this permutation will be submitted to
  */
 template <typename T>
 void librett_permute(T* inData, T* outData, const TiledArray::Range& range,
-                     const TiledArray::Permutation& perm, cudaStream_t stream) {
+                     const TiledArray::Permutation& perm,
+                     device::stream_t stream) {
   auto extent = range.extent();
   std::vector<int> extent_int(extent.begin(), extent.end());
 
