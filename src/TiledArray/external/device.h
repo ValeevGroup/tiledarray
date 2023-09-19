@@ -131,6 +131,11 @@ using deviceAttr_t = cudaDeviceAttr;
   cudaDevAttrConcurrentManagedAccess
 #define DEVICERT_CB CUDART_CB
 
+enum DeviceId {
+  CpuDeviceId = cudaCpuDeviceId,
+  InvalidDeviceId = cudaInvalidDeviceId
+};
+
 enum MemAttach {
   MemAttachGlobal = cudaMemAttachGlobal,
   MemAttachHost = cudaMemAttachHost,
@@ -165,7 +170,9 @@ inline error_t streamDestroy(stream_t stream) {
   return cudaStreamDestroy(stream);
 }
 
-inline error_t setDevice(int device) { return device::setDevice(device); }
+inline error_t setDevice(int device) { return cudaSetDevice(device); }
+
+inline error_t getDevice(int* device) { return cudaGetDevice(device); }
 
 inline error_t deviceSetCacheConfig(FuncCache cache_config) {
   return cudaDeviceSetCacheConfig(static_cast<cudaFuncCache>(cache_config));
@@ -244,6 +251,11 @@ using deviceAttr_t = hipDeviceAttribute_t;
   hipDeviceAttributeConcurrentManagedAccess
 #define DEVICERT_CB
 
+enum DeviceId {
+  CpuDeviceId = hipCpuDeviceId,
+  InvalidDeviceId = hipInvalidDeviceId
+};
+
 enum MemcpyKind {
   MemcpyHostToHost = hipMemcpyHostToHost,
   MemcpyHostToDevice = hipMemcpyHostToDevice,
@@ -279,6 +291,8 @@ inline error_t streamDestroy(stream_t stream) {
 }
 
 inline error_t setDevice(int device) { return hipSetDevice(device); }
+
+inline error_t getDevice(int* device) { return hipGetDevice(device); }
 
 inline error_t deviceSetCacheConfig(FuncCache cache_config) {
   return hipDeviceSetCacheConfig(static_cast<hipFuncCache_t>(cache_config));

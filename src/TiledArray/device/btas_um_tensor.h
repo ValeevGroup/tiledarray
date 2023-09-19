@@ -624,7 +624,7 @@ void to_host(
   }
 
   world.gop.fence();
-  DeviceSafeCall(cudaDeviceSynchronize());
+  DeviceSafeCall(device::deviceSynchronize());
 };
 
 /// to device for UM Array
@@ -666,9 +666,9 @@ um_tensor_to_ta_tensor(
 
     auto &stream = deviceEnv::instance()->stream_d2h();
     DeviceSafeCall(
-        cudaMemcpyAsync(result.data(), tile.data(),
-                        tile.size() * sizeof(typename TATensor::value_type),
-                        cudaMemcpyDefault, stream));
+        device::memcpyAsync(result.data(), tile.data(),
+                            tile.size() * sizeof(typename TATensor::value_type),
+                            device::MemcpyDefault, stream));
     device::synchronize_stream(&stream);
 
     return result;
@@ -729,9 +729,9 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
     Tensor result(tile.range(), std::move(storage));
 
     DeviceSafeCall(
-        cudaMemcpyAsync(result.data(), tile.data(),
-                        tile.size() * sizeof(typename Tensor::value_type),
-                        cudaMemcpyDefault, stream));
+        device::memcpyAsync(result.data(), tile.data(),
+                            tile.size() * sizeof(typename Tensor::value_type),
+                            device::MemcpyDefault, stream));
 
     device::synchronize_stream(&stream);
     return TiledArray::Tile<Tensor>(std::move(result));

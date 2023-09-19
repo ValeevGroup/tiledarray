@@ -39,9 +39,11 @@
 
 namespace TiledArray {
 
+#ifdef TILEDARRAY_HAS_CUDA
 template <typename T>
 using cuda_um_thrust_vector =
     thrust::device_vector<T, TiledArray::device_um_allocator<T>>;
+#endif  // TILEDARRAY_HAS_CUDA
 
 /// @return true if @c dev_vec is present in space @space
 template <MemorySpace Space, typename Storage>
@@ -55,16 +57,16 @@ bool in_memory_space(const Storage& vec) noexcept {
  * device_um_btas_varray
  */
 template <ExecutionSpace Space, typename Storage>
-void to_execution_space(Storage& vec, cudaStream_t stream = 0) {
+void to_execution_space(Storage& vec, device::stream_t stream = 0) {
   switch (Space) {
     case ExecutionSpace::Host: {
       using std::data;
       using std::size;
       using value_type = typename Storage::value_type;
       if (deviceEnv::instance()->concurrent_managed_access()) {
-        DeviceSafeCall(cudaMemPrefetchAsync(data(vec),
-                                            size(vec) * sizeof(value_type),
-                                            cudaCpuDeviceId, stream));
+        DeviceSafeCall(device::memPrefetchAsync(data(vec),
+                                                size(vec) * sizeof(value_type),
+                                                device::CpuDeviceId, stream));
       }
       break;
     }
@@ -74,8 +76,8 @@ void to_execution_space(Storage& vec, cudaStream_t stream = 0) {
       using value_type = typename Storage::value_type;
       int device = -1;
       if (deviceEnv::instance()->concurrent_managed_access()) {
-        DeviceSafeCall(cudaGetDevice(&device));
-        DeviceSafeCall(cudaMemPrefetchAsync(
+        DeviceSafeCall(device::getDevice(&device));
+        DeviceSafeCall(device::memPrefetchAsync(
             data(vec), size(vec) * sizeof(value_type), device, stream));
       }
       break;
@@ -90,11 +92,11 @@ void to_execution_space(Storage& vec, cudaStream_t stream = 0) {
  *
  * @param storage UM Storage type object
  * @param n size of um storage object
- * @param stream cuda stream used to perform prefetch
+ * @param stream device stream used to perform prefetch
  */
 template <typename Storage>
 void make_device_storage(Storage& storage, std::size_t n,
-                         const cudaStream_t& stream = 0) {
+                         const device::stream_t& stream = 0) {
   storage = Storage(n);
   TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(storage,
                                                                      stream);
@@ -127,6 +129,8 @@ const typename Storage::value_type* device_data(const Storage& storage) {
 namespace madness {
 namespace archive {
 
+#ifdef TILEDARRAY_HAS_CUDA
+
 template <class Archive, typename T>
 struct ArchiveLoadImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
   static inline void load(const Archive& ar,
@@ -147,6 +151,8 @@ struct ArchiveStoreImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
     for (const auto& xi : x) ar& xi;
   }
 };
+
+#endif  // TILEDARRAY_HAS_CUDA
 
 }  // namespace archive
 }  // namespace madness
