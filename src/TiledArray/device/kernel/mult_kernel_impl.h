@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_MULT_KERNEL_IMPL_H__INCLUDED
-#define TILEDARRAY_CUDA_MULT_KERNEL_IMPL_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_MULT_KERNEL_IMPL_H__INCLUDED
+#define TILEDARRAY_DEVICE_MULT_KERNEL_IMPL_H__INCLUDED
 
 #include <TiledArray/external/cuda.h>
 #include <thrust/device_vector.h>
@@ -58,4 +58,4 @@ void mult_cuda_kernel_impl(T *result, const T *arg1, const T *arg2,
 
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_CUDA_MULT_KERNEL_IMPL_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_MULT_KERNEL_IMPL_H__INCLUDED

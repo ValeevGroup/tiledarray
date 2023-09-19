@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_PLATFORM_H__INCLUDED
-#define TILEDARRAY_CUDA_PLATFORM_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_PLATFORM_H__INCLUDED
+#define TILEDARRAY_DEVICE_PLATFORM_H__INCLUDED
 
 namespace TiledArray {
 
@@ -62,4 +62,4 @@ enum class ExecutionSpace { Host, Device };
 
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_CUDA_PLATFORM_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_PLATFORM_H__INCLUDED

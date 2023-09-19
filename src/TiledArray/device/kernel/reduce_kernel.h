@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_REDUCE_KERNEL_H__INCLUDED
-#define TILEDARRAY_CUDA_REDUCE_KERNEL_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_REDUCE_KERNEL_H__INCLUDED
+#define TILEDARRAY_DEVICE_REDUCE_KERNEL_H__INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -128,4 +128,4 @@ std::complex<double> absmin_cuda_kernel(const std::complex<double> *arg,
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_CUDA_REDUCE_KERNEL_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_REDUCE_KERNEL_H__INCLUDED

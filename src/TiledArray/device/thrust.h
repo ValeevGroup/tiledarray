@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_THRUST_H__INCLUDED
-#define TILEDARRAY_CUDA_THRUST_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_THRUST_H__INCLUDED
+#define TILEDARRAY_DEVICE_THRUST_H__INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -59,4 +59,4 @@ void resize(thrust::device_vector<T, Alloc>& dev_vec, size_t size);
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_CUDA_THRUST_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_THRUST_H__INCLUDED

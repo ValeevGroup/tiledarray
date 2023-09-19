@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
-#define TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED
+#define TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED
 
 #include <TiledArray/device/allocators.h>
 #include <TiledArray/device/thrust.h>
@@ -153,4 +153,4 @@ struct ArchiveStoreImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED

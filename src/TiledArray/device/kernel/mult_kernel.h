@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_MULT_KERNEL_H__INCLUDED
-#define TILEDARRAY_CUDA_MULT_KERNEL_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_MULT_KERNEL_H__INCLUDED
+#define TILEDARRAY_DEVICE_MULT_KERNEL_H__INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -74,4 +74,4 @@ void mult_cuda_kernel(std::complex<double> *result,
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_CUDA_MULT_KERNEL_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_MULT_KERNEL_H__INCLUDED

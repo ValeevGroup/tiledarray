@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
-#define TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
+#ifndef TILEDARRAY_DEVICE_ALLOCATORS_H___INCLUDED
+#define TILEDARRAY_DEVICE_ALLOCATORS_H___INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -135,4 +135,4 @@ struct ArchiveStoreImpl<Archive, TiledArray::umpire_based_allocator<
 
 #endif  // TILEDARRAY_HAS_DEVICE
 
-#endif  // TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
+#endif  // TILEDARRAY_DEVICE_ALLOCATORS_H___INCLUDED

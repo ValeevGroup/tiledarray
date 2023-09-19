@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_CUDA_UM_TENSOR_H
-#define TILEDARRAY_CUDA_CUDA_UM_TENSOR_H
+#ifndef TILEDARRAY_DEVICE_BTAS_UM_TENSOR_H
+#define TILEDARRAY_DEVICE_BTAS_UM_TENSOR_H
 
 #include <tiledarray_fwd.h>
 
@@ -829,4 +829,4 @@ extern template class TiledArray::Tile<btas::Tensor<
 
 #endif  // TILEDARRAY_HAS_DEVICE
 
-#endif  // TILEDARRAY_CUDA_CUDA_UM_TENSOR_H
+#endif  // TILEDARRAY_DEVICE_BTAS_UM_TENSOR_H
