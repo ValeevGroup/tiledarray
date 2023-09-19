@@ -131,6 +131,8 @@ using deviceAttr_t = cudaDeviceAttr;
   cudaDevAttrConcurrentManagedAccess
 #define DEVICERT_CB CUDART_CB
 
+enum Error { Success = cudaSuccess };
+
 enum DeviceId {
   CpuDeviceId = cudaCpuDeviceId,
   InvalidDeviceId = cudaInvalidDeviceId
@@ -162,13 +164,13 @@ enum StreamCreateFlags {
   StreamNonBlocking = cudaStreamNonBlocking
 };
 
-inline error_t launchHostFunc(stream_t stream, hostFn_t fn, void* userData) {
-  return cudaLaunchHostFunc(stream, fn, userData);
-}
+constexpr inline auto DevAttrUnifiedAddressing = cudaDevAttrUnifiedAddressing;
+constexpr inline auto DevAttrConcurrentManagedAccess =
+    cudaDevAttrConcurrentManagedAccess;
 
-inline error_t streamDestroy(stream_t stream) {
-  return cudaStreamDestroy(stream);
-}
+inline error_t driverVersion(int* v) { return cudaDriverGetVersion(v); }
+
+inline error_t runtimeVersion(int* v) { return cudaRuntimeGetVersion(v); }
 
 inline error_t setDevice(int device) { return cudaSetDevice(device); }
 
@@ -239,6 +241,14 @@ error_t memPrefetchAsync(const T* devPtr, size_t count, int dstDevice,
   return cudaMemPrefetchAsync(devPtr, count, dstDevice, stream);
 }
 
+inline error_t launchHostFunc(stream_t stream, hostFn_t fn, void* userData) {
+  return cudaLaunchHostFunc(stream, fn, userData);
+}
+
+inline error_t streamDestroy(stream_t stream) {
+  return cudaStreamDestroy(stream);
+}
+
 }  // namespace cuda
 #elif defined(TILEDARRAY_HAS_HIP)
 inline namespace hip {
@@ -250,6 +260,8 @@ using deviceAttr_t = hipDeviceAttribute_t;
 #define DeviceAttributeConcurrentManagedAccess \
   hipDeviceAttributeConcurrentManagedAccess
 #define DEVICERT_CB
+
+enum Error { Success = hipSuccess };
 
 enum DeviceId {
   CpuDeviceId = hipCpuDeviceId,
@@ -282,13 +294,14 @@ enum StreamCreateFlags {
   StreamNonBlocking = hipStreamNonBlocking
 };
 
-inline error_t launchHostFunc(stream_t stream, hostFn_t fn, void* userData) {
-  return hipLaunchHostFunc(stream, fn, userData);
-}
+constexpr inline auto DevAttrUnifiedAddressing =
+    hipDeviceAttributeUnifiedAddressing;
+constexpr inline auto DevAttrConcurrentManagedAccess =
+    hipDeviceAttributeConcurrentManagedAccess;
 
-inline error_t streamDestroy(stream_t stream) {
-  return hipStreamDestroy(stream);
-}
+inline error_t driverVersion(int* v) { return hipDriverGetVersion(v); }
+
+inline error_t runtimeVersion(int* v) { return hipRuntimeGetVersion(v); }
 
 inline error_t setDevice(int device) { return hipSetDevice(device); }
 
@@ -358,6 +371,14 @@ template <typename T>
 error_t memPrefetchAsync(const T* devPtr, size_t count, int dstDevice,
                          stream_t stream = 0) {
   return hipMemPrefetchAsync(devPtr, count, dstDevice, stream);
+}
+
+inline error_t launchHostFunc(stream_t stream, hostFn_t fn, void* userData) {
+  return hipLaunchHostFunc(stream, fn, userData);
+}
+
+inline error_t streamDestroy(stream_t stream) {
+  return hipStreamDestroy(stream);
 }
 
 }  // namespace hip

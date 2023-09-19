@@ -25,113 +25,12 @@
 
 #include <tiledarray.h>
 #include <TiledArray/device/btas_um_tensor.h>
-#include "TiledArray/device/cpu_cuda_vector.h"
 #include <TiledArray/external/btas.h>
 // clang-format on
 
+#ifdef TILEDARRAY_HAS_CUDA
 #include <cuda_profiler_api.h>
-
-namespace TiledArray {
-
-///
-/// cuda gemm interface function on left*right
-///
-
-template <typename T, typename Range>
-btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> gemm(
-    const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &left,
-    const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &right,
-    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
-  return btas_tensor_gemm_cuda_impl(left, right, factor, gemm_helper);
-}
-
-///
-/// cuda gemm interface function on result = left*right
-///
-
-template <typename T, typename Range>
-void gemm(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &result,
-          const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &left,
-          const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &right,
-          T factor, const TiledArray::math::GemmHelper &gemm_helper) {
-  return btas_tensor_gemm_cuda_impl(result, left, right, factor, gemm_helper);
-}
-
-///
-/// cuda axpy interface function
-///
-
-template <typename T, typename Range>
-void add_to(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &result,
-            const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &arg) {
-  btas_tensor_add_to_cuda_impl(result, arg, T(1.0));
-}
-
-///
-/// cuda dot interface function
-///
-
-template <typename T, typename Range>
-typename btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>::value_type
-squared_norm(
-    const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &arg) {
-  return btas_tensor_squared_norm_cuda_impl(arg);
-}
-
-template <typename T, typename Range>
-typename btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>::value_type
-norm(const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &arg) {
-  return std::sqrt(squared_norm(arg));
-}
-
-/// to host for CPU GPU Array
-template <typename T, typename Range, typename Policy>
-void to_host(
-    TiledArray::DistArray<TiledArray::Tile<btas::Tensor<
-                              T, Range, TiledArray::cpu_cuda_vector<T>>>,
-                          Policy> &cpu_cuda_array) {
-  auto to_host =
-      [](TiledArray::Tile<
-          btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>> &tile) {
-        auto &stream = detail::get_stream_based_on_range(tile.range());
-
-        // do norm on GPU
-        auto tile_norm = norm(tile.tensor());
-
-        TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
-            tile.tensor().storage(), stream);
-
-        return tile_norm;
-      };
-
-  foreach_inplace(cpu_cuda_array, to_host);
-  cpu_cuda_array.world().gop.fence();
-  cudaDeviceSynchronize();
-};
-
-/// to device for CPU GPU array
-template <typename T, typename Range, typename Policy>
-void to_device(
-    TiledArray::DistArray<TiledArray::Tile<btas::Tensor<
-                              T, Range, TiledArray::cpu_cuda_vector<T>>>,
-                          Policy> &cpu_gpu_array) {
-  auto to_device =
-      [](TiledArray::Tile<
-          btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>> &tile) {
-        auto &stream = detail::get_stream_based_on_range(tile.range());
-
-        TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
-            tile.tensor().storage(), stream);
-
-        return norm(tile.tensor());
-      };
-
-  foreach_inplace(cpu_gpu_array, to_device);
-  cpu_gpu_array.world().gop.fence();
-  cudaDeviceSynchronize();
-};
-
-}  // namespace TiledArray
+#endif
 
 template <typename Storage>
 void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
@@ -213,8 +112,8 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   TiledArray::TiledRange  // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
-  using CUDATile = btas::Tensor<T, TA::Range, Storage>;
-  using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
+  using DeviceTile = btas::Tensor<T, TA::Range, Storage>;
+  using DeviceMatrix = TA::DistArray<TA::Tile<DeviceTile>>;
   using PinnedTile =
       btas::Tensor<T, TA::Range,
                    ::btas::varray<typename Storage::value_type,
@@ -222,7 +121,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   using PinnedMatrix = TA::DistArray<TA::Tile<PinnedTile>>;
   // using TAMatrix = TA::DistArray<TA::Tensor<T>>;
 
-  CUDAMatrix c(world, trange_c);
+  DeviceMatrix c(world, trange_c);
   auto val_a = 0.03;
   auto val_b = 0.02;
 
@@ -234,8 +133,8 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
     a_host.fill(val_a);
     b_host.fill(val_b);
-    CUDAMatrix a = TA::ta_tensor_to_um_tensor<TA::Tile<CUDATile>>(a_host);
-    CUDAMatrix b = TA::ta_tensor_to_um_tensor<TA::Tile<CUDATile>>(b_host);
+    DeviceMatrix a = TA::ta_tensor_to_um_tensor<TA::Tile<DeviceTile>>(a_host);
+    DeviceMatrix b = TA::ta_tensor_to_um_tensor<TA::Tile<DeviceTile>>(b_host);
 
     world.gop.fence();
 
@@ -244,8 +143,10 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
     //    c("m,n") = a("m,k") * b("k,n");
 
+#ifdef TILEDARRAY_HAS_CUDA
     // start profiler
     cudaProfilerStart();
+#endif  // TILEDARRAY_HAS_CUDA
 
     double total_time = 0.0;
     double total_gflop_rate = 0.0;
@@ -271,8 +172,10 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Stop clock
     const double wall_time_stop = madness::wall_time();
 
+#ifdef TILEDARRAY_HAS_CUDA
     // stop profiler
     cudaProfilerStop();
+#endif  // TILEDARRAY_HAS_CUDA
 
     if (world.rank() == 0)
       std::cout << "Average wall time   = " << total_time / double(nrepeat)
@@ -290,7 +193,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     result = dot_length * val_a * val_b;
 
   auto verify = [&world, &threshold, &result,
-                 &dot_length](TA::Tile<CUDATile> &tile) {
+                 &dot_length](TA::Tile<DeviceTile> &tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = std::abs(tile[i] - result);
@@ -379,13 +282,10 @@ int try_main(int argc, char **argv) {
   const auto storage_type = (argc >= 10) ? std::string(argv[9])
                                          : std::string{"device_um_btas_varray"};
 
-  if (storage_type != "device_um_btas_varray" &&
-      storage_type != "cuda_um_thrust_vector" &&
-      storage_type != "cpu_cuda_vector") {
+  if (storage_type != "device_um_btas_varray") {
     std::cerr << "Error: invalid storage type: " << storage_type
-              << "\n Valid option includes: cuda_um_vector or "
-                 "device_um_btas_varray or cuda_um_thrust_vector "
-                 "or cpu_cuda_vector. \n";
+              << "\n Valid option includes: "
+                 "device_um_btas_varray \n";
   }
   std::cout << "Storage type: " << storage_type << "<" << scalar_type_str << ">"
             << std::endl;
@@ -395,25 +295,25 @@ int try_main(int argc, char **argv) {
   //  };
 
   int driverVersion, runtimeVersion;
-  auto error = cudaDriverGetVersion(&driverVersion);
-  if (error != cudaSuccess) {
-    std::cout << "error(cudaDriverGetVersion) = " << error << std::endl;
+  auto error = TiledArray::device::driverVersion(&driverVersion);
+  if (error != TiledArray::device::Success) {
+    std::cout << "error(DriverGetVersion) = " << error << std::endl;
   }
-  error = cudaRuntimeGetVersion(&runtimeVersion);
-  if (error != cudaSuccess) {
-    std::cout << "error(cudaRuntimeGetVersion) = " << error << std::endl;
+  error = TiledArray::device::runtimeVersion(&runtimeVersion);
+  if (error != TiledArray::device::Success) {
+    std::cout << "error(RuntimeGetVersion) = " << error << std::endl;
   }
-  std::cout << "CUDA {driver,runtime} versions = " << driverVersion << ","
+  std::cout << "device {driver,runtime} versions = " << driverVersion << ","
             << runtimeVersion << std::endl;
 
   {  // print device properties
-    int num_cuda_devices = TA::deviceEnv::instance()->num_cuda_devices();
+    int num_devices = TA::deviceEnv::instance()->num_devices();
 
-    if (num_cuda_devices <= 0) {
-      throw std::runtime_error("No CUDA-Enabled GPUs Found!\n");
+    if (num_devices <= 0) {
+      throw std::runtime_error("No GPUs Found!\n");
     }
 
-    int cuda_device_id = TA::deviceEnv::instance()->current_device_id();
+    int device_id = TA::deviceEnv::instance()->current_device_id();
 
     int mpi_size = world.size();
     int mpi_rank = world.rank();
@@ -423,29 +323,28 @@ int try_main(int argc, char **argv) {
         std::cout << "CUDA Device Information for MPI Process Rank: "
                   << mpi_rank << std::endl;
         cudaDeviceProp prop;
-        auto error = cudaGetDeviceProperties(&prop, cuda_device_id);
-        if (error != cudaSuccess) {
-          std::cout << "error(cudaGetDeviceProperties) = " << error
-                    << std::endl;
+        auto error = cudaGetDeviceProperties(&prop, device_id);
+        if (error != TiledArray::device::Success) {
+          std::cout << "error(GetDeviceProperties) = " << error << std::endl;
         }
-        std::cout << "Device #" << cuda_device_id << ": " << prop.name
-                  << std::endl
+        std::cout << "Device #" << device_id << ": " << prop.name << std::endl
                   << "  managedMemory = " << prop.managedMemory << std::endl
                   << "  singleToDoublePrecisionPerfRatio = "
                   << prop.singleToDoublePrecisionPerfRatio << std::endl;
         int result;
-        error = cudaDeviceGetAttribute(&result, cudaDevAttrUnifiedAddressing,
-                                       cuda_device_id);
+        error = TiledArray::device::deviceGetAttribute(
+            &result, TiledArray::device::DevAttrUnifiedAddressing, device_id);
         std::cout << "  attrUnifiedAddressing = " << result << std::endl;
-        error = cudaDeviceGetAttribute(
-            &result, cudaDevAttrConcurrentManagedAccess, cuda_device_id);
+        error = TiledArray::device::deviceGetAttribute(
+            &result, TiledArray::device::DevAttrConcurrentManagedAccess,
+            device_id);
         std::cout << "  attrConcurrentManagedAccess = " << result << std::endl;
-        error = device::setDevice(cuda_device_id);
-        if (error != cudaSuccess) {
+        error = TiledArray::device::setDevice(device_id);
+        if (error != TiledArray::device::Success) {
           std::cout << "error(device::setDevice) = " << error << std::endl;
         }
         size_t free_mem, total_mem;
-        error = cudaMemGetInfo(&free_mem, &total_mem);
+        error = TiledArray::device::memGetInfo(&free_mem, &total_mem);
         std::cout << "  {total,free} memory = {" << total_mem << "," << free_mem
                   << "}" << std::endl;
       }
@@ -453,16 +352,6 @@ int try_main(int argc, char **argv) {
     }
   }  // print device properties
 
-  //  if (storage_type == "cpu_cuda_vector") {
-  //    if (scalar_type_str == "double")
-  //      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn,
-  //      Bn,
-  //                                                        Nk, Bk, nrepeat);
-  //    else
-  //      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn,
-  //      Bn,
-  //                                                       Nk, Bk, nrepeat);
-  //  } else if (storage_type == "device_um_btas_varray") {
   if (storage_type == "device_um_btas_varray") {
     if (scalar_type_str == "double")
       do_main_body<TiledArray::device_um_btas_varray<double>>(
@@ -479,16 +368,7 @@ int try_main(int argc, char **argv) {
     else {
       abort();  // unreachable
     }
-  }
-  // else if (storage_type == "cuda_um_thrust_vector") {
-  //    if (scalar_type_str == "double")
-  //      do_main_body<TiledArray::cuda_um_thrust_vector<double>>(
-  //          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-  //    else
-  //      do_main_body<TiledArray::cuda_um_thrust_vector<float>>(
-  //          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-  //  }
-  else {
+  } else {
     throw std::runtime_error("Invalid storage type!\n");
   }
 
@@ -498,15 +378,13 @@ int try_main(int argc, char **argv) {
 int main(int argc, char *argv[]) {
   try {
     try_main(argc, argv);
-  } catch (thrust::system::detail::bad_alloc &ex) {
+  } catch (std::exception &ex) {
     std::cout << ex.what() << std::endl;
 
     size_t free_mem, total_mem;
-    auto result = cudaMemGetInfo(&free_mem, &total_mem);
-    std::cout << "CUDA memory stats: {total,free} = {" << total_mem << ","
+    auto result = TiledArray::device::memGetInfo(&free_mem, &total_mem);
+    std::cout << "device memory stats: {total,free} = {" << total_mem << ","
               << free_mem << "}" << std::endl;
-  } catch (std::exception &ex) {
-    std::cout << ex.what() << std::endl;
   } catch (...) {
     std::cerr << "unknown exception" << std::endl;
   }
