@@ -177,10 +177,10 @@ using stream_t = hipStream_t;
 using error_t = hipError_t;
 using hostFn_t = hipHostFn_t;
 using deviceProp_t = hipDeviceProp_t;
-using deviceAttr_t = hipDeviceAttr;
+using deviceAttr_t = hipDeviceAttribute_t;
 #define DeviceAttributeConcurrentManagedAccess \
   hipDeviceAttributeConcurrentManagedAccess
-#define DEVICERT_CD HIPRT_CB
+#define DEVICERT_CB
 
 enum FuncCache {
   FuncCachePreferNone = hipFuncCachePreferNone,
@@ -202,12 +202,12 @@ inline error_t streamDestroy(stream_t stream) {
 }
 inline error_t setDevice(int device) { return hipSetDevice(device); }
 inline error_t deviceSetCacheConfig(FuncCache cache_config) {
-  return hipDeviceSetCacheConfig(static_cast<hipFuncCache>(cache_config));
+  return hipDeviceSetCacheConfig(static_cast<hipFuncCache_t>(cache_config));
 }
 inline error_t memGetInfo(size_t* free, size_t* total) {
   return hipMemGetInfo(free, total);
 }
-inline error_t getDeviceProperties(deviceProp* prop, int device) {
+inline error_t getDeviceProperties(deviceProp_t* prop, int device) {
   return hipGetDeviceProperties(prop, device);
 }
 inline error_t deviceGetAttribute(int* value, deviceAttr_t attr, int device) {
