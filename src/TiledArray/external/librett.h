@@ -26,7 +26,7 @@
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
 #include <algorithm>
 #include <vector>
@@ -110,6 +110,6 @@ void librett_permute(T* inData, T* outData, const TiledArray::Range& range,
 
 }  // namespace TiledArray
 
-#endif  //  TILEDARRAY_HAS_CUDA
+#endif  //  TILEDARRAY_HAS_DEVICE
 
 #endif  // TILEDARRAY_EXTERNAL_LIBRETT_H__INCLUDED

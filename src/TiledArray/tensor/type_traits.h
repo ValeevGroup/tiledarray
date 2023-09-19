@@ -315,7 +315,7 @@ constexpr const bool is_reduce_op_v =
     is_reduce_op_<void, ReduceOp, Result, Args...>::value;
 
 /// detect cuda tile
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 template <typename T>
 struct is_device_tile : public std::false_type {};
 

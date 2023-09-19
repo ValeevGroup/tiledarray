@@ -22,7 +22,7 @@
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAS_DEVICE
+#ifdef TILEDARRAY_HAS_CUDA
 
 #include <TiledArray/device/btas_um_tensor.h>
 #include "unit_test_config.h"

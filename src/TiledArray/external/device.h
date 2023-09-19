@@ -176,7 +176,7 @@ inline namespace hip {
 using stream_t = hipStream_t;
 using error_t = hipError_t;
 using hostFn_t = hipHostFn_t;
-using deviceProp_t = hipDeviceProp;
+using deviceProp_t = hipDeviceProp_t;
 using deviceAttr_t = hipDeviceAttr;
 #define DeviceAttributeConcurrentManagedAccess \
   hipDeviceAttributeConcurrentManagedAccess
@@ -660,7 +660,7 @@ inline void range_push(const char* range_title, argbColor range_color) {
 inline void range_pop() { nvtxRangePop(); }
 
 }  // namespace nvidia
-#endif  // #ifdef TILEDARRAY_HAS_DEVICE
+#endif  // TILEDARRAY_HAS_CUDA
 
 }  // namespace TiledArray
 

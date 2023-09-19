@@ -21,7 +21,7 @@
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
 #include <TiledArray/device/btas_um_tensor.h>
 #include <tiledarray.h>

@@ -7,7 +7,7 @@
 #include <TiledArray/device/btas_um_tensor.h>
 // clang-format on
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
 template class btas::varray<double, TiledArray::device_um_allocator<double>>;
 template class btas::varray<float, TiledArray::device_um_allocator<float>>;
@@ -49,4 +49,4 @@ template class TiledArray::Tile<btas::Tensor<
 template class TiledArray::Tile<btas::Tensor<
     long, TiledArray::Range, TiledArray::device_um_btas_varray<long>>>;
 
-#endif  // TILEDARRAY_HAS_CUDA
+#endif  // TILEDARRAY_HAS_DEVICE

@@ -111,7 +111,7 @@ class UnaryEvalImpl
 
   /// Task function for evaluating tiles
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// \param i The tile index
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
@@ -167,7 +167,7 @@ class UnaryEvalImpl
         const auto target_index = DistEvalImpl_::perm_index_to_target(index);
 
         // Schedule tile evaluation task
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
         TensorImpl_::world().taskq.add(self,
                                        &UnaryEvalImpl_::template eval_tile<>,
                                        target_index, arg_.get(index));

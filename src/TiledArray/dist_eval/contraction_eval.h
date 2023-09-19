@@ -478,7 +478,7 @@ class Summa
   template <typename Arg>
   static typename std::enable_if<
       is_lazy_tile<typename Arg::value_type>::value
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
           && !detail::is_device_tile_v<typename Arg::value_type>
 #endif
       ,
@@ -490,7 +490,7 @@ class Summa
                                  madness::TaskAttributes::hipri());
   }
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// Conversion function
 
   /// This function spawns a task that will convert a lazy tile from the
