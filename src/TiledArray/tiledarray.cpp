@@ -7,9 +7,7 @@
 #include <madness/world/safempi.h>
 
 #ifdef TILEDARRAY_HAS_DEVICE
-#ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/device/blas.h>
-#endif
 #include <TiledArray/external/device.h>
 #include <librett.h>
 #endif
