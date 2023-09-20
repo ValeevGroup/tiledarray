@@ -290,7 +290,11 @@ if(CUDA_FOUND OR HIP_FOUND)
             TiledArray/device/kernel/thrust/reduce_kernel.hip
     )
 
-    list(APPEND _TILEDARRAY_DEPENDENCIES hip::host roc::rocthrust)
+    list(APPEND _TILEDARRAY_DEPENDENCIES hip::host
+            # N.B. linking to rocthrust makes all files in tiledarray target compiled as HIP ...
+            #      seemingly (like with CUDA thrust) linking to this target is not needed
+            # roc::rocthrust
+    )
   endif()
 
   # LibreTT needed for either CUDA or HIP
