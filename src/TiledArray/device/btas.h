@@ -21,14 +21,16 @@
  *
  */
 
-#ifndef TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
-#define TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_BTAS_H__INCLUDED
+#define TILEDARRAY_DEVICE_BTAS_H__INCLUDED
 
-#include <TiledArray/device/blas.h>
+#include <TiledArray/config.h>
+
 #include <TiledArray/math/blas.h>
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
+#include <TiledArray/device/blas.h>
 #include <TiledArray/external/device.h>
 #include <btas/tensor.h>
 
@@ -40,11 +42,15 @@
 
 namespace TiledArray {
 
+namespace device {
+
+namespace btas {
+
 template <typename T, typename Scalar, typename Range, typename Storage,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
-btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
-    const btas::Tensor<T, Range, Storage> &left,
-    const btas::Tensor<T, Range, Storage> &right, Scalar factor,
+::btas::Tensor<T, Range, Storage> gemm(
+    const ::btas::Tensor<T, Range, Storage> &left,
+    const ::btas::Tensor<T, Range, Storage> &right, Scalar factor,
     const TiledArray::math::GemmHelper &gemm_helper) {
   // Check that the arguments are not empty and have the correct ranks
   TA_ASSERT(!left.empty());
@@ -88,7 +94,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   auto &stream = queue.stream();
 
   // the result Tensor type
-  typedef btas::Tensor<T, Range, Storage> Tensor;
+  typedef ::btas::Tensor<T, Range, Storage> Tensor;
   Tensor result;
 
   if (true) {
@@ -102,8 +108,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
         right.storage(), stream);
 
-    static_assert(btas::boxrange_iteration_order<Range>::value ==
-                  btas::boxrange_iteration_order<Range>::row_major);
+    static_assert(::btas::boxrange_iteration_order<Range>::value ==
+                  ::btas::boxrange_iteration_order<Range>::row_major);
     blas::gemm(blas::Layout::ColMajor, gemm_helper.right_op(),
                gemm_helper.left_op(), n, m, k, factor_t,
                device_data(right.storage()), ldb, device_data(left.storage()),
@@ -117,11 +123,10 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
 
 template <typename T, typename Scalar, typename Range, typename Storage,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
-void btas_tensor_gemm_cuda_impl(
-    btas::Tensor<T, Range, Storage> &result,
-    const btas::Tensor<T, Range, Storage> &left,
-    const btas::Tensor<T, Range, Storage> &right, Scalar factor,
-    const TiledArray::math::GemmHelper &gemm_helper) {
+void gemm(::btas::Tensor<T, Range, Storage> &result,
+          const ::btas::Tensor<T, Range, Storage> &left,
+          const ::btas::Tensor<T, Range, Storage> &right, Scalar factor,
+          const TiledArray::math::GemmHelper &gemm_helper) {
   // Check that the result is not empty and has the correct rank
   TA_ASSERT(!result.empty());
   TA_ASSERT(result.range().rank() == gemm_helper.result_rank());
@@ -198,8 +203,8 @@ void btas_tensor_gemm_cuda_impl(
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
         result.storage(), stream);
 
-    static_assert(btas::boxrange_iteration_order<Range>::value ==
-                  btas::boxrange_iteration_order<Range>::row_major);
+    static_assert(::btas::boxrange_iteration_order<Range>::value ==
+                  ::btas::boxrange_iteration_order<Range>::row_major);
     blas::gemm(blas::Layout::ColMajor, gemm_helper.right_op(),
                gemm_helper.left_op(), n, m, k, factor_t,
                device_data(right.storage()), ldb, device_data(left.storage()),
@@ -210,8 +215,8 @@ void btas_tensor_gemm_cuda_impl(
 
 /// result[i] = arg[i]
 template <typename T, typename Range, typename Storage>
-btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
-    const btas::Tensor<T, Range, Storage> &arg) {
+::btas::Tensor<T, Range, Storage> clone(
+    const ::btas::Tensor<T, Range, Storage> &arg) {
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
 
   Storage result_storage;
@@ -220,8 +225,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
   auto &stream = queue.stream();
 
   make_device_storage(result_storage, arg.size(), stream);
-  btas::Tensor<T, Range, Storage> result(std::move(result_range),
-                                         std::move(result_storage));
+  ::btas::Tensor<T, Range, Storage> result(std::move(result_range),
+                                           std::move(result_storage));
 
   blas::copy(result.size(), device_data(arg.storage()), 1,
              device_data(result.storage()), 1, queue);
@@ -233,19 +238,28 @@ btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
 /// result[i] = a * arg[i]
 template <typename T, typename Range, typename Storage, typename Scalar,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
-btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
-    const btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
+::btas::Tensor<T, Range, Storage> scale(
+    const ::btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
   auto &queue = detail::get_blasqueue_based_on_range(arg.range());
   auto &stream = queue.stream();
 
-  auto result = btas_tensor_clone_cuda_impl(arg);
+  auto result = clone(arg);
 
-  if constexpr (std::is_same_v<Scalar, double> ||
-                std::is_same_v<Scalar, float>) {
+  if constexpr (detail::is_blas_numeric_v<Scalar> ||
+                std::is_arithmetic_v<Scalar>) {
     blas::scal(result.size(), a, device_data(result.storage()), 1, queue);
   } else {
-    abort();  // not yet implemented
+    if constexpr (detail::is_complex_v<T>) {
+      abort();  // fused conjugation requires custom kernels, not yet supported
+    } else {
+      if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<void>>) {
+      } else if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<
+                                                      detail::ComplexNegTag>>) {
+        blas::scal(result.size(), static_cast<T>(-1),
+                   device_data(result.storage()), 1, queue);
+      }
+    }
   }
 
   device::synchronize_stream(&stream);
@@ -256,16 +270,25 @@ btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
 /// result[i] *= a
 template <typename T, typename Range, typename Storage, typename Scalar,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
-void btas_tensor_scale_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
-                                    const Scalar a) {
+void scale_to(::btas::Tensor<T, Range, Storage> &result, const Scalar a) {
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
   auto &queue = detail::get_blasqueue_based_on_range(result.range());
   auto &stream = queue.stream();
-  if constexpr (std::is_same_v<Scalar, double> ||
-                std::is_same_v<Scalar, float>) {
+
+  if constexpr (detail::is_blas_numeric_v<Scalar> ||
+                std::is_arithmetic_v<Scalar>) {
     blas::scal(result.size(), a, device_data(result.storage()), 1, queue);
   } else {
-    abort();  // not yet implemented
+    if constexpr (detail::is_complex_v<T>) {
+      abort();  // fused conjugation requires custom kernels, not yet supported
+    } else {
+      if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<void>>) {
+      } else if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<
+                                                      detail::ComplexNegTag>>) {
+        blas::scal(result.size(), static_cast<T>(-1),
+                   device_data(result.storage()), 1, queue);
+      }
+    }
   }
 
   device::synchronize_stream(&stream);
@@ -274,10 +297,10 @@ void btas_tensor_scale_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 /// result[i] = arg1[i] - a * arg2[i]
 template <typename T, typename Scalar, typename Range, typename Storage,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
-btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
-    const btas::Tensor<T, Range, Storage> &arg1,
-    const btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
-  auto result = btas_tensor_clone_cuda_impl(arg1);
+::btas::Tensor<T, Range, Storage> subt(
+    const ::btas::Tensor<T, Range, Storage> &arg1,
+    const ::btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
+  auto result = clone(arg1);
 
   // revert the sign of a
   auto b = -a;
@@ -300,9 +323,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
 /// result[i] -= a * arg1[i]
 template <typename T, typename Scalar, typename Range, typename Storage,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
-void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
-                                   const btas::Tensor<T, Range, Storage> &arg1,
-                                   const Scalar a) {
+void subt_to(::btas::Tensor<T, Range, Storage> &result,
+             const ::btas::Tensor<T, Range, Storage> &arg1, const Scalar a) {
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
   auto &queue = detail::get_blasqueue_based_on_range(result.range());
   auto &stream = queue.stream();
@@ -318,10 +340,10 @@ void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 /// result[i] = arg1[i] + a * arg2[i]
 template <typename T, typename Scalar, typename Range, typename Storage,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
-btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
-    const btas::Tensor<T, Range, Storage> &arg1,
-    const btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
-  auto result = btas_tensor_clone_cuda_impl(arg1);
+::btas::Tensor<T, Range, Storage> add(
+    const ::btas::Tensor<T, Range, Storage> &arg1,
+    const ::btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
+  auto result = clone(arg1);
 
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
   auto &queue = detail::get_blasqueue_based_on_range(result.range());
@@ -337,9 +359,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
 /// result[i] += a * arg[i]
 template <typename T, typename Scalar, typename Range, typename Storage,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
-void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
-                                  const btas::Tensor<T, Range, Storage> &arg,
-                                  const Scalar a) {
+void add_to(::btas::Tensor<T, Range, Storage> &result,
+            const ::btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
   auto &queue = detail::get_blasqueue_based_on_range(result.range());
   auto &stream = queue.stream();
@@ -355,8 +376,8 @@ void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 
 /// result[i] = result[i] * arg[i]
 template <typename T, typename Range, typename Storage>
-void btas_tensor_mult_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
-                                   const btas::Tensor<T, Range, Storage> &arg) {
+void mult_to(::btas::Tensor<T, Range, Storage> &result,
+             const ::btas::Tensor<T, Range, Storage> &arg) {
   auto device_id = deviceEnv::instance()->current_device_id();
   auto &stream = detail::get_stream_based_on_range(result.range());
 
@@ -370,9 +391,9 @@ void btas_tensor_mult_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 
 /// result[i] = arg1[i] * arg2[i]
 template <typename T, typename Range, typename Storage>
-btas::Tensor<T, Range, Storage> btas_tensor_mult_cuda_impl(
-    const btas::Tensor<T, Range, Storage> &arg1,
-    const btas::Tensor<T, Range, Storage> &arg2) {
+::btas::Tensor<T, Range, Storage> mult(
+    const ::btas::Tensor<T, Range, Storage> &arg1,
+    const ::btas::Tensor<T, Range, Storage> &arg2) {
   std::size_t n = arg1.size();
 
   TA_ASSERT(arg2.size() == n);
@@ -383,8 +404,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_mult_cuda_impl(
 
   Storage result_storage;
   make_device_storage(result_storage, n, stream);
-  btas::Tensor<T, Range, Storage> result(arg1.range(),
-                                         std::move(result_storage));
+  ::btas::Tensor<T, Range, Storage> result(arg1.range(),
+                                           std::move(result_storage));
 
   mult_cuda_kernel(result.data(), arg1.data(), arg2.data(), n, stream,
                    device_id);
@@ -395,8 +416,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_mult_cuda_impl(
 
 // foreach(i) result += arg[i] * arg[i]
 template <typename T, typename Range, typename Storage>
-typename btas::Tensor<T, Range, Storage>::value_type
-btas_tensor_squared_norm_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+typename ::btas::Tensor<T, Range, Storage>::value_type squared_norm(
+    const ::btas::Tensor<T, Range, Storage> &arg) {
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
 
   auto &queue = detail::get_blasqueue_based_on_range(arg.range());
@@ -419,9 +440,9 @@ btas_tensor_squared_norm_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
 
 // foreach(i) result += arg1[i] * arg2[i]
 template <typename T, typename Range, typename Storage>
-typename btas::Tensor<T, Range, Storage>::value_type btas_tensor_dot_cuda_impl(
-    const btas::Tensor<T, Range, Storage> &arg1,
-    const btas::Tensor<T, Range, Storage> &arg2) {
+typename ::btas::Tensor<T, Range, Storage>::value_type dot(
+    const ::btas::Tensor<T, Range, Storage> &arg1,
+    const ::btas::Tensor<T, Range, Storage> &arg2) {
   DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
 
   auto &queue = detail::get_blasqueue_based_on_range(arg1.range());
@@ -446,7 +467,7 @@ typename btas::Tensor<T, Range, Storage>::value_type btas_tensor_dot_cuda_impl(
 }
 
 template <typename T, typename Range, typename Storage>
-T btas_tensor_sum_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+T sum(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &stream = detail::get_stream_based_on_range(arg.range());
   auto device_id = deviceEnv::instance()->current_device_id();
 
@@ -460,7 +481,7 @@ T btas_tensor_sum_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
 }
 
 template <typename T, typename Range, typename Storage>
-T btas_tensor_product_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+T product(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &stream = detail::get_stream_based_on_range(arg.range());
   auto device_id = deviceEnv::instance()->current_device_id();
 
@@ -474,7 +495,7 @@ T btas_tensor_product_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
 }
 
 template <typename T, typename Range, typename Storage>
-T btas_tensor_min_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+T min(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &stream = detail::get_stream_based_on_range(arg.range());
   auto device_id = deviceEnv::instance()->current_device_id();
 
@@ -488,7 +509,7 @@ T btas_tensor_min_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
 }
 
 template <typename T, typename Range, typename Storage>
-T btas_tensor_max_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+T max(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &stream = detail::get_stream_based_on_range(arg.range());
   auto device_id = deviceEnv::instance()->current_device_id();
 
@@ -502,7 +523,7 @@ T btas_tensor_max_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
 }
 
 template <typename T, typename Range, typename Storage>
-T btas_tensor_absmin_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+T absmin(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &stream = detail::get_stream_based_on_range(arg.range());
   auto device_id = deviceEnv::instance()->current_device_id();
 
@@ -516,7 +537,7 @@ T btas_tensor_absmin_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
 }
 
 template <typename T, typename Range, typename Storage>
-T btas_tensor_absmax_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+T absmax(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &stream = detail::get_stream_based_on_range(arg.range());
   auto device_id = deviceEnv::instance()->current_device_id();
 
@@ -529,8 +550,12 @@ T btas_tensor_absmax_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
   return result;
 }
 
+}  // namespace btas
+
+}  // namespace device
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_DEVICE
 
-#endif  // TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_BTAS_H__INCLUDED

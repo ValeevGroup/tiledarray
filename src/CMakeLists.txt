@@ -213,24 +213,27 @@ if(HIP_FOUND OR CUDA_FOUND)
           TiledArray/external/librett.h)
 endif()
 
-if(CUDA_FOUND)
+if(CUDA_FOUND OR HIP_FOUND)
   list(APPEND TILEDARRAY_HEADER_FILES
-     TiledArray/external/cuda.h
-     TiledArray/device/blas.cpp
-     TiledArray/device/blas.h
-     TiledArray/device/btas_cublas.h
-     TiledArray/device/btas_um_tensor.h
-     TiledArray/device/cpu_cuda_vector.h
-     TiledArray/device/device_task_fn.h
-     TiledArray/device/kernel/mult_kernel.h
-     TiledArray/device/kernel/mult_kernel_impl.h
-     TiledArray/device/kernel/reduce_kernel.h
-     TiledArray/device/kernel/reduce_kernel_impl.h
-     TiledArray/device/platform.h
-     TiledArray/device/thrust.h
-     TiledArray/device/allocators.h
-     TiledArray/device/um_storage.h)
-endif(CUDA_FOUND)
+          TiledArray/device/blas.cpp
+          TiledArray/device/blas.h
+          TiledArray/device/btas.h
+          TiledArray/device/btas_um_tensor.h
+          TiledArray/device/device_task_fn.h
+          TiledArray/device/kernel/mult_kernel.h
+          TiledArray/device/kernel/mult_kernel_impl.h
+          TiledArray/device/kernel/reduce_kernel.h
+          TiledArray/device/kernel/reduce_kernel_impl.h
+          TiledArray/device/platform.h
+          TiledArray/device/thrust.h
+          TiledArray/device/allocators.h
+          TiledArray/device/um_storage.h)
+  if(CUDA_FOUND)
+    list(APPEND TILEDARRAY_HEADER_FILES
+       TiledArray/external/cuda.h
+       TiledArray/device/cpu_cuda_vector.h)
+  endif(CUDA_FOUND)
+endif(CUDA_FOUND OR HIP_FOUND)
 
 set(TILEDARRAY_SOURCE_FILES
 TiledArray/tiledarray.cpp
@@ -256,41 +259,40 @@ set_source_files_properties(
 # when FetchContent umpire: set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers umpire)
 set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers TiledArray_UMPIRE)
 
-# TODO better ways to handle tiledarray cuda dependency
-if(CUDA_FOUND)
+if(CUDA_FOUND OR HIP_FOUND)
 
-  set(TILEDARRAY_CUDA_SOURCE_FILES
+  set(TILEDARRAY_DEVICE_SOURCE_FILES
           TiledArray/device/btas_um_tensor.cpp
+  )
+
+  if(CUDA_FOUND)
+
+    list(APPEND TILEDARRAY_DEVICE_SOURCE_FILES
           TiledArray/device/cpu_cuda_vector.cu
           TiledArray/device/kernel/mult_kernel.cu
           TiledArray/device/kernel/reduce_kernel.cu
           TiledArray/device/um_storage.cu)
 
-  list(APPEND TILEDARRAY_SOURCE_FILES "${TILEDARRAY_CUDA_SOURCE_FILES}")
+    list(APPEND TILEDARRAY_SOURCE_FILES "${TILEDARRAY_DEVICE_SOURCE_FILES}")
 
-  foreach( f IN LISTS TILEDARRAY_CUDA_SOURCE_FILES )
-  set_source_files_properties( "${f}"
+    foreach( f IN LISTS TILEDARRAY_DEVICE_SOURCE_FILES )
+      set_source_files_properties( "${f}"
           PROPERTIES
           INCLUDE_DIRECTORIES "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}")
-  endforeach()
+    endforeach()
 
-  set_source_files_properties(TiledArray/device/btas_um_tensor.cpp
-          PROPERTIES
-          LANGUAGE CUDA)
+    # the list of libraries on which TiledArray depends on
+    list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvToolsExt)
 
-  # the list of libraries on which TiledArray depends on
-  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvToolsExt)
+  endif(CUDA_FOUND)
 
-endif(CUDA_FOUND)
+  if (HIP_FOUND)
+    list(APPEND _TILEDARRAY_DEPENDENCIES hip::host roc::rocthrust)
+  endif()
 
-if (HIP_FOUND)
-  list(APPEND _TILEDARRAY_DEPENDENCIES hip::host roc::rocthrust)
-endif()
-
-# LibreTT needed for either CUDA or HIP
-if(CUDA_FOUND OR HIP_FOUND)
+  # LibreTT needed for either CUDA or HIP
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_LIBRETT)
-endif()
+endif(CUDA_FOUND OR HIP_FOUND)
 
 if( TARGET TiledArray_SCALAPACK )
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)

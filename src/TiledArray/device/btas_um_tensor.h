@@ -26,12 +26,13 @@
 
 #include <tiledarray_fwd.h>
 
+#include <TiledArray/config.h>
 #include <TiledArray/external/btas.h>
 #include <TiledArray/external/device.h>
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
-#include <TiledArray/device/btas_cublas.h>
+#include <TiledArray/device/btas.h>
 #include <TiledArray/device/um_storage.h>
 #include <TiledArray/external/librett.h>
 #include <TiledArray/tile.h>
@@ -102,7 +103,7 @@ btasUMTensorVarray<T, Range> gemm(
     const btasUMTensorVarray<T, Range> &left,
     const btasUMTensorVarray<T, Range> &right, Scalar factor,
     const TiledArray::math::GemmHelper &gemm_helper) {
-  return btas_tensor_gemm_cuda_impl(left, right, factor, gemm_helper);
+  return device::btas::gemm(left, right, factor, gemm_helper);
 }
 
 template <typename T, typename Scalar, typename Range,
@@ -111,7 +112,7 @@ void gemm(btasUMTensorVarray<T, Range> &result,
           const btasUMTensorVarray<T, Range> &left,
           const btasUMTensorVarray<T, Range> &right, Scalar factor,
           const TiledArray::math::GemmHelper &gemm_helper) {
-  return btas_tensor_gemm_cuda_impl(result, left, right, factor, gemm_helper);
+  return device::btas::gemm(result, left, right, factor, gemm_helper);
 }
 
 ///
@@ -122,7 +123,7 @@ template <typename T, typename Range>
 btasUMTensorVarray<T, Range> clone(const btasUMTensorVarray<T, Range> &arg) {
   // TODO how to copy Unified Memory? from CPU or GPU? currently
   //  always copy on GPU, but need to investigate
-  return btas_tensor_clone_cuda_impl(arg);
+  return device::btas::clone(arg);
 }
 
 ///
@@ -204,7 +205,7 @@ template <typename T, typename Range, typename Scalar,
 btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
                                    const Scalar factor) {
   detail::to_device(arg);
-  return btas_tensor_scale_cuda_impl(arg, factor);
+  return device::btas::scale(arg, factor);
 }
 
 template <typename T, typename Range, typename Scalar,
@@ -212,7 +213,7 @@ template <typename T, typename Range, typename Scalar,
 btasUMTensorVarray<T, Range> &scale_to(btasUMTensorVarray<T, Range> &arg,
                                        const Scalar factor) {
   detail::to_device(arg);
-  btas_tensor_scale_to_cuda_impl(arg, factor);
+  device::btas::scale_to(arg, factor);
   return arg;
 }
 
@@ -238,7 +239,7 @@ btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return btas_tensor_scale_cuda_impl(arg, T(-1.0));
+  return device::btas::scale(arg, T(-1.0));
 }
 
 template <
@@ -258,7 +259,7 @@ btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg,
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> &neg_to(btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  btas_tensor_scale_to_cuda_impl(arg, T(-1.0));
+  device::btas::scale_to(arg, T(-1.0));
   return arg;
 }
 
@@ -271,7 +272,7 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2) {
   detail::to_device(arg1);
   detail::to_device(arg2);
-  return btas_tensor_subt_cuda_impl(arg1, arg2, T(1.0));
+  return device::btas::subt(arg1, arg2, T(1.0));
 }
 
 template <typename T, typename Scalar, typename Range,
@@ -280,7 +281,7 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor) {
   auto result = subt(arg1, arg2);
-  btas_tensor_scale_to_cuda_impl(result, factor);
+  device::btas::scale_to(result, factor);
   return result;
 }
 
@@ -325,7 +326,7 @@ btasUMTensorVarray<T, Range> &subt_to(
     const btasUMTensorVarray<T, Range> &arg1) {
   detail::to_device(result);
   detail::to_device(arg1);
-  btas_tensor_subt_to_cuda_impl(result, arg1, T(1.0));
+  device::btas::subt_to(result, arg1, T(1.0));
   return result;
 }
 
@@ -335,7 +336,7 @@ btasUMTensorVarray<T, Range> &subt_to(btasUMTensorVarray<T, Range> &result,
                                       const btasUMTensorVarray<T, Range> &arg1,
                                       const Scalar factor) {
   subt_to(result, arg1);
-  btas_tensor_scale_to_cuda_impl(result, factor);
+  device::btas::scale_to(result, factor);
   return result;
 }
 
@@ -348,7 +349,7 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2) {
   detail::to_device(arg1);
   detail::to_device(arg2);
-  return btas_tensor_add_cuda_impl(arg1, arg2, T(1.0));
+  return device::btas::add(arg1, arg2, T(1.0));
 }
 
 template <typename T, typename Scalar, typename Range,
@@ -357,7 +358,7 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2,
                                  const Scalar factor) {
   auto result = add(arg1, arg2);
-  btas_tensor_scale_to_cuda_impl(result, factor);
+  device::btas::scale_to(result, factor);
   return result;
 }
 
@@ -401,7 +402,7 @@ btasUMTensorVarray<T, Range> &add_to(btasUMTensorVarray<T, Range> &result,
                                      const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(result);
   detail::to_device(arg);
-  btas_tensor_add_to_cuda_impl(result, arg, T(1.0));
+  device::btas::add_to(result, arg, T(1.0));
   return result;
 }
 
@@ -411,7 +412,7 @@ btasUMTensorVarray<T, Range> &add_to(btasUMTensorVarray<T, Range> &result,
                                      const btasUMTensorVarray<T, Range> &arg,
                                      const Scalar factor) {
   add_to(result, arg);
-  btas_tensor_scale_to_cuda_impl(result, factor);
+  device::btas::scale_to(result, factor);
   return result;
 }
 
@@ -424,7 +425,7 @@ typename btasUMTensorVarray<T, Range>::value_type dot(
     const btasUMTensorVarray<T, Range> &arg2) {
   detail::to_device(arg1);
   detail::to_device(arg2);
-  return btas_tensor_dot_cuda_impl(arg1, arg2);
+  return device::btas::dot(arg1, arg2);
 }
 
 ///
@@ -435,7 +436,7 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2) {
   detail::to_device(arg1);
   detail::to_device(arg2);
-  return btas_tensor_mult_cuda_impl(arg1, arg2);
+  return device::btas::mult(arg1, arg2);
 }
 
 template <typename T, typename Scalar, typename Range,
@@ -444,7 +445,7 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor) {
   auto result = mult(arg1, arg2);
-  btas_tensor_scale_to_cuda_impl(result, factor);
+  device::btas::scale_to(result, factor);
   return result;
 }
 
@@ -487,7 +488,7 @@ btasUMTensorVarray<T, Range> &mult_to(btasUMTensorVarray<T, Range> &result,
                                       const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(result);
   detail::to_device(arg);
-  btas_tensor_mult_to_cuda_impl(result, arg);
+  device::btas::mult_to(result, arg);
   return result;
 }
 
@@ -497,7 +498,7 @@ btasUMTensorVarray<T, Range> &mult_to(btasUMTensorVarray<T, Range> &result,
                                       const btasUMTensorVarray<T, Range> &arg,
                                       const Scalar factor) {
   mult_to(result, arg);
-  btas_tensor_scale_to_cuda_impl(result, factor);
+  device::btas::scale_to(result, factor);
   return result;
 }
 
@@ -513,7 +514,7 @@ template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type squared_norm(
     const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return btas_tensor_squared_norm_cuda_impl(arg);
+  return device::btas::squared_norm(arg);
 }
 
 ///
@@ -524,7 +525,7 @@ template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type norm(
     const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return std::sqrt(btas_tensor_squared_norm_cuda_impl(arg));
+  return std::sqrt(device::btas::squared_norm(arg));
 }
 
 ///
@@ -543,7 +544,7 @@ template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type sum(
     const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return btas_tensor_sum_cuda_impl(arg);
+  return device::btas::sum(arg);
 }
 
 ///
@@ -553,7 +554,7 @@ template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type product(
     const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return btas_tensor_product_cuda_impl(arg);
+  return device::btas::product(arg);
 }
 
 ///
@@ -563,7 +564,7 @@ template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type max(
     const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return btas_tensor_max_cuda_impl(arg);
+  return device::btas::max(arg);
 }
 
 ///
@@ -573,7 +574,7 @@ template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type abs_max(
     const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return btas_tensor_absmax_cuda_impl(arg);
+  return device::btas::absmax(arg);
 }
 
 ///
@@ -583,7 +584,7 @@ template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type min(
     const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return btas_tensor_min_cuda_impl(arg);
+  return device::btas::min(arg);
 }
 
 ///
@@ -593,7 +594,7 @@ template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type abs_min(
     const btasUMTensorVarray<T, Range> &arg) {
   detail::to_device(arg);
-  return btas_tensor_absmin_cuda_impl(arg);
+  return device::btas::absmin(arg);
 }
 
 /// to host for UM Array
@@ -689,7 +690,7 @@ um_tensor_to_ta_tensor(
   };
 
   const char *use_legacy_conversion =
-      std::getenv("TA_CUDA_LEGACY_UM_CONVERSION");
+      std::getenv("TA_DEVICE_LEGACY_UM_CONVERSION");
   auto ta_array = use_legacy_conversion
                       ? to_new_tile_type(um_array, convert_tile_um)
                       : to_new_tile_type(um_array, convert_tile_memcpy);
@@ -759,7 +760,7 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
   };
 
   const char *use_legacy_conversion =
-      std::getenv("TA_CUDA_LEGACY_UM_CONVERSION");
+      std::getenv("TA_DEVICE_LEGACY_UM_CONVERSION");
   auto um_array = use_legacy_conversion
                       ? to_new_tile_type(array, convert_tile_um)
                       : to_new_tile_type(array, convert_tile_memcpy);
