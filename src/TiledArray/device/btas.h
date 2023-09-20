@@ -385,7 +385,7 @@ void mult_to(::btas::Tensor<T, Range, Storage> &result,
 
   TA_ASSERT(n == arg.size());
 
-  mult_to_cuda_kernel(result.data(), arg.data(), n, stream, device_id);
+  device::mult_to_kernel(result.data(), arg.data(), n, stream, device_id);
   device::synchronize_stream(&stream);
 }
 
@@ -407,8 +407,8 @@ template <typename T, typename Range, typename Storage>
   ::btas::Tensor<T, Range, Storage> result(arg1.range(),
                                            std::move(result_storage));
 
-  mult_cuda_kernel(result.data(), arg1.data(), arg2.data(), n, stream,
-                   device_id);
+  device::mult_kernel(result.data(), arg1.data(), arg2.data(), n, stream,
+                      device_id);
 
   device::synchronize_stream(&stream);
   return result;
@@ -474,7 +474,7 @@ T sum(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = sum_cuda_kernel(arg.data(), n, stream, device_id);
+  auto result = device::sum_kernel(arg.data(), n, stream, device_id);
 
   device::synchronize_stream(&stream);
   return result;
@@ -488,7 +488,7 @@ T product(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = product_cuda_kernel(arg.data(), n, stream, device_id);
+  auto result = device::product_kernel(arg.data(), n, stream, device_id);
 
   device::synchronize_stream(&stream);
   return result;
@@ -502,7 +502,7 @@ T min(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = min_cuda_kernel(arg.data(), n, stream, device_id);
+  auto result = device::min_kernel(arg.data(), n, stream, device_id);
 
   device::synchronize_stream(&stream);
   return result;
@@ -516,7 +516,7 @@ T max(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = max_cuda_kernel(arg.data(), n, stream, device_id);
+  auto result = device::max_kernel(arg.data(), n, stream, device_id);
 
   device::synchronize_stream(&stream);
   return result;
@@ -530,7 +530,7 @@ T absmin(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = absmin_cuda_kernel(arg.data(), n, stream, device_id);
+  auto result = device::absmin_kernel(arg.data(), n, stream, device_id);
 
   device::synchronize_stream(&stream);
   return result;
@@ -544,7 +544,7 @@ T absmax(const ::btas::Tensor<T, Range, Storage> &arg) {
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = absmax_cuda_kernel(arg.data(), n, stream, device_id);
+  auto result = device::absmax_kernel(arg.data(), n, stream, device_id);
 
   device::synchronize_stream(&stream);
   return result;

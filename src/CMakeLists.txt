@@ -221,9 +221,9 @@ if(CUDA_FOUND OR HIP_FOUND)
           TiledArray/device/btas_um_tensor.h
           TiledArray/device/device_task_fn.h
           TiledArray/device/kernel/mult_kernel.h
-          TiledArray/device/kernel/mult_kernel_impl.h
           TiledArray/device/kernel/reduce_kernel.h
-          TiledArray/device/kernel/reduce_kernel_impl.h
+          TiledArray/device/kernel/thrust/mult_kernel.h
+          TiledArray/device/kernel/thrust/reduce_kernel.h
           TiledArray/device/platform.h
           TiledArray/device/thrust.h
           TiledArray/device/allocators.h
@@ -269,11 +269,9 @@ if(CUDA_FOUND OR HIP_FOUND)
 
     list(APPEND TILEDARRAY_DEVICE_SOURCE_FILES
           TiledArray/device/cpu_cuda_vector.cu
-          TiledArray/device/kernel/mult_kernel.cu
-          TiledArray/device/kernel/reduce_kernel.cu
+          TiledArray/device/kernel/thrust/mult_kernel.cu
+          TiledArray/device/kernel/thrust/reduce_kernel.cu
           TiledArray/device/um_storage.cu)
-
-    list(APPEND TILEDARRAY_SOURCE_FILES "${TILEDARRAY_DEVICE_SOURCE_FILES}")
 
     foreach( f IN LISTS TILEDARRAY_DEVICE_SOURCE_FILES )
       set_source_files_properties( "${f}"
@@ -287,11 +285,18 @@ if(CUDA_FOUND OR HIP_FOUND)
   endif(CUDA_FOUND)
 
   if (HIP_FOUND)
+    list(APPEND TILEDARRAY_DEVICE_SOURCE_FILES
+            TiledArray/device/kernel/thrust/mult_kernel.hip
+            TiledArray/device/kernel/thrust/reduce_kernel.hip
+    )
+
     list(APPEND _TILEDARRAY_DEPENDENCIES hip::host roc::rocthrust)
   endif()
 
   # LibreTT needed for either CUDA or HIP
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_LIBRETT)
+
+  list(APPEND TILEDARRAY_SOURCE_FILES "${TILEDARRAY_DEVICE_SOURCE_FILES}")
 endif(CUDA_FOUND OR HIP_FOUND)
 
 if( TARGET TiledArray_SCALAPACK )

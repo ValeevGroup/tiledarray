@@ -62,6 +62,16 @@ template <typename T, typename Alloc>
 void resize(thrust::device_vector<T, Alloc>& dev_vec, size_t size);
 }  // namespace thrust
 
+namespace TiledArray::device {
+
+#ifdef TILEDARRAY_HAS_CUDA
+namespace thrust_system = thrust::cuda;
+#elif TILEDARRAY_HAS_HIP
+namespace thrust_system = thrust::hip;
+#endif
+
+}  // namespace TiledArray::device
+
 #endif  // TILEDARRAY_HAS_DEVICE
 
 #endif  // TILEDARRAY_DEVICE_THRUST_H__INCLUDED

@@ -21,41 +21,42 @@
  *
  */
 
-#ifndef TILEDARRAY_DEVICE_MULT_KERNEL_IMPL_H__INCLUDED
-#define TILEDARRAY_DEVICE_MULT_KERNEL_IMPL_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_KERNEL_THRUST_MULT_KERNEL_H__INCLUDED
+#define TILEDARRAY_DEVICE_KERNEL_THRUST_MULT_KERNEL_H__INCLUDED
 
-#include <TiledArray/external/cuda.h>
+#include <TiledArray/device/thrust.h>
+#include <TiledArray/external/device.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
 
-namespace TiledArray {
+namespace TiledArray::device {
 
 /// result[i] = result[i] * arg[i]
 template <typename T>
-void mult_to_cuda_kernel_impl(T *result, const T *arg, std::size_t n,
-                              cudaStream_t stream, int device_id) {
+void mult_to_kernel_thrust(T *result, const T *arg, std::size_t n,
+                           stream_t stream, int device_id) {
   DeviceSafeCall(device::setDevice(device_id));
 
   thrust::multiplies<T> mul_op;
   thrust::transform(
-      thrust::cuda::par.on(stream), thrust::device_pointer_cast(arg),
+      thrust_system::par.on(stream), thrust::device_pointer_cast(arg),
       thrust::device_pointer_cast(arg) + n, thrust::device_pointer_cast(result),
       thrust::device_pointer_cast(result), mul_op);
 }
 
 /// result[i] = arg1[i] * arg2[i]
 template <typename T>
-void mult_cuda_kernel_impl(T *result, const T *arg1, const T *arg2,
-                           std::size_t n, cudaStream_t stream, int device_id) {
+void mult_kernel_thrust(T *result, const T *arg1, const T *arg2, std::size_t n,
+                        stream_t stream, int device_id) {
   DeviceSafeCall(device::setDevice(device_id));
 
   thrust::multiplies<T> mul_op;
   thrust::transform(
-      thrust::cuda::par.on(stream), thrust::device_pointer_cast(arg1),
+      thrust_system::par.on(stream), thrust::device_pointer_cast(arg1),
       thrust::device_pointer_cast(arg1) + n, thrust::device_pointer_cast(arg2),
       thrust::device_pointer_cast(result), mul_op);
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::device
 
-#endif  // TILEDARRAY_DEVICE_MULT_KERNEL_IMPL_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_KERNEL_THRUST_MULT_KERNEL_H__INCLUDED

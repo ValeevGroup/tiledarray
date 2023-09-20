@@ -21,11 +21,12 @@
  *
  */
 
-#ifndef TILEDARRAY_DEVICE_REDUCE_KERNEL_IMPL_H__INCLUDED
-#define TILEDARRAY_DEVICE_REDUCE_KERNEL_IMPL_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_THRUST_REDUCE_KERNEL_H__INCLUDED
+#define TILEDARRAY_DEVICE_THRUST_REDUCE_KERNEL_H__INCLUDED
 
 #include <limits>
 
+#include <TiledArray/device/thrust.h>
 #include <TiledArray/external/device.h>
 #include <TiledArray/type_traits.h>
 #include <thrust/device_vector.h>
@@ -34,10 +35,9 @@
 #include <thrust/reduce.h>
 #include <thrust/transform_reduce.h>
 
-namespace TiledArray {
+namespace TiledArray::device {
 
 namespace detail {
-
 template <typename T>
 struct absolute_value
     : public thrust::unary_function<T, TiledArray::detail::scalar_t<T>> {
@@ -55,53 +55,55 @@ struct absolute_value
 
 /// T = reduce(T* arg)
 template <typename T, typename ReduceOp>
-T reduce_cuda_kernel_impl(ReduceOp &&op, const T *arg, std::size_t n, T init,
-                          cudaStream_t stream, int device_id) {
+T reduce_kernel_thrust(ReduceOp &&op, const T *arg, std::size_t n, T init,
+                       stream_t stream, int device_id) {
   DeviceSafeCall(device::setDevice(device_id));
 
   auto arg_p = thrust::device_pointer_cast(arg);
 
-  auto result = thrust::reduce(thrust::cuda::par.on(stream), arg_p, arg_p + n,
+  auto result = thrust::reduce(thrust_system::par.on(stream), arg_p, arg_p + n,
                                init, std::forward<ReduceOp>(op));
 
   return result;
 }
 
 template <typename T>
-T product_reduce_cuda_kernel_impl(const T *arg, std::size_t n,
-                                  cudaStream_t stream, int device_id) {
+T product_reduce_kernel_thrust(const T *arg, std::size_t n, stream_t stream,
+                               int device_id) {
   T init(1);
   thrust::multiplies<T> mul_op;
-  return reduce_cuda_kernel_impl(mul_op, arg, n, init, stream, device_id);
+  return reduce_kernel_thrust(mul_op, arg, n, init, stream, device_id);
 }
 
 template <typename T>
-T sum_reduce_cuda_kernel_impl(const T *arg, std::size_t n, cudaStream_t stream,
-                              int device_id) {
+T sum_reduce_kernel_thrust(const T *arg, std::size_t n, stream_t stream,
+                           int device_id) {
   T init(0);
   thrust::plus<T> plus_op;
-  return reduce_cuda_kernel_impl(plus_op, arg, n, init, stream, device_id);
+  return reduce_kernel_thrust(plus_op, arg, n, init, stream, device_id);
 }
 
 template <typename T>
-T max_reduce_cuda_kernel_impl(const T *arg, std::size_t n, cudaStream_t stream,
-                              int device_id) {
+T max_reduce_kernel_thrust(const T *arg, std::size_t n, stream_t stream,
+                           int device_id) {
   T init = std::numeric_limits<T>::lowest();
   thrust::maximum<T> max_op;
-  return reduce_cuda_kernel_impl(max_op, arg, n, init, stream, device_id);
+  return reduce_kernel_thrust(max_op, arg, n, init, stream, device_id);
 }
 
 template <typename T>
-T min_reduce_cuda_kernel_impl(const T *arg, std::size_t n, cudaStream_t stream,
-                              int device_id) {
+T min_reduce_kernel_thrust(const T *arg, std::size_t n, stream_t stream,
+                           int device_id) {
   T init = std::numeric_limits<T>::max();
   thrust::minimum<T> min_op;
-  return reduce_cuda_kernel_impl(min_op, arg, n, init, stream, device_id);
+  return reduce_kernel_thrust(min_op, arg, n, init, stream, device_id);
 }
 
 template <typename T>
-TiledArray::detail::scalar_t<T> absmax_reduce_cuda_kernel_impl(
-    const T *arg, std::size_t n, cudaStream_t stream, int device_id) {
+TiledArray::detail::scalar_t<T> absmax_reduce_kernel_thrust(const T *arg,
+                                                            std::size_t n,
+                                                            stream_t stream,
+                                                            int device_id) {
   using TR = TiledArray::detail::scalar_t<T>;
   TR init(0);
   thrust::maximum<TR> max_op;
@@ -111,15 +113,17 @@ TiledArray::detail::scalar_t<T> absmax_reduce_cuda_kernel_impl(
 
   auto arg_p = thrust::device_pointer_cast(arg);
 
-  auto result = thrust::transform_reduce(thrust::cuda::par.on(stream), arg_p,
+  auto result = thrust::transform_reduce(thrust_system::par.on(stream), arg_p,
                                          arg_p + n, abs_op, init, max_op);
 
   return result;
 }
 
 template <typename T>
-TiledArray::detail::scalar_t<T> absmin_reduce_cuda_kernel_impl(
-    const T *arg, std::size_t n, cudaStream_t stream, int device_id) {
+TiledArray::detail::scalar_t<T> absmin_reduce_kernel_thrust(const T *arg,
+                                                            std::size_t n,
+                                                            stream_t stream,
+                                                            int device_id) {
   using TR = TiledArray::detail::scalar_t<T>;
   TR init = std::numeric_limits<TR>::max();
   thrust::minimum<TR> min_op;
@@ -129,11 +133,11 @@ TiledArray::detail::scalar_t<T> absmin_reduce_cuda_kernel_impl(
 
   auto arg_p = thrust::device_pointer_cast(arg);
 
-  auto result = thrust::transform_reduce(thrust::cuda::par.on(stream), arg_p,
+  auto result = thrust::transform_reduce(thrust_system::par.on(stream), arg_p,
                                          arg_p + n, abs_op, init, min_op);
   return result;
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::device
 
-#endif  // TILEDARRAY_DEVICE_REDUCE_KERNEL_IMPL_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_THRUST_REDUCE_KERNEL_H__INCLUDED
