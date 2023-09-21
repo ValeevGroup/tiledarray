@@ -17,7 +17,9 @@
  *
  */
 
+#ifdef TILEDARRAY_HAS_CUDA
 #define CUDA_API_PER_THREAD_DEFAULT_STREAM
+#endif  // TILEDARRAY_HAS_CUDA
 
 #include <madness/config.h>
 
@@ -30,7 +32,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 #include <cuda_profiler_api.h>
-#endif
+#endif  // TILEDARRAY_HAS_CUDA
 
 template <typename Storage>
 void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
@@ -320,10 +322,10 @@ int try_main(int argc, char **argv) {
 
     for (int i = 0; i < mpi_size; i++) {
       if (i == mpi_rank) {
-        std::cout << "CUDA Device Information for MPI Process Rank: "
-                  << mpi_rank << std::endl;
-        cudaDeviceProp prop;
-        auto error = cudaGetDeviceProperties(&prop, device_id);
+        std::cout << "Device Information for MPI Process Rank: " << mpi_rank
+                  << std::endl;
+        TiledArray::device::deviceProp_t prop;
+        auto error = TiledArray::device::getDeviceProperties(&prop, device_id);
         if (error != TiledArray::device::Success) {
           std::cout << "error(GetDeviceProperties) = " << error << std::endl;
         }
