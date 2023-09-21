@@ -25,7 +25,7 @@
 
 if(CUDA_FOUND)
 
-  foreach(_exec cuda_task ta_cc_abcd_cuda ta_vector_cuda ta_reduce_cuda)
+  foreach(_exec ta_cc_abcd_cuda ta_vector_cuda ta_reduce_cuda)
 
     # Add executable
     add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
@@ -37,7 +37,7 @@ endif()
 
 if(CUDA_FOUND OR HIP_FOUND)
 
-    foreach(_exec ta_dense_device)
+    foreach(_exec device_task ta_dense_device)
 
         # Add executable
         add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")

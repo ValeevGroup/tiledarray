@@ -192,6 +192,10 @@ inline error_t deviceGetAttribute(int* value, deviceAttr_t attr, int device) {
   return cudaDeviceGetAttribute(value, attr, device);
 }
 
+inline error_t streamCreate(stream_t* pStream) {
+  return cudaStreamCreate(pStream);
+}
+
 inline error_t streamCreateWithFlags(stream_t* pStream,
                                      StreamCreateFlags flags) {
   return cudaStreamCreateWithFlags(pStream, flags);
@@ -321,6 +325,10 @@ inline error_t getDeviceProperties(deviceProp_t* prop, int device) {
 
 inline error_t deviceGetAttribute(int* value, deviceAttr_t attr, int device) {
   return hipDeviceGetAttribute(value, attr, device);
+}
+
+inline error_t streamCreate(stream_t* pStream) {
+  return hipStreamCreate(pStream);
 }
 
 inline error_t streamCreateWithFlags(stream_t* pStream,

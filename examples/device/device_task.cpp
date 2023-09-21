@@ -2,8 +2,10 @@
 // Created by Chong Peng on 11/14/18.
 //
 
+#include <TiledArray/device/blas.h>
 #include <TiledArray/device/btas_um_tensor.h>
 #include <TiledArray/device/device_task_fn.h>
+
 #include <tiledarray.h>
 
 using value_type = double;
@@ -26,8 +28,8 @@ void verify(const tile_type& tile, value_type value, std::size_t index) {
   }
 }
 
-tile_type scale(const tile_type& arg, value_type a, const cudaStream_t* stream,
-                std::size_t index) {
+tile_type scale(const tile_type& arg, value_type a,
+                const TiledArray::device::stream_t* stream, std::size_t index) {
   DeviceSafeCall(TiledArray::device::setDevice(
       TiledArray::deviceEnv::instance()->current_device_id()));
   /// make result Tensor
@@ -40,35 +42,33 @@ tile_type scale(const tile_type& arg, value_type a, const cudaStream_t* stream,
                                          std::move(result_storage));
 
   /// copy the original Tensor
-  const auto& handle = TiledArray::BLASQueuePool::handle(*stream);
+  auto& queue = TiledArray::BLASQueuePool::queue(*stream);
 
-  CublasSafeCall(TiledArray::cublasCopy(handle, result.size(), arg.data(), 1,
-                                        device_data(result.storage()), 1));
+  blas::copy(result.size(), arg.data(), 1, device_data(result.storage()), 1,
+             queue);
 
-  CublasSafeCall(TiledArray::cublasScal(handle, result.size(), &a,
-                                        device_data(result.storage()), 1));
-
-  //  cudaStreamSynchronize(stream);
-
-  TiledArray::device::synchronize_stream(stream);
+  blas::scal(result.size(), a, device_data(result.storage()), 1, queue);
 
   //  std::stringstream stream_str;
   //  stream_str << *stream;
-  //  std::string message = "run scale on Tensor: " + std::to_string(index) +  "
-  //  on stream: " + stream_str.str() +'\n'; std::cout << message;
+  //  std::string message = "run scale on Tensor: " + std::to_string(index) +
+  //                        "on stream: " + stream_str.str() + '\n';
+  //  std::cout << message;
+
+  TiledArray::device::synchronize_stream(stream);
+
   return tile_type(std::move(result));
 }
 
-void process_task(madness::World* world,
-                  const std::vector<cudaStream_t>* streams, std::size_t ntask) {
+void process_task(madness::World* world, std::size_t ntask) {
   const std::size_t iter = 50;
   const std::size_t M = 1000;
   const std::size_t N = 1000;
 
-  std::size_t n_stream = streams->size();
+  std::size_t n_stream = TiledArray::deviceEnv::instance()->num_streams();
 
   for (std::size_t i = 0; i < iter; i++) {
-    auto& stream = (*streams)[i % n_stream];
+    auto& stream = TiledArray::deviceEnv::instance()->stream(i % n_stream);
 
     TiledArray::Range range{M, N};
 
@@ -77,8 +77,9 @@ void process_task(madness::World* world,
     const double scale_factor = 2.0;
 
     // function pointer to the scale function to call
-    tile_type (*scale_fn)(const tile_type&, double, const cudaStream_t*,
-                          std::size_t) = &::scale;
+    tile_type (*scale_fn)(const tile_type&, double,
+                          const TiledArray::device::stream_t*, std::size_t) =
+        &::scale;
 
     madness::Future<tile_type> scale_future = madness::add_device_task(
         *world, ::scale, tensor, scale_factor, &stream, ntask * iter + i);
@@ -91,27 +92,15 @@ void process_task(madness::World* world,
 int try_main(int argc, char** argv) {
   auto& world = TiledArray::get_default_world();
 
-  const std::size_t n_stream = 5;
   const std::size_t n_tasks = 5;
-
-  std::vector<cudaStream_t> streams(n_stream);
-  for (auto& stream : streams) {
-    // create the streams
-    DeviceSafeCall(cudaStreamCreate(&stream));
-    //    std::cout << "stream: " << stream << "\n";
-  }
 
   // add process_task to different tasks/threads
   for (auto i = 0; i < n_tasks; i++) {
-    world.taskq.add(process_task, &world, &streams, i);
+    world.taskq.add(process_task, &world, i);
   }
 
   world.gop.fence();
 
-  for (auto& stream : streams) {
-    // create the streams
-    cudaStreamDestroy(stream);
-  }
   return 0;
 }
 
@@ -120,12 +109,12 @@ int main(int argc, char* argv[]) {
   try {
     // Initialize runtime
     try_main(argc, argv);
-  } catch (thrust::system::detail::bad_alloc& ex) {
+  } catch (std::exception& ex) {
     std::cout << ex.what() << std::endl;
 
     size_t free_mem, total_mem;
-    auto result = cudaMemGetInfo(&free_mem, &total_mem);
-    std::cout << "CUDA memory stats: {total,free} = {" << total_mem << ","
+    auto result = TiledArray::device::memGetInfo(&free_mem, &total_mem);
+    std::cout << "device memory stats: {total,free} = {" << total_mem << ","
               << free_mem << "}" << std::endl;
   } catch (...) {
     std::cerr << "unknown exception" << std::endl;
