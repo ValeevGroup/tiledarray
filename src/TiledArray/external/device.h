@@ -499,6 +499,10 @@ inline const stream_t*& tls_stream_accessor() {
   return thread_local_stream_ptr;
 }
 
+/// must call this before exiting the device task executed via
+/// the MADNESS runtime (namely, via madness::add_device_task )
+/// to inform the runtime which stream the task
+/// launched its kernels into
 inline void synchronize_stream(const stream_t* stream) {
   tls_stream_accessor() = stream;
 }
