@@ -17,15 +17,9 @@
  *
  */
 
-#define CUDA_API_PER_THREAD_DEFAULT_STREAM
-
-#include <madness/config.h>
-
-// clang-format off
-
-#include <tiledarray.h>
 #include <TiledArray/device/btas_um_tensor.h>
-// clang-format on
+#include <TiledArray/external/btas.h>
+#include <tiledarray.h>
 
 template <typename Tile>
 void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
@@ -34,7 +28,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   const std::size_t Tn = Nn / Bn;
 
   if (world.rank() == 0)
-    std::cout << "TiledArray: dense matrix reduce test...\n"
+    std::cout << "TiledArray: dense matrix vector test...\n"
               << "Number of nodes     = " << world.size()
               << "\nSize of Matrix         = " << Nm << "x" << Nn << " ("
               << double(Nm * Nn * sizeof(double)) / 1.0e9 << " GB)"
@@ -60,20 +54,20 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   blocking.push_back(
       TiledArray::TiledRange1(blocking_n.begin(), blocking_n.end()));
 
-  TiledArray::TiledRange  // TRange
-      trange(blocking.begin(), blocking.end());
+  TiledArray::TiledRange trange(blocking.begin(), blocking.end());
   TiledArray::TiledRange trange_tr(blocking.rbegin(),
                                    blocking.rend());  // transposed trange
 
   using value_type = typename Tile::value_type;
   using TArray = TA::DistArray<Tile, TA::DensePolicy>;
 
+  TArray c(world, trange);
   value_type val_a = 0.03;
   value_type val_b = 0.02;
 
   {
     if (world.rank() == 0) {
-      std::cout << "\nDot test: dot(a(m,n), b(m,n))\n";
+      std::cout << "\nAdd test: a(m,n) + b(m,n)\n";
     }
 
     TArray a(world, trange);
@@ -88,17 +82,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      value_type d = TiledArray::dot(a("m,n"), b("m,n"));
-
+      c("m,n") = a("m,n") + b("m,n");
       double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0) {
-        std::cout << "dot result: " << d << std::endl;
+      if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
-      }
-
-      //      TA_ASSERT(d == val_a*val_b*Nm*Nn);
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -107,14 +96,50 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
       std::cout << "Average wall time   = "
                 << (wall_time_stop - wall_time_start) / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
-                << double(nrepeat) * 2 * double(Nn * Nm) /
+                << double(nrepeat) * double(Nn * Nm) /
                        (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   }
 
   {
     if (world.rank() == 0) {
-      std::cout << "\nDot permute test: dot(a(m,n), b(n,m))\n";
+      std::cout << "\nAdd scale test: 2*a(m,n) + 2*b(m,n)\n";
+    }
+
+    TArray a(world, trange);
+    TArray b(world, trange);
+
+    a.fill(val_a);
+    b.fill(val_b);
+
+    // Start clock
+    const double wall_time_start = madness::wall_time();
+
+    // Do
+    for (int i = 0; i < nrepeat; ++i) {
+      double iter_time_start = madness::wall_time();
+      c("m,n") = 2 * a("m,n") + 2 * b("m,n");
+      double iter_time_stop = madness::wall_time();
+      if (world.rank() == 0)
+        std::cout << "Iteration " << i + 1
+                  << " wall time: " << (iter_time_stop - iter_time_start)
+                  << "\n";
+    }
+    // Stop clock
+    const double wall_time_stop = madness::wall_time();
+
+    if (world.rank() == 0)
+      std::cout << "Average wall time   = "
+                << (wall_time_stop - wall_time_start) / double(nrepeat)
+                << " sec\nAverage GFLOPS      = "
+                << double(nrepeat) * 3 * double(Nn * Nm) /
+                       (wall_time_stop - wall_time_start) / 1.0e9
+                << "\n";
+  }
+
+  {
+    if (world.rank() == 0) {
+      std::cout << "\nAdd permute test: 2*a(m,n) + 2*b(n,m)\n";
     }
 
     TArray a(world, trange);
@@ -129,17 +154,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      value_type d = TiledArray::dot(a("m,n"), b("n,m"));
-
+      c("m,n") = 2 * a("m,n") + 2 * b("n,m");
       double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0) {
-        std::cout << "dot result: " << d << std::endl;
+      if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
-      }
-
-      //      TA_ASSERT(d == val_a*val_b*Nm*Nn);
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -148,14 +168,14 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
       std::cout << "Average wall time   = "
                 << (wall_time_stop - wall_time_start) / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
-                << double(nrepeat) * 2 * double(Nn * Nm) /
+                << double(nrepeat) * 3 * double(Nn * Nm) /
                        (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   }
 
   {
     if (world.rank() == 0) {
-      std::cout << "\nDot scale test: dot(2*a(m,n), 3*b(m,n))\n";
+      std::cout << "\nScale add test: 5*(2*a(m,n) + 3*b(m,n))\n";
     }
 
     TArray a(world, trange);
@@ -170,17 +190,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      value_type d = TiledArray::dot(2 * a("m,n"), 3 * b("m,n"));
-
+      c("m,n") = 5 * (2 * a("m,n") + 3 * b("m,n"));
       double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0) {
-        std::cout << "dot result: " << d << std::endl;
+      if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
-      }
-
-      //      TA_ASSERT(d == val_a*val_b*Nm*Nn);
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -196,7 +211,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
   {
     if (world.rank() == 0) {
-      std::cout << "\nDot scale permute test: dot(2*a(m,n), 3*b(n,m))\n";
+      std::cout << "\nScale add permute test: 5*(2*a(m,n) + 3*b(n,m))\n";
     }
 
     TArray a(world, trange);
@@ -211,17 +226,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      value_type d = TiledArray::dot(2 * a("m,n"), 3 * b("n,m"));
-
+      c("m,n") = 5 * (2 * a("m,n") + 3 * b("n,m"));
       double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0) {
-        std::cout << "dot result: " << d << std::endl;
+      if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
-      }
-
-      //      TA_ASSERT(d == val_a*val_b*Nm*Nn);
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -237,11 +247,11 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 }
 
 template <typename T>
-using cudaTile = TiledArray::Tile<TiledArray::btasUMTensorVarray<T>>;
+using deviceTile = TiledArray::Tile<TiledArray::btasUMTensorVarray<T>>;
 
 int try_main(int argc, char **argv) {
   // Initialize runtime
-  TiledArray::World &world = TA_SCOPED_INITIALIZE(argc, argv);
+  auto &world = TA_SCOPED_INITIALIZE(argc, argv);
 
   // Get command line arguments
   if (argc < 4) {
@@ -286,57 +296,55 @@ int try_main(int argc, char **argv) {
   }
 
   int driverVersion, runtimeVersion;
-  auto error = cudaDriverGetVersion(&driverVersion);
-  if (error != cudaSuccess) {
-    std::cout << "error(cudaDriverGetVersion) = " << error << std::endl;
+  auto error = TA::device::driverVersion(&driverVersion);
+  if (error != TA::device::Success) {
+    std::cout << "error(DriverGetVersion) = " << error << std::endl;
   }
-  error = cudaRuntimeGetVersion(&runtimeVersion);
-  if (error != cudaSuccess) {
-    std::cout << "error(cudaRuntimeGetVersion) = " << error << std::endl;
+  error = TA::device::runtimeVersion(&runtimeVersion);
+  if (error != TA::device::Success) {
+    std::cout << "error(RuntimeGetVersion) = " << error << std::endl;
   }
-  std::cout << "CUDA {driver,runtime} versions = " << driverVersion << ","
+  std::cout << "device {driver,runtime} versions = " << driverVersion << ","
             << runtimeVersion << std::endl;
 
   {  // print device properties
-    int num_cuda_devices = TA::deviceEnv::instance()->num_cuda_devices();
+    int num_devices = TA::deviceEnv::instance()->num_devices();
 
-    if (num_cuda_devices <= 0) {
-      throw std::runtime_error("No CUDA-Enabled GPUs Found!\n");
+    if (num_devices <= 0) {
+      throw std::runtime_error("No GPUs Found!\n");
     }
 
-    int cuda_device_id = TA::deviceEnv::instance()->current_device_id();
+    int device_id = TA::deviceEnv::instance()->current_device_id();
 
     int mpi_size = world.size();
     int mpi_rank = world.rank();
 
     for (int i = 0; i < mpi_size; i++) {
       if (i == mpi_rank) {
-        std::cout << "CUDA Device Information for MPI Process Rank: "
-                  << mpi_rank << std::endl;
-        cudaDeviceProp prop;
-        auto error = cudaGetDeviceProperties(&prop, cuda_device_id);
-        if (error != cudaSuccess) {
-          std::cout << "error(cudaGetDeviceProperties) = " << error
-                    << std::endl;
+        std::cout << "Device Information for MPI Process Rank: " << mpi_rank
+                  << std::endl;
+        TA::device::deviceProp_t prop;
+        auto error = TA::device::getDeviceProperties(&prop, device_id);
+        if (error != TA::device::Success) {
+          std::cout << "error(GetDeviceProperties) = " << error << std::endl;
         }
-        std::cout << "Device #" << cuda_device_id << ": " << prop.name
-                  << std::endl
+        std::cout << "Device #" << device_id << ": " << prop.name << std::endl
                   << "  managedMemory = " << prop.managedMemory << std::endl
                   << "  singleToDoublePrecisionPerfRatio = "
                   << prop.singleToDoublePrecisionPerfRatio << std::endl;
         int result;
-        error = cudaDeviceGetAttribute(&result, cudaDevAttrUnifiedAddressing,
-                                       cuda_device_id);
+        error = TA::device::deviceGetAttribute(
+            &result, TA::device::DevAttrUnifiedAddressing, device_id);
         std::cout << "  attrUnifiedAddressing = " << result << std::endl;
-        error = cudaDeviceGetAttribute(
-            &result, cudaDevAttrConcurrentManagedAccess, cuda_device_id);
+        error = TA::device::deviceGetAttribute(
+            &result, TA::device::DevAttrConcurrentManagedAccess, device_id);
         std::cout << "  attrConcurrentManagedAccess = " << result << std::endl;
-        error = device::setDevice(cuda_device_id);
-        if (error != cudaSuccess) {
+        error = TA::device::setDevice(device_id);
+        if (error != TA::device::Success) {
           std::cout << "error(device::setDevice) = " << error << std::endl;
         }
         size_t free_mem, total_mem;
-        error = cudaMemGetInfo(&free_mem, &total_mem);
+        error = TA::device::memGetInfo(&free_mem, &total_mem);
         std::cout << "  {total,free} memory = {" << total_mem << "," << free_mem
                   << "}" << std::endl;
       }
@@ -348,7 +356,7 @@ int try_main(int argc, char **argv) {
     if (world.rank() == 0) {
       std::cout << "\n GPU vector operations. \n\n";
     }
-    do_main_body<cudaTile<double>>(world, Nm, Bm, Nn, Bn, nrepeat);
+    do_main_body<deviceTile<double>>(world, Nm, Bm, Nn, Bn, nrepeat);
 
     if (world.rank() == 0) {
       std::cout << "\n CPU vector operations. \n\n";
@@ -359,7 +367,7 @@ int try_main(int argc, char **argv) {
     if (world.rank() == 0) {
       std::cout << "\n GPU vector operations. \n\n";
     }
-    do_main_body<cudaTile<float>>(world, Nm, Bm, Nn, Bn, nrepeat);
+    do_main_body<deviceTile<float>>(world, Nm, Bm, Nn, Bn, nrepeat);
 
     if (world.rank() == 0) {
       std::cout << "\n CPU vector operations. \n\n";
@@ -373,15 +381,13 @@ int try_main(int argc, char **argv) {
 int main(int argc, char *argv[]) {
   try {
     try_main(argc, argv);
-  } catch (thrust::system::detail::bad_alloc &ex) {
+  } catch (std::exception &ex) {
     std::cout << ex.what() << std::endl;
 
     size_t free_mem, total_mem;
-    auto result = cudaMemGetInfo(&free_mem, &total_mem);
-    std::cout << "CUDA memory stats: {total,free} = {" << total_mem << ","
+    auto result = TA::device::memGetInfo(&free_mem, &total_mem);
+    std::cout << "device memory stats: {total,free} = {" << total_mem << ","
               << free_mem << "}" << std::endl;
-  } catch (std::exception &ex) {
-    std::cout << ex.what() << std::endl;
   } catch (...) {
     std::cerr << "unknown exception" << std::endl;
   }

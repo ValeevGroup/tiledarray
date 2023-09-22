@@ -131,7 +131,7 @@ using deviceAttr_t = cudaDeviceAttr;
   cudaDevAttrConcurrentManagedAccess
 #define DEVICERT_CB CUDART_CB
 
-enum Error { Success = cudaSuccess };
+const inline auto Success = cudaSuccess;
 
 enum DeviceId {
   CpuDeviceId = cudaCpuDeviceId,
@@ -265,7 +265,7 @@ using deviceAttr_t = hipDeviceAttribute_t;
   hipDeviceAttributeConcurrentManagedAccess
 #define DEVICERT_CB
 
-enum Error { Success = hipSuccess };
+const inline auto Success = hipSuccess;
 
 enum DeviceId {
   CpuDeviceId = hipCpuDeviceId,

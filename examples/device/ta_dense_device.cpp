@@ -17,12 +17,6 @@
  *
  */
 
-#ifdef TILEDARRAY_HAS_CUDA
-#define CUDA_API_PER_THREAD_DEFAULT_STREAM
-#endif  // TILEDARRAY_HAS_CUDA
-
-#include <madness/config.h>
-
 // clang-format off
 
 #include <tiledarray.h>
