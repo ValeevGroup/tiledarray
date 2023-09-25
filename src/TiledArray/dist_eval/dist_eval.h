@@ -25,9 +25,9 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/type_traits.h>
-#ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/cuda/cuda_task_fn.h>
-#include <TiledArray/external/cuda.h>
+#ifdef TILEDARRAY_HAS_DEVICE
+#include <TiledArray/device/device_task_fn.h>
+#include <TiledArray/external/device.h>
 #endif
 
 namespace TiledArray {

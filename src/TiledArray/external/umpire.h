@@ -71,7 +71,7 @@ std::mutex MutexLock<Tag>::mtx_;
 /// \tparam StaticLock a type providing static `lock()` and `unlock()` methods ;
 ///         defaults to NullLock which does not lock
 template <class T, class StaticLock = detail::NullLock>
-class umpire_allocator_impl {
+class umpire_based_allocator_impl {
  public:
   using value_type = T;
   using pointer = value_type*;
@@ -89,12 +89,12 @@ class umpire_allocator_impl {
       typename std::pointer_traits<pointer>::difference_type;
   using size_type = std::make_unsigned_t<difference_type>;
 
-  umpire_allocator_impl(umpire::Allocator* umpalloc) noexcept
+  umpire_based_allocator_impl(umpire::Allocator* umpalloc) noexcept
       : umpalloc_(umpalloc) {}
 
   template <class U>
-  umpire_allocator_impl(
-      const umpire_allocator_impl<U, StaticLock>& rhs) noexcept
+  umpire_based_allocator_impl(
+      const umpire_based_allocator_impl<U, StaticLock>& rhs) noexcept
       : umpalloc_(rhs.umpalloc_) {}
 
   /// allocates memory using umpire dynamic pool
@@ -140,17 +140,19 @@ class umpire_allocator_impl {
 
  private:
   umpire::Allocator* umpalloc_;
-};  // class umpire_allocator_impl
+};  // class umpire_based_allocator_impl
 
 template <class T1, class T2, class StaticLock>
-bool operator==(const umpire_allocator_impl<T1, StaticLock>& lhs,
-                const umpire_allocator_impl<T2, StaticLock>& rhs) noexcept {
+bool operator==(
+    const umpire_based_allocator_impl<T1, StaticLock>& lhs,
+    const umpire_based_allocator_impl<T2, StaticLock>& rhs) noexcept {
   return lhs.umpire_allocator() == rhs.umpire_allocator();
 }
 
 template <class T1, class T2, class StaticLock>
-bool operator!=(const umpire_allocator_impl<T1, StaticLock>& lhs,
-                const umpire_allocator_impl<T2, StaticLock>& rhs) noexcept {
+bool operator!=(
+    const umpire_based_allocator_impl<T1, StaticLock>& lhs,
+    const umpire_based_allocator_impl<T2, StaticLock>& rhs) noexcept {
   return !(lhs == rhs);
 }
 
@@ -195,23 +197,23 @@ namespace archive {
 
 template <class Archive, class T, class StaticLock>
 struct ArchiveLoadImpl<Archive,
-                       TiledArray::umpire_allocator_impl<T, StaticLock>> {
+                       TiledArray::umpire_based_allocator_impl<T, StaticLock>> {
   static inline void load(
       const Archive& ar,
-      TiledArray::umpire_allocator_impl<T, StaticLock>& allocator) {
+      TiledArray::umpire_based_allocator_impl<T, StaticLock>& allocator) {
     std::string allocator_name;
     ar& allocator_name;
-    allocator = TiledArray::umpire_allocator_impl<T, StaticLock>(
+    allocator = TiledArray::umpire_based_allocator_impl<T, StaticLock>(
         umpire::ResourceManager::getInstance().getAllocator(allocator_name));
   }
 };
 
 template <class Archive, class T, class StaticLock>
-struct ArchiveStoreImpl<Archive,
-                        TiledArray::umpire_allocator_impl<T, StaticLock>> {
+struct ArchiveStoreImpl<
+    Archive, TiledArray::umpire_based_allocator_impl<T, StaticLock>> {
   static inline void store(
       const Archive& ar,
-      const TiledArray::umpire_allocator_impl<T, StaticLock>& allocator) {
+      const TiledArray::umpire_based_allocator_impl<T, StaticLock>& allocator) {
     ar& allocator.umpire_allocator()->getName();
   }
 };

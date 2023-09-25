@@ -59,7 +59,7 @@ class LazyArrayTile {
       (!Op::is_consumable) && consume_ ? op_->consume(tile_)
                                        : (*op_)(tile_)));  ///< conversion_type
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   // TODO need a better design on how to manage the lifetime of converted Tile
   mutable conversion_result_type conversion_tile_;
 #endif
@@ -69,7 +69,7 @@ class LazyArrayTile {
       : tile_(),
         op_(),
         consume_(false)
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
         ,
         conversion_tile_()
 #endif
@@ -83,7 +83,7 @@ class LazyArrayTile {
       : tile_(other.tile_),
         op_(other.op_),
         consume_(other.consume_)
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
         ,
         conversion_tile_()
 #endif
@@ -100,7 +100,7 @@ class LazyArrayTile {
       : tile_(tile),
         op_(op),
         consume_(consume)
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
         ,
         conversion_tile_()
 #endif
@@ -114,7 +114,7 @@ class LazyArrayTile {
     tile_ = other.tile_;
     op_ = other.op_;
     consume_ = other.consume_;
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
     conversion_tile_ = other.conversion_tile_;
 #endif
     return *this;
@@ -126,7 +126,7 @@ class LazyArrayTile {
   bool is_consumable() const { return consume_ || op_->permutation(); }
 
   /// Convert tile to evaluation type using the op object
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
   explicit operator conversion_result_type&() const {
     conversion_tile_ =

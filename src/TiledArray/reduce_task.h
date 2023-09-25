@@ -24,9 +24,9 @@
 #include <TiledArray/error.h>
 #include <TiledArray/external/madness.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/cuda/cuda_task_fn.h>
-#include <TiledArray/external/cuda.h>
+#ifdef TILEDARRAY_HAS_DEVICE
+#include <TiledArray/device/device_task_fn.h>
+#include <TiledArray/external/device.h>
 #include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/util/time.h>
 #endif
@@ -304,9 +304,10 @@ class ReduceTask {
 
     };  // class ReduceObject
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
-    static void CUDART_CB cuda_reduceobject_delete_callback(void* userData) {
+    static void DEVICERT_CB
+    device_reduceobject_delete_callback(void* userData) {
       TA_ASSERT(!madness::is_madness_thread());
 
       const auto t0 = TiledArray::now();
@@ -334,15 +335,15 @@ class ReduceTask {
       };
 
       /// use madness task to call the destroy function, since it might call
-      /// cuda API
+      /// device API
       world->taskq.add(destroy_vector, objects, TaskAttributes::hipri());
 
       const auto t1 = TiledArray::now();
-      TiledArray::detail::cuda_callback_duration_ns<0>() +=
+      TiledArray::detail::device_callback_duration_ns<0>() +=
           TiledArray::duration_in_ns(t0, t1);
     }
 
-    static void CUDART_CB cuda_dependency_dec_callback(void* userData) {
+    static void DEVICERT_CB device_dependency_dec_callback(void* userData) {
       TA_ASSERT(!madness::is_madness_thread());
 
       const auto t0 = TiledArray::now();
@@ -361,12 +362,12 @@ class ReduceTask {
       //                           " call 2\n";
 
       const auto t1 = TiledArray::now();
-      TiledArray::detail::cuda_callback_duration_ns<1>() +=
+      TiledArray::detail::device_callback_duration_ns<1>() +=
           TiledArray::duration_in_ns(t0, t1);
     }
 
-    static void CUDART_CB
-    cuda_dependency_dec_reduceobject_delete_callback(void* userData) {
+    static void DEVICERT_CB
+    device_dependency_dec_reduceobject_delete_callback(void* userData) {
       TA_ASSERT(!madness::is_madness_thread());
 
       const auto t0 = TiledArray::now();
@@ -399,11 +400,11 @@ class ReduceTask {
       delete objects;
 
       const auto t1 = TiledArray::now();
-      TiledArray::detail::cuda_callback_duration_ns<2>() +=
+      TiledArray::detail::device_callback_duration_ns<2>() +=
           TiledArray::duration_in_ns(t0, t1);
     }
 
-    static void CUDART_CB cuda_readyresult_reset_callback(void* userData) {
+    static void DEVICERT_CB device_readyresult_reset_callback(void* userData) {
       TA_ASSERT(!madness::is_madness_thread());
 
       const auto t0 = TiledArray::now();
@@ -429,7 +430,7 @@ class ReduceTask {
       world->taskq.add(reset, objects, TaskAttributes::hipri());
 
       const auto t1 = TiledArray::now();
-      TiledArray::detail::cuda_callback_duration_ns<3>() +=
+      TiledArray::detail::device_callback_duration_ns<3>() +=
           TiledArray::duration_in_ns(t0, t1);
     }
 
@@ -459,10 +460,10 @@ class ReduceTask {
           op_(*result, ready_object->arg());
 
           // cleanup the argument
-#ifdef TILEDARRAY_HAS_CUDA
-          auto stream_ptr = tls_cudastream_accessor();
+#ifdef TILEDARRAY_HAS_DEVICE
+          auto stream_ptr = device::tls_stream_accessor();
 
-          /// non-CUDA op
+          /// non-device op
           if (stream_ptr == nullptr) {
             ReduceObject::destroy(ready_object);
             this->dec();
@@ -471,12 +472,12 @@ class ReduceTask {
             (*callback_object)[0] = &world_;
             (*callback_object)[1] = this;
             (*callback_object)[2] = ready_object;
-            CudaSafeCall(
-                cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
-            CudaSafeCall(cudaLaunchHostFunc(
-                *stream_ptr, cuda_dependency_dec_reduceobject_delete_callback,
+            DeviceSafeCall(
+                device::setDevice(deviceEnv::instance()->current_device_id()));
+            DeviceSafeCall(device::launchHostFunc(
+                *stream_ptr, device_dependency_dec_reduceobject_delete_callback,
                 callback_object));
-            synchronize_stream(nullptr);
+            device::synchronize_stream(nullptr);
             //                std::cout << std::to_string(world().rank()) + "
             //                add 3\n";
           }
@@ -494,8 +495,8 @@ class ReduceTask {
           op_(*result, *ready_result);
 
           // cleanup the result
-#ifdef TILEDARRAY_HAS_CUDA
-          auto stream_ptr = tls_cudastream_accessor();
+#ifdef TILEDARRAY_HAS_DEVICE
+          auto stream_ptr = device::tls_stream_accessor();
           if (stream_ptr == nullptr) {
             ready_result.reset();
           } else {
@@ -504,11 +505,12 @@ class ReduceTask {
             auto callback_object = new std::vector<void*>(2);
             (*callback_object)[0] = &world_;
             (*callback_object)[1] = ready_result_heap;
-            CudaSafeCall(
-                cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
-            CudaSafeCall(cudaLaunchHostFunc(
-                *stream_ptr, cuda_readyresult_reset_callback, callback_object));
-            synchronize_stream(nullptr);
+            DeviceSafeCall(
+                device::setDevice(deviceEnv::instance()->current_device_id()));
+            DeviceSafeCall(device::launchHostFunc(
+                *stream_ptr, device_readyresult_reset_callback,
+                callback_object));
+            device::synchronize_stream(nullptr);
             //                std::cout << std::to_string(world().rank()) + "
             //                add 4\n";
           }
@@ -534,19 +536,19 @@ class ReduceTask {
       op_(*result, object->arg());
 
       // Cleanup the argument
-#ifdef TILEDARRAY_HAS_CUDA
-      auto stream_ptr = tls_cudastream_accessor();
+#ifdef TILEDARRAY_HAS_DEVICE
+      auto stream_ptr = device::tls_stream_accessor();
       if (stream_ptr == nullptr) {
         ReduceObject::destroy(object);
       } else {
         auto callback_object = new std::vector<void*>(2);
         (*callback_object)[0] = &world_;
         (*callback_object)[1] = const_cast<ReduceObject*>(object);
-        CudaSafeCall(
-            cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
-        CudaSafeCall(cudaLaunchHostFunc(
-            *stream_ptr, cuda_reduceobject_delete_callback, callback_object));
-        synchronize_stream(nullptr);
+        DeviceSafeCall(
+            device::setDevice(deviceEnv::instance()->current_device_id()));
+        DeviceSafeCall(device::launchHostFunc(
+            *stream_ptr, device_reduceobject_delete_callback, callback_object));
+        device::synchronize_stream(nullptr);
         //            std::cout << std::to_string(world().rank()) + " add 1\n";
       }
 #else
@@ -557,16 +559,16 @@ class ReduceTask {
 
       // Decrement the dependency counter for the argument. This must
       // be done after the reduce call to avoid a race condition.
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
       if (stream_ptr == nullptr) {
         this->dec();
       } else {
         auto callback_object2 = new std::vector<void*>(1);
         (*callback_object2)[0] = this;
-        CudaSafeCall(
-            cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
-        CudaSafeCall(cudaLaunchHostFunc(
-            *stream_ptr, cuda_dependency_dec_callback, callback_object2));
+        DeviceSafeCall(
+            device::setDevice(deviceEnv::instance()->current_device_id()));
+        DeviceSafeCall(device::launchHostFunc(
+            *stream_ptr, device_dependency_dec_callback, callback_object2));
         //            std::cout << std::to_string(world().rank()) + " add 2\n";
       }
 #else
@@ -585,8 +587,8 @@ class ReduceTask {
       op_(*result, object2->arg());
 
       // Cleanup arguments
-#ifdef TILEDARRAY_HAS_CUDA
-      auto stream_ptr = tls_cudastream_accessor();
+#ifdef TILEDARRAY_HAS_DEVICE
+      auto stream_ptr = device::tls_stream_accessor();
       if (stream_ptr == nullptr) {
         ReduceObject::destroy(object1);
         ReduceObject::destroy(object2);
@@ -595,11 +597,12 @@ class ReduceTask {
         (*callback_object1)[0] = &world_;
         (*callback_object1)[1] = const_cast<ReduceObject*>(object1);
         (*callback_object1)[2] = const_cast<ReduceObject*>(object2);
-        CudaSafeCall(
-            cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
-        CudaSafeCall(cudaLaunchHostFunc(
-            *stream_ptr, cuda_reduceobject_delete_callback, callback_object1));
-        synchronize_stream(nullptr);
+        DeviceSafeCall(
+            device::setDevice(deviceEnv::instance()->current_device_id()));
+        DeviceSafeCall(device::launchHostFunc(
+            *stream_ptr, device_reduceobject_delete_callback,
+            callback_object1));
+        device::synchronize_stream(nullptr);
         //            std::cout << std::to_string(world().rank()) + " add 1\n";
       }
 #else
@@ -612,7 +615,7 @@ class ReduceTask {
 
       // Decrement the dependency counter for the two arguments. This
       // must be done after the reduce call to avoid a race condition.
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
       if (stream_ptr == nullptr) {
         this->dec();
         this->dec();
@@ -620,10 +623,10 @@ class ReduceTask {
         auto callback_object2 = new std::vector<void*>(2);
         (*callback_object2)[0] = this;
         (*callback_object2)[1] = this;
-        CudaSafeCall(
-            cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
-        CudaSafeCall(cudaLaunchHostFunc(
-            *stream_ptr, cuda_dependency_dec_callback, callback_object2));
+        DeviceSafeCall(
+            device::setDevice(deviceEnv::instance()->current_device_id()));
+        DeviceSafeCall(device::launchHostFunc(
+            *stream_ptr, device_dependency_dec_callback, callback_object2));
         //            std::cout << std::to_string(world().rank()) + " add 2\n";
       }
 
@@ -633,13 +636,13 @@ class ReduceTask {
 #endif
     }
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
     template <typename Result = result_type>
-    std::enable_if_t<detail::is_cuda_tile_v<Result>, void> internal_run(
+    std::enable_if_t<detail::is_device_tile_v<Result>, void> internal_run(
         const madness::TaskThreadEnv&) {
       TA_ASSERT(ready_result_);
 
-      auto post_result = madness::add_cuda_task(world_, op_, *ready_result_);
+      auto post_result = madness::add_device_task(world_, op_, *ready_result_);
       result_.set(post_result);
 
       if (callback_) {
@@ -648,7 +651,7 @@ class ReduceTask {
     }
 
     template <typename Result = result_type>
-    std::enable_if_t<!detail::is_cuda_tile_v<Result>, void>
+    std::enable_if_t<!detail::is_device_tile_v<Result>, void>
 #else
     void
 #endif

@@ -6,9 +6,9 @@
 
 #include <madness/world/safempi.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/cuda/cublas.h>
-#include <TiledArray/external/cuda.h>
+#ifdef TILEDARRAY_HAS_DEVICE
+#include <TiledArray/device/blas.h>
+#include <TiledArray/external/device.h>
 #include <librett.h>
 #endif
 
@@ -22,28 +22,31 @@
 namespace TiledArray {
 namespace {
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 /// initialize cuda environment
-inline void cuda_initialize() {
-  /// initialize cudaGlobal
-  cudaEnv::instance();
-  //
-  cuBLASHandlePool::handle();
+inline void device_initialize() {
+  /// initialize deviceEnv
+  deviceEnv::instance();
+#if defined(TILEDARRAY_HAS_DEVICE)
+  BLASQueuePool::initialize();
+#endif
   // initialize LibreTT
   librettInitialize();
 }
 
 /// finalize cuda environment
-inline void cuda_finalize() {
-  CudaSafeCall(cudaDeviceSynchronize());
+inline void device_finalize() {
+  DeviceSafeCall(device::deviceSynchronize());
   librettFinalize();
-  cublasDestroy(cuBLASHandlePool::handle());
-  delete &cuBLASHandlePool::handle();
-  // although TA::cudaEnv is a singleton, must explicitly delete it so
-  // that CUDA runtime is not finalized before the cudaEnv dtor is called
-  cudaEnv::instance().reset(nullptr);
-}
+#if defined(TILEDARRAY_HAS_DEVICE)
+  BLASQueuePool::finalize();
 #endif
+  // although TA::deviceEnv is a singleton, must explicitly delete it so
+  // that the device runtime is not finalized before the deviceEnv dtor is
+  // called
+  deviceEnv::instance().reset(nullptr);
+}
+#endif  // TILEDARRAY_HAS_DEVICE
 
 inline bool& initialized_madworld_accessor() {
   static bool flag = false;
@@ -102,8 +105,8 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
                               ? madness::initialize(argc, argv, comm, quiet)
                               : *madness::World::find_instance(comm);
     TiledArray::set_default_world(default_world);
-#ifdef TILEDARRAY_HAS_CUDA
-    TiledArray::cuda_initialize();
+#ifdef TILEDARRAY_HAS_DEVICE
+    TiledArray::device_initialize();
 #endif
     TiledArray::max_threads = TiledArray::get_num_threads();
     TiledArray::set_num_threads(1);
@@ -164,8 +167,8 @@ void TiledArray::finalize() {
   TiledArray::set_num_threads(TiledArray::max_threads);
   TiledArray::get_default_world().gop.fence();  // this should ensure no pending
                                                 // tasks using cuda allocators
-#ifdef TILEDARRAY_HAS_CUDA
-  TiledArray::cuda_finalize();
+#ifdef TILEDARRAY_HAS_DEVICE
+  TiledArray::device_finalize();
 #endif
   if (initialized_madworld()) {
     madness::finalize();

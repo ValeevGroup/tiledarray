@@ -17,7 +17,7 @@
  *
  */
 
-#include <TiledArray/cuda/btas_um_tensor.h>
+#include <TiledArray/device/btas_um_tensor.h>
 #include <TiledArray/version.h>
 #include <tiledarray.h>
 #include <iostream>
@@ -185,14 +185,14 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   const double n_gflop = flops_per_fma * std::pow(n_occ, 2) *
                          std::pow(n_uocc, 4) / std::pow(1024., 3);
 
-  using CUDATile =
-      btas::Tensor<T, TA::Range, TiledArray::cuda_um_btas_varray<T>>;
-  using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
+  using deviceTile =
+      btas::Tensor<T, TA::Range, TiledArray::device_um_btas_varray<T>>;
+  using deviceMatrix = TA::DistArray<TA::Tile<deviceTile>>;
 
   // Construct tensors
-  CUDAMatrix t2(world, trange_oovv);
-  CUDAMatrix v(world, trange_vvvv);
-  CUDAMatrix t2_v;
+  deviceMatrix t2(world, trange_oovv);
+  deviceMatrix v(world, trange_vvvv);
+  deviceMatrix t2_v;
   // To validate, fill input tensors with random data, otherwise just with 1s
   //  if (do_validate) {
   //    rand_fill_array(t2);
@@ -245,7 +245,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   auto result = dot_length * 0.2 * 0.3;
 
   auto verify = [&world, &threshold, &result,
-                 &dot_length](const TA::Tile<CUDATile>& tile) {
+                 &dot_length](const TA::Tile<deviceTile>& tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = fabs(tile[i] - result);

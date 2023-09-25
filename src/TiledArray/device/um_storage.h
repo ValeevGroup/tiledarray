@@ -21,60 +21,56 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
-#define TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED
+#define TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED
 
-#include <TiledArray/cuda/allocators.h>
-#include <TiledArray/cuda/thrust.h>
+#include <TiledArray/device/allocators.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
 #include <btas/array_adaptor.h>
 #include <btas/varray/varray.h>
 
-#include <TiledArray/cuda/platform.h>
+#include <TiledArray/device/platform.h>
 #include <TiledArray/utility.h>
 
 #include <madness/world/archive.h>
 
 namespace TiledArray {
 
-template <typename T>
-using cuda_um_thrust_vector =
-    thrust::device_vector<T, TiledArray::cuda_um_allocator<T>>;
-
 /// @return true if @c dev_vec is present in space @space
 template <MemorySpace Space, typename Storage>
 bool in_memory_space(const Storage& vec) noexcept {
-  return overlap(MemorySpace::CUDA_UM, Space);
+  return overlap(MemorySpace::Device_UM, Space);
 }
 
 /**
  * @tparam Space
- * @tparam Storage  the Storage type of the vector, such as cuda_um_btas_varray
+ * @tparam Storage  the Storage type of the vector, such as
+ * device_um_btas_varray
  */
 template <ExecutionSpace Space, typename Storage>
-void to_execution_space(Storage& vec, cudaStream_t stream = 0) {
+void to_execution_space(Storage& vec, device::stream_t stream = 0) {
   switch (Space) {
-    case ExecutionSpace::CPU: {
+    case ExecutionSpace::Host: {
       using std::data;
       using std::size;
       using value_type = typename Storage::value_type;
-      if (cudaEnv::instance()->concurrent_managed_access()) {
-        CudaSafeCall(cudaMemPrefetchAsync(data(vec),
-                                          size(vec) * sizeof(value_type),
-                                          cudaCpuDeviceId, stream));
+      if (deviceEnv::instance()->concurrent_managed_access()) {
+        DeviceSafeCall(device::memPrefetchAsync(data(vec),
+                                                size(vec) * sizeof(value_type),
+                                                device::CpuDeviceId, stream));
       }
       break;
     }
-    case ExecutionSpace::CUDA: {
+    case ExecutionSpace::Device: {
       using std::data;
       using std::size;
       using value_type = typename Storage::value_type;
       int device = -1;
-      if (cudaEnv::instance()->concurrent_managed_access()) {
-        CudaSafeCall(cudaGetDevice(&device));
-        CudaSafeCall(cudaMemPrefetchAsync(
+      if (deviceEnv::instance()->concurrent_managed_access()) {
+        DeviceSafeCall(device::getDevice(&device));
+        DeviceSafeCall(device::memPrefetchAsync(
             data(vec), size(vec) * sizeof(value_type), device, stream));
       }
       break;
@@ -89,14 +85,14 @@ void to_execution_space(Storage& vec, cudaStream_t stream = 0) {
  *
  * @param storage UM Storage type object
  * @param n size of um storage object
- * @param stream cuda stream used to perform prefetch
+ * @param stream device stream used to perform prefetch
  */
 template <typename Storage>
 void make_device_storage(Storage& storage, std::size_t n,
-                         const cudaStream_t& stream = 0) {
+                         const device::stream_t& stream = 0) {
   storage = Storage(n);
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(storage,
-                                                                   stream);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(storage,
+                                                                     stream);
 }
 
 /**
@@ -123,33 +119,6 @@ const typename Storage::value_type* device_data(const Storage& storage) {
 
 }  // namespace TiledArray
 
-namespace madness {
-namespace archive {
-
-template <class Archive, typename T>
-struct ArchiveLoadImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
-  static inline void load(const Archive& ar,
-                          TiledArray::cuda_um_thrust_vector<T>& x) {
-    typename thrust::device_vector<
-        T, TiledArray::cuda_um_allocator<T>>::size_type n(0);
-    ar& n;
-    x.resize(n);
-    for (auto& xi : x) ar& xi;
-  }
-};
-
-template <class Archive, typename T>
-struct ArchiveStoreImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
-  static inline void store(const Archive& ar,
-                           const TiledArray::cuda_um_thrust_vector<T>& x) {
-    ar& x.size();
-    for (const auto& xi : x) ar& xi;
-  }
-};
-
-}  // namespace archive
-}  // namespace madness
-
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED

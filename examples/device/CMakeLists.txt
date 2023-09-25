@@ -23,14 +23,14 @@
 #
 
 
-if(CUDA_FOUND)
+if(CUDA_FOUND OR HIP_FOUND)
 
-  foreach(_exec cuda_librett cuda_task ta_dense_cuda ta_cc_abcd_cuda ta_vector_cuda ta_reduce_cuda)
+    foreach(_exec device_task ta_dense_device ta_cc_abcd_device ta_vector_device ta_reduce_device)
 
-    # Add executable
-    add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
-    add_dependencies(examples-tiledarray ${_exec})
+        # Add executable
+        add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
+        add_dependencies(examples-tiledarray ${_exec})
 
-  endforeach()
+    endforeach()
 
-endif(CUDA_FOUND)
+endif()

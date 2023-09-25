@@ -248,9 +248,10 @@ class LazyArrayTile;
     using Yes = char;                                                          \
     using No = int;                                                            \
     template <typename... Args_>                                               \
-    static auto func(void*) -> decltype(                                       \
-        std::add_pointer_t<decltype(Function(std::declval<Args_>()...))>{},    \
-        Yes{});                                                                \
+    static auto func(void*)                                                    \
+        -> decltype(std::add_pointer_t<                                        \
+                        decltype(Function(std::declval<Args_>()...))>{},       \
+                    Yes{});                                                    \
     template <typename...>                                                     \
     static No func(...);                                                       \
                                                                                \
@@ -695,6 +696,25 @@ struct is_scalar<std::complex<T>> : public std::false_type {};
 template <typename T>
 constexpr const bool is_scalar_v = is_scalar<T>::value;
 
+template <typename T>
+struct is_blas_numeric : public std::false_type {};
+
+template <>
+struct is_blas_numeric<float> : public std::true_type {};
+
+template <>
+struct is_blas_numeric<double> : public std::true_type {};
+
+template <>
+struct is_blas_numeric<std::complex<float>> : public std::true_type {};
+
+template <>
+struct is_blas_numeric<std::complex<double>> : public std::true_type {};
+
+/// \c is_blas_numeric_v<T> is an alias for \c is_blas_numeric<T>::value
+template <typename T>
+constexpr const bool is_blas_numeric_v = is_blas_numeric<T>::value;
+
 /// Detect tiles used by \c ArrayEvalImpl
 
 /// \c is_array_tile evaluates to \c std::true_type when \c T is a \c
@@ -826,9 +846,10 @@ struct is_strictly_ordered_helper {
   using Yes = char;
   using No = int;
   template <typename U>
-  static auto test(void*) -> decltype(
-      std::add_pointer_t<decltype(std::declval<U>() < std::declval<U>())>{},
-      Yes{});
+  static auto test(void*)
+      -> decltype(std::add_pointer_t<decltype(std::declval<U>() <
+                                              std::declval<U>())>{},
+                  Yes{});
   template <typename...>
   static No test(...);
 

@@ -27,7 +27,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/cuda/btas_um_tensor.h>
+#include <TiledArray/device/btas_um_tensor.h>
 #include <range_fixture.h>
 #include <tiledarray.h>
 #include "unit_test_config.h"
@@ -76,8 +76,8 @@ struct UMExpressionsFixture : public TiledRangeFixture {
 
   static UMTensor permute_fn(const madness::Future<UMTensor>& tensor_f,
                              const Permutation& perm) {
-    return madness::add_cuda_task(*GlobalFixture::world, permute_task, tensor_f,
-                                  perm)
+    return madness::add_device_task(*GlobalFixture::world, permute_task,
+                                    tensor_f, perm)
         .get();
   }
 

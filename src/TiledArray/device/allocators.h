@@ -21,14 +21,14 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
-#define TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
+#ifndef TILEDARRAY_DEVICE_ALLOCATORS_H___INCLUDED
+#define TILEDARRAY_DEVICE_ALLOCATORS_H___INCLUDED
 
 #include <TiledArray/config.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
-#include <TiledArray/external/cuda.h>
+#include <TiledArray/external/device.h>
 #include <TiledArray/external/umpire.h>
 
 #include <madness/world/archive.h>
@@ -39,37 +39,40 @@
 namespace TiledArray {
 
 template <class T, class StaticLock, typename UmpireAllocatorAccessor>
-class cuda_allocator_impl : public umpire_allocator_impl<T, StaticLock> {
+class umpire_based_allocator
+    : public umpire_based_allocator_impl<T, StaticLock> {
  public:
-  using base_type = umpire_allocator_impl<T, StaticLock>;
+  using base_type = umpire_based_allocator_impl<T, StaticLock>;
   using typename base_type::const_pointer;
   using typename base_type::const_reference;
   using typename base_type::pointer;
   using typename base_type::reference;
   using typename base_type::value_type;
 
-  cuda_allocator_impl() noexcept : base_type(&UmpireAllocatorAccessor{}()) {}
+  umpire_based_allocator() noexcept : base_type(&UmpireAllocatorAccessor{}()) {}
 
   template <class U>
-  cuda_allocator_impl(
-      const cuda_allocator_impl<U, StaticLock, UmpireAllocatorAccessor>&
+  umpire_based_allocator(
+      const umpire_based_allocator<U, StaticLock, UmpireAllocatorAccessor>&
           rhs) noexcept
       : base_type(
-            static_cast<const umpire_allocator_impl<U, StaticLock>&>(rhs)) {}
+            static_cast<const umpire_based_allocator_impl<U, StaticLock>&>(
+                rhs)) {}
 
   template <typename T1, typename T2, class StaticLock_,
             typename UmpireAllocatorAccessor_>
   friend bool operator==(
-      const cuda_allocator_impl<T1, StaticLock_, UmpireAllocatorAccessor_>& lhs,
-      const cuda_allocator_impl<T2, StaticLock_, UmpireAllocatorAccessor_>&
+      const umpire_based_allocator<T1, StaticLock_, UmpireAllocatorAccessor_>&
+          lhs,
+      const umpire_based_allocator<T2, StaticLock_, UmpireAllocatorAccessor_>&
           rhs) noexcept;
-};  // class cuda_allocator_impl
+};  // class umpire_based_allocator
 
 template <class T1, class T2, class StaticLock,
           typename UmpireAllocatorAccessor>
 bool operator==(
-    const cuda_allocator_impl<T1, StaticLock, UmpireAllocatorAccessor>& lhs,
-    const cuda_allocator_impl<T2, StaticLock, UmpireAllocatorAccessor>&
+    const umpire_based_allocator<T1, StaticLock, UmpireAllocatorAccessor>& lhs,
+    const umpire_based_allocator<T2, StaticLock, UmpireAllocatorAccessor>&
         rhs) noexcept {
   return lhs.umpire_allocator() == rhs.umpire_allocator();
 }
@@ -77,8 +80,8 @@ bool operator==(
 template <class T1, class T2, class StaticLock,
           typename UmpireAllocatorAccessor>
 bool operator!=(
-    const cuda_allocator_impl<T1, StaticLock, UmpireAllocatorAccessor>& lhs,
-    const cuda_allocator_impl<T2, StaticLock, UmpireAllocatorAccessor>&
+    const umpire_based_allocator<T1, StaticLock, UmpireAllocatorAccessor>& lhs,
+    const umpire_based_allocator<T2, StaticLock, UmpireAllocatorAccessor>&
         rhs) noexcept {
   return !(lhs == rhs);
 }
@@ -87,13 +90,13 @@ namespace detail {
 
 struct get_um_allocator {
   umpire::Allocator& operator()() {
-    return cudaEnv::instance()->um_allocator();
+    return deviceEnv::instance()->um_allocator();
   }
 };
 
 struct get_pinned_allocator {
   umpire::Allocator& operator()() {
-    return cudaEnv::instance()->pinned_allocator();
+    return deviceEnv::instance()->pinned_allocator();
   }
 };
 
@@ -106,30 +109,30 @@ namespace archive {
 
 template <class Archive, class T, class StaticLock,
           typename UmpireAllocatorAccessor>
-struct ArchiveLoadImpl<Archive, TiledArray::cuda_allocator_impl<
+struct ArchiveLoadImpl<Archive, TiledArray::umpire_based_allocator<
                                     T, StaticLock, UmpireAllocatorAccessor>> {
   static inline void load(
       const Archive& ar,
-      TiledArray::cuda_allocator_impl<T, StaticLock, UmpireAllocatorAccessor>&
-          allocator) {
-    allocator = TiledArray::cuda_allocator_impl<T, StaticLock,
-                                                UmpireAllocatorAccessor>{};
+      TiledArray::umpire_based_allocator<T, StaticLock,
+                                         UmpireAllocatorAccessor>& allocator) {
+    allocator = TiledArray::umpire_based_allocator<T, StaticLock,
+                                                   UmpireAllocatorAccessor>{};
   }
 };
 
 template <class Archive, class T, class StaticLock,
           typename UmpireAllocatorAccessor>
-struct ArchiveStoreImpl<Archive, TiledArray::cuda_allocator_impl<
+struct ArchiveStoreImpl<Archive, TiledArray::umpire_based_allocator<
                                      T, StaticLock, UmpireAllocatorAccessor>> {
   static inline void store(
       const Archive& ar,
-      const TiledArray::cuda_allocator_impl<
+      const TiledArray::umpire_based_allocator<
           T, StaticLock, UmpireAllocatorAccessor>& allocator) {}
 };
 
 }  // namespace archive
 }  // namespace madness
 
-#endif  // TILEDARRAY_HAS_CUDA
+#endif  // TILEDARRAY_HAS_DEVICE
 
-#endif  // TILEDARRAY_CUDA_ALLOCATORS_H___INCLUDED
+#endif  // TILEDARRAY_DEVICE_ALLOCATORS_H___INCLUDED

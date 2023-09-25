@@ -111,22 +111,22 @@ class UnaryEvalImpl
 
   /// Task function for evaluating tiles
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// \param i The tile index
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
-  std::enable_if_t<detail::is_cuda_tile_v<U>, void> eval_tile(
+  std::enable_if_t<detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, tile_argument_type tile) {
     // TODO avoid copy Op object
     auto result_tile =
-        madness::add_cuda_task(DistEvalImpl_::world(), op_, tile);
+        madness::add_device_task(DistEvalImpl_::world(), op_, tile);
     DistEvalImpl_::set_tile(i, result_tile);
   }
 
   /// \param i The tile index
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
-  std::enable_if_t<!detail::is_cuda_tile_v<U>, void> eval_tile(
+  std::enable_if_t<!detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, tile_argument_type tile) {
     DistEvalImpl_::set_tile(i, op_(tile));
   }
@@ -167,7 +167,7 @@ class UnaryEvalImpl
         const auto target_index = DistEvalImpl_::perm_index_to_target(index);
 
         // Schedule tile evaluation task
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
         TensorImpl_::world().taskq.add(self,
                                        &UnaryEvalImpl_::template eval_tile<>,
                                        target_index, arg_.get(index));

@@ -1,11 +1,11 @@
 
-#ifndef TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
-#define TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_CPU_CUDA_VECTOR_H__INCLUDED
+#define TILEDARRAY_DEVICE_CPU_CUDA_VECTOR_H__INCLUDED
 
 #include <btas/array_adaptor.h>
 
-#include <TiledArray/cuda/platform.h>
-#include <TiledArray/cuda/thrust.h>
+#include <TiledArray/device/platform.h>
+#include <TiledArray/device/thrust.h>
 
 #include <madness/world/archive.h>
 
@@ -165,8 +165,8 @@ template <MemorySpace Space, typename T, typename HostAlloc,
           typename DeviceAlloc>
 bool in_memory_space(
     const cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) noexcept {
-  return (vec.on_host() && overlap(MemorySpace::CPU, Space)) ||
-         (vec.on_device() && overlap(MemorySpace::CUDA, Space));
+  return (vec.on_host() && overlap(MemorySpace::Host, Space)) ||
+         (vec.on_device() && overlap(MemorySpace::Device, Space));
 }
 
 template <ExecutionSpace Space, typename T, typename HostAlloc,
@@ -174,11 +174,11 @@ template <ExecutionSpace Space, typename T, typename HostAlloc,
 void to_execution_space(cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec,
                         cudaStream_t stream = 0) {
   switch (Space) {
-    case ExecutionSpace::CPU: {
+    case ExecutionSpace::Host: {
       vec.to_host();
       break;
     }
-    case ExecutionSpace::CUDA: {
+    case ExecutionSpace::Device: {
       vec.to_device();
       break;
     }
@@ -231,4 +231,4 @@ struct ArchiveStoreImpl<Archive, TiledArray::cpu_cuda_vector<T>> {
 }  // namespace archive
 }  // namespace madness
 
-#endif  // TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_CPU_CUDA_VECTOR_H__INCLUDED

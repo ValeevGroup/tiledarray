@@ -17,10 +17,6 @@ enable_language(CUDA)
 set(CUDA_FOUND TRUE)
 set(TILEDARRAY_HAS_CUDA 1 CACHE BOOL "Whether TiledArray has CUDA support")
 
-if(ENABLE_CUDA_ERROR_CHECK)
-  set (TILEDARRAY_CHECK_CUDA_ERROR 1)
-endif(ENABLE_CUDA_ERROR_CHECK)
-
 # find CUDA toolkit
 # NB CUDAToolkit does NOT have COMPONENTS
 find_package(CUDAToolkit REQUIRED)

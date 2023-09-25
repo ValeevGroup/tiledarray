@@ -114,7 +114,7 @@ class hostEnv {
   /// @return an Umpire allocator that allocates from a
   ///         host memory pool
   /// @warning this is not a thread-safe allocator, should be only used when
-  ///          wrapped into umpire_allocator_impl
+  ///          wrapped into umpire_based_allocator_impl
   umpire::Allocator& host_allocator() { return host_allocator_; }
 
   // clang-format off
@@ -139,7 +139,7 @@ class hostEnv {
   World* world_;
 
   // allocates from a dynamic, size-limited host memory pool
-  // N.B. not thread safe, so must be wrapped into umpire_allocator_impl
+  // N.B. not thread safe, so must be wrapped into umpire_based_allocator_impl
   umpire::Allocator host_allocator_;
 
   inline static std::unique_ptr<hostEnv>& instance_accessor() {

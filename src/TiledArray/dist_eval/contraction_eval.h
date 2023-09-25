@@ -31,11 +31,11 @@
 
 #include <TiledArray/tensor/type_traits.h>
 
-//#define TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL 1
-//#define TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE 1
-//#define TILEDARRAY_ENABLE_SUMMA_TRACE_STEP 1
-//#define TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST 1
-//#define TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE 1
+// #define TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL 1
+// #define TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE 1
+// #define TILEDARRAY_ENABLE_SUMMA_TRACE_STEP 1
+// #define TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST 1
+// #define TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE 1
 
 namespace TiledArray {
 namespace detail {
@@ -478,8 +478,8 @@ class Summa
   template <typename Arg>
   static typename std::enable_if<
       is_lazy_tile<typename Arg::value_type>::value
-#ifdef TILEDARRAY_HAS_CUDA
-          && !detail::is_cuda_tile_v<typename Arg::value_type>
+#ifdef TILEDARRAY_HAS_DEVICE
+          && !detail::is_device_tile_v<typename Arg::value_type>
 #endif
       ,
       Future<typename Arg::eval_type>>::type
@@ -490,7 +490,7 @@ class Summa
                                  madness::TaskAttributes::hipri());
   }
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// Conversion function
 
   /// This function spawns a task that will convert a lazy tile from the
@@ -502,13 +502,14 @@ class Summa
   template <typename Arg>
   static typename std::enable_if<
       is_lazy_tile<typename Arg::value_type>::value &&
-          detail::is_cuda_tile_v<typename Arg::value_type>,
+          detail::is_device_tile_v<typename Arg::value_type>,
       Future<typename Arg::eval_type>>::type
   get_tile(Arg& arg, const typename Arg::ordinal_type index) {
     auto convert_tile_fn =
         &Summa_::template convert_tile<typename Arg::value_type>;
-    return madness::add_cuda_task(arg.world(), convert_tile_fn, arg.get(index),
-                                  madness::TaskAttributes::hipri());
+    return madness::add_device_task(arg.world(), convert_tile_fn,
+                                    arg.get(index),
+                                    madness::TaskAttributes::hipri());
   }
 #endif
 

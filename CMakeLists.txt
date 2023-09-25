@@ -130,10 +130,8 @@ add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks (TBB) supports pro
 option(ENABLE_CUDA "Enable use of CUDA with TiledArray" OFF)
 add_feature_info(CUDA ENABLE_CUDA "NVIDIA CUDA support for GPU")
 
-if(ENABLE_CUDA)
-  option(ENABLE_CUDA_ERROR_CHECK "TiledArray will always check errors in CUDA calls" ON)
-  add_feature_info(CUDA_ERROR_CHECK ENABLE_CUDA_ERROR_CHECK "Checks CUDA Error")
-endif()
+option(ENABLE_HIP "Enable use of HIP with TiledArray" OFF)
+add_feature_info(HIP ENABLE_HIP "AMD HIP/ROCm support for GPU")
 
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
 add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
@@ -306,9 +304,12 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 add_custom_target(External-tiledarray)
 
 # required deps:
-# 1. CUDA first since others may depend on it
+# 1. derive runtime (CUDA/HIP/...) first since others may depend on it
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
+endif()
+if(ENABLE_HIP)
+  include(external/hip.cmake)
 endif()
 if (TA_TTG)
   include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchTTG.cmake)

@@ -315,19 +315,19 @@ constexpr const bool is_reduce_op_v =
     is_reduce_op_<void, ReduceOp, Result, Args...>::value;
 
 /// detect cuda tile
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 template <typename T>
-struct is_cuda_tile : public std::false_type {};
+struct is_device_tile : public std::false_type {};
 
 template <typename T>
-struct is_cuda_tile<Tile<T>> : public is_cuda_tile<T> {};
+struct is_device_tile<Tile<T>> : public is_device_tile<T> {};
 
 template <typename T, typename Op>
-struct is_cuda_tile<LazyArrayTile<T, Op>>
-    : public is_cuda_tile<typename LazyArrayTile<T, Op>::eval_type> {};
+struct is_device_tile<LazyArrayTile<T, Op>>
+    : public is_device_tile<typename LazyArrayTile<T, Op>::eval_type> {};
 
 template <typename T>
-static constexpr const auto is_cuda_tile_v = is_cuda_tile<T>::value;
+static constexpr const auto is_device_tile_v = is_device_tile<T>::value;
 
 #endif
 

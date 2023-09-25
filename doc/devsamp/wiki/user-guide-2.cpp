@@ -36,6 +36,7 @@ TA::Tensor<T> make_tile2(const TA::Range& range, const double v) {
 
 // Fill array x with value v
 void init_array(TA::TArrayD& x, const double v) {
+  using std::begin, std::end;
   // Add local tiles to a
   for (auto it = begin(x); it != end(x); ++it) {
     // Construct a tile using a MADNESS task.
