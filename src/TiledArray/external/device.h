@@ -426,41 +426,12 @@ inline int num_devices() {
 }
 
 inline int current_device_id(World& world) {
-  int mpi_local_size = -1;
-  int mpi_local_rank = -1;
-  std::tie(mpi_local_rank, mpi_local_size) = detail::mpi_local_rank_size(world);
-
-  int num_devices = device::num_devices();
-
-  int device_id = -1;
-  // devices may already be pre-mapped
-  // if mpi_local_size <= num_devices : all ranks are in same resource set, map
-  // round robin
-  if (mpi_local_size <= num_devices) {
-    device_id = mpi_local_rank % num_devices;
-  } else {  // mpi_local_size > num_devices
-    const char* vd_cstr =
-        std::getenv(TILEDARRAY_DEVICE_RUNTIME_STR "_VISIBLE_DEVICES");
-    if (vd_cstr) {  // *_VISIBLE_DEVICES is set, assume that pre-mapped
-      // make sure that there is only 1 device available here
-      if (num_devices != 1) {
-        throw std::runtime_error(
-            std::string(
-                TILEDARRAY_DEVICE_RUNTIME_STR
-                "_VISIBLE_DEVICES environment variable is set, hence using "
-                "the provided device-to-rank mapping; BUT TiledArray found ") +
-            std::to_string(num_devices) +
-            " devices; only 1 device / MPI process is supported");
-      }
-      device_id = 0;
-    } else {  // not enough devices + devices are not pre-mapped
-      throw std::runtime_error(
-          std::string("TiledArray found ") + std::to_string(mpi_local_size) +
-          " MPI ranks on a node with " + std::to_string(num_devices) +
-          " devices; only 1 MPI process / device model is currently "
-          "supported");
-    }
-  }
+  static const std::tuple<int, int> local_rank_size =
+      detail::mpi_local_rank_size(world);
+  const auto& [mpi_local_rank, mpi_local_size] = local_rank_size;
+  static const int num_devices = device::num_devices();
+  // map ranks to default device round robin
+  static const int device_id = mpi_local_rank % num_devices;
 
   return device_id;
 }
