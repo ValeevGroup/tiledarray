@@ -2,8 +2,8 @@
 // Created by Chong Peng on 2019-03-20.
 //
 
-#ifndef TILEDARRAY_DEVICE_CUDA_TASK_FN_H__INCLUDED
-#define TILEDARRAY_DEVICE_CUDA_TASK_FN_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_DEVICE_TASK_FN_H__INCLUDED
+#define TILEDARRAY_DEVICE_DEVICE_TASK_FN_H__INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -865,4 +865,4 @@ typename detail::memfunc_enabler<objT, memfnT>::type add_device_task(
 }  // namespace madness
 
 #endif  // TILDARRAY_HAS_DEVICE
-#endif  // TILEDARRAY_DEVICE_CUDA_TASK_FN_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_DEVICE_TASK_FN_H__INCLUDED
