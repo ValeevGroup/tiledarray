@@ -17,8 +17,9 @@
  *
  */
 
-#include <TiledArray/device/btas_um_tensor.h>
 #include <tiledarray.h>
+
+#include <TiledArray/device/btas_um_tensor.h>
 
 template <typename Tile>
 void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
@@ -291,13 +292,13 @@ int try_main(int argc, char **argv) {
             << runtimeVersion << std::endl;
 
   {  // print device properties
-    int num_devices = TA::deviceEnv::instance()->num_devices();
+    int num_devices = TA::deviceEnv::instance()->num_visible_devices();
 
     if (num_devices <= 0) {
       throw std::runtime_error("No GPUs Found!\n");
     }
 
-    int device_id = TA::deviceEnv::instance()->current_device_id();
+    const int device_id = TA::deviceEnv::instance()->current_device_id();
 
     int mpi_size = world.size();
     int mpi_rank = world.rank();

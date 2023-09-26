@@ -28,18 +28,12 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
-#include <TiledArray/external/device.h>
-
 #include <TiledArray/error.h>
+#include <TiledArray/external/device.h>
 #include <TiledArray/tensor/complex.h>
-
-#include <TiledArray/math/blas.h>
+#include <blas/device.hh>
 
 namespace TiledArray {
-
-/*
- * cuBLAS interface functions
- */
 
 /**
  * BLASQueuePool is a singleton controlling a pool of blas::Queue objects:
@@ -54,20 +48,29 @@ struct BLASQueuePool {
   static void finalize();
 
   static blas::Queue &queue(std::size_t ordinal = 0);
-  static blas::Queue &queue(const device::stream_t &stream);
+  static blas::Queue &queue(const device::Stream &s);
 
  private:
   static std::vector<std::unique_ptr<blas::Queue>> queues_;
 };
 
-namespace detail {
+/// maps a (tile) Range to blas::Queue; if had already pushed work into a
+/// device::Stream (as indicated by madness_task_current_stream() )
+/// will return that Stream instead
+/// @param[in] range will determine the device::Stream to compute an object
+/// associated with this Range object
+/// @return the device::Stream to use for creating tasks generating work
+/// associated with Range \p range
 template <typename Range>
-blas::Queue &get_blasqueue_based_on_range(const Range &range) {
-  // TODO better way to get stream based on the id of tensor
-  auto stream_ord = range.offset() % device::Env::instance()->num_streams();
-  return BLASQueuePool::queue(stream_ord);
+blas::Queue &blasqueue_for(const Range &range) {
+  auto stream_opt = device::madness_task_current_stream();
+  if (!stream_opt) {
+    auto stream_ord =
+        range.offset() % device::Env::instance()->num_streams_total();
+    return BLASQueuePool::queue(stream_ord);
+  } else
+    return BLASQueuePool::queue(*stream_opt);
 }
-}  // namespace detail
 
 }  // namespace TiledArray
 

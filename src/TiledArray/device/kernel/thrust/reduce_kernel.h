@@ -56,64 +56,60 @@ struct absolute_value
 /// T = reduce(T* arg)
 template <typename T, typename ReduceOp>
 T reduce_kernel_thrust(ReduceOp &&op, const T *arg, std::size_t n, T init,
-                       stream_t stream, int device_id) {
-  DeviceSafeCall(device::setDevice(device_id));
+                       const Stream &s) {
+  DeviceSafeCall(device::setDevice(s.device));
 
   auto arg_p = thrust::device_pointer_cast(arg);
 
-  auto result = thrust::reduce(thrust_system::par.on(stream), arg_p, arg_p + n,
-                               init, std::forward<ReduceOp>(op));
+  auto result = thrust::reduce(thrust_system::par.on(s.stream), arg_p,
+                               arg_p + n, init, std::forward<ReduceOp>(op));
 
   return result;
 }
 
 template <typename T>
-T product_reduce_kernel_thrust(const T *arg, std::size_t n, stream_t stream,
-                               int device_id) {
+T product_reduce_kernel_thrust(const T *arg, std::size_t n,
+                               const Stream &stream) {
   T init(1);
   thrust::multiplies<T> mul_op;
-  return reduce_kernel_thrust(mul_op, arg, n, init, stream, device_id);
+  return reduce_kernel_thrust(mul_op, arg, n, init, stream);
 }
 
 template <typename T>
-T sum_reduce_kernel_thrust(const T *arg, std::size_t n, stream_t stream,
-                           int device_id) {
+T sum_reduce_kernel_thrust(const T *arg, std::size_t n, const Stream &stream) {
   T init(0);
   thrust::plus<T> plus_op;
-  return reduce_kernel_thrust(plus_op, arg, n, init, stream, device_id);
+  return reduce_kernel_thrust(plus_op, arg, n, init, stream);
 }
 
 template <typename T>
-T max_reduce_kernel_thrust(const T *arg, std::size_t n, stream_t stream,
-                           int device_id) {
+T max_reduce_kernel_thrust(const T *arg, std::size_t n, const Stream &stream) {
   T init = std::numeric_limits<T>::lowest();
   thrust::maximum<T> max_op;
-  return reduce_kernel_thrust(max_op, arg, n, init, stream, device_id);
+  return reduce_kernel_thrust(max_op, arg, n, init, stream);
 }
 
 template <typename T>
-T min_reduce_kernel_thrust(const T *arg, std::size_t n, stream_t stream,
-                           int device_id) {
+T min_reduce_kernel_thrust(const T *arg, std::size_t n, const Stream &stream) {
   T init = std::numeric_limits<T>::max();
   thrust::minimum<T> min_op;
-  return reduce_kernel_thrust(min_op, arg, n, init, stream, device_id);
+  return reduce_kernel_thrust(min_op, arg, n, init, stream);
 }
 
 template <typename T>
 TiledArray::detail::scalar_t<T> absmax_reduce_kernel_thrust(const T *arg,
                                                             std::size_t n,
-                                                            stream_t stream,
-                                                            int device_id) {
+                                                            const Stream &s) {
   using TR = TiledArray::detail::scalar_t<T>;
   TR init(0);
   thrust::maximum<TR> max_op;
   detail::absolute_value<T> abs_op;
 
-  DeviceSafeCall(device::setDevice(device_id));
+  DeviceSafeCall(device::setDevice(s.device));
 
   auto arg_p = thrust::device_pointer_cast(arg);
 
-  auto result = thrust::transform_reduce(thrust_system::par.on(stream), arg_p,
+  auto result = thrust::transform_reduce(thrust_system::par.on(s.stream), arg_p,
                                          arg_p + n, abs_op, init, max_op);
 
   return result;
@@ -122,18 +118,17 @@ TiledArray::detail::scalar_t<T> absmax_reduce_kernel_thrust(const T *arg,
 template <typename T>
 TiledArray::detail::scalar_t<T> absmin_reduce_kernel_thrust(const T *arg,
                                                             std::size_t n,
-                                                            stream_t stream,
-                                                            int device_id) {
+                                                            const Stream &s) {
   using TR = TiledArray::detail::scalar_t<T>;
   TR init = std::numeric_limits<TR>::max();
   thrust::minimum<TR> min_op;
   detail::absolute_value<T> abs_op;
 
-  DeviceSafeCall(device::setDevice(device_id));
+  DeviceSafeCall(device::setDevice(s.device));
 
   auto arg_p = thrust::device_pointer_cast(arg);
 
-  auto result = thrust::transform_reduce(thrust_system::par.on(stream), arg_p,
+  auto result = thrust::transform_reduce(thrust_system::par.on(s.stream), arg_p,
                                          arg_p + n, abs_op, init, min_op);
   return result;
 }

@@ -15,8 +15,8 @@ using tile_type = TA::Tile<tensor_type>;
 /// verify the elements in tile is equal to value
 void verify(const tile_type& tile, value_type value, std::size_t index) {
   //  const auto size = tile.size();
-  std::string message = "verify Tensor: " + std::to_string(index) + '\n';
-  std::cout << message;
+  //  std::string message = "verify Tensor: " + std::to_string(index) + '\n';
+  //  std::cout << message;
   for (auto& num : tile) {
     if (num != value) {
       std::string error("Error: " + std::to_string(num) + " " +
@@ -29,20 +29,18 @@ void verify(const tile_type& tile, value_type value, std::size_t index) {
 }
 
 tile_type scale(const tile_type& arg, value_type a,
-                const TiledArray::device::stream_t* stream, std::size_t index) {
-  DeviceSafeCall(TiledArray::device::setDevice(
-      TiledArray::deviceEnv::instance()->current_device_id()));
+                TiledArray::device::Stream stream, std::size_t index) {
   /// make result Tensor
   using Storage = typename tile_type::tensor_type::storage_type;
   Storage result_storage;
   auto result_range = arg.range();
-  make_device_storage(result_storage, arg.size(), *stream);
+  make_device_storage(result_storage, arg.size(), stream);
 
   typename tile_type::tensor_type result(std::move(result_range),
                                          std::move(result_storage));
 
   /// copy the original Tensor
-  auto& queue = TiledArray::BLASQueuePool::queue(*stream);
+  auto& queue = TiledArray::BLASQueuePool::queue(stream);
 
   blas::copy(result.size(), arg.data(), 1, device_data(result.storage()), 1,
              queue);
@@ -50,12 +48,12 @@ tile_type scale(const tile_type& arg, value_type a,
   blas::scal(result.size(), a, device_data(result.storage()), 1, queue);
 
   //  std::stringstream stream_str;
-  //  stream_str << *stream;
+  //  stream_str << stream;
   //  std::string message = "run scale on Tensor: " + std::to_string(index) +
   //                        "on stream: " + stream_str.str() + '\n';
   //  std::cout << message;
 
-  TiledArray::device::synchronize_stream(stream);
+  TiledArray::device::sync_madness_task_with(stream);
 
   return tile_type(std::move(result));
 }
@@ -65,10 +63,10 @@ void process_task(madness::World* world, std::size_t ntask) {
   const std::size_t M = 1000;
   const std::size_t N = 1000;
 
-  std::size_t n_stream = TiledArray::deviceEnv::instance()->num_streams();
+  std::size_t n_stream = TiledArray::deviceEnv::instance()->num_streams_total();
 
   for (std::size_t i = 0; i < iter; i++) {
-    auto& stream = TiledArray::deviceEnv::instance()->stream(i % n_stream);
+    auto stream = TiledArray::deviceEnv::instance()->stream(i % n_stream);
 
     TiledArray::Range range{M, N};
 
@@ -77,12 +75,11 @@ void process_task(madness::World* world, std::size_t ntask) {
     const double scale_factor = 2.0;
 
     // function pointer to the scale function to call
-    tile_type (*scale_fn)(const tile_type&, double,
-                          const TiledArray::device::stream_t*, std::size_t) =
-        &::scale;
+    tile_type (*scale_fn)(const tile_type&, double, TiledArray::device::Stream,
+                          std::size_t) = &::scale;
 
     madness::Future<tile_type> scale_future = madness::add_device_task(
-        *world, ::scale, tensor, scale_factor, &stream, ntask * iter + i);
+        *world, ::scale, tensor, scale_factor, stream, ntask * iter + i);
 
     /// this should start until scale_taskfn is finished
     world->taskq.add(verify, scale_future, scale_factor, ntask * iter + i);

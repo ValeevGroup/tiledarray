@@ -32,6 +32,7 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
+#include <TiledArray/device/blas.h>
 #include <TiledArray/device/btas.h>
 #include <TiledArray/device/um_storage.h>
 #include <TiledArray/external/librett.h>
@@ -47,8 +48,7 @@ struct is_device_tile<
 
 template <typename T>
 void to_device(const TiledArray::btasUMTensorVarray<T> &tile) {
-  device::setDevice(TiledArray::deviceEnv::instance()->current_device_id());
-  auto &stream = TiledArray::detail::get_stream_based_on_range(tile.range());
+  auto stream = device::stream_for(tile.range());
   TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
       tile.storage(), stream);
 }
@@ -69,8 +69,8 @@ struct ArchiveLoadImpl<Archive, TiledArray::btasUMTensorVarray<T>> {
     TiledArray::device_um_btas_varray<T> store{};
     ar &range &store;
     t = TiledArray::btasUMTensorVarray<T>(std::move(range), std::move(store));
-    // device::setDevice(TiledArray::deviceEnv::instance()->current_device_id());
-    // auto &stream = TiledArray::detail::get_stream_based_on_range(range);
+    // device::setDevice(TiledArray::deviceEnv::instance()->default_device_id());
+    // auto &stream = device::stream_for(range);
     // TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(t.storage(),
     // stream);
   }
@@ -80,9 +80,7 @@ template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, TiledArray::btasUMTensorVarray<T>> {
   static inline void store(const Archive &ar,
                            const TiledArray::btasUMTensorVarray<T> &t) {
-    DeviceSafeCall(TiledArray::device::setDevice(
-        TiledArray::deviceEnv::instance()->current_device_id()));
-    auto &stream = TiledArray::detail::get_stream_based_on_range(t.range());
+    auto stream = TiledArray::device::stream_for(t.range());
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
         t.storage(), stream);
     ar &t.range() & t.storage();
@@ -137,11 +135,9 @@ btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range> &arg,
   // shift the range
   result_range.inplace_shift(range_shift);
 
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-
   // @important select the stream using the shifted range
-  auto &queue = detail::get_blasqueue_based_on_range(result_range);
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result_range);
+  const auto stream = device::Stream(queue.device(), queue.stream());
 
   typename btasUMTensorVarray<T, Range>::storage_type result_storage;
 
@@ -152,7 +148,7 @@ btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range> &arg,
   blas::copy(result.size(), device_data(arg.storage()), 1,
              device_data(result.storage()), 1, queue);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
@@ -175,10 +171,8 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
                                      const TiledArray::Permutation &perm) {
   // compute result range
   auto result_range = perm * arg.range();
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-
   // compute the stream to use
-  auto &stream = detail::get_stream_based_on_range(result_range);
+  auto stream = device::stream_for(result_range);
 
   // allocate result memory
   typename btasUMTensorVarray<T, Range>::storage_type storage;
@@ -191,9 +185,20 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   librett_permute(const_cast<T *>(device_data(arg.storage())),
                   device_data(result.storage()), arg.range(), perm, stream);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
 
   return result;
+}
+
+// WARNING omitting this overload dispatches to the base CPU implementation in
+// external/btas.h
+
+template <typename T, typename Range>
+btasUMTensorVarray<T, Range> permute(
+    const btasUMTensorVarray<T, Range> &arg,
+    const TiledArray::BipartitePermutation &perm) {
+  TA_ASSERT(inner_size(perm) == 0);  // this must be a plain permutation
+  return permute(arg, outer(perm));
 }
 
 ///
@@ -225,10 +230,6 @@ btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
                                    const Scalar factor, const Perm &perm) {
   auto result = scale(arg, factor);
 
-  // wait to finish before switch stream
-  auto stream = device::tls_stream_accessor();
-  device::streamSynchronize(*stream);
-
   return permute(result, perm);
 }
 
@@ -248,10 +249,6 @@ template <
 btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg,
                                  const Perm &perm) {
   auto result = neg(arg);
-
-  // wait to finish before switch stream
-  auto stream = device::tls_stream_accessor();
-  device::streamSynchronize(*stream);
 
   return permute(result, perm);
 }
@@ -292,11 +289,6 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Perm &perm) {
   auto result = subt(arg1, arg2);
-
-  // wait to finish before switch stream
-  auto stream = device::tls_stream_accessor();
-  device::streamSynchronize(*stream);
-
   return permute(result, perm);
 }
 
@@ -308,11 +300,6 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor, const Perm &perm) {
   auto result = subt(arg1, arg2, factor);
-
-  // wait to finish before switch stream
-  auto stream = device::tls_stream_accessor();
-  device::streamSynchronize(*stream);
-
   return permute(result, perm);
 }
 
@@ -370,11 +357,6 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2,
                                  const Scalar factor, const Perm &perm) {
   auto result = add(arg1, arg2, factor);
-
-  // wait to finish before switch stream
-  auto stream = device::tls_stream_accessor();
-  device::streamSynchronize(*stream);
-
   return permute(result, perm);
 }
 
@@ -385,11 +367,6 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2,
                                  const Perm &perm) {
   auto result = add(arg1, arg2);
-
-  // wait to finish before switch stream
-  auto stream = device::tls_stream_accessor();
-  device::streamSynchronize(*stream);
-
   return permute(result, perm);
 }
 
@@ -456,11 +433,6 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Perm &perm) {
   auto result = mult(arg1, arg2);
-
-  // wait to finish before switch stream
-  auto stream = device::tls_stream_accessor();
-  device::streamSynchronize(*stream);
-
   return permute(result, perm);
 }
 
@@ -472,11 +444,6 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor, const Perm &perm) {
   auto result = mult(arg1, arg2, factor);
-
-  // wait to finish before switch stream
-  auto stream = device::tls_stream_accessor();
-  device::streamSynchronize(*stream);
-
   return permute(result, perm);
 }
 
@@ -602,9 +569,7 @@ template <typename UMTensor, typename Policy>
 void to_host(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
   auto to_host = [](TiledArray::Tile<UMTensor> &tile) {
-    DeviceSafeCall(
-        device::setDevice(deviceEnv::instance()->current_device_id()));
-    auto &stream = detail::get_stream_based_on_range(tile.range());
+    auto stream = device::stream_for(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
         tile.tensor().storage(), stream);
@@ -630,9 +595,7 @@ template <typename UMTensor, typename Policy>
 void to_device(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
   auto to_device = [](TiledArray::Tile<UMTensor> &tile) {
-    DeviceSafeCall(
-        device::setDevice(deviceEnv::instance()->current_device_id()));
-    auto &stream = detail::get_stream_based_on_range(tile.range());
+    auto stream = device::stream_for(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
         tile.tensor().storage(), stream);
@@ -662,12 +625,12 @@ um_tensor_to_ta_tensor(
   const auto convert_tile_memcpy = [](const UMTensor &tile) {
     TATensor result(tile.tensor().range());
 
-    auto &stream = deviceEnv::instance()->stream_d2h();
+    auto stream = device::stream_for(result.range());
     DeviceSafeCall(
         device::memcpyAsync(result.data(), tile.data(),
                             tile.size() * sizeof(typename TATensor::value_type),
                             device::MemcpyDefault, stream));
-    device::synchronize_stream(&stream);
+    device::sync_madness_task_with(stream);
 
     return result;
   };
@@ -677,9 +640,7 @@ um_tensor_to_ta_tensor(
     using std::begin;
     const auto n = tile.tensor().size();
 
-    DeviceSafeCall(
-        device::setDevice(deviceEnv::instance()->current_device_id()));
-    auto &stream = detail::get_stream_based_on_range(tile.range());
+    auto stream = device::stream_for(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
         tile.tensor().storage(), stream);
@@ -716,12 +677,9 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
   auto convert_tile_memcpy = [](const TATensor &tile) {
     /// UMTensor must be wrapped into TA::Tile
 
-    DeviceSafeCall(
-        device::setDevice(deviceEnv::instance()->current_device_id()));
-
     using Tensor = typename UMTensor::tensor_type;
 
-    auto &stream = deviceEnv::instance()->stream_h2d();
+    auto stream = device::stream_for(tile.range());
     typename Tensor::storage_type storage;
     make_device_storage(storage, tile.range().area(), stream);
     Tensor result(tile.range(), std::move(storage));
@@ -731,15 +689,12 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
                             tile.size() * sizeof(typename Tensor::value_type),
                             device::MemcpyDefault, stream));
 
-    device::synchronize_stream(&stream);
+    device::sync_madness_task_with(stream);
     return TiledArray::Tile<Tensor>(std::move(result));
   };
 
   auto convert_tile_um = [](const TATensor &tile) {
     /// UMTensor must be wrapped into TA::Tile
-
-    DeviceSafeCall(
-        device::setDevice(deviceEnv::instance()->current_device_id()));
 
     using Tensor = typename UMTensor::tensor_type;
     typename Tensor::storage_type storage(tile.range().area());
@@ -750,7 +705,7 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
 
     std::copy_n(tile.data(), n, result.data());
 
-    auto &stream = detail::get_stream_based_on_range(result.range());
+    auto stream = device::stream_for(result.range());
 
     // prefetch data to GPU
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(

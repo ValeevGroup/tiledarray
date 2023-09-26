@@ -26,6 +26,7 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <optional>
 #include <vector>
 
 #include <TiledArray/config.h>
@@ -176,6 +177,10 @@ inline error_t setDevice(int device) { return cudaSetDevice(device); }
 
 inline error_t getDevice(int* device) { return cudaGetDevice(device); }
 
+inline error_t getDeviceCount(int* num_devices) {
+  return cudaGetDeviceCount(num_devices);
+}
+
 inline error_t deviceSetCacheConfig(FuncCache cache_config) {
   return cudaDeviceSetCacheConfig(static_cast<cudaFuncCache>(cache_config));
 }
@@ -311,6 +316,10 @@ inline error_t setDevice(int device) { return hipSetDevice(device); }
 
 inline error_t getDevice(int* device) { return hipGetDevice(device); }
 
+inline error_t getDeviceCount(int* num_devices) {
+  return hipGetDeviceCount(num_devices);
+}
+
 inline error_t deviceSetCacheConfig(FuncCache cache_config) {
   return hipDeviceSetCacheConfig(static_cast<hipFuncCache_t>(cache_config));
 }
@@ -394,7 +403,7 @@ inline error_t streamDestroy(stream_t stream) {
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
-inline int num_streams() {
+inline int num_streams_per_device() {
   int num_streams = -1;
   char* num_stream_char = std::getenv("TA_DEVICE_NUM_STREAMS");
   if (num_stream_char) {
@@ -413,27 +422,6 @@ inline int num_streams() {
     }
   }
   return num_streams;
-}
-
-inline int num_devices() {
-  int num_devices = -1;
-#if defined(TILEDARRAY_HAS_CUDA)
-  DeviceSafeCall(cudaGetDeviceCount(&num_devices));
-#elif defined(TILEDARRAY_HAS_HIP)
-  DeviceSafeCall(hipGetDeviceCount(&num_devices));
-#endif
-  return num_devices;
-}
-
-inline int current_device_id(World& world) {
-  static const std::tuple<int, int> local_rank_size =
-      detail::mpi_local_rank_size(world);
-  const auto& [mpi_local_rank, mpi_local_size] = local_rank_size;
-  static const int num_devices = device::num_devices();
-  // map ranks to default device round robin
-  static const int device_id = mpi_local_rank % num_devices;
-
-  return device_id;
 }
 
 inline void DEVICERT_CB readyflag_callback(void* userData) {
@@ -465,18 +453,19 @@ inline void thread_wait_stream(const stream_t& stream) {
   delete flag;
 }
 
-inline const stream_t*& tls_stream_accessor() {
-  static thread_local const stream_t* thread_local_stream_ptr{nullptr};
-  return thread_local_stream_ptr;
-}
+/// Stream is a `{device, stream_t}` pair, i.e. the analog of blas::Queue.
+/// It exists as a syntactic sugar around stream_t, and to avoid the need
+/// to deduce the device from stream
+/// \internal did not name it queue to avoid naming dichotomies
+/// all over the place
+struct Stream {
+  int device;
+  stream_t stream;
+  Stream(int device, stream_t stream) : device(device), stream(stream) {}
 
-/// must call this before exiting the device task executed via
-/// the MADNESS runtime (namely, via madness::add_device_task )
-/// to inform the runtime which stream the task
-/// launched its kernels into
-inline void synchronize_stream(const stream_t* stream) {
-  tls_stream_accessor() = stream;
-}
+  /// Stream is implicitly convertible to stream
+  operator stream_t() const { return stream; }
+};
 
 /**
  * Env maintains the device-related part of the runtime environment,
@@ -488,7 +477,7 @@ class Env {
  public:
   ~Env() {
     // destroy streams on current device
-    for (auto& stream : streams_) {
+    for (auto& [device, stream] : streams_) {
       DeviceSafeCallNoThrow(streamDestroy(stream));
     }
   }
@@ -523,12 +512,34 @@ class Env {
     std::scoped_lock lock{mtx};
     // only the winner of the lock race gets to initialize
     if (instance_accessor() == nullptr) {
-      int num_streams = device::num_streams();
-      int num_devices = device::num_devices();
-      int device_id = device::current_device_id(world);
-      // set device for current MPI process .. will be set in the ctor as well
-      DeviceSafeCall(setDevice(device_id));
-      DeviceSafeCall(deviceSetCacheConfig(FuncCachePreferShared));
+      int num_streams_per_device = device::num_streams_per_device();
+      const int num_visible_devices = []() {
+        int num_visible_devices = -1;
+        DeviceSafeCall(getDeviceCount(&num_visible_devices));
+        return num_visible_devices;
+      }();
+      const auto compute_devices = [num_visible_devices](World& world) {
+        std::vector<int> compute_devices;
+        static const std::tuple<int, int> local_rank_size =
+            TiledArray::detail::mpi_local_rank_size(world);
+        const auto& [mpi_local_rank, mpi_local_size] = local_rank_size;
+        // map ranks to default device round robin
+        int device_id = mpi_local_rank % num_visible_devices;
+        while (device_id < num_visible_devices) {
+          compute_devices.push_back(device_id);
+          device_id += mpi_local_size;
+        }
+
+        return compute_devices;
+      }(world);
+
+      // configure devices for this rank
+      for (auto device : compute_devices) {
+        DeviceSafeCall(setDevice(device));
+        DeviceSafeCall(deviceSetCacheConfig(FuncCachePreferShared));
+      }
+      // use the first device as default:
+      DeviceSafeCall(setDevice(compute_devices[0]));
 
       // uncomment to debug umpire ops
       //
@@ -574,20 +585,33 @@ class Env {
               "QuickPool_SizeLimited_PINNED", pinned_size_limited_alloc,
               page_size, page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
 
-      auto env = std::unique_ptr<Env>(
-          new Env(world, num_devices, device_id, num_streams, um_dynamic_pool,
-                  dev_dynamic_pool, pinned_dynamic_pool));
+      auto env = std::unique_ptr<Env>(new Env(
+          world, num_visible_devices, compute_devices, num_streams_per_device,
+          um_dynamic_pool, dev_dynamic_pool, pinned_dynamic_pool));
       instance_accessor() = std::move(env);
     }
   }
 
   World& world() const { return *world_; }
 
-  int num_devices() const { return num_devices_; }
+  /// @return the number of devices visible to this rank
+  int num_visible_devices() const { return num_devices_visible_; }
 
-  int current_device_id() const { return current_device_id_; }
+  /// @return the number of compute devices assigned to this rank
+  int num_compute_devices() const { return compute_devices_.size(); }
 
-  int num_streams() const { return num_streams_; }
+  /// @return the device pointed to by the currently-active device runtime
+  /// context
+  int current_device_id() const {
+    TA_ASSERT(num_compute_devices() > 0);
+    int current_device = -1;
+    DeviceSafeCall(getDevice(&current_device));
+    return current_device;
+  }
+
+  /// @return the total number of compute streams (for all devices)
+  /// visible to this rank
+  int num_streams_total() const { return streams_.size(); }
 
   bool concurrent_managed_access() const {
     return device_concurrent_managed_access_;
@@ -626,11 +650,13 @@ class Env {
     return result;
   }
 
-  const stream_t& stream(std::size_t i) const { return streams_.at(i); }
-
-  const stream_t& stream_h2d() const { return streams_[num_streams_]; }
-
-  const stream_t& stream_d2h() const { return streams_[num_streams_ + 1]; }
+  /// @param[in] i compute stream ordinal
+  /// @pre `i<num_stream_total()`
+  /// @return `i`th compute stream
+  const Stream& stream(std::size_t i) const {
+    TA_ASSERT(i < this->num_streams_total());
+    return streams_[i];
+  }
 
   /// @return a (non-thread-safe) Umpire allocator for device UM
   umpire::Allocator& um_allocator() { return um_allocator_; }
@@ -684,50 +710,57 @@ class Env {
   }
 
  protected:
-  Env(World& world, int num_devices, int device_id, int num_streams,
-      umpire::Allocator um_alloc, umpire::Allocator device_alloc,
-      umpire::Allocator pinned_alloc)
+  Env(World& world, int num_visible_devices, std::vector<int> compute_devices,
+      int num_streams_per_device, umpire::Allocator um_alloc,
+      umpire::Allocator device_alloc, umpire::Allocator pinned_alloc)
       : world_(&world),
         um_allocator_(um_alloc),
         device_allocator_(device_alloc),
         pinned_allocator_(pinned_alloc),
-        num_devices_(num_devices),
-        current_device_id_(device_id),
-        num_streams_(num_streams) {
-    if (num_devices <= 0) {
+        num_devices_visible_(num_visible_devices),
+        compute_devices_(std::move(compute_devices)),
+        num_streams_per_device_(num_streams_per_device) {
+    if (compute_devices_.size() <= 0) {
       throw std::runtime_error("No " TILEDARRAY_DEVICE_RUNTIME_STR
                                " compute devices found!\n");
     }
 
-    // set device for current MPI process
-    DeviceSafeCall(setDevice(current_device_id_));
+    streams_.reserve(num_streams_per_device_ * compute_devices_.size());
 
-    /// check the capability of device
-    deviceProp_t prop;
-    DeviceSafeCall(getDeviceProperties(&prop, device_id));
-    if (!prop.managedMemory) {
-      throw std::runtime_error(TILEDARRAY_DEVICE_RUNTIME_STR
-                               "device doesn't support managedMemory\n");
-    }
-    int concurrent_managed_access;
-    DeviceSafeCall(deviceGetAttribute(&concurrent_managed_access,
-                                      DeviceAttributeConcurrentManagedAccess,
-                                      device_id));
-    device_concurrent_managed_access_ = concurrent_managed_access;
-    if (!device_concurrent_managed_access_) {
-      std::cout << "\nWarning: " TILEDARRAY_DEVICE_RUNTIME_STR
-                   " device doesn't support "
-                   "ConcurrentManagedAccess!\n\n";
+    /// ensure the desired capabilities of each device
+    for (auto device : compute_devices_) {
+      deviceProp_t prop;
+      DeviceSafeCall(getDeviceProperties(&prop, device));
+      if (!prop.managedMemory) {
+        throw std::runtime_error(TILEDARRAY_DEVICE_RUNTIME_STR
+                                 "device doesn't support managedMemory\n");
+      }
+      int concurrent_managed_access;
+      DeviceSafeCall(deviceGetAttribute(&concurrent_managed_access,
+                                        DeviceAttributeConcurrentManagedAccess,
+                                        device));
+      device_concurrent_managed_access_ =
+          device_concurrent_managed_access_ && concurrent_managed_access;
+      if (!device_concurrent_managed_access_) {
+        std::cout << "\nWarning: " TILEDARRAY_DEVICE_RUNTIME_STR
+                     " device doesn't support "
+                     "ConcurrentManagedAccess!\n\n";
+      }
+
+      // creates streams on current device
+      DeviceSafeCall(setDevice(device));
+      for (int s = 0; s != num_streams_per_device_; ++s) {
+        stream_t stream;
+        DeviceSafeCall(streamCreateWithFlags(&stream, StreamNonBlocking));
+        streams_.emplace_back(device, stream);
+      }
     }
 
-    // creates streams on current device
-    streams_.resize(num_streams_ + 2);
-    for (auto& stream : streams_) {
-      DeviceSafeCall(streamCreateWithFlags(&stream, StreamNonBlocking));
-    }
-    std::cout << "created " << num_streams_
-              << " " TILEDARRAY_DEVICE_RUNTIME_STR " streams + 2 I/O streams"
-              << std::endl;
+    std::cout << "created " << streams_.size()
+              << " " TILEDARRAY_DEVICE_RUNTIME_STR " streams" << std::endl;
+
+    // lastly, set default device for current MPI process's (main) thread
+    DeviceSafeCall(setDevice(compute_devices_.front()));
   }
 
  private:
@@ -743,12 +776,15 @@ class Env {
   // N.B. not thread safe, so must be wrapped into umpire_based_allocator_impl
   umpire::Allocator pinned_allocator_;
 
-  int num_devices_;
-  int current_device_id_;
-  bool device_concurrent_managed_access_;
+  int num_devices_visible_;  // total number of devices visible to this rank
+  std::vector<int>
+      compute_devices_;  // list of devices assigned to this rank,
+                         // compute_devices_.size()<=num_devices_visible_
+  bool device_concurrent_managed_access_ = true;
 
-  int num_streams_;
-  std::vector<stream_t> streams_;
+  int num_streams_per_device_;
+  std::vector<Stream> streams_;  // streams_.size() == (num_streams_per_device_)
+                                 // * compute_devices_.size()
 
   inline static std::unique_ptr<Env>& instance_accessor() {
     static std::unique_ptr<Env> instance_{nullptr};
@@ -756,17 +792,79 @@ class Env {
   }
 };
 
-}  // namespace device
-
 namespace detail {
-template <typename Range>
-const device::stream_t& get_stream_based_on_range(const Range& range) {
-  // TODO better way to get stream based on the id of tensor
-  auto stream_id = range.offset() % device::Env::instance()->num_streams();
-  auto& stream = device::Env::instance()->stream(stream_id);
-  return stream;
+inline std::optional<Stream>& tls_stream_accessor() {
+  static thread_local std::optional<Stream> tls_stream;
+  return tls_stream;
 }
 }  // namespace detail
+
+/// must call this before exiting the device task submitted to
+/// the MADNESS runtime via madness::add_device_task
+/// to synchronize with \p s
+/// before task completion
+/// \param s the stream to synchronize this task with
+inline void sync_madness_task_with(const Stream& s) {
+  if (!detail::tls_stream_accessor())
+    detail::tls_stream_accessor() = s;
+  else {
+    TA_ASSERT(*detail::tls_stream_accessor() == s);
+  }
+}
+
+/// must call this before exiting the device task submitted to
+/// the MADNESS runtime via madness::add_device_task
+/// to synchronize with \p stream associated with device \p device
+/// on the *current* device before task completion
+/// \param device the device associated with \p stream
+/// \param stream the stream to synchronize this task with
+inline void sync_madness_task_with(int device, stream_t stream) {
+  sync_madness_task_with(Stream{device, stream});
+}
+
+/// must call this before exiting the device task submitted to
+/// the MADNESS runtime via madness::add_device_task
+/// to synchronize with \p stream on the *current* device
+/// before task completion
+/// \param stream the stream to synchronize this task with
+inline void sync_madness_task_with(stream_t stream) {
+  TA_ASSERT(stream != nullptr);
+  int current_device = -1;
+  DeviceSafeCall(getDevice(&current_device));
+  sync_madness_task_with(current_device, stream);
+}
+
+/// @return the optional Stream with which this task will be synced
+inline std::optional<Stream> madness_task_current_stream() {
+  return detail::tls_stream_accessor();
+}
+
+/// should call this within a task submitted to
+/// the MADNESS runtime via madness::add_device_task
+/// to cancel the previous calls to sync_madness_task_with()
+/// if, e.g., it synchronized with any work performed
+/// before exiting
+inline void cancel_madness_task_sync() { detail::tls_stream_accessor() = {}; }
+
+/// maps a (tile) Range to device::Stream; if had already pushed work into a
+/// device::Stream (as indicated by madness_task_current_stream() )
+/// will return that Stream instead
+/// @param[in] range will determine the device::Stream to compute an object
+/// associated with this Range object
+/// @return the device::Stream to use for creating tasks generating work
+/// associated with Range \p range
+template <typename Range>
+device::Stream stream_for(const Range& range) {
+  auto stream_opt = madness_task_current_stream();
+  if (!stream_opt) {
+    auto stream_ord =
+        range.offset() % device::Env::instance()->num_streams_total();
+    return device::Env::instance()->stream(stream_ord);
+  } else
+    return *stream_opt;
+}
+
+}  // namespace device
 
 #endif  // TILEDARRAY_HAS_DEVICE
 

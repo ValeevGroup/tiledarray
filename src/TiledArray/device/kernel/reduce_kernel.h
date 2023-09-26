@@ -35,89 +35,70 @@
 namespace TiledArray::device {
 
 // foreach(i) result *= arg[i]
-int product_kernel(const int *arg, std::size_t n, stream_t stream,
-                   int device_id);
+int product_kernel(const int* arg, std::size_t n, const Stream& stream);
 
-float product_kernel(const float *arg, std::size_t n, stream_t stream,
-                     int device_id);
+float product_kernel(const float* arg, std::size_t n, const Stream& stream);
 
-double product_kernel(const double *arg, std::size_t n, stream_t stream,
-                      int device_id);
+double product_kernel(const double* arg, std::size_t n, const Stream& stream);
 
-std::complex<float> product_kernel(const std::complex<float> *arg,
-                                   std::size_t n, stream_t stream,
-                                   int device_id);
+std::complex<float> product_kernel(const std::complex<float>* arg,
+                                   std::size_t n, const Stream& stream);
 
-std::complex<double> product_kernel(const std::complex<double> *arg,
-                                    std::size_t n, stream_t stream,
-                                    int device_id);
+std::complex<double> product_kernel(const std::complex<double>* arg,
+                                    std::size_t n, const Stream& stream);
 
 // foreach(i) result += arg[i]
-int sum_kernel(const int *arg, std::size_t n, stream_t stream, int device_id);
+int sum_kernel(const int* arg, std::size_t n, const Stream& stream);
 
-float sum_kernel(const float *arg, std::size_t n, stream_t stream,
-                 int device_id);
+float sum_kernel(const float* arg, std::size_t n, const Stream& stream);
 
-double sum_kernel(const double *arg, std::size_t n, stream_t stream,
-                  int device_id);
+double sum_kernel(const double* arg, std::size_t n, const Stream& stream);
 
-std::complex<float> sum_kernel(const std::complex<float> *arg, std::size_t n,
-                               stream_t stream, int device_id);
+std::complex<float> sum_kernel(const std::complex<float>* arg, std::size_t n,
+                               const Stream& stream);
 
-std::complex<double> sum_kernel(const std::complex<double> *arg, std::size_t n,
-                                stream_t stream, int device_id);
+std::complex<double> sum_kernel(const std::complex<double>* arg, std::size_t n,
+                                const Stream& stream);
 
 // foreach(i) result = max(result, arg[i])
-int max_kernel(const int *arg, std::size_t n, stream_t stream, int device_id);
+int max_kernel(const int* arg, std::size_t n, const Stream& stream);
 
-float max_kernel(const float *arg, std::size_t n, stream_t stream,
-                 int device_id);
+float max_kernel(const float* arg, std::size_t n, const Stream& stream);
 
-double max_kernel(const double *arg, std::size_t n, stream_t stream,
-                  int device_id);
+double max_kernel(const double* arg, std::size_t n, const Stream& stream);
 
 // foreach(i) result = min(result, arg[i])
-int min_kernel(const int *arg, std::size_t n, stream_t stream, int device_id);
+int min_kernel(const int* arg, std::size_t n, const Stream& stream);
 
-float min_kernel(const float *arg, std::size_t n, stream_t stream,
-                 int device_id);
+float min_kernel(const float* arg, std::size_t n, const Stream& stream);
 
-double min_kernel(const double *arg, std::size_t n, stream_t stream,
-                  int device_id);
+double min_kernel(const double* arg, std::size_t n, const Stream& stream);
 
 // foreach(i) result = max(result, abs(arg[i]))
-int absmax_kernel(const int *arg, std::size_t n, stream_t stream,
-                  int device_id);
+int absmax_kernel(const int* arg, std::size_t n, const Stream& stream);
 
-float absmax_kernel(const float *arg, std::size_t n, stream_t stream,
-                    int device_id);
+float absmax_kernel(const float* arg, std::size_t n, const Stream& stream);
 
-double absmax_kernel(const double *arg, std::size_t n, stream_t stream,
-                     int device_id);
+double absmax_kernel(const double* arg, std::size_t n, const Stream& stream);
 
-std::complex<float> absmax_kernel(const std::complex<float> *arg, std::size_t n,
-                                  stream_t stream, int device_id);
+std::complex<float> absmax_kernel(const std::complex<float>* arg, std::size_t n,
+                                  const Stream& stream);
 
-std::complex<double> absmax_kernel(const std::complex<double> *arg,
-                                   std::size_t n, stream_t stream,
-                                   int device_id);
+std::complex<double> absmax_kernel(const std::complex<double>* arg,
+                                   std::size_t n, const Stream& stream);
 
 // foreach(i) result = min(result, abs(arg[i]))
-int absmin_kernel(const int *arg, std::size_t n, stream_t stream,
-                  int device_id);
+int absmin_kernel(const int* arg, std::size_t n, const Stream& stream);
 
-float absmin_kernel(const float *arg, std::size_t n, stream_t stream,
-                    int device_id);
+float absmin_kernel(const float* arg, std::size_t n, const Stream& stream);
 
-double absmin_kernel(const double *arg, std::size_t n, stream_t stream,
-                     int device_id);
+double absmin_kernel(const double* arg, std::size_t n, const Stream& stream);
 
-std::complex<float> absmin_kernel(const std::complex<float> *arg, std::size_t n,
-                                  stream_t stream, int device_id);
+std::complex<float> absmin_kernel(const std::complex<float>* arg, std::size_t n,
+                                  const Stream& stream);
 
-std::complex<double> absmin_kernel(const std::complex<double> *arg,
-                                   std::size_t n, stream_t stream,
-                                   int device_id);
+std::complex<double> absmin_kernel(const std::complex<double>* arg,
+                                   std::size_t n, const Stream& stream);
 
 }  // namespace TiledArray::device
 

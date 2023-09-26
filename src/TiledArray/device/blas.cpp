@@ -31,12 +31,12 @@ bool BLASQueuePool::initialized() { return !queues_.empty(); }
 
 void BLASQueuePool::initialize() {
   if (initialized()) return;
-  queues_.reserve(deviceEnv::instance()->num_streams());
-  for (std::size_t sidx = 0; sidx != deviceEnv::instance()->num_streams();
+  queues_.reserve(deviceEnv::instance()->num_streams_total());
+  for (std::size_t sidx = 0; sidx != deviceEnv::instance()->num_streams_total();
        ++sidx) {
-    auto stream = deviceEnv::instance()->stream(
+    auto q = deviceEnv::instance()->stream(
         sidx);  // blaspp forsome reason wants non-const lvalue ref to stream
-    queues_.emplace_back(std::make_unique<blas::Queue>(0, stream));
+    queues_.emplace_back(std::make_unique<blas::Queue>(q.device, q.stream));
   }
 }
 
@@ -44,14 +44,14 @@ void BLASQueuePool::finalize() { queues_.clear(); }
 
 blas::Queue& BLASQueuePool::queue(std::size_t ordinal) {
   TA_ASSERT(initialized());
-  TA_ASSERT(ordinal < deviceEnv::instance()->num_streams());
+  TA_ASSERT(ordinal < deviceEnv::instance()->num_streams_total());
   return *(queues_[ordinal]);
 }
 
-blas::Queue& BLASQueuePool::queue(device::stream_t const& stream) {
+blas::Queue& BLASQueuePool::queue(device::Stream const& stream) {
   TA_ASSERT(initialized());
   for (auto&& q : queues_) {
-    if (q->stream() == stream) return *q;
+    if (q->device() == stream.device && q->stream() == stream.stream) return *q;
   }
   throw TiledArray::Exception(
       "no matching device stream found in the BLAS queue pool");

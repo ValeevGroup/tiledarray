@@ -35,7 +35,7 @@ namespace madness {
 ///
 /// deviceTaskFn class
 /// represent a task that calls an async device kernel
-/// the task must call synchronize_stream function to tell which stream it
+/// the task must call sync_madness_task_with function to tell which stream it
 /// used
 ///
 
@@ -104,19 +104,17 @@ struct deviceTaskFn : public TaskInterface {
       task_->run_async();
 
       // get the stream used by async function
-      auto stream = TiledArray::device::tls_stream_accessor();
-
-      //      TA_ASSERT(stream != nullptr);
+      auto stream_opt = TiledArray::device::detail::tls_stream_accessor();
 
       // WARNING, need to handle NoOp
-      if (stream == nullptr) {
+      if (!stream_opt) {
         task_->notify();
       } else {
         // TODO should we use device callback or device events??
         // insert device callback
-        TiledArray::device::launchHostFunc(*stream, device_callback, task_);
-        // reset stream to nullptr
-        TiledArray::device::synchronize_stream(nullptr);
+        TiledArray::device::launchHostFunc(*stream_opt, device_callback, task_);
+        // processed sync, clear state
+        TiledArray::device::detail::tls_stream_accessor() = {};
       }
     }
 

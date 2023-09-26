@@ -71,10 +71,11 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem) {
 
   librettHandle plan;
   auto stream = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(stream.device));
   librettResult status;
 
-  status =
-      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
+  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int),
+                       stream.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -122,6 +123,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
 
   librettHandle plan;
   auto stream = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(stream.device));
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -130,8 +132,8 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status =
-      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
+  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int),
+                       stream.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -183,6 +185,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
 
   librettHandle plan;
   auto stream = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(stream.device));
   librettResult status;
 
   std::vector<int> extent3{int(A), int(B), int(C)};
@@ -191,7 +194,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
   //  std::vector<int> perm3{0, 2, 1};
 
   status = librettPlanMeasure(&plan, 3, extent3.data(), perm3.data(),
-                              sizeof(int), stream, a_device, b_device);
+                              sizeof(int), stream.stream, a_device, b_device);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -248,6 +251,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
 
   librettHandle plan;
   auto stream = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(stream.device));
   librettResult status;
 
   std::vector<int> extent({A, B, C});
@@ -257,7 +261,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
   TiledArray::permutation_to_col_major(perm);
 
   status = librettPlanMeasure(&plan, 3, extent.data(), perm.data(), sizeof(int),
-                              stream, a_device, b_device);
+                              stream.stream, a_device, b_device);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -306,6 +310,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
 
   librettHandle plan;
   auto stream = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(stream.device));
   librettResult status;
 
   std::vector<int> extent({A, A});
@@ -314,8 +319,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status =
-      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
+  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int),
+                       stream.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -356,6 +361,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
 
   librettHandle plan;
   auto stream = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(stream.device));
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -364,8 +370,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status =
-      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
+  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int),
+                       stream.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -406,6 +412,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
 
   librettHandle plan;
   auto stream = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(stream.device));
   librettResult status;
 
   // b(k,i,j) = a(i,j,k)
@@ -416,8 +423,8 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
   std::vector<int> perm({2, 0, 1});
   TiledArray::permutation_to_col_major(perm);
 
-  status =
-      librettPlan(&plan, 3, extent.data(), perm.data(), sizeof(int), stream);
+  status = librettPlan(&plan, 3, extent.data(), perm.data(), sizeof(int),
+                       stream.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
