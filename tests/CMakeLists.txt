@@ -165,9 +165,10 @@ if(ENABLE_MPI)
         $<TARGET_FILE:${executable}> --log_level=unit_scope ${${executable}_np_${p}_args}
         ${MPIEXEC_POSTFLAGS}
       )
+    # N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
     set_tests_properties(tiledarray/unit/run-np-${p}
             PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
-            ENVIRONMENT "MAD_NUM_THREADS=2"
+            ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1"
             )
 
     if (p GREATER 1)
@@ -177,8 +178,9 @@ if(ENABLE_MPI)
 else()
   add_test(NAME tiledarray/unit/run-np-1
            COMMAND ${executable})
+  # N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
   set_tests_properties(tiledarray/unit/run-np-1
           PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
-          ENVIRONMENT "MAD_NUM_THREADS=2"
+          ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1"
           )
 endif()
