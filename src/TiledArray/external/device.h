@@ -49,6 +49,7 @@
 #include <madness/world/thread.h>
 
 #include <TiledArray/error.h>
+#include <TiledArray/initialize.h>
 
 #if defined(TILEDARRAY_HAS_CUDA)
 
@@ -741,7 +742,7 @@ class Env {
                                         device));
       device_concurrent_managed_access_ =
           device_concurrent_managed_access_ && concurrent_managed_access;
-      if (!device_concurrent_managed_access_) {
+      if (!initialized_to_be_quiet() && !device_concurrent_managed_access_) {
         std::cout << "\nWarning: " TILEDARRAY_DEVICE_RUNTIME_STR
                      " device doesn't support "
                      "ConcurrentManagedAccess!\n\n";
@@ -756,8 +757,12 @@ class Env {
       }
     }
 
-    std::cout << "created " << streams_.size()
-              << " " TILEDARRAY_DEVICE_RUNTIME_STR " streams" << std::endl;
+    if (!initialized_to_be_quiet() && world.rank() == 0) {
+      auto nstreams = streams_.size();
+      std::cout << "created " << nstreams
+                << " " TILEDARRAY_DEVICE_RUNTIME_STR " stream"
+                << (nstreams == 1 ? "" : "s") << std::endl;
+    }
 
     // lastly, set default device for current MPI process's (main) thread
     DeviceSafeCall(setDevice(compute_devices_.front()));
