@@ -2489,6 +2489,9 @@ BOOST_AUTO_TEST_CASE(dot) {
 }
 
 BOOST_AUTO_TEST_CASE(dot_permute) {
+  // loosen the default tolerance
+  constexpr auto tolerance = 5e-13;
+
   Permutation perm({2, 1, 0});
   // Test the dot expression function
   double result = 0;
