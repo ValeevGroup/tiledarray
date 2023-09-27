@@ -62,28 +62,20 @@ inline bool& finalized_accessor() {
   return flag;
 }
 
+inline bool& quiet_accessor() {
+  static bool quiet = false;
+  return quiet;
+}
+
 }  // namespace
 }  // namespace TiledArray
 
-/// @return true if TiledArray (and, necessarily, MADWorld runtime) is in an
-/// initialized state
 bool TiledArray::initialized() { return initialized_accessor(); }
 
-/// @return true if TiledArray has been finalized at least once
 bool TiledArray::finalized() { return finalized_accessor(); }
 
-/// @name TiledArray initialization.
-///       These functions initialize TiledArray and (if needed) MADWorld
-///       runtime.
-/// @note the default World object is set to the object returned by these.
-/// @warning MADWorld can only be initialized/finalized once, hence if
-/// TiledArray initializes MADWorld
-///          it can also be initialized/finalized only once.
+bool TiledArray::initialized_to_be_quiet() { return quiet_accessor(); }
 
-/// @{
-
-/// @throw TiledArray::Exception if TiledArray initialized MADWorld and
-/// TiledArray::finalize() had been called
 TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
                                           const SafeMPI::Intracomm& comm,
                                           bool quiet) {
@@ -112,6 +104,7 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     TiledArray::set_num_threads(1);
     madness::print_meminfo_disable();
     initialized_accessor() = true;
+    quiet_accessor() = quiet;
 
     // if have TTG initialize it also
 #if TILEDARRAY_HAS_TTG
@@ -155,8 +148,6 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     throw Exception("TiledArray already initialized");
 }
 
-/// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized
-/// when TiledArray::initialize was called).
 void TiledArray::finalize() {
   // finalize in the reverse order of initialize
 #if TILEDARRAY_HAS_TTG
