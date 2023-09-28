@@ -99,22 +99,31 @@ struct deviceTaskFn : public TaskInterface {
 
    protected:
     void run(const TaskThreadEnv& env) override {
+      TA_ASSERT(!stream_);
+      TA_ASSERT(
+          TiledArray::device::detail::madness_task_stream_opt_ptr_accessor() ==
+          nullptr);
+      // tell the task to report stream to be synced with to this->stream_
+      TiledArray::device::detail::madness_task_stream_opt_ptr_accessor() =
+          &this->stream_;
+
       // run the async function, the function must call synchronize_stream() to
       // set the stream it used!!
       task_->run_async();
 
-      // get the stream used by async function
-      auto stream_opt = TiledArray::device::detail::tls_stream_accessor();
+      // clear ptr to stream_
+      TiledArray::device::detail::madness_task_stream_opt_ptr_accessor() =
+          nullptr;
 
       // WARNING, need to handle NoOp
-      if (!stream_opt) {
+      if (!stream_) {
         task_->notify();
       } else {
         // TODO should we use device callback or device events??
         // insert device callback
-        TiledArray::device::launchHostFunc(*stream_opt, device_callback, task_);
+        TiledArray::device::launchHostFunc(*stream_, device_callback, task_);
         // processed sync, clear state
-        TiledArray::device::detail::tls_stream_accessor() = {};
+        stream_ = {};
       }
     }
 
@@ -137,6 +146,7 @@ struct deviceTaskFn : public TaskInterface {
     }
 
     deviceTaskFn_* task_;
+    std::optional<TiledArray::device::Stream> stream_;  // stream to sync with
   };
 
  public:

@@ -798,9 +798,14 @@ class Env {
 };
 
 namespace detail {
-inline std::optional<Stream>& tls_stream_accessor() {
-  static thread_local std::optional<Stream> tls_stream;
-  return tls_stream;
+inline std::optional<Stream>*& madness_task_stream_opt_ptr_accessor() {
+  static thread_local std::optional<Stream>* stream_opt_ptr = nullptr;
+  return stream_opt_ptr;
+}
+
+inline std::optional<Stream>& madness_task_stream_opt_accessor() {
+  TA_ASSERT(madness_task_stream_opt_ptr_accessor() != nullptr);
+  return *madness_task_stream_opt_ptr_accessor();
 }
 }  // namespace detail
 
@@ -810,10 +815,10 @@ inline std::optional<Stream>& tls_stream_accessor() {
 /// before task completion
 /// \param s the stream to synchronize this task with
 inline void sync_madness_task_with(const Stream& s) {
-  if (!detail::tls_stream_accessor())
-    detail::tls_stream_accessor() = s;
+  if (!detail::madness_task_stream_opt_accessor())
+    detail::madness_task_stream_opt_accessor() = s;
   else {
-    TA_ASSERT(*detail::tls_stream_accessor() == s);
+    TA_ASSERT(*detail::madness_task_stream_opt_accessor() == s);
   }
 }
 
@@ -841,7 +846,7 @@ inline void sync_madness_task_with(stream_t stream) {
 
 /// @return the optional Stream with which this task will be synced
 inline std::optional<Stream> madness_task_current_stream() {
-  return detail::tls_stream_accessor();
+  return detail::madness_task_stream_opt_accessor();
 }
 
 /// should call this within a task submitted to
@@ -849,7 +854,9 @@ inline std::optional<Stream> madness_task_current_stream() {
 /// to cancel the previous calls to sync_madness_task_with()
 /// if, e.g., it synchronized with any work performed
 /// before exiting
-inline void cancel_madness_task_sync() { detail::tls_stream_accessor() = {}; }
+inline void cancel_madness_task_sync() {
+  detail::madness_task_stream_opt_accessor() = {};
+}
 
 /// maps a (tile) Range to device::Stream; if had already pushed work into a
 /// device::Stream (as indicated by madness_task_current_stream() )

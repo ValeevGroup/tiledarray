@@ -456,15 +456,21 @@ class ReduceTask {
           ready_object_ = nullptr;
           lock_.unlock();  // <<< End critical section
 
+#ifdef TILEDARRAY_HAS_DEVICE
+          TA_ASSERT(device::detail::madness_task_stream_opt_ptr_accessor() ==
+                    nullptr);
+          device::detail::madness_task_stream_opt_ptr_accessor() = &stream_;
+#endif
+
           // Reduce the argument that was held by ready_object_
           op_(*result, ready_object->arg());
 
           // cleanup the argument
 #ifdef TILEDARRAY_HAS_DEVICE
-          auto& stream_opt = device::detail::tls_stream_accessor();
+          device::detail::madness_task_stream_opt_ptr_accessor() = nullptr;
 
           // need to sync with a device stream?
-          if (!stream_opt) {  // no
+          if (!stream_) {  // no
             ReduceObject::destroy(ready_object);
             this->dec();
           } else {
@@ -472,12 +478,11 @@ class ReduceTask {
             (*callback_object)[0] = &world_;
             (*callback_object)[1] = this;
             (*callback_object)[2] = ready_object;
-            DeviceSafeCall(device::setDevice(stream_opt->device));
+            DeviceSafeCall(device::setDevice(stream_->device));
             DeviceSafeCall(device::launchHostFunc(
-                stream_opt->stream,
+                stream_->stream,
                 device_dependency_dec_reduceobject_delete_callback,
                 callback_object));
-            device::cancel_madness_task_sync();
             //                std::cout << std::to_string(world().rank()) + "
             //                add 3\n";
           }
@@ -491,14 +496,21 @@ class ReduceTask {
           ready_result_.reset();
           lock_.unlock();  // <<< End critical section
 
+#ifdef TILEDARRAY_HAS_DEVICE
+          TA_ASSERT(device::detail::madness_task_stream_opt_ptr_accessor() ==
+                    nullptr);
+          device::detail::madness_task_stream_opt_ptr_accessor() = &stream_;
+#endif
+
           // Reduce the result that was held by ready_result_
           op_(*result, *ready_result);
 
           // cleanup the result
 #ifdef TILEDARRAY_HAS_DEVICE
-          auto queue_opt = device::detail::tls_stream_accessor();
+          device::detail::madness_task_stream_opt_ptr_accessor() = nullptr;
+
           // need to sync with a stream?
-          if (!queue_opt) {  // no
+          if (!stream_) {  // no
             ready_result.reset();
           } else {  // yes
             auto ready_result_heap =
@@ -506,11 +518,10 @@ class ReduceTask {
             auto callback_object = new std::vector<void*>(2);
             (*callback_object)[0] = &world_;
             (*callback_object)[1] = ready_result_heap;
-            auto& [device, stream] = *queue_opt;
+            auto& [device, stream] = *stream_;
             DeviceSafeCall(device::setDevice(device));
             DeviceSafeCall(device::launchHostFunc(
                 stream, device_readyresult_reset_callback, callback_object));
-            device::cancel_madness_task_sync();
             //                std::cout << std::to_string(world().rank()) + "
             //                add 4\n";
           }
@@ -532,43 +543,49 @@ class ReduceTask {
     /// \param object The reduction argument to be reduced
     void reduce_result_object(std::shared_ptr<result_type> result,
                               const ReduceObject* object) {
+#ifdef TILEDARRAY_HAS_DEVICE
+      TA_ASSERT(device::detail::madness_task_stream_opt_ptr_accessor() ==
+                nullptr);
+      device::detail::madness_task_stream_opt_ptr_accessor() = &stream_;
+#endif
+
       // Reduce the argument
       op_(*result, object->arg());
 
       // Cleanup the argument
 #ifdef TILEDARRAY_HAS_DEVICE
-      auto& stream_opt = device::detail::tls_stream_accessor();
-      if (!stream_opt) {
+      device::detail::madness_task_stream_opt_ptr_accessor() = nullptr;
+
+      if (!stream_) {
         ReduceObject::destroy(object);
       } else {
         auto callback_object = new std::vector<void*>(2);
         (*callback_object)[0] = &world_;
         (*callback_object)[1] = const_cast<ReduceObject*>(object);
-        DeviceSafeCall(device::setDevice(stream_opt->device));
+        DeviceSafeCall(device::setDevice(stream_->device));
         DeviceSafeCall(device::launchHostFunc(
-            stream_opt->stream, device_reduceobject_delete_callback,
+            stream_->stream, device_reduceobject_delete_callback,
             callback_object));
-        device::cancel_madness_task_sync();
         //            std::cout << std::to_string(world().rank()) + " add 1\n";
       }
 #else
       ReduceObject::destroy(object);
 #endif
+
       // Check for more reductions
       reduce(result);
 
       // Decrement the dependency counter for the argument. This must
       // be done after the reduce call to avoid a race condition.
 #ifdef TILEDARRAY_HAS_DEVICE
-      if (!stream_opt) {
+      if (!stream_) {
         this->dec();
       } else {
         auto callback_object2 = new std::vector<void*>(1);
         (*callback_object2)[0] = this;
-        DeviceSafeCall(device::setDevice(stream_opt->device));
-        DeviceSafeCall(device::launchHostFunc(stream_opt->stream,
-                                              device_dependency_dec_callback,
-                                              callback_object2));
+        DeviceSafeCall(device::setDevice(stream_->device));
+        DeviceSafeCall(device::launchHostFunc(
+            stream_->stream, device_dependency_dec_callback, callback_object2));
         //            std::cout << std::to_string(world().rank()) + " add 2\n";
       }
 #else
@@ -582,14 +599,21 @@ class ReduceTask {
       // Construct an empty result object
       auto result = std::make_shared<result_type>(op_());
 
+#ifdef TILEDARRAY_HAS_DEVICE
+      TA_ASSERT(device::detail::madness_task_stream_opt_ptr_accessor() ==
+                nullptr);
+      device::detail::madness_task_stream_opt_ptr_accessor() = &stream_;
+#endif
+
       // Reduce the two arguments
       op_(*result, object1->arg());
       op_(*result, object2->arg());
 
       // Cleanup arguments
 #ifdef TILEDARRAY_HAS_DEVICE
-      auto& stream_opt = device::detail::tls_stream_accessor();
-      if (!stream_opt) {
+      device::detail::madness_task_stream_opt_ptr_accessor() = nullptr;
+
+      if (!stream_) {
         ReduceObject::destroy(object1);
         ReduceObject::destroy(object2);
       } else {
@@ -597,11 +621,10 @@ class ReduceTask {
         (*callback_object1)[0] = &world_;
         (*callback_object1)[1] = const_cast<ReduceObject*>(object1);
         (*callback_object1)[2] = const_cast<ReduceObject*>(object2);
-        DeviceSafeCall(device::setDevice(stream_opt->device));
+        DeviceSafeCall(device::setDevice(stream_->device));
         DeviceSafeCall(device::launchHostFunc(
-            stream_opt->stream, device_reduceobject_delete_callback,
+            stream_->stream, device_reduceobject_delete_callback,
             callback_object1));
-        device::cancel_madness_task_sync();
         //            std::cout << std::to_string(world().rank()) + " add 1\n";
       }
 #else
@@ -615,17 +638,16 @@ class ReduceTask {
       // Decrement the dependency counter for the two arguments. This
       // must be done after the reduce call to avoid a race condition.
 #ifdef TILEDARRAY_HAS_DEVICE
-      if (!stream_opt) {
+      if (!stream_) {
         this->dec();
         this->dec();
       } else {
         auto callback_object2 = new std::vector<void*>(2);
         (*callback_object2)[0] = this;
         (*callback_object2)[1] = this;
-        DeviceSafeCall(device::setDevice(stream_opt->device));
-        DeviceSafeCall(device::launchHostFunc(stream_opt->stream,
-                                              device_dependency_dec_callback,
-                                              callback_object2));
+        DeviceSafeCall(device::setDevice(stream_->device));
+        DeviceSafeCall(device::launchHostFunc(
+            stream_->stream, device_dependency_dec_callback, callback_object2));
         //            std::cout << std::to_string(world().rank()) + " add 2\n";
       }
 
@@ -671,6 +693,9 @@ class ReduceTask {
     madness::Spinlock lock_;      ///< Task lock
     madness::CallbackInterface* callback_;  ///< The completion callback
     int task_id_;                           ///< Task id
+#ifdef TILEDARRAY_HAS_DEVICE
+    std::optional<device::Stream> stream_;
+#endif
 
    public:
     /// Implementation constructor
