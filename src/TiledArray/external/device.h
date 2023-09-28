@@ -807,6 +807,7 @@ inline std::optional<Stream>*& madness_task_stream_opt_ptr_accessor() {
 
 inline std::optional<Stream>& tls_stream_opt_accessor() {
   static thread_local std::optional<Stream> stream_opt =
+
       device::Env::instance()->stream(0);
   return stream_opt;
 }
