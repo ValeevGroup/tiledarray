@@ -798,14 +798,24 @@ class Env {
 };
 
 namespace detail {
+// in a madness device task point to its local optional stream to use by
+// madness_task_stream_opt; set to nullptr after task callable finished
 inline std::optional<Stream>*& madness_task_stream_opt_ptr_accessor() {
   static thread_local std::optional<Stream>* stream_opt_ptr = nullptr;
   return stream_opt_ptr;
 }
 
+inline std::optional<Stream>& tls_stream_opt_accessor() {
+  static thread_local std::optional<Stream> stream_opt =
+      device::Env::instance()->stream(0);
+  return stream_opt;
+}
+
 inline std::optional<Stream>& madness_task_stream_opt_accessor() {
-  TA_ASSERT(madness_task_stream_opt_ptr_accessor() != nullptr);
-  return *madness_task_stream_opt_ptr_accessor();
+  if (madness_task_stream_opt_ptr_accessor() != nullptr)  // in a device task?
+    return *madness_task_stream_opt_ptr_accessor();
+  else
+    return tls_stream_opt_accessor();
 }
 }  // namespace detail
 
@@ -867,7 +877,7 @@ inline void cancel_madness_task_sync() {
 /// associated with Range \p range
 template <typename Range>
 device::Stream stream_for(const Range& range) {
-  auto stream_opt = madness_task_current_stream();
+  const auto stream_opt = madness_task_current_stream();
   if (!stream_opt) {
     auto stream_ord =
         range.offset() % device::Env::instance()->num_streams_total();

@@ -29,6 +29,7 @@
 #include <TiledArray/external/device.h>
 #include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/util/time.h>
+inline std::atomic<std::int64_t> global_reduce_task_counter(0);
 #endif
 
 namespace TiledArray {
@@ -596,14 +597,14 @@ class ReduceTask {
     /// Reduce two reduction arguments
     void reduce_object_object(const ReduceObject* object1,
                               const ReduceObject* object2) {
-      // Construct an empty result object
-      auto result = std::make_shared<result_type>(op_());
-
 #ifdef TILEDARRAY_HAS_DEVICE
       TA_ASSERT(device::detail::madness_task_stream_opt_ptr_accessor() ==
                 nullptr);
       device::detail::madness_task_stream_opt_ptr_accessor() = &stream_;
 #endif
+
+      // Construct an empty result object
+      auto result = std::make_shared<result_type>(op_());
 
       // Reduce the two arguments
       op_(*result, object1->arg());
@@ -692,9 +693,9 @@ class ReduceTask {
     Future<result_type> result_;  ///< The result of the reduction task
     madness::Spinlock lock_;      ///< Task lock
     madness::CallbackInterface* callback_;  ///< The completion callback
-    int task_id_;                           ///< Task id
+    std::int64_t task_id_;                  ///< Task id
 #ifdef TILEDARRAY_HAS_DEVICE
-    std::optional<device::Stream> stream_;
+    std::optional<device::Stream> stream_;  // round-robined by task_id
 #endif
 
    public:
@@ -706,7 +707,7 @@ class ReduceTask {
     ///        has completed
     /// \param task_id the task id (for debugging)
     ReduceTaskImpl(World& world, opT op, madness::CallbackInterface* callback,
-                   int task_id = -1)
+                   std::int64_t task_id = -1)
         : madness::TaskInterface(1, TaskAttributes::hipri()),
           world_(world),
           op_(op),
@@ -715,7 +716,16 @@ class ReduceTask {
           result_(),
           lock_(),
           callback_(callback),
-          task_id_(task_id) {}
+          task_id_(task_id) {
+#ifdef TILEDARRAY_HAS_DEVICE
+      if (task_id_ == -1) {
+        task_id_ = global_reduce_task_counter++;
+        const std::size_t stream_ord =
+            task_id_ % device::Env::instance()->num_streams_total();
+        stream_ = device::Env::instance()->stream(stream_ord);
+      }
+#endif
+    }
 
     virtual ~ReduceTaskImpl() {}
 
@@ -780,7 +790,8 @@ class ReduceTask {
   ///        this task is complete
   /// \param task_id the task id (for debugging)
   ReduceTask(World& world, const opT& op = opT(),
-             madness::CallbackInterface* callback = nullptr, int task_id = -1)
+             madness::CallbackInterface* callback = nullptr,
+             std::int64_t task_id = -1)
       : pimpl_(new ReduceTaskImpl(world, op, callback, task_id)), count_(0ul) {}
 
   /// Move constructor
