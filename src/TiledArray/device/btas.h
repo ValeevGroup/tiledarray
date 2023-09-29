@@ -31,6 +31,7 @@
 #ifdef TILEDARRAY_HAS_DEVICE
 
 #include <TiledArray/device/blas.h>
+
 #include <TiledArray/external/device.h>
 #include <btas/tensor.h>
 
@@ -84,14 +85,15 @@ template <typename T, typename Scalar, typename Range, typename Storage,
   T factor_t = T(factor);
   T zero(0);
 
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-
   //  typedef typename Tensor::storage_type storage_type;
   auto result_range =
       gemm_helper.make_result_range<Range>(left.range(), right.range());
 
-  auto &queue = detail::get_blasqueue_based_on_range(result_range);
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result_range);
+  const auto device = queue.device();
+  const auto str = queue.stream();
+  const device::Stream stream(device, str);
+  DeviceSafeCall(device::setDevice(device));
 
   // the result Tensor type
   typedef ::btas::Tensor<T, Range, Storage> Tensor;
@@ -115,7 +117,7 @@ template <typename T, typename Scalar, typename Range, typename Storage,
                device_data(right.storage()), ldb, device_data(left.storage()),
                lda, zero, device_data(result.storage()), n, queue);
 
-    device::synchronize_stream(&stream);
+    device::sync_madness_task_with(stream);
   }
 
   return result;
@@ -188,9 +190,9 @@ void gemm(::btas::Tensor<T, Range, Storage> &result,
   const integer ldb =
       (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
 
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-  auto &queue = detail::get_blasqueue_based_on_range(result.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result.range());
+  const auto stream = device::Stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
 
   T factor_t = T(factor);
   T one(1);
@@ -209,7 +211,7 @@ void gemm(::btas::Tensor<T, Range, Storage> &result,
                gemm_helper.left_op(), n, m, k, factor_t,
                device_data(right.storage()), ldb, device_data(left.storage()),
                lda, one, device_data(result.storage()), n, queue);
-    device::synchronize_stream(&stream);
+    device::sync_madness_task_with(stream);
   }
 }
 
@@ -217,12 +219,10 @@ void gemm(::btas::Tensor<T, Range, Storage> &result,
 template <typename T, typename Range, typename Storage>
 ::btas::Tensor<T, Range, Storage> clone(
     const ::btas::Tensor<T, Range, Storage> &arg) {
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-
   Storage result_storage;
   auto result_range = arg.range();
-  auto &queue = detail::get_blasqueue_based_on_range(result_range);
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result_range);
+  const auto stream = Stream{queue.device(), queue.stream()};
 
   make_device_storage(result_storage, arg.size(), stream);
   ::btas::Tensor<T, Range, Storage> result(std::move(result_range),
@@ -231,7 +231,7 @@ template <typename T, typename Range, typename Storage>
   blas::copy(result.size(), device_data(arg.storage()), 1,
              device_data(result.storage()), 1, queue);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
@@ -240,29 +240,31 @@ template <typename T, typename Range, typename Storage, typename Scalar,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 ::btas::Tensor<T, Range, Storage> scale(
     const ::btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-  auto &queue = detail::get_blasqueue_based_on_range(arg.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(arg.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
   auto result = clone(arg);
 
-  if constexpr (detail::is_blas_numeric_v<Scalar> ||
+  if constexpr (TiledArray::detail::is_blas_numeric_v<Scalar> ||
                 std::is_arithmetic_v<Scalar>) {
     blas::scal(result.size(), a, device_data(result.storage()), 1, queue);
   } else {
-    if constexpr (detail::is_complex_v<T>) {
+    if constexpr (TiledArray::detail::is_complex_v<T>) {
       abort();  // fused conjugation requires custom kernels, not yet supported
     } else {
-      if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<void>>) {
-      } else if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<
-                                                      detail::ComplexNegTag>>) {
+      if constexpr (std::is_same_v<
+                        Scalar, TiledArray::detail::ComplexConjugate<void>>) {
+      } else if constexpr (std::is_same_v<
+                               Scalar,
+                               TiledArray::detail::ComplexConjugate<
+                                   TiledArray::detail::ComplexNegTag>>) {
         blas::scal(result.size(), static_cast<T>(-1),
                    device_data(result.storage()), 1, queue);
       }
     }
   }
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
 
   return result;
 }
@@ -271,27 +273,29 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 template <typename T, typename Range, typename Storage, typename Scalar,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void scale_to(::btas::Tensor<T, Range, Storage> &result, const Scalar a) {
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-  auto &queue = detail::get_blasqueue_based_on_range(result.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
-  if constexpr (detail::is_blas_numeric_v<Scalar> ||
+  if constexpr (TiledArray::detail::is_blas_numeric_v<Scalar> ||
                 std::is_arithmetic_v<Scalar>) {
     blas::scal(result.size(), a, device_data(result.storage()), 1, queue);
   } else {
-    if constexpr (detail::is_complex_v<T>) {
+    if constexpr (TiledArray::detail::is_complex_v<T>) {
       abort();  // fused conjugation requires custom kernels, not yet supported
     } else {
-      if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<void>>) {
-      } else if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<
-                                                      detail::ComplexNegTag>>) {
+      if constexpr (std::is_same_v<
+                        Scalar, TiledArray::detail::ComplexConjugate<void>>) {
+      } else if constexpr (std::is_same_v<
+                               Scalar,
+                               TiledArray::detail::ComplexConjugate<
+                                   TiledArray::detail::ComplexNegTag>>) {
         blas::scal(result.size(), static_cast<T>(-1),
                    device_data(result.storage()), 1, queue);
       }
     }
   }
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
 }
 
 /// result[i] = arg1[i] - a * arg2[i]
@@ -305,9 +309,8 @@ template <typename T, typename Scalar, typename Range, typename Storage,
   // revert the sign of a
   auto b = -a;
 
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-  auto &queue = detail::get_blasqueue_based_on_range(result.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
   if (in_memory_space<MemorySpace::Device>(result.storage())) {
     blas::axpy(result.size(), b, device_data(arg2.storage()), 1,
@@ -316,7 +319,7 @@ template <typename T, typename Scalar, typename Range, typename Storage,
     TA_ASSERT(false);
   }
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
@@ -325,16 +328,15 @@ template <typename T, typename Scalar, typename Range, typename Storage,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void subt_to(::btas::Tensor<T, Range, Storage> &result,
              const ::btas::Tensor<T, Range, Storage> &arg1, const Scalar a) {
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-  auto &queue = detail::get_blasqueue_based_on_range(result.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
   // revert the sign of a
   auto b = -a;
 
   blas::axpy(result.size(), b, device_data(arg1.storage()), 1,
              device_data(result.storage()), 1, queue);
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
 }
 
 /// result[i] = arg1[i] + a * arg2[i]
@@ -345,14 +347,13 @@ template <typename T, typename Scalar, typename Range, typename Storage,
     const ::btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
   auto result = clone(arg1);
 
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-  auto &queue = detail::get_blasqueue_based_on_range(result.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
   blas::axpy(result.size(), a, device_data(arg2.storage()), 1,
              device_data(result.storage()), 1, queue);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
@@ -361,9 +362,8 @@ template <typename T, typename Scalar, typename Range, typename Storage,
           typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void add_to(::btas::Tensor<T, Range, Storage> &result,
             const ::btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-  auto &queue = detail::get_blasqueue_based_on_range(result.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
   //   TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(result.storage(),stream);
   //   TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(arg.storage(),stream);
@@ -371,22 +371,22 @@ void add_to(::btas::Tensor<T, Range, Storage> &result,
   blas::axpy(result.size(), a, device_data(arg.storage()), 1,
              device_data(result.storage()), 1, queue);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
 }
 
 /// result[i] = result[i] * arg[i]
 template <typename T, typename Range, typename Storage>
 void mult_to(::btas::Tensor<T, Range, Storage> &result,
              const ::btas::Tensor<T, Range, Storage> &arg) {
-  auto device_id = deviceEnv::instance()->current_device_id();
-  auto &stream = detail::get_stream_based_on_range(result.range());
+  auto &queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
   std::size_t n = result.size();
 
   TA_ASSERT(n == arg.size());
 
-  device::mult_to_kernel(result.data(), arg.data(), n, stream, device_id);
-  device::synchronize_stream(&stream);
+  device::mult_to_kernel(result.data(), arg.data(), n, stream);
+  device::sync_madness_task_with(stream);
 }
 
 /// result[i] = arg1[i] * arg2[i]
@@ -398,19 +398,16 @@ template <typename T, typename Range, typename Storage>
 
   TA_ASSERT(arg2.size() == n);
 
-  auto device_id = deviceEnv::instance()->current_device_id();
-  DeviceSafeCall(device::setDevice(device_id));
-  auto &stream = detail::get_stream_based_on_range(arg1.range());
+  auto stream = stream_for(arg1.range());
 
   Storage result_storage;
   make_device_storage(result_storage, n, stream);
   ::btas::Tensor<T, Range, Storage> result(arg1.range(),
                                            std::move(result_storage));
 
-  device::mult_kernel(result.data(), arg1.data(), arg2.data(), n, stream,
-                      device_id);
+  device::mult_kernel(result.data(), arg1.data(), arg2.data(), n, stream);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
@@ -418,10 +415,8 @@ template <typename T, typename Range, typename Storage>
 template <typename T, typename Range, typename Storage>
 typename ::btas::Tensor<T, Range, Storage>::value_type squared_norm(
     const ::btas::Tensor<T, Range, Storage> &arg) {
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-
-  auto &queue = detail::get_blasqueue_based_on_range(arg.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(arg.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
   auto &storage = arg.storage();
   using TiledArray::math::blas::integer;
@@ -434,7 +429,7 @@ typename ::btas::Tensor<T, Range, Storage>::value_type squared_norm(
     TA_ASSERT(false);
     //    result = TiledArray::math::dot(size, storage.data(), storage.data());
   }
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
@@ -443,10 +438,8 @@ template <typename T, typename Range, typename Storage>
 typename ::btas::Tensor<T, Range, Storage>::value_type dot(
     const ::btas::Tensor<T, Range, Storage> &arg1,
     const ::btas::Tensor<T, Range, Storage> &arg2) {
-  DeviceSafeCall(device::setDevice(deviceEnv::instance()->current_device_id()));
-
-  auto &queue = detail::get_blasqueue_based_on_range(arg1.range());
-  auto &stream = queue.stream();
+  auto &queue = blasqueue_for(arg1.range());
+  const device::Stream stream(queue.device(), queue.stream());
 
   using TiledArray::math::blas::integer;
   integer size = arg1.storage().size();
@@ -462,91 +455,85 @@ typename ::btas::Tensor<T, Range, Storage>::value_type dot(
     TA_ASSERT(false);
     //    result = TiledArray::math::dot(size, storage.data(), storage.data());
   }
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
 template <typename T, typename Range, typename Storage>
 T sum(const ::btas::Tensor<T, Range, Storage> &arg) {
-  auto &stream = detail::get_stream_based_on_range(arg.range());
-  auto device_id = deviceEnv::instance()->current_device_id();
+  auto stream = device::stream_for(arg.range());
 
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = device::sum_kernel(arg.data(), n, stream, device_id);
+  auto result = device::sum_kernel(arg.data(), n, stream);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
 template <typename T, typename Range, typename Storage>
 T product(const ::btas::Tensor<T, Range, Storage> &arg) {
-  auto &stream = detail::get_stream_based_on_range(arg.range());
-  auto device_id = deviceEnv::instance()->current_device_id();
+  auto stream = device::stream_for(arg.range());
 
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = device::product_kernel(arg.data(), n, stream, device_id);
+  auto result = device::product_kernel(arg.data(), n, stream);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
 template <typename T, typename Range, typename Storage>
 T min(const ::btas::Tensor<T, Range, Storage> &arg) {
-  auto &stream = detail::get_stream_based_on_range(arg.range());
-  auto device_id = deviceEnv::instance()->current_device_id();
+  auto stream = device::stream_for(arg.range());
 
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = device::min_kernel(arg.data(), n, stream, device_id);
+  auto result = device::min_kernel(arg.data(), n, stream);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
 template <typename T, typename Range, typename Storage>
 T max(const ::btas::Tensor<T, Range, Storage> &arg) {
-  auto &stream = detail::get_stream_based_on_range(arg.range());
-  auto device_id = deviceEnv::instance()->current_device_id();
+  auto stream = device::stream_for(arg.range());
 
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = device::max_kernel(arg.data(), n, stream, device_id);
+  auto result = device::max_kernel(arg.data(), n, stream);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
 template <typename T, typename Range, typename Storage>
 T absmin(const ::btas::Tensor<T, Range, Storage> &arg) {
-  auto &stream = detail::get_stream_based_on_range(arg.range());
-  auto device_id = deviceEnv::instance()->current_device_id();
+  auto stream = device::stream_for(arg.range());
 
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = device::absmin_kernel(arg.data(), n, stream, device_id);
+  auto result = device::absmin_kernel(arg.data(), n, stream);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 
 template <typename T, typename Range, typename Storage>
 T absmax(const ::btas::Tensor<T, Range, Storage> &arg) {
-  auto &stream = detail::get_stream_based_on_range(arg.range());
-  auto device_id = deviceEnv::instance()->current_device_id();
+  auto stream = device::stream_for(arg.range());
 
   auto &storage = arg.storage();
   auto n = storage.size();
 
-  auto result = device::absmax_kernel(arg.data(), n, stream, device_id);
+  auto result = device::absmax_kernel(arg.data(), n, stream);
 
-  device::synchronize_stream(&stream);
+  device::sync_madness_task_with(stream);
   return result;
 }
 

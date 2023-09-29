@@ -2,9 +2,11 @@
 // Created by Chong Peng on 7/24/18.
 //
 
-#include <TiledArray/device/btas_um_tensor.h>
+#include <TiledArray/config.h>
 
 #ifdef TILEDARRAY_HAS_DEVICE
+
+#include <TiledArray/device/btas_um_tensor.h>
 
 template class btas::varray<double, TiledArray::device_um_allocator<double>>;
 template class btas::varray<float, TiledArray::device_um_allocator<float>>;

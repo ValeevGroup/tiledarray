@@ -28,54 +28,54 @@ namespace TiledArray::device {
 
 /// result[i] = result[i] * arg[i]
 void mult_to_kernel(int *result, const int *arg, std::size_t n,
-                         stream_t stream, int device_id) {
-  mult_to_kernel_thrust(result, arg, n, stream, device_id);
+                    const Stream& stream) {
+  mult_to_kernel_thrust(result, arg, n, stream);
 }
 
 void mult_to_kernel(float *result, const float *arg, std::size_t n,
-                         stream_t stream, int device_id) {
-  mult_to_kernel_thrust(result, arg, n, stream, device_id);
+                    const Stream& stream) {
+  mult_to_kernel_thrust(result, arg, n, stream);
 }
 
 void mult_to_kernel(double *result, const double *arg, std::size_t n,
-                         stream_t stream, int device_id) {
-  mult_to_kernel_thrust(result, arg, n, stream, device_id);
+                    const Stream& stream) {
+  mult_to_kernel_thrust(result, arg, n, stream);
 }
 
 void mult_to_kernel(std::complex<float> *result, const std::complex<float> *arg, std::size_t n,
-                         stream_t stream, int device_id) {
-  mult_to_kernel_thrust(result, arg, n, stream, device_id);
+                    const Stream& stream) {
+  mult_to_kernel_thrust(result, arg, n, stream);
 }
 
 void mult_to_kernel(std::complex<double> *result, const std::complex<double> *arg, std::size_t n,
-                         stream_t stream, int device_id) {
-  mult_to_kernel_thrust(result, arg, n, stream, device_id);
+                    const Stream& stream) {
+  mult_to_kernel_thrust(result, arg, n, stream);
 }
 
 /// result[i] = arg1[i] * arg2[i]
 void mult_kernel(int *result, const int *arg1, const int *arg2, std::size_t n,
-                      stream_t stream, int device_id){
-  mult_kernel_thrust(result,arg1,arg2,n,stream,device_id);
+                 const Stream& stream){
+  mult_kernel_thrust(result,arg1,arg2,n,stream);
 }
 
 void mult_kernel(float *result, const float *arg1, const float *arg2, std::size_t n,
-                      stream_t stream, int device_id){
-  mult_kernel_thrust(result,arg1,arg2,n,stream,device_id);
+                 const Stream& stream){
+  mult_kernel_thrust(result,arg1,arg2,n,stream);
 }
 
 void mult_kernel(double *result, const double *arg1, const double *arg2, std::size_t n,
-                      stream_t stream, int device_id){
-  mult_kernel_thrust(result,arg1,arg2,n,stream,device_id);
+                 const Stream& stream){
+  mult_kernel_thrust(result,arg1,arg2,n,stream);
 }
 
 void mult_kernel(std::complex<float> *result, const std::complex<float> *arg1, const std::complex<float> *arg2, std::size_t n,
-                      stream_t stream, int device_id){
-  mult_kernel_thrust(result,arg1,arg2,n,stream,device_id);
+                 const Stream& stream){
+  mult_kernel_thrust(result,arg1,arg2,n,stream);
 }
 
 void mult_kernel(std::complex<double> *result, const std::complex<double> *arg1, const std::complex<double> *arg2, std::size_t n,
-                      stream_t stream, int device_id){
-  mult_kernel_thrust(result,arg1,arg2,n,stream,device_id);
+                 const Stream& stream){
+  mult_kernel_thrust(result,arg1,arg2,n,stream);
 }
 
 }  // namespace TiledArray::device

@@ -55,13 +55,18 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem) {
       iter++;
     }
   }
+
+  auto q = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(q.device));
+
   int* a_device;
   TiledArray::device::malloc(&a_device, A * A * sizeof(int));
   int* b_device;
   TiledArray::device::malloc(&b_device, A * A * sizeof(int));
 
-  TiledArray::device::memcpy(a_device, a_host, A * A * sizeof(int),
-                             TiledArray::device::MemcpyHostToDevice);
+  TiledArray::device::memcpyAsync(a_device, a_host, A * A * sizeof(int),
+                                  TiledArray::device::MemcpyHostToDevice,
+                                  q.stream);
 
   std::vector<int> extent({A, A});
   TiledArray::extent_to_col_major(extent);
@@ -70,21 +75,23 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem) {
   TiledArray::permutation_to_col_major(perm);
 
   librettHandle plan;
-  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   status =
-      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
+      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), q.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
   status = librettExecute(plan, a_device, b_device);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
-  librettDestroy(plan);
 
-  TiledArray::device::memcpy(b_host, b_device, A * A * sizeof(int),
-                             TiledArray::device::MemcpyDeviceToHost);
+  TiledArray::device::memcpyAsync(b_host, b_device, A * A * sizeof(int),
+                                  TiledArray::device::MemcpyDeviceToHost,
+                                  q.stream);
+  TiledArray::device::streamSynchronize(q.stream);
+
+  librettDestroy(plan);
 
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {
@@ -112,16 +119,19 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
     }
   }
 
+  auto q = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(q.device));
+
   int* a_device;
   TiledArray::device::malloc(&a_device, A * B * sizeof(int));
   int* b_device;
   TiledArray::device::malloc(&b_device, A * B * sizeof(int));
 
-  TiledArray::device::memcpy(a_device, a_host, A * B * sizeof(int),
-                             TiledArray::device::MemcpyHostToDevice);
+  TiledArray::device::memcpyAsync(a_device, a_host, A * B * sizeof(int),
+                                  TiledArray::device::MemcpyHostToDevice,
+                                  q.stream);
 
   librettHandle plan;
-  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -131,17 +141,20 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
   TiledArray::permutation_to_col_major(perm);
 
   status =
-      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
+      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), q.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
   status = librettExecute(plan, a_device, b_device);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
-  librettDestroy(plan);
 
-  TiledArray::device::memcpy(b_host, b_device, A * B * sizeof(int),
-                             TiledArray::device::MemcpyDeviceToHost);
+  TiledArray::device::memcpyAsync(b_host, b_device, A * B * sizeof(int),
+                                  TiledArray::device::MemcpyDeviceToHost,
+                                  q.stream);
+  TiledArray::device::streamSynchronize(q.stream);
+
+  librettDestroy(plan);
 
   iter = 0;
   for (std::size_t i = 0; i < B; i++) {
@@ -171,18 +184,21 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
     }
   }
 
+  auto q = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(q.device));
+
   int* a_device;
   TiledArray::device::malloc(&a_device, A * B * C * sizeof(int));
   int* b_device;
   TiledArray::device::malloc(&b_device, A * B * C * sizeof(int));
 
-  TiledArray::device::memcpy(a_device, a_host, A * B * C * sizeof(int),
-                             TiledArray::device::MemcpyHostToDevice);
+  TiledArray::device::memcpyAsync(a_device, a_host, A * B * C * sizeof(int),
+                                  TiledArray::device::MemcpyHostToDevice,
+                                  q.stream);
 
   // b(j,i,k) = a(i,j,k)
 
   librettHandle plan;
-  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent3{int(A), int(B), int(C)};
@@ -191,7 +207,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
   //  std::vector<int> perm3{0, 2, 1};
 
   status = librettPlanMeasure(&plan, 3, extent3.data(), perm3.data(),
-                              sizeof(int), stream, a_device, b_device);
+                              sizeof(int), q.stream, a_device, b_device);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -199,8 +215,10 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  TiledArray::device::memcpy(b_host, b_device, A * B * C * sizeof(int),
-                             TiledArray::device::MemcpyDeviceToHost);
+  TiledArray::device::memcpyAsync(b_host, b_device, A * B * C * sizeof(int),
+                                  TiledArray::device::MemcpyDeviceToHost,
+                                  q.stream);
+  TiledArray::device::streamSynchronize(q.stream);
 
   status = librettDestroy(plan);
 
@@ -236,18 +254,21 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
     }
   }
 
+  auto q = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(q.device));
+
   int* a_device;
   TiledArray::device::malloc(&a_device, A * B * C * sizeof(int));
   int* b_device;
   TiledArray::device::malloc(&b_device, A * B * C * sizeof(int));
 
-  TiledArray::device::memcpy(a_device, a_host, A * B * C * sizeof(int),
-                             TiledArray::device::MemcpyHostToDevice);
+  TiledArray::device::memcpyAsync(a_device, a_host, A * B * C * sizeof(int),
+                                  TiledArray::device::MemcpyHostToDevice,
+                                  q.stream);
 
   // b(j,i,k) = a(i,j,k)
 
   librettHandle plan;
-  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent({A, B, C});
@@ -257,7 +278,7 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
   TiledArray::permutation_to_col_major(perm);
 
   status = librettPlanMeasure(&plan, 3, extent.data(), perm.data(), sizeof(int),
-                              stream, a_device, b_device);
+                              q.stream, a_device, b_device);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -265,8 +286,10 @@ BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  TiledArray::device::memcpy(b_host, b_device, A * B * C * sizeof(int),
-                             TiledArray::device::MemcpyDeviceToHost);
+  TiledArray::device::memcpyAsync(b_host, b_device, A * B * C * sizeof(int),
+                                  TiledArray::device::MemcpyDeviceToHost,
+                                  q.stream);
+  TiledArray::device::streamSynchronize(q.stream);
 
   status = librettDestroy(plan);
 
@@ -304,8 +327,10 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
     }
   }
 
+  auto q = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(q.device));
+
   librettHandle plan;
-  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent({A, A});
@@ -315,7 +340,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
   TiledArray::permutation_to_col_major(perm);
 
   status =
-      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
+      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), q.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -323,9 +348,9 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem) {
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  librettDestroy(plan);
+  TiledArray::device::streamSynchronize(q.stream);
 
-  TiledArray::device::deviceSynchronize();
+  librettDestroy(plan);
 
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {
@@ -354,8 +379,10 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
     }
   }
 
+  auto q = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(q.device));
+
   librettHandle plan;
-  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   std::vector<int> extent({B, A});
@@ -365,7 +392,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
   TiledArray::permutation_to_col_major(perm);
 
   status =
-      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), stream);
+      librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), q.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -373,8 +400,9 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
+  TiledArray::device::streamSynchronize(q.stream);
+
   librettDestroy(plan);
-  TiledArray::device::deviceSynchronize();
 
   iter = 0;
   for (std::size_t i = 0; i < B; i++) {
@@ -404,8 +432,10 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
     }
   }
 
+  auto q = TiledArray::deviceEnv::instance()->stream(0);
+  DeviceSafeCall(TiledArray::device::setDevice(q.device));
+
   librettHandle plan;
-  auto stream = TiledArray::deviceEnv::instance()->stream(0);
   librettResult status;
 
   // b(k,i,j) = a(i,j,k)
@@ -417,7 +447,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
   TiledArray::permutation_to_col_major(perm);
 
   status =
-      librettPlan(&plan, 3, extent.data(), perm.data(), sizeof(int), stream);
+      librettPlan(&plan, 3, extent.data(), perm.data(), sizeof(int), q.stream);
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
@@ -425,8 +455,9 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
 
   BOOST_CHECK(status == LIBRETT_SUCCESS);
 
+  TiledArray::device::streamSynchronize(q.stream);
+
   librettDestroy(plan);
-  TiledArray::device::deviceSynchronize();
 
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {

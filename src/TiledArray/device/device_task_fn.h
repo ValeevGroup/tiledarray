@@ -2,8 +2,8 @@
 // Created by Chong Peng on 2019-03-20.
 //
 
-#ifndef TILEDARRAY_DEVICE_CUDA_TASK_FN_H__INCLUDED
-#define TILEDARRAY_DEVICE_CUDA_TASK_FN_H__INCLUDED
+#ifndef TILEDARRAY_DEVICE_DEVICE_TASK_FN_H__INCLUDED
+#define TILEDARRAY_DEVICE_DEVICE_TASK_FN_H__INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -35,7 +35,7 @@ namespace madness {
 ///
 /// deviceTaskFn class
 /// represent a task that calls an async device kernel
-/// the task must call synchronize_stream function to tell which stream it
+/// the task must call sync_madness_task_with function to tell which stream it
 /// used
 ///
 
@@ -99,24 +99,31 @@ struct deviceTaskFn : public TaskInterface {
 
    protected:
     void run(const TaskThreadEnv& env) override {
+      TA_ASSERT(!stream_);
+      TA_ASSERT(
+          TiledArray::device::detail::madness_task_stream_opt_ptr_accessor() ==
+          nullptr);
+      // tell the task to report stream to be synced with to this->stream_
+      TiledArray::device::detail::madness_task_stream_opt_ptr_accessor() =
+          &this->stream_;
+
       // run the async function, the function must call synchronize_stream() to
       // set the stream it used!!
       task_->run_async();
 
-      // get the stream used by async function
-      auto stream = TiledArray::device::tls_stream_accessor();
-
-      //      TA_ASSERT(stream != nullptr);
+      // clear ptr to stream_
+      TiledArray::device::detail::madness_task_stream_opt_ptr_accessor() =
+          nullptr;
 
       // WARNING, need to handle NoOp
-      if (stream == nullptr) {
+      if (!stream_) {
         task_->notify();
       } else {
         // TODO should we use device callback or device events??
         // insert device callback
-        TiledArray::device::launchHostFunc(*stream, device_callback, task_);
-        // reset stream to nullptr
-        TiledArray::device::synchronize_stream(nullptr);
+        TiledArray::device::launchHostFunc(*stream_, device_callback, task_);
+        // processed sync, clear state
+        stream_ = {};
       }
     }
 
@@ -139,6 +146,7 @@ struct deviceTaskFn : public TaskInterface {
     }
 
     deviceTaskFn_* task_;
+    std::optional<TiledArray::device::Stream> stream_;  // stream to sync with
   };
 
  public:
@@ -867,4 +875,4 @@ typename detail::memfunc_enabler<objT, memfnT>::type add_device_task(
 }  // namespace madness
 
 #endif  // TILDARRAY_HAS_DEVICE
-#endif  // TILEDARRAY_DEVICE_CUDA_TASK_FN_H__INCLUDED
+#endif  // TILEDARRAY_DEVICE_DEVICE_TASK_FN_H__INCLUDED

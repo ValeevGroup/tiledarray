@@ -50,7 +50,7 @@ bool in_memory_space(const Storage& vec) noexcept {
  * device_um_btas_varray
  */
 template <ExecutionSpace Space, typename Storage>
-void to_execution_space(Storage& vec, device::stream_t stream = 0) {
+void to_execution_space(Storage& vec, const device::Stream& s) {
   switch (Space) {
     case ExecutionSpace::Host: {
       using std::data;
@@ -59,7 +59,7 @@ void to_execution_space(Storage& vec, device::stream_t stream = 0) {
       if (deviceEnv::instance()->concurrent_managed_access()) {
         DeviceSafeCall(device::memPrefetchAsync(data(vec),
                                                 size(vec) * sizeof(value_type),
-                                                device::CpuDeviceId, stream));
+                                                device::CpuDeviceId, s.stream));
       }
       break;
     }
@@ -67,11 +67,9 @@ void to_execution_space(Storage& vec, device::stream_t stream = 0) {
       using std::data;
       using std::size;
       using value_type = typename Storage::value_type;
-      int device = -1;
       if (deviceEnv::instance()->concurrent_managed_access()) {
-        DeviceSafeCall(device::getDevice(&device));
         DeviceSafeCall(device::memPrefetchAsync(
-            data(vec), size(vec) * sizeof(value_type), device, stream));
+            data(vec), size(vec) * sizeof(value_type), s.device, s.stream));
       }
       break;
     }
@@ -89,10 +87,10 @@ void to_execution_space(Storage& vec, device::stream_t stream = 0) {
  */
 template <typename Storage>
 void make_device_storage(Storage& storage, std::size_t n,
-                         const device::stream_t& stream = 0) {
+                         const device::Stream& s) {
   storage = Storage(n);
   TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(storage,
-                                                                     stream);
+                                                                     s);
 }
 
 /**

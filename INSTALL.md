@@ -42,7 +42,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Range: header-only, *only used for unit testing*
 - [BTAS](http://github.com/ValeevGroup/BTAS), tag 3c91f086090390930bba62c6512c4e74a5520e76 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 3d585293f0094588778dbd3bec24b65e7bbe6a5d .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 1f307ebbe6604539493e165a7a2b00b366711fd8 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
@@ -68,7 +68,7 @@ Optional prerequisites:
     - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on NVIDIA's CUDA-enabled accelerators. CUDA 11 or later is required.
     - [HIP/ROCm compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on AMD's ROCm-enabled accelerators. Note that TiledArray does not use ROCm directly but its C++ Heterogeneous-Compute Interface for Portability, `HIP`; although HIP can also be used to program CUDA-enabled devices, in TiledArray it is used only to program ROCm devices, hence ROCm and HIP will be used interchangeably.
   - [LibreTT](github.com/victor-anisimov/LibreTT) -- free tensor transpose library for CUDA, ROCm, and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) extended to provide thread-safety improvements (via github.com/ValeevGroup/cutt) and extended to non-CUDA platforms by [@victor-anisimov](github.com/victor-anisimov) (tag 6eed30d4dd2a5aa58840fe895dcffd80be7fbece).
-  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f9640e0fa4245691cdd434e4f719ac5f7d455f82).
+  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag 20839b2e8e8972070dd8f75c7f00d50d6c399716).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
   - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 6397f52cf11c0dfd82a79698ee198a2fce515d81); pulls and builds the following additional prerequisite

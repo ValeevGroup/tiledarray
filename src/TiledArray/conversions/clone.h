@@ -26,6 +26,10 @@
 #ifndef TILEDARRAY_CONVERSIONS_CLONE_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_CLONE_H__INCLUDED
 
+#ifdef TILEDARRAY_HAS_DEVICE
+#include "TiledArray/device/device_task_fn.h"
+#endif
+
 namespace TiledArray {
 
 /// Forward declarations
@@ -53,12 +57,28 @@ inline DistArray<Tile, Policy> clone(const DistArray<Tile, Policy>& arg) {
     if (arg.is_zero(index)) continue;
 
     // Spawn a task to clone the tiles
-    Future<value_type> tile = world.taskq.add(
-        [](const value_type& tile) -> value_type {
-          using TiledArray::clone;
-          return clone(tile);
-        },
-        arg.find(index));
+
+    Future<value_type> tile;
+    if constexpr (!detail::is_device_tile_v<value_type>) {
+      tile = world.taskq.add(
+          [](const value_type& tile) -> value_type {
+            using TiledArray::clone;
+            return clone(tile);
+          },
+          arg.find(index));
+    } else {
+#ifdef TILEDARRAY_HAS_DEVICE
+      tile = madness::add_device_task(
+          world,
+          [](const value_type& tile) -> value_type {
+            using TiledArray::clone;
+            return clone(tile);
+          },
+          arg.find(index));
+#else
+      abort();  // unreachable
+#endif
+    }
 
     // Store result tile
     result.set(index, tile);

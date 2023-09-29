@@ -103,11 +103,7 @@ set(ta_test_src_files  ta_test.cpp
 )
 
 if(CUDA_FOUND OR HIP_FOUND)
-  list(APPEND ta_test_src_files librett.cpp)
-endif()
-
-if(CUDA_FOUND)
-    list(APPEND ta_test_src_files expressions_cuda_um.cpp tensor_um.cpp)
+  list(APPEND ta_test_src_files librett.cpp expressions_device_um.cpp tensor_um.cpp)
 endif()
 
 # if using C++20 must use Boost 1.74 or later:

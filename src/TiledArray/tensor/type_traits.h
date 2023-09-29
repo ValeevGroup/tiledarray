@@ -314,8 +314,7 @@ template <typename ReduceOp, typename Result, typename... Args>
 constexpr const bool is_reduce_op_v =
     is_reduce_op_<void, ReduceOp, Result, Args...>::value;
 
-/// detect cuda tile
-#ifdef TILEDARRAY_HAS_DEVICE
+/// detect device tile types
 template <typename T>
 struct is_device_tile : public std::false_type {};
 
@@ -328,8 +327,6 @@ struct is_device_tile<LazyArrayTile<T, Op>>
 
 template <typename T>
 static constexpr const auto is_device_tile_v = is_device_tile<T>::value;
-
-#endif
 
 template <typename Tensor, typename Enabler = void>
 struct default_permutation;

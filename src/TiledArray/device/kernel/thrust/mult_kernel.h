@@ -34,12 +34,12 @@ namespace TiledArray::device {
 /// result[i] = result[i] * arg[i]
 template <typename T>
 void mult_to_kernel_thrust(T *result, const T *arg, std::size_t n,
-                           stream_t stream, int device_id) {
-  DeviceSafeCall(device::setDevice(device_id));
+                           const Stream &s) {
+  DeviceSafeCall(device::setDevice(s.device));
 
   thrust::multiplies<T> mul_op;
   thrust::transform(
-      thrust_system::par.on(stream), thrust::device_pointer_cast(arg),
+      thrust_system::par.on(s.stream), thrust::device_pointer_cast(arg),
       thrust::device_pointer_cast(arg) + n, thrust::device_pointer_cast(result),
       thrust::device_pointer_cast(result), mul_op);
 }
@@ -47,12 +47,12 @@ void mult_to_kernel_thrust(T *result, const T *arg, std::size_t n,
 /// result[i] = arg1[i] * arg2[i]
 template <typename T>
 void mult_kernel_thrust(T *result, const T *arg1, const T *arg2, std::size_t n,
-                        stream_t stream, int device_id) {
-  DeviceSafeCall(device::setDevice(device_id));
+                        const Stream &s) {
+  DeviceSafeCall(device::setDevice(s.device));
 
   thrust::multiplies<T> mul_op;
   thrust::transform(
-      thrust_system::par.on(stream), thrust::device_pointer_cast(arg1),
+      thrust_system::par.on(s.stream), thrust::device_pointer_cast(arg1),
       thrust::device_pointer_cast(arg1) + n, thrust::device_pointer_cast(arg2),
       thrust::device_pointer_cast(result), mul_op);
 }
