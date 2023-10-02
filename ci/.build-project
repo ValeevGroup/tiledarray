@@ -75,15 +75,14 @@ cmd "source ci/openmpi.env"
 cmd "echo 'localhost slots=2' > /etc/openmpi/openmpi-default-hostfile"
 if [[ "$vars" =~ \"-DBLAS_PREFERENCE_LIST=IntelMKL ]]; then
   cmd "make -C /home/ValeevGroup install/intel-mkl"
-  # DevOps installs MKL 2020.3 which requires non-OneAPI TBB ... although MKL bundles TBB
+  # DevOps installs OneAPI MKL which requires OneAPI TBB ... although MKL bundles TBB
   # the systemwide TBB package is found first (the MKL's TBB does not bundle
   # headers anyway, so it's almost useless for us)
-  # unfortunately the default, libtbb-dev, package on ubuntu 22.04 is OneAPI, get rid of it and use
-  # libtbb2-dev instead
+  # unfortunately the default, libtbb-dev, package on ubuntu 20.04 is pre-OneAPI, so get rid of it
   if [[ "$vars" =~ \"-DIntelMKL_THREAD_LAYER=tbb ]]; then
-    cmd "(apt show libtbb2-dev && apt install -y libtbb2-dev) || echo \"no need to install libtbb2-dev\""
+    cmd "(apt show libtbb-dev && apt remove -y libtbb-dev) || echo \"no need to install libtbb-dev\""
   fi
-  cmd "source /opt/intel/mkl/bin/mklvars.sh intel64"
+  cmd "source /opt/intel/oneapi/mkl/latest/env/vars.sh"
   cmd "echo MKLROOT=\$MKLROOT"
 fi
 if [[ "$vars" =~ \"-D([a-zA-Z]+_)?ENABLE_CUDA=(ON|TRUE|1|YES)\" ]]; then
