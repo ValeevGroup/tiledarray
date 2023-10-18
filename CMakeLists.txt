@@ -78,6 +78,7 @@ enable_language(C)  # C needed even for basic platform introspection
 
 # Set install paths ============================================================
 
+include(GNUInstallDirs)
 set(TILEDARRAY_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}"
         CACHE PATH "TiledArray binary install directory")
 set(TILEDARRAY_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
@@ -96,7 +97,6 @@ set(TILEDARRAY_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/tiledarray"
 # Add module directory and modules =============================================
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
 include(CMakePushCheckState)
-include(GNUInstallDirs)
 include(AppendFlags)
 include(RedefaultableOption)
 include(DetectMADNESSConfig)
