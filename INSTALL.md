@@ -75,7 +75,7 @@ Optional prerequisites:
     - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS
 - Python3 interpreter -- to test (optionally-built) Python bindings
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20; only used for some unit testing of the functionality anticipated to be supported by future C++ standards.
-- [TTG](https://github.com/TESSEorg/ttg.git) -- C++ implementation of the Template Task Graph programming model for fine-grained flow-graph composition of distributed memory programs (tag 26da9b40872660b864794658d4fdeee1a95cb4d6).
+- [TTG](https://github.com/TESSEorg/ttg.git) -- C++ implementation of the Template Task Graph programming model for fine-grained flow-graph composition of distributed memory programs (tag 3fe4a06dbf4b05091269488aab38223da1f8cb8e).
 
 Many of these dependencies can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
