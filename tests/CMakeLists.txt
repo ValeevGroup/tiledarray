@@ -153,6 +153,9 @@ endif (TARGET range-v3::range-v3)
 add_test(tiledarray/unit/build "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
 set_tests_properties(tiledarray/unit/build PROPERTIES FIXTURES_SETUP TA_UNIT_TESTS_EXEC)
 
+# N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
+set(TA_UNIT_TESTS_ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1")
+
 # Add a test(s)
 if(ENABLE_MPI)
   set (${executable}_np_1_args --run_test=!@distributed)
@@ -165,22 +168,19 @@ if(ENABLE_MPI)
         $<TARGET_FILE:${executable}> --log_level=unit_scope ${${executable}_np_${p}_args}
         ${MPIEXEC_POSTFLAGS}
       )
-    # N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
+    if (p GREATER 1)
+      set(TA_UNIT_TESTS_ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT};TA_UT_DISTRIBUTED=1")
+    endif()
     set_tests_properties(tiledarray/unit/run-np-${p}
             PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
-            ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1"
+            ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT}"
             )
-
-    if (p GREATER 1)
-      set_tests_properties(tiledarray/unit/run-np-${p} PROPERTIES ENVIRONMENT TA_UT_DISTRIBUTED=1)
-    endif()
   endforeach(p)
 else()
   add_test(NAME tiledarray/unit/run-np-1
            COMMAND ${executable})
-  # N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
   set_tests_properties(tiledarray/unit/run-np-1
           PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
-          ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1"
+          ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT}"
           )
 endif()
