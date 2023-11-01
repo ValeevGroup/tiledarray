@@ -126,6 +126,11 @@ with open(version_cmake_path) as inf:
                 scalapackpp_old_tag = tokens[2]
             else:
                 scalapackpp_new_tag = tokens[2]
+        elif tokens[1].find('TTG') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                ttg_old_tag = tokens[2]
+            else:
+                ttg_new_tag = tokens[2]
 
 any_files_changed = False
 
@@ -154,6 +159,9 @@ any_files_changed |= replace_dep_id(topsrc, 'md', 'Umpire', umpire_old_tag, umpi
 
 # SCALAPACKPP tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'SCALAPACKPP', scalapackpp_old_tag, scalapackpp_new_tag, '', '')
+
+# TTG tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'TTG', ttg_old_tag, ttg_new_tag, '', '')
 
 if any_files_changed:
     sys.exit(1)

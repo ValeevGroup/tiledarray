@@ -106,8 +106,16 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     initialized_accessor() = true;
     quiet_accessor() = quiet;
 
-    // if have TTG initialize it also
+    // if have TTG, initialize it also
 #if TILEDARRAY_HAS_TTG
+    // MADNESS/PaRSEC creates PaRSEC context that uses MPI_COMM_SELF to avoid
+    // creation of a PaRSEC comm thread to be able to use TTG/PaRSEC need to
+    // tell PaRSEC context to use the full communicator
+    if (madness::ParsecRuntime::context()->nb_nodes != default_world.size()) {
+      auto default_world_comm = default_world.mpi.comm().Get_mpi_comm();
+      parsec_remote_dep_set_ctx(madness::ParsecRuntime::context(),
+                                (intptr_t)default_world_comm);
+    }
     ttg::initialize(argc, argv, -1, madness::ParsecRuntime::context());
 #endif
 
