@@ -31,6 +31,11 @@
 namespace TiledArray {
 namespace detail {
 
+enum class CyclicPmapOrder {
+  RowMajor,
+  ColMajor
+};
+
 /// Maps cyclically a sequence of indices onto a 2-d matrix of processes
 
 /// Consider a sequence of indices \f$ \{ k | k \in [0,N) \} \f$,
@@ -45,6 +50,7 @@ namespace detail {
 /// col} \} \f$
 ///
 /// \note This class is used to map <em>tile</em> indices to processes.
+template <CyclicPmapOrder Order = CyclicPmapOrder::RowMajor>
 class CyclicPmap : public Pmap {
  protected:
   // Import Pmap protected variables
@@ -63,7 +69,12 @@ class CyclicPmap : public Pmap {
   size_type local_cols_ =
       0;  ///< The number of columns that belong to this rank
 
+  inline size_type coordinate_to_index(size_type i, size_type j) const noexcept {
+    if constexpr (is_row_major_v) return i*cols_ + j;
+    else                          return i + j*rows_;
+  }
  public:
+  static constexpr bool is_row_major_v = (Order == CyclicPmapOrder::RowMajor);
   typedef Pmap::size_type size_type;  ///< Size type
 
   /// Construct process map
@@ -96,8 +107,13 @@ class CyclicPmap : public Pmap {
     // Compute local size_, if have any
     if (rank_ < (proc_rows_ * proc_cols_)) {
       // Compute rank coordinates
-      rank_row_ = rank_ / proc_cols_;
-      rank_col_ = rank_ % proc_cols_;
+      if constexpr (is_row_major_v) {
+        rank_row_ = rank_ / proc_cols_;
+        rank_col_ = rank_ % proc_cols_;
+      } else {
+        rank_row_ = rank_ % proc_rows_;
+        rank_col_ = rank_ / proc_rows_;
+      }
 
       local_rows_ =
           (rows_ / proc_rows_) + ((rows_ % proc_rows_) > rank_row_ ? 1ul : 0ul);
@@ -127,13 +143,14 @@ class CyclicPmap : public Pmap {
   virtual size_type owner(const size_type tile) const {
     TA_ASSERT(tile < size_);
     // Compute tile coordinate in tile grid
-    const size_type tile_row = tile / cols_;
-    const size_type tile_col = tile % cols_;
+    const size_type tile_row = is_row_major_v ? tile / cols_ : tile % rows_;
+    const size_type tile_col = is_row_major_v ? tile % cols_ : tile / rows_;
     // Compute process coordinate of tile in the process grid
     const size_type proc_row = tile_row % proc_rows_;
     const size_type proc_col = tile_col % proc_cols_;
     // Compute the process that owns tile
-    const size_type proc = proc_row * proc_cols_ + proc_col;
+    const size_type proc = is_row_major_v ? 
+        proc_row * proc_cols_ + proc_col : proc_row + proc_col * proc_rows_;
 
     TA_ASSERT(proc < procs_);
 
@@ -149,48 +166,59 @@ class CyclicPmap : public Pmap {
   }
 
  private:
+#if 0
   virtual void advance(size_type& value, bool increment) const {
-    if (increment) {
-      auto row = value / cols_;
-      const auto row_end = (row + 1) * cols_;
-      value += proc_cols_;
-      if (value >= row_end) {  // if past the end of row ...
-        row += proc_rows_;
-        if (row < rows_) {                  // still have tiles
-          value = row * cols_ + rank_col_;  // first tile in this row
-        } else                              // done
-          value = size_;
-      }
-    } else {  // decrement
-      auto row = value / cols_;
-      const auto row_begin = row * cols_;
-      if (value < proc_cols_) {  // protect against unsigned wraparound
-        return;
-      }
-      value -= proc_cols_;
-      if (value < row_begin) {  // if past the beginning of row ...
-        if (row < proc_rows_)   // protect against unsigned wraparound
+    if constexpr (is_row_major_v) {
+      if (increment) {
+        auto row = value / cols_;
+        const auto row_end = (row + 1) * cols_;
+        value += proc_cols_;
+        if (value >= row_end) {  // if past the end of row ...
+          row += proc_rows_;
+          if (row < rows_) {                              // still have tiles
+            value = coordinate_to_index(row, rank_col_);  // first tile in this row
+          } else                                          // done
+            value = size_;
+        }
+      } else {  // decrement
+        auto row = value / cols_;
+        const auto row_begin = row * cols_;
+        if (value < proc_cols_) {  // protect against unsigned wraparound
           return;
-        row -= proc_rows_;
-        value = row * cols_ + rank_col_ +
-                (local_cols_ - 1) * proc_cols_;  // last tile in this row
+        }
+        value -= proc_cols_;
+        if (value < row_begin) {  // if past the beginning of row ...
+          if (row < proc_rows_)   // protect against unsigned wraparound
+            return;
+          row -= proc_rows_;
+          value = coordinate_to_index(row, rank_col_) +
+                  (local_cols_ - 1) * proc_cols_;  // last tile in this row
+        }
       }
+    } else {
+      Pmap::advance(value, increment);
     }
   }
+#endif
 
  public:
+
+#if 0
   virtual const_iterator begin() const {
+    const auto proc_index = coordinate_to_index(rank_row_, rank_col_);
     return this->local_size_ > 0
-               ? Iterator(*this, rank_row_ * cols_ + rank_col_, this->size_,
-                          rank_row_ * cols_ + rank_col_, false, true)
+               ? Iterator(*this, proc_index, this->size_, proc_index, 
+                          false, is_row_major_v)
                : end();  // make end() if empty
   }
   virtual const_iterator end() const {
+    const auto proc_index = coordinate_to_index(rank_row_, rank_col_);
     return this->local_size_ > 0
-               ? Iterator(*this, rank_row_ * cols_ + rank_col_, this->size_,
-                          this->size_, false, true)
-               : Iterator(*this, 0, this->size_, this->size_, false, true);
+               ? Iterator(*this, proc_index, this->size_,
+                          this->size_, false, is_row_major_v)
+               : Iterator(*this, 0, this->size_, this->size_, false, is_row_major_v);
   }
+#endif
 
 };  // class CyclicPmap
 

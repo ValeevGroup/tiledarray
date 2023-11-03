@@ -150,7 +150,7 @@ class Pmap {
   /// \name Iteration
   /// @{
 
- private:
+ protected:
   /// customizes how to iterate over local indices
 
   /// overload this and construct Iterator with `use_pmap_advance=true`

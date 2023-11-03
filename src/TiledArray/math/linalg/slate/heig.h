@@ -1,0 +1,115 @@
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2023 Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  David Williams-Young
+ *  Applied Mathematics and Computational Research Division,
+ *  Lawrence Berkeley National Laboratory
+ *
+ *  cholesky.h
+ *  Created:    24 July, 2023
+ *
+ */
+#ifndef TILEDARRAY_MATH_LINALG_SLATE_HEIG_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SLATE_HEIG_H__INCLUDED
+
+#include <TiledArray/config.h>
+#if TILEDARRAY_HAS_SLATE
+
+#include <TiledArray/conversions/slate.h>
+#include <TiledArray/math/linalg/slate/util.h>
+#include <TiledArray/math/linalg/forward.h>
+
+namespace TiledArray::math::linalg::slate {
+
+template <typename Array>
+auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
+
+  using element_type   = typename std::remove_cv_t<Array>::element_type;
+  auto& world = A.world();
+
+
+  // Convert to SLATE
+  auto matrix = array_to_slate(A);
+
+  // Allocate space for singular values
+  const auto M = matrix.m();
+  const auto N = matrix.n();
+  if (M != N) TA_EXCEPTION("Matrix must be square for EVP");
+
+  std::vector<::blas::real_type<element_type>> W(N);
+
+  // Perform Eigenvalue Decomposition
+  world.gop.fence();  // stage SLATE execution
+
+  ::slate::HermitianMatrix<element_type> AH(::slate::Uplo::Lower, matrix);
+  auto Z = matrix.emptyLike(); Z.insertLocalTiles();
+  ::slate::eig(AH, W, Z); 
+
+
+  // Convert eigenvectors back to TA
+  auto Z_ta = slate_to_array<Array>(Z, world);
+  if(evec_trange.rank() != 0 and evec_trange != A.trange()) {
+    Z_ta = retile(Z_ta, evec_trange);
+  }
+  world.gop.fence(); // Maintain lifetimes of SLATE data
+
+  return std::tuple(W, Z_ta);
+}
+
+
+template <typename ArrayA, typename ArrayB>
+auto heig(const ArrayA& A, const ArrayB& B) {
+
+  using element_type   = typename std::remove_cv_t<ArrayB>::element_type;
+  auto& world = A.world();
+
+  // Convert to SLATE
+  auto matrix_A = array_to_slate(A);
+  auto matrix_B = array_to_slate(B);
+
+  // Allocate space for singular values
+  const auto M = matrix_A.m();
+  const auto N = matrix_A.n();
+  if (M != N) TA_EXCEPTION("Matrix must be square for EVP");
+  if (matrix_B.m() != matrix_B.n())
+    TA_EXCEPTION("Metric must be square for EVP");
+  if(matrix_B.m() != M)
+    TA_EXCEPTION("Matrix and Metric must be the same size");
+
+  std::vector<::blas::real_type<element_type>> W(N);
+
+  // Perform Eigenvalue Decomposition
+  world.gop.fence();  // stage SLATE execution
+
+  ::slate::HermitianMatrix<element_type> AH(::slate::Uplo::Lower, matrix_A);
+  ::slate::HermitianMatrix<element_type> BH(::slate::Uplo::Lower, matrix_B);
+  auto Z = matrix_A.emptyLike(); Z.insertLocalTiles();
+  ::slate::eig(1, AH, BH, W, Z); // AX = BXE 
+
+
+  // Convert eigenvectors back to TA
+  auto Z_ta = slate_to_array<ArrayA>(Z, world);
+  world.gop.fence(); // Maintain lifetimes of SLATE data
+
+  return std::tuple(W, Z_ta);
+}
+
+} // namespace TiledArray::math::linalg::slate
+
+#endif // TILEDARRAY_HAS_SLATE
+
+#endif // TILEDARRAY_MATH_LINALG_SLATE_HEIG_H__INCLUDED

@@ -1,6 +1,6 @@
 #
 #  This file is a part of TiledArray.
-#  Copyright (C) 2013  Virginia Tech
+#  Copyright (C) 2016  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,26 +15,24 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#  Justus Calvin
+#  Drew Lewis
 #  Department of Chemistry, Virginia Tech
 #
 #  CMakeLists.txt
-#  Sep 4, 2013
+#  Dec 6th, 2016
 #
- 
-# if target examples-tiledarray does not exist yet, create it
-if (NOT TARGET examples-tiledarray)
-  add_custom_target_subproject(tiledarray examples)
-endif()
 
-# Add Subdirectories
-add_subdirectory (cc)
-add_subdirectory (device)
-add_subdirectory (dgemm)
-add_subdirectory (demo)
-add_subdirectory (scalapack)
-add_subdirectory (slate)
-add_subdirectory (fock)
-add_subdirectory (mpi_tests)
-add_subdirectory (pmap_test)
-add_subdirectory (vector_tests)
+# Create example executable
+
+if(ENABLE_SLATE)
+
+foreach(_exec conversion)
+
+  # Add executable
+  add_executable(slate-${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
+  target_link_libraries(slate-${_exec} PRIVATE tiledarray)
+  add_dependencies(examples-tiledarray slate-${_exec})
+
+endforeach()
+
+endif(ENABLE_SLATE)

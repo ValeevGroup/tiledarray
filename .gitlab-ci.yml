@@ -7,6 +7,7 @@ default:
 
 variables:
   MAD_NUM_THREADS : 2
+  OMP_NUM_THREADS : 1
   TA_TARGETS : "tiledarray examples-tiledarray ta_test check-tiledarray"
   # Debug builds with ScaLAPACK=ON need increased TA_UT_CTEST_TIMEOUT
   TA_CONFIG : >
@@ -18,6 +19,7 @@ variables:
     ${BLA_VENDOR}
     ${BLA_THREADS}
     ${ENABLE_SCALAPACK}
+    ${ENABLE_SLATE}
 
 before_script:
   # NB: if CMAKE_BUILD_PARALLEL_LEVEL is not set (i.e. using shared runner), use 1 to ensure we have enough memory
@@ -35,6 +37,7 @@ ubuntu:
   variables:
     TA_PYTHON : "TA_PYTHON=ON"
     ENABLE_SCALAPACK : "ENABLE_SCALAPACK=OFF"
+    ENABLE_SLATE     : "ENABLE_SLATE=OFF"
   script:
     - ./ci/.build-project
         --build ./build
@@ -69,6 +72,7 @@ ubuntu:
         CXX: [ g++, clang++-13 ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
+        ENABLE_SLATE : [ "ENABLE_SLATE=ON", "ENABLE_SLATE=OFF" ]
         RUNNER_TAGS: [ linux ]
       - IMAGE : [ "ubuntu:22.04", "ubuntu:20.04" ]
         CXX: [ g++ ]

@@ -98,9 +98,16 @@ set(ta_test_src_files  ta_test.cpp
   # t_tot_tot_contract_.cpp
   # tot_tot_tot_contract_.cpp
     einsum.cpp
-    linalg.cpp
+    linalg/linalg.cpp
+    linalg/non_dist.cpp
     cp.cpp
 )
+if(ENABLE_SCALAPACK)
+    list(APPEND ta_test_src_files linalg/scalapack.cpp)
+endif()
+if(ENABLE_SLATE)
+    list(APPEND ta_test_src_files linalg/slate.cpp)
+endif()
 
 if(CUDA_FOUND OR HIP_FOUND)
   list(APPEND ta_test_src_files librett.cpp expressions_device_um.cpp tensor_um.cpp)

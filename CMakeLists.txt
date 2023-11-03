@@ -119,6 +119,9 @@ add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-
 option(ENABLE_SCALAPACK "Enable ScaLAPACK Bindings in TiledArray" OFF)
 add_feature_info(ScaLAPACK ENABLE_SCALAPACK "ScaLAPACK provides distributed linear algebra")
 
+option(ENABLE_SLATE "Enable SLATE Bindings in TiledArray" OFF)
+add_feature_info(SLATE ENABLE_SLATE "SLATE provides distributed linear algebra on GPU architectures")
+
 option(ENABLE_WFN91_LINALG_DISCOVERY_KIT "Use linear algebra discovery kit from github.com/wavefunction91 [recommended]" ON)
 add_feature_info(WFN91LinearAlgebraDiscoveryKit ENABLE_WFN91_LINALG_DISCOVERY_KIT "Linear algebra discovery kit from github.com/wavefunction91 supports many more corner cases than the default CMake modules and/or ICL's BLAS++/LAPACK++ modules")
 
@@ -336,6 +339,9 @@ include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBTAS.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBoost.cmake)
 if(ENABLE_SCALAPACK)
   include(external/scalapackpp.cmake)
+endif()
+if(ENABLE_SLATE)
+  include(external/slate.cmake)
 endif()
 
 # optional deps:

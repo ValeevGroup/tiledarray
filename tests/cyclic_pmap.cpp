@@ -32,7 +32,21 @@ struct CyclicPmapFixture {
 
 BOOST_FIXTURE_TEST_SUITE(cyclic_pmap_suite, CyclicPmapFixture)
 
-BOOST_AUTO_TEST_CASE(constructor) {
+template <TiledArray::detail::CyclicPmapOrder Order>
+struct cyclic_pmap_order_wrapper {
+  static constexpr auto value = Order;
+};
+
+
+using cyclic_pmap_orders = boost::mpl::list<
+    cyclic_pmap_order_wrapper<TiledArray::detail::CyclicPmapOrder::RowMajor>,
+    cyclic_pmap_order_wrapper<TiledArray::detail::CyclicPmapOrder::ColMajor>
+>;
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(constructor, Order, cyclic_pmap_orders) {
+
+  using pmap_type = TiledArray::detail::CyclicPmap<Order::value>;
+
   for (ProcessID x = 1ul; x <= GlobalFixture::world->size(); ++x) {
     for (ProcessID y = 1ul; y <= GlobalFixture::world->size(); ++y) {
       // Compute the limits for process rows
@@ -48,10 +62,9 @@ BOOST_AUTO_TEST_CASE(constructor) {
                                 max_proc_rows));
       const std::size_t p_cols = GlobalFixture::world->size() / p_rows;
 
-      BOOST_REQUIRE_NO_THROW(TiledArray::detail::CyclicPmap pmap(
-          *GlobalFixture::world, x, y, p_rows, p_cols));
-      TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world, x, y, p_rows,
-                                          p_cols);
+      BOOST_REQUIRE_NO_THROW( pmap_type pmap( *GlobalFixture::world, x, y, 
+          p_rows, p_cols));
+      pmap_type pmap(*GlobalFixture::world, x, y, p_rows, p_cols);
       BOOST_CHECK_EQUAL(pmap.rank(), GlobalFixture::world->rank());
       BOOST_CHECK_EQUAL(pmap.procs(), GlobalFixture::world->size());
       BOOST_CHECK_EQUAL(pmap.size(), x * y);
@@ -60,32 +73,27 @@ BOOST_AUTO_TEST_CASE(constructor) {
 
   ProcessID size = GlobalFixture::world->size();
 
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
-                                                        0ul, 10ul, 1, 1),
+  BOOST_CHECK_THROW(pmap_type pmap(*GlobalFixture::world, 0ul, 10ul, 1, 1),
                     TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
-                                                        10ul, 0ul, 1, 1),
+  BOOST_CHECK_THROW(pmap_type pmap(*GlobalFixture::world, 10ul, 0ul, 1, 1),
                     TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
-                                                        10ul, 10ul, 0, 1),
+  BOOST_CHECK_THROW(pmap_type pmap(*GlobalFixture::world, 10ul, 10ul, 0, 1),
                     TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
-                                                        10ul, 10ul, 1, 0),
+  BOOST_CHECK_THROW(pmap_type pmap(*GlobalFixture::world, 10ul, 10ul, 1, 0),
                     TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(
-                        *GlobalFixture::world, 10ul, 10ul, size * 2, 1),
+  BOOST_CHECK_THROW(pmap_type pmap(*GlobalFixture::world, 10ul, 10ul, size * 2, 1),
                     TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(
-                        *GlobalFixture::world, 10ul, 10ul, 1, size * 2),
+  BOOST_CHECK_THROW(pmap_type pmap(*GlobalFixture::world, 10ul, 10ul, 1, size * 2),
                     TiledArray::Exception);
   if (size > 1) {
-    BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(
-                          *GlobalFixture::world, 10ul, 10ul, size, size),
+    BOOST_CHECK_THROW(pmap_type pmap(*GlobalFixture::world, 10ul, 10ul, size, size),
                       TiledArray::Exception);
   }
 }
 
-BOOST_AUTO_TEST_CASE(owner) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(owner, Order, cyclic_pmap_orders) {
+
+  using pmap_type = TiledArray::detail::CyclicPmap<Order::value>;
   const std::size_t rank = GlobalFixture::world->rank();
   const std::size_t size = GlobalFixture::world->size();
 
@@ -108,8 +116,7 @@ BOOST_AUTO_TEST_CASE(owner) {
       const std::size_t p_cols = GlobalFixture::world->size() / p_rows;
 
       const std::size_t tiles = x * y;
-      TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world, x, y, p_rows,
-                                          p_cols);
+      pmap_type pmap(*GlobalFixture::world, x, y, p_rows, p_cols);
 
       for (std::size_t tile = 0; tile < tiles; ++tile) {
         std::fill_n(p_owner, size, 0);
@@ -121,6 +128,18 @@ BOOST_AUTO_TEST_CASE(owner) {
         // Make sure everyone agrees on who owns what.
         for (std::size_t p = 0ul; p < size; ++p)
           BOOST_CHECK_EQUAL(p_owner[p], p_owner[rank]);
+
+        size_t true_owner;
+        if(Order::value == TiledArray::detail::CyclicPmapOrder::RowMajor) {
+          auto proc_row = (tile / pmap.ncols()) % pmap.nrows_proc();
+          auto proc_col = (tile % pmap.ncols()) % pmap.ncols_proc();
+          true_owner = proc_row * pmap.ncols_proc() + proc_col;
+        } else {
+          auto proc_row = (tile % pmap.nrows()) % pmap.nrows_proc();
+          auto proc_col = (tile / pmap.nrows()) % pmap.ncols_proc();
+          true_owner = proc_row + proc_col * pmap.nrows_proc();
+        }
+        BOOST_CHECK_EQUAL(p_owner[rank], true_owner);
       }
     }
   }
@@ -128,7 +147,8 @@ BOOST_AUTO_TEST_CASE(owner) {
   delete[] p_owner;
 }
 
-BOOST_AUTO_TEST_CASE(local_size) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(local_size, Order, cyclic_pmap_orders) {
+  using pmap_type = TiledArray::detail::CyclicPmap<Order::value>;
   for (std::size_t x = 1ul; x < 10ul; ++x) {
     for (std::size_t y = 1ul; y < 10ul; ++y) {
       // Compute the limits for process rows
@@ -145,8 +165,7 @@ BOOST_AUTO_TEST_CASE(local_size) {
       const std::size_t p_cols = GlobalFixture::world->size() / p_rows;
 
       const std::size_t tiles = x * y;
-      TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world, x, y, p_rows,
-                                          p_cols);
+      pmap_type pmap(*GlobalFixture::world, x, y, p_rows, p_cols);
 
       std::size_t total_size = pmap.local_size();
       GlobalFixture::world->gop.sum(total_size);
@@ -159,7 +178,8 @@ BOOST_AUTO_TEST_CASE(local_size) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(local_group) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(local_group, Order, cyclic_pmap_orders) {
+  using pmap_type = TiledArray::detail::CyclicPmap<Order::value>;
   ProcessID tile_owners[100];
 
   for (std::size_t x = 1ul; x < 10ul; ++x) {
@@ -178,18 +198,15 @@ BOOST_AUTO_TEST_CASE(local_group) {
       const std::size_t p_cols = GlobalFixture::world->size() / p_rows;
 
       const std::size_t tiles = x * y;
-      TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world, x, y, p_rows,
-                                          p_cols);
+      pmap_type pmap(*GlobalFixture::world, x, y, p_rows, p_cols);
 
       // Check that all local elements map to this rank
-      for (detail::CyclicPmap::const_iterator it = pmap.begin();
-           it != pmap.end(); ++it) {
+      for (auto it = pmap.begin(); it != pmap.end(); ++it) {
         BOOST_CHECK_EQUAL(pmap.owner(*it), GlobalFixture::world->rank());
       }
 
       std::fill_n(tile_owners, tiles, 0);
-      for (detail::CyclicPmap::const_iterator it = pmap.begin();
-           it != pmap.end(); ++it) {
+      for (auto it = pmap.begin(); it != pmap.end(); ++it) {
         tile_owners[*it] += GlobalFixture::world->rank();
       }
 
