@@ -422,9 +422,9 @@ auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B) {
 template <typename T, typename U, typename... Indices>
 auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
             const std::string &cs, World &world = get_default_world()) {
-  static_assert(std::is_same<const T, const U>::value);
-  using E = expressions::TsrExpr<const T>;
-  return Einsum::einsum(E(A), E(B), Einsum::idx<T>(cs), world);
+  using ECT = expressions::TsrExpr<const T>;
+  using ECU = expressions::TsrExpr<const U>;
+  return Einsum::einsum(ECT(A), ECU(B), Einsum::idx<T>(cs), world);
 }
 
 template <typename T, typename U, typename V>
