@@ -64,17 +64,20 @@ class ContractReduceBase {
   using elem_muladd_op_type = void(result_value_type&, const left_value_type&,
                                    const right_value_type&);
 
-  static_assert(
-      TiledArray::detail::is_tensor_v<left_value_type> ==
-              TiledArray::detail::is_tensor_v<right_value_type> &&
-          TiledArray::detail::is_tensor_v<left_value_type> ==
-              TiledArray::detail::is_tensor_v<result_value_type>,
-      "ContractReduce can only handle plain tensors or nested tensors "
-      "(tensors-of-tensors); mixed contractions are not supported");
   static constexpr bool plain_tensors =
-      !(TiledArray::detail::is_tensor_v<left_value_type> &&
-        TiledArray::detail::is_tensor_v<right_value_type> &&
-        TiledArray::detail::is_tensor_v<result_value_type>);
+      !TiledArray::detail::is_nested_tensor_v<left_value_type> &&
+      !TiledArray::detail::is_nested_tensor_v<right_value_type> &&
+      !TiledArray::detail::is_nested_tensor_v<result_value_type>;
+  static constexpr bool nested_tensors =
+      TiledArray::detail::is_nested_tensor_v<left_value_type, right_value_type,
+                                             result_value_type>;
+  static constexpr bool mixed_tensors = !plain_tensors && !nested_tensors;
+  static_assert(!mixed_tensors ||
+                    (mixed_tensors &&
+                     TiledArray::detail::is_nested_tensor_v<result_value_type>),
+                "ContractReduce applied to 1 plain tensor and 1 nested tensor "
+                "must produce a nested tensor "
+                "(tensors-of-tensors)");
 
  private:
   struct Impl {
