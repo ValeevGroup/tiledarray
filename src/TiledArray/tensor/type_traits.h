@@ -114,7 +114,7 @@ struct is_nested_tensor<T1, T2, Ts...> {
 /// @c is_nested_tensor_v<Ts...> is an alias for @c
 /// is_nested_tensor<Ts...>::value
 template <typename... Ts>
-constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
+inline constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -150,7 +150,7 @@ struct is_tensor<T1, T2, Ts...> {
 /// @tparam Ts a parameter pack
 /// @c is_tensor_v<Ts...> is an alias for @c is_tensor<Ts...>::value
 template <typename... Ts>
-constexpr const bool is_tensor_v = is_tensor<Ts...>::value;
+inline constexpr const bool is_tensor_v = is_tensor<Ts...>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -172,7 +172,8 @@ struct is_tensor_of_tensor<T1, T2, Ts...> {
 /// @c is_tensor_of_tensor_v<Ts...> is an alias for @c
 /// is_tensor_of_tensor<Ts...>::value
 template <typename... Ts>
-constexpr const bool is_tensor_of_tensor_v = is_tensor_of_tensor<Ts...>::value;
+inline constexpr const bool is_tensor_of_tensor_v =
+    is_tensor_of_tensor<Ts...>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
 
