@@ -479,8 +479,11 @@ ADD_CUSTOM_TARGET(release
   COMMENT "Switch CMAKE_BUILD_TYPE to Release"
   )
 
-feature_summary(WHAT ALL
-                DESCRIPTION "=== TiledArray Package/Feature Info ===")
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  feature_summary(WHAT ALL
+                  DESCRIPTION "=== TiledArray Package/Feature Info ===")
+  feature_summary(FILENAME ${CMAKE_CURRENT_BINARY_DIR}/features.log WHAT ALL)
+endif()
 
 option(TA_PYTHON "Build TA python module" OFF)
 if (TA_PYTHON)
