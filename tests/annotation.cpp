@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_SUITE(split_index_fxn)
 
 BOOST_AUTO_TEST_CASE(invalid_idx) {
   if (TiledArray::get_default_world().nproc() == 1)
-    BOOST_CHECK_THROW(split_index("i,"), TiledArray::Exception);
+    BOOST_CHECK_TA_ASSERT(split_index("i,"), TiledArray::Exception);
 }
 
 BOOST_AUTO_TEST_CASE(non_tot) {

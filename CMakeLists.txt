@@ -109,6 +109,7 @@ include(LoadFetchContent)
 include(CMakeDependentOption)
 include(CMakePackageConfigHelpers)
 include(FeatureSummary)
+include(CTest)  # testing, defined BUILD_TESTING
 
 set(MPI_CXX_SKIP_MPICXX TRUE CACHE BOOL "MPI_CXX_SKIP_MPICXX")
 
@@ -284,13 +285,6 @@ set_property(
   CACHE TA_ASSERT_POLICY PROPERTY
   STRINGS TA_ASSERT_THROW TA_ASSERT_ABORT TA_ASSERT_IGNORE)
 
-# if building unit tests default to throw to be able to test TA_ASSERT statements
-if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW))
-  if (BUILD_TESTING)
-    message(FATAL_ERROR "TA_ASSERT_POLICY=${TA_ASSERT_POLICY} requires BUILD_TESTING=OFF")
-  endif(BUILD_TESTING)
-endif()
-
 ##########################
 # Include source dirctories
 ##########################
@@ -368,7 +362,7 @@ add_subdirectory(doc)
 ##########################
 # checking/testing
 ##########################
-include(CTest)
+# N.B. CTest was included above
 if (BUILD_TESTING)
   set(_ctest_args -V -R "tiledarray/unit/run-np.*")
   set(_ctest_args_serial -V -R "tiledarray/unit/run-np-1")
@@ -376,6 +370,12 @@ if (BUILD_TESTING)
     list(APPEND _ctest_args --timeout ${TA_UT_CTEST_TIMEOUT})
     list(APPEND _ctest_args_serial --timeout ${TA_UT_CTEST_TIMEOUT})
   endif(DEFINED TA_UT_CTEST_TIMEOUT)
+
+  # if building unit tests need to configure with TA_ASSERT_POLICY=TA_ASSERT_THROW to be able to test TA_ASSERT statements
+  if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW))
+    message(WARNING "BUILD_TESTING=ON requires configuring with TA_ASSERT_POLICY=TA_ASSERT_THROW to engage REQUIRE_THROWS() tests; will skip these tests")
+  endif()
+
   add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} ${_ctest_args})
   add_custom_target_subproject(tiledarray check_serial USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} ${_ctest_args_serial})
   add_subdirectory(tests)

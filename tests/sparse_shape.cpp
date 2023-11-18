@@ -49,36 +49,36 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK(!x.validate(tr.tiles_range()));
   BOOST_CHECK_EQUAL(x.init_threshold(), SparseShape<float>::threshold());
 
-  BOOST_CHECK_THROW(x.nnz(), Exception);
+  BOOST_CHECK_TA_ASSERT(x.nnz(), Exception);
 
-  BOOST_CHECK_THROW(x[0], Exception);
+  BOOST_CHECK_TA_ASSERT(x[0], Exception);
 
-  BOOST_CHECK_THROW(x.perm(perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.perm(perm), Exception);
 
-  BOOST_CHECK_THROW(x.scale(2.0), Exception);
-  BOOST_CHECK_THROW(x.scale(2.0, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.scale(2.0), Exception);
+  BOOST_CHECK_TA_ASSERT(x.scale(2.0, perm), Exception);
 
-  BOOST_CHECK_THROW(x.add(y), Exception);
-  BOOST_CHECK_THROW(x.add(y, 2.0), Exception);
-  BOOST_CHECK_THROW(x.add(y, perm), Exception);
-  BOOST_CHECK_THROW(x.add(y, 2.0, perm), Exception);
-  BOOST_CHECK_THROW(x.add(2.0), Exception);
-  BOOST_CHECK_THROW(x.add(2.0, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.add(y), Exception);
+  BOOST_CHECK_TA_ASSERT(x.add(y, 2.0), Exception);
+  BOOST_CHECK_TA_ASSERT(x.add(y, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.add(y, 2.0, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.add(2.0), Exception);
+  BOOST_CHECK_TA_ASSERT(x.add(2.0, perm), Exception);
 
-  BOOST_CHECK_THROW(x.subt(y), Exception);
-  BOOST_CHECK_THROW(x.subt(y, 2.0), Exception);
-  BOOST_CHECK_THROW(x.subt(y, perm), Exception);
-  BOOST_CHECK_THROW(x.subt(y, 2.0, perm), Exception);
-  BOOST_CHECK_THROW(x.subt(2.0), Exception);
-  BOOST_CHECK_THROW(x.subt(2.0, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.subt(y), Exception);
+  BOOST_CHECK_TA_ASSERT(x.subt(y, 2.0), Exception);
+  BOOST_CHECK_TA_ASSERT(x.subt(y, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.subt(y, 2.0, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.subt(2.0), Exception);
+  BOOST_CHECK_TA_ASSERT(x.subt(2.0, perm), Exception);
 
-  BOOST_CHECK_THROW(x.mult(y), Exception);
-  BOOST_CHECK_THROW(x.mult(y, 2.0), Exception);
-  BOOST_CHECK_THROW(x.mult(y, perm), Exception);
-  BOOST_CHECK_THROW(x.mult(y, 2.0, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.mult(y), Exception);
+  BOOST_CHECK_TA_ASSERT(x.mult(y, 2.0), Exception);
+  BOOST_CHECK_TA_ASSERT(x.mult(y, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.mult(y, 2.0, perm), Exception);
 
-  BOOST_CHECK_THROW(x.gemm(y, 2.0, gemm_helper), Exception);
-  BOOST_CHECK_THROW(x.gemm(y, 2.0, gemm_helper, perm), Exception);
+  BOOST_CHECK_TA_ASSERT(x.gemm(y, 2.0, gemm_helper), Exception);
+  BOOST_CHECK_TA_ASSERT(x.gemm(y, 2.0, gemm_helper, perm), Exception);
 }
 
 BOOST_AUTO_TEST_CASE(non_comm_constructor) {
@@ -350,8 +350,8 @@ BOOST_AUTO_TEST_CASE(block) {
 #endif
       } else {
         // Check that block throws an exception with a bad block range
-        BOOST_CHECK_THROW(sparse_shape.block(lower, upper),
-                          TiledArray::Exception);
+        BOOST_CHECK_TA_ASSERT(sparse_shape.block(lower, upper),
+                              TiledArray::Exception);
       }
     }
   }
@@ -447,8 +447,8 @@ BOOST_AUTO_TEST_CASE(block_scale) {
 
       } else {
         // Check that block throws an exception with a bad block range
-        BOOST_CHECK_THROW(sparse_shape.block(lower, upper),
-                          TiledArray::Exception);
+        BOOST_CHECK_TA_ASSERT(sparse_shape.block(lower, upper),
+                              TiledArray::Exception);
       }
     }
   }
@@ -546,8 +546,8 @@ BOOST_AUTO_TEST_CASE(block_perm) {
 
       } else {
         // Check that block throws an exception with a bad block range
-        BOOST_CHECK_THROW(sparse_shape.block(lower, upper),
-                          TiledArray::Exception);
+        BOOST_CHECK_TA_ASSERT(sparse_shape.block(lower, upper),
+                              TiledArray::Exception);
       }
     }
   }
@@ -649,8 +649,8 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
 
       } else {
         // Check that block throws an exception with a bad block range
-        BOOST_CHECK_THROW(sparse_shape.block(lower, upper),
-                          TiledArray::Exception);
+        BOOST_CHECK_TA_ASSERT(sparse_shape.block(lower, upper),
+                              TiledArray::Exception);
       }
     }
   }

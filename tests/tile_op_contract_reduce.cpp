@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(permute_empty) {
       TiledArray::math::blas::Op::NoTrans, TiledArray::math::blas::Op::NoTrans,
       1, 2u, 2u, 2u);
   TensorI t, result;
-  BOOST_REQUIRE_THROW(result = op(t), TiledArray::Exception);
+  BOOST_REQUIRE_TA_ASSERT(result = op(t), TiledArray::Exception);
 }
 
 // TODO: Test non-empty permutation

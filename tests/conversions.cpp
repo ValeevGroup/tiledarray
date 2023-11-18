@@ -530,12 +530,12 @@ BOOST_AUTO_TEST_CASE(concat) {
       }
     }
     // ranges of non-concatted dims must match
-    BOOST_CHECK_THROW((TiledArray::concat<Tensor, Policy>(
-                          {a, b_t}, std::vector<bool>{false, true})),
-                      TiledArray::Exception);
-    BOOST_CHECK_THROW((TiledArray::concat<Tensor, Policy>(
-                          {a, b_t}, std::vector<bool>{true, false})),
-                      TiledArray::Exception);
+    BOOST_CHECK_TA_ASSERT((TiledArray::concat<Tensor, Policy>(
+                              {a, b_t}, std::vector<bool>{false, true})),
+                          TiledArray::Exception);
+    BOOST_CHECK_TA_ASSERT((TiledArray::concat<Tensor, Policy>(
+                              {a, b_t}, std::vector<bool>{true, false})),
+                          TiledArray::Exception);
   };
 
   do_test(static_cast<TArrayI*>(nullptr));

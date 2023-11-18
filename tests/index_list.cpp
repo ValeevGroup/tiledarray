@@ -135,11 +135,11 @@ BOOST_AUTO_TEST_CASE(accessors) {
   BOOST_CHECK_EQUAL(v.at(3), "d");  // check last variable access
   BOOST_CHECK_EQUAL(v[0], "a");     // check 1st variable access
   BOOST_CHECK_EQUAL(v[3], "d");     // check last variable access
-  BOOST_CHECK_THROW(v.at(4),
+  BOOST_CHECK_TA_ASSERT(v.at(4),
 #ifdef BOOST_CONTAINER_USE_STD_EXCEPTIONS
-                    std::out_of_range
+                        std::out_of_range
 #else
-                    boost::container::out_of_range
+                        boost::container::out_of_range
 #endif
   );  // check for out of range throw.
 }
@@ -175,11 +175,11 @@ BOOST_AUTO_TEST_CASE(constructor) {
   BOOST_CHECK_EQUAL(v10.at(2), "c");
   BOOST_CHECK_EQUAL(v10.at(3), "d");
 
-  BOOST_CHECK_THROW(IndexList v3(",a,b,c"),
-                    Exception);  // check invalid input
-  BOOST_CHECK_THROW(IndexList v4("a,,b,c"), Exception);
-  BOOST_CHECK_THROW(IndexList v5(" ,a,b"), Exception);
-  BOOST_CHECK_THROW(IndexList v6("a,  b,   , c"), Exception);
+  BOOST_CHECK_TA_ASSERT(IndexList v3(",a,b,c"),
+                        Exception);  // check invalid input
+  BOOST_CHECK_TA_ASSERT(IndexList v4("a,,b,c"), Exception);
+  BOOST_CHECK_TA_ASSERT(IndexList v5(" ,a,b"), Exception);
+  BOOST_CHECK_TA_ASSERT(IndexList v6("a,  b,   , c"), Exception);
 
   IndexList v7(" a , b, c, d , e e ,f f, g10,h, i ");  // check input with
                                                        // various spacings.
@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
   BOOST_CHECK_EQUAL(v7.at(7), "h");
   BOOST_CHECK_EQUAL(v7.at(8), "i");
 
-  BOOST_REQUIRE_THROW(
+  BOOST_REQUIRE_TA_ASSERT(
       IndexList v11(""),
       TiledArray::Exception);  // Empty string is not permitted constructor
 }

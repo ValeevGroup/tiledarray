@@ -331,7 +331,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(begin, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.begin(), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.begin(), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(const_begin, TestParam, test_params) {
   {
     const tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.begin(), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.begin(), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -356,7 +356,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(const_begin, TestParam, test_params) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(end, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if (m_world.nproc() == 1) BOOST_CHECK_THROW(t.end(), TiledArray::Exception);
+    if (m_world.nproc() == 1)
+      BOOST_CHECK_TA_ASSERT(t.end(), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -368,7 +369,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(end, TestParam, test_params) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(const_end, TestParam, test_params) {
   {
     const tensor_type<TestParam> t;
-    if (m_world.nproc() == 1) BOOST_CHECK_THROW(t.end(), TiledArray::Exception);
+    if (m_world.nproc() == 1)
+      BOOST_CHECK_TA_ASSERT(t.end(), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -391,7 +393,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(find, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.find(0), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.find(0), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {

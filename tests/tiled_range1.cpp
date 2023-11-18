@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r.tiles_range().second, 0ul);
     BOOST_CHECK_EQUAL(r.elements_range().first, 0ul);
     BOOST_CHECK_EQUAL(r.elements_range().second, 0ul);
-    BOOST_CHECK_THROW(r.tile(0), Exception);
+    BOOST_CHECK_TA_ASSERT(r.tile(0), Exception);
   }
 
   // check construction with a iterators and the range info.
@@ -120,8 +120,8 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r.elements_range().second, 28);
   }
 #else   // TA_SIGNED_1INDEX_TYPE
-  BOOST_CHECK_THROW(TiledRange1 r({-1, 0, 2, 5, 10, 17, 28}),
-                    TiledArray::Exception);
+  BOOST_CHECK_TA_ASSERT(TiledRange1 r({-1, 0, 2, 5, 10, 17, 28}),
+                        TiledArray::Exception);
 #endif  // TA_SIGNED_1INDEX_TYPE
 
   // check copy constructor
@@ -156,14 +156,14 @@ BOOST_AUTO_TEST_CASE(constructor) {
 #ifndef NDEBUG
   {
     std::vector<std::size_t> boundaries;
-    BOOST_CHECK_THROW(TiledRange1 r(boundaries.begin(), boundaries.end()),
-                      Exception);
-    BOOST_CHECK_THROW(TiledRange1 r(a.begin(), a.begin()), Exception);
-    BOOST_CHECK_THROW(TiledRange1 r(a.begin(), a.begin() + 1), Exception);
+    BOOST_CHECK_TA_ASSERT(TiledRange1 r(boundaries.begin(), boundaries.end()),
+                          Exception);
+    BOOST_CHECK_TA_ASSERT(TiledRange1 r(a.begin(), a.begin()), Exception);
+    BOOST_CHECK_TA_ASSERT(TiledRange1 r(a.begin(), a.begin() + 1), Exception);
     boundaries.push_back(2);
     boundaries.push_back(0);
-    BOOST_CHECK_THROW(TiledRange1 r(boundaries.begin(), boundaries.end()),
-                      Exception);
+    BOOST_CHECK_TA_ASSERT(TiledRange1 r(boundaries.begin(), boundaries.end()),
+                          Exception);
   }
 #endif
 }
