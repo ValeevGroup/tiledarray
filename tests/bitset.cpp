@@ -102,8 +102,8 @@ BOOST_AUTO_TEST_CASE(accessor) {
 
   // Check that exceptions are thrown when accessing an element that is out of
   // range.
-  BOOST_CHECK_THROW(set[set.size()], Exception);
-  BOOST_CHECK_THROW(set[set.size() + 1], Exception);
+  BOOST_CHECK_TA_ASSERT(set[set.size()], Exception);
+  BOOST_CHECK_TA_ASSERT(set[set.size() + 1], Exception);
 }
 
 BOOST_AUTO_TEST_CASE(set_bit) {

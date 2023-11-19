@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE(scalar) {
 BOOST_AUTO_TEST_CASE(empty_vector) {
   vector_il<double> il{};
   if (world.rank() == 0)  // only rank 0 does the work
-    BOOST_CHECK_THROW(tiled_range_from_il(il), Exception);
+    BOOST_CHECK_TA_ASSERT(tiled_range_from_il(il), Exception);
 }
 
 BOOST_AUTO_TEST_CASE(vector) {
