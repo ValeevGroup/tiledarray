@@ -29,6 +29,7 @@ jobs:
         -DCMAKE_PREFIX_PATH="/usr/local/opt/bison;/usr/local/opt/scalapack"
         -DTA_ASSERT_POLICY=TA_ASSERT_THROW
         -DENABLE_SCALAPACK=ON
+        -DTA_TTG=${{ matrix.task_backend == 'PaRSEC' }}
 
     steps:
     - uses: actions/checkout@v2

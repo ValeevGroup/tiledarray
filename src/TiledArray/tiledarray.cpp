@@ -62,6 +62,18 @@ inline bool& finalized_accessor() {
   return flag;
 }
 
+inline bool& initialized_mpi_accessor() {
+  static bool flag = false;
+  return flag;
+}
+
+#if defined(TILEDARRAY_HAS_TTG) || defined(HAVE_PARSEC)
+inline parsec_context_t*& initialized_parsec_ctx_accessor() {
+  static parsec_context_t* ctx = nullptr;
+  return ctx;
+}
+#endif
+
 inline bool& quiet_accessor() {
   static bool quiet = false;
   return quiet;
@@ -93,6 +105,49 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
             "MADWorld initialized before TiledArray::initialize(argc, argv, "
             "comm), but not initialized with comm");
     }
+
+    // if need to use TTG, and MADNESS uses PaRSEC *also*
+    // must initialize PaRSEC here so that both MADNESS and TTG use
+    // the same context
+#if defined(TILEDARRAY_HAS_TTG) && defined(HAVE_PARSEC)
+    if (!ttg::initialized()) {
+      // preconditions:
+      // - MADWorld is NOT initialized, or initialized and used PaRSEC context
+      // using same communicator as comm
+      if (madness::initialized()) {
+        auto parsec_comm = reinterpret_cast<MPI_Comm>(
+            madness::ParsecRuntime::context()->comm_ctx);
+        int parsec_comm_equiv_comm = 0;
+        MADNESS_MPI_TEST(MPI_Comm_compare(comm.Get_mpi_comm(), parsec_comm,
+                                          &parsec_comm_equiv_comm));
+        if (!parsec_comm_equiv_comm)
+          throw std::runtime_error(
+              "TiledArray::initialize(): existing MADWorld's PaRSEC context "
+              "must use same communicator as given to TA::initialize()");
+      } else {
+        // if MPI is not initialized yet, initialize it here, and remember we
+        // did that
+        if (!SafeMPI::Is_initialized()) {
+          SafeMPI::Init_thread(argc, argv, MPI_THREAD_MULTIPLE);
+          initialized_mpi_accessor() = true;
+        }
+
+        // create a PaRSEC context using the given communicator
+        const auto nthreads = madness::ThreadPool::default_nthread();
+        const int num_parsec_threads = nthreads + 1;
+        auto* ctx = parsec_init(num_parsec_threads, &argc, &argv);
+        parsec_remote_dep_set_ctx(ctx, (intptr_t)comm.Get_mpi_comm());
+
+        // tell MADWorld to use this context
+        madness::ParsecRuntime::initialize_with_existing_context(ctx);
+
+        // remember the context and free it in finalize()
+        initialized_parsec_ctx_accessor() = ctx;
+      }
+    }
+#endif
+
+    // initialize MADWorld, if not yet initialized
     auto& default_world = initialized_madworld()
                               ? madness::initialize(argc, argv, comm, quiet)
                               : *madness::World::find_instance(comm);
@@ -107,17 +162,14 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     quiet_accessor() = quiet;
 
     // if have TTG, initialize it also
-#if TILEDARRAY_HAS_TTG
-    // MADNESS/PaRSEC creates PaRSEC context that uses MPI_COMM_SELF to avoid
-    // creation of a PaRSEC comm thread to be able to use TTG/PaRSEC need to
-    // tell PaRSEC context to use the full communicator
-    if (madness::ParsecRuntime::context()->nb_nodes != default_world.size()) {
-      auto default_world_comm = default_world.mpi.comm().Get_mpi_comm();
-      parsec_remote_dep_set_ctx(madness::ParsecRuntime::context(),
-                                (intptr_t)default_world_comm);
-    }
+#if defined(TILEDARRAY_HAS_TTG)
+    // use same PaRSEC context as used by MADWorld if it uses PaRSEC
+#if defined(HAVE_PARSEC)
     ttg::initialize(argc, argv, -1, madness::ParsecRuntime::context());
-#endif
+#else   // defined(HAVE_PARSEC)
+    ttg::initialize(argc, argv, -1);
+#endif  // defined(HAVE_PARSEC)
+#endif  // defined(TILEDARRAY_HAS_TTG)
 
     // check if user specified linear algebra backend + params
     auto* linalg_backend_cstr = std::getenv("TA_LINALG_BACKEND");
@@ -173,6 +225,16 @@ void TiledArray::finalize() {
     madness::finalize();
   }
   TiledArray::reset_default_world();
+#if defined(TILEDARRAY_HAS_TTG) && defined(HAVE_PARSEC)
+  if (initialized_parsec_ctx_accessor()) {
+    parsec_context_wait(initialized_parsec_ctx_accessor());
+    parsec_fini(&initialized_parsec_ctx_accessor());
+    initialized_parsec_ctx_accessor() = nullptr;
+  }
+  if (initialized_mpi_accessor()) {
+    SafeMPI::Finalize();
+  }
+#endif  // defined(TILEDARRAY_HAS_TTG) && defined(HAVE_PARSEC)
   initialized_accessor() = false;
   finalized_accessor() = true;
 }
