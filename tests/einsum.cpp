@@ -764,8 +764,12 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
   // tot_type result;
   // BOOST_REQUIRE_NO_THROW(result("i,k,j;m,n") = lhs("i,j;m,n") * rhs("j,k"));
 
-  // will try to make this work
-  tot_type out = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,j,k;m,n");
+  // will try to make this work FIRST since this is used by the einsum code
+  // below
+  tot_type out;
+  out("i,l,k,j;n,m") = lhs("i,j;m,n") * rhs("k,l");
+  // will try to make this work NEXT
+  // tot_type out = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,j,k;m,n");
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // einsum_tot_t

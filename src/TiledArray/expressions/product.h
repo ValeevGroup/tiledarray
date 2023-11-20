@@ -57,6 +57,9 @@ inline TensorProduct compute_product_type(const IndexList& left_indices,
       result = TensorProduct::Hadamard;
     else
       result = TensorProduct::Contraction;
+  } else if ((left_indices && !right_indices) ||
+             (!left_indices && right_indices)) {  // used for ToT*T or T*ToT
+    result = TensorProduct::General;
   }
   return result;
 }
