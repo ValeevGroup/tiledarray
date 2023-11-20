@@ -128,6 +128,8 @@ class Scal {
     return Scal_::template eval<can_consume>(arg);
   }
 
+  void set_factor(const scalar_type factor) { factor_ = factor; }
+
 };  // class Scal
 
 }  // namespace detail
