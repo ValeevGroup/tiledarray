@@ -28,9 +28,6 @@
 #endif
 
 #include <TiledArray/error.h>
-#if (TA_ASSERT_POLICY != TA_ASSERT_THROW)
-#error "TiledArray unit tests require TA_ASSERT_POLICY=TA_ASSERT_THROW"
-#endif
 
 GlobalFixture::GlobalFixture() {
   if (world == nullptr) {

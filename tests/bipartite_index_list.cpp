@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(default_ctor) {
  */
 BOOST_AUTO_TEST_CASE(string_ctor) {
   if (world.nproc() == 1) {
-    BOOST_CHECK_THROW(BipartiteIndexList("i,"), TiledArray::Exception);
+    BOOST_CHECK_TA_ASSERT(BipartiteIndexList("i,"), TiledArray::Exception);
   }
 
   for (auto&& [str, idx] : idxs) {
@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(copy_assignment) {
 BOOST_AUTO_TEST_CASE(string_assignment) {
   if (world.nproc() == 1) {
     BipartiteIndexList v1;
-    BOOST_CHECK_THROW(v1.operator=("i,"), TiledArray::Exception);
+    BOOST_CHECK_TA_ASSERT(v1.operator=("i,"), TiledArray::Exception);
   }
 
   for (auto&& [str, idx] : idxs) {
@@ -282,7 +282,7 @@ BOOST_AUTO_TEST_CASE(permute_in_place) {
   if (world.nproc() == 1) {
     BipartiteIndexList v0;
     Permutation p{0, 1};
-    BOOST_CHECK_THROW(v0 *= p, TiledArray::Exception);
+    BOOST_CHECK_TA_ASSERT(v0 *= p, TiledArray::Exception);
   }
 
   Permutation p({1, 2, 3, 0});
@@ -335,13 +335,13 @@ BOOST_AUTO_TEST_CASE(end_itr) {
 BOOST_AUTO_TEST_CASE(at_member) {
   for (auto&& [str, idx] : idxs) {
     if (world.nproc() == 1) {
-    BOOST_CHECK_THROW(idx.at(idx.size()),
+      BOOST_CHECK_TA_ASSERT(idx.at(idx.size()),
 #ifdef BOOST_CONTAINER_USE_STD_EXCEPTIONS
-                        std::out_of_range
+                            std::out_of_range
 #else
-        boost::container::out_of_range
+                            boost::container::out_of_range
 #endif
-                            );
+      );
     }
     auto [outer, inner] = detail::split_index(str);
     for (size_type i = 0; i < outer.size(); ++i)
@@ -498,23 +498,23 @@ BOOST_AUTO_TEST_CASE(permutation_fxn) {
 
     {  // not both ToT
       BipartiteIndexList v1("i;j");
-      BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(v1.permutation(v0), TiledArray::Exception);
     }
 
     {  // wrong size
       BipartiteIndexList v1("i");
-      BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(v1.permutation(v0), TiledArray::Exception);
     }
 
     {  // not a permutation
       BipartiteIndexList v1("i, a");
-      BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(v1.permutation(v0), TiledArray::Exception);
     }
 
     {  // ToTs mix outer and inner
       BipartiteIndexList v1("i,j;k,l");
       BipartiteIndexList v2("i,k;j,l");
-      BOOST_CHECK_THROW(v1.permutation(v2), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(v1.permutation(v2), TiledArray::Exception);
     }
   }
 

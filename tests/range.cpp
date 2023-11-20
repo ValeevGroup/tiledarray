@@ -344,8 +344,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
     BOOST_CHECK_EQUAL(r2.volume(), 48);
   }
 #else   // TA_SIGNED_1INDEX_TYPE
-  BOOST_REQUIRE_THROW(Range r2({{-1, 1}, {-2, 2}, {0, 6}}),
-                      TiledArray::Exception);
+  BOOST_REQUIRE_TA_ASSERT(Range r2({{-1, 1}, {-2, 2}, {0, 6}}),
+                          TiledArray::Exception);
 #endif  // TA_SIGNED_1INDEX_TYPE
 
   // Copy Constructor
