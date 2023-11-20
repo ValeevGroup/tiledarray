@@ -309,7 +309,7 @@ auto einsum(expressions::TsrExpr<ArrayT_> A, expressions::TsrExpr<ArrayToT_> B,
   Einsum::Index<std::string> c = std::get<0>(cs);
 
   struct {
-    std::string a, b, c;
+    std::string b, c;
   } inner;
   if constexpr (std::tuple_size<decltype(cs)>::value == 2) {
     inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
@@ -319,16 +319,13 @@ auto einsum(expressions::TsrExpr<ArrayT_> A, expressions::TsrExpr<ArrayToT_> B,
   // these are "Hadamard" (fused) indices
   auto h = a & b & c;
 
-  auto e = (a ^ b);
   // contracted indices
   auto i = (a & b) - h;
+  // contraction not allowed in tensor x tensor-of-tensor
+  TA_ASSERT(!i);
 
-  // cannot be hadamard reduction type operation for this overload
-  TA_ASSERT(e);
-
-  // no Hadamard indices => standard contraction (or even outer product)
-  // same a, b, and c => pure Hadamard
-  TA_ASSERT(!h || (!(a ^ b) && !(b ^ c)));
+  // indices exclusively in 'a' or exclusively in 'b'
+  auto e = (a ^ b);
 
   // maps Index to TiledRange1
   // (asserts same index maps to the same TR1 in A, and B)
@@ -363,6 +360,9 @@ auto einsum(expressions::TsrExpr<ArrayT_> A, expressions::TsrExpr<ArrayToT_> B,
     C.permutation = permutation(h + e, C.idx);
   }
   C.expr = e;
+
+  arrayTermB.expr += inner.b;
+  C.expr += inner.c;
 
   struct {
     RangeProduct tiles;
@@ -453,7 +453,10 @@ auto einsum(expressions::TsrExpr<ArrayT_> A, expressions::TsrExpr<ArrayToT_> B,
     }
 
     // todo
-    // C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
+    C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
+
+    //
+
     A.ei.defer_deleter_to_next_fence();
     B.ei.defer_deleter_to_next_fence();
     A.ei = ArrayT();
