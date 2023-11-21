@@ -100,7 +100,6 @@ TiledArray/dist_eval/contraction_eval.h
 TiledArray/dist_eval/dist_eval.h
 TiledArray/dist_eval/unary_eval.h
 TiledArray/einsum/index.h
-TiledArray/einsum/index.cpp
 TiledArray/einsum/range.h
 TiledArray/einsum/string.h
 TiledArray/expressions/add_engine.h
@@ -195,13 +194,10 @@ TiledArray/util/bug.h
 TiledArray/util/function.h
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
-TiledArray/util/ptr_registry.cpp
 TiledArray/util/ptr_registry.h
-TiledArray/util/random.cpp
 TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/threads.h
-TiledArray/util/threads.cpp
 TiledArray/util/thread_specific.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
@@ -243,10 +239,15 @@ TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/version.cpp
-TiledArray/util/backtrace.cpp
-TiledArray/util/bug.cpp
+TiledArray/einsum/index.cpp
+TiledArray/expressions/permopt.cpp
 TiledArray/math/linalg/basic.cpp
 TiledArray/math/linalg/rank-local.cpp
+TiledArray/util/backtrace.cpp
+TiledArray/util/bug.cpp
+TiledArray/util/ptr_registry.cpp
+TiledArray/util/random.cpp
+TiledArray/util/threads.cpp
 )
 # feed TILEDARRAY_GIT_REVISION and TILEDARRAY_GIT_DESCRIPTION to TiledArray/version.cpp only to avoid recompiling everything
 set_source_files_properties(
