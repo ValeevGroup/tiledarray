@@ -527,6 +527,18 @@ class NullBinaryOpPermutationOptimizer : public BinaryOpPermutationOptimizer {
   }
 };
 
+///
+///
+///
+class GeneralPermutationOptimizer : public GEMMPermutationOptimizer {
+ public:
+  GeneralPermutationOptimizer(const GeneralPermutationOptimizer&) = default;
+  GeneralPermutationOptimizer& operator=(const GeneralPermutationOptimizer&) =
+      default;
+  virtual ~GeneralPermutationOptimizer() = default;
+  using GEMMPermutationOptimizer::GEMMPermutationOptimizer;
+};
+
 inline std::shared_ptr<BinaryOpPermutationOptimizer> make_permutation_optimizer(
     TensorProduct product_type, const IndexList& left_indices,
     const IndexList& right_indices, bool prefer_to_permute_left) {
@@ -539,6 +551,9 @@ inline std::shared_ptr<BinaryOpPermutationOptimizer> make_permutation_optimizer(
           left_indices, right_indices, prefer_to_permute_left);
     case TensorProduct::Invalid:
       return std::make_shared<NullBinaryOpPermutationOptimizer>(
+          left_indices, right_indices, prefer_to_permute_left);
+    case TensorProduct::General:
+      return std::make_shared<GeneralPermutationOptimizer>(
           left_indices, right_indices, prefer_to_permute_left);
     default:
       abort();
@@ -559,6 +574,9 @@ inline std::shared_ptr<BinaryOpPermutationOptimizer> make_permutation_optimizer(
     case TensorProduct::Invalid:
       return std::make_shared<NullBinaryOpPermutationOptimizer>(
           target_indices, left_indices, right_indices, prefer_to_permute_left);
+    case TensorProduct::General:
+      return std::make_shared<GeneralPermutationOptimizer>(
+          left_indices, right_indices, prefer_to_permute_left);
     default:
       abort();
   }
