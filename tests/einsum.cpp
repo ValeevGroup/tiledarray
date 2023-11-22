@@ -793,10 +793,41 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
   t_type rhs(world, rhs_trange);
   rhs.fill_random();
 
-  TiledRange ref_result_trange{lhs_trange.dim(0), rhs_trange.dim(1),
-                               rhs_trange.dim(0)};
-  tot_type ref_result(world, ref_result_trange);
   // TODO compute ref_result
+  // i,j;m,n * j,k => i,j,k;m,n
+  TiledRange ref_result_trange{lhs_trange.dim(0), rhs_trange.dim(0),
+                               rhs_trange.dim(1)};
+  tot_type ref_result(world, ref_result_trange);
+
+  for (auto const& tile : ref_result) {
+    tot_type::value_type result_tile{tile.make_range()};
+    for (auto&& res_ix : result_tile.range()) {
+      auto i = res_ix[0];
+      auto j = res_ix[1];
+      auto k = res_ix[2];
+
+      using Ix2 = std::array<decltype(i), 2>;
+      using Ix3 = std::array<decltype(i), 3>;
+
+      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
+      auto lhs_tile = lhs.find(lhs_tile_ix).get();
+
+      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{j, k});
+      auto rhs_tile = rhs.find(rhs_tile_ix).get();
+
+      auto& res_el =
+          result_tile.at_ordinal(result_tile.range().ordinal(Ix3{i, j, k}));
+      auto const& lhs_el =
+          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
+      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{j, k}));
+
+      res_el = lhs_el.scale(rhs_el);
+    }
+
+    ref_result.set(tile.index(), result_tile);
+  }
+
+  std::cout << ref_result << std::endl;
 
   /////////////////////////////////////////////////////////
   // ToT * T
