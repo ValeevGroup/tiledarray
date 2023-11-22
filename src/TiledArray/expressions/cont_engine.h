@@ -158,9 +158,10 @@ class ContEngine : public BinaryEngine<Derived> {
   TensorProduct inner_product_type() const {
     TA_ASSERT(inner_product_type_ !=
               TensorProduct::Invalid);  // init_indices() must initialize this
-    /// only Hadamard and contraction are supported now
+    /// only Hadamard, contraction, and scale are supported now
     TA_ASSERT(inner_product_type_ == TensorProduct::Hadamard ||
-              inner_product_type_ == TensorProduct::Contraction);
+              inner_product_type_ == TensorProduct::Contraction ||
+              inner_product_type_ == TensorProduct::Scale);
     return inner_product_type_;
   }
 
@@ -473,7 +474,8 @@ class ContEngine : public BinaryEngine<Derived> {
           result_tile_type, left_tile_type, right_tile_type>;
       const auto inner_prod = this->inner_product_type();
       TA_ASSERT(inner_prod == TensorProduct::Contraction ||
-                inner_prod == TensorProduct::Hadamard);
+                inner_prod == TensorProduct::Hadamard ||
+                inner_prod == TensorProduct::Scale);
       if (inner_prod == TensorProduct::Contraction) {
         TA_ASSERT(tot_x_tot);
         if constexpr (tot_x_tot) {
@@ -577,8 +579,8 @@ class ContEngine : public BinaryEngine<Derived> {
                   }
                 };
           }
-        }  // ToT x ToT
-      } else if (inner_prod == TensorProduct::General) {
+        }  // ToT x T or T x ToT
+      } else if (inner_prod == TensorProduct::Scale) {
         TA_ASSERT(!tot_x_tot);
         constexpr bool tot_x_t =
             TiledArray::detail::is_tensor_of_tensor_v<result_tile_type,
@@ -596,20 +598,19 @@ class ContEngine : public BinaryEngine<Derived> {
               std::conditional_t<tot_x_t, right_tile_element_type,
                                  left_tile_element_type>;
 
-          auto scal_op = [do_perm = this->permute_tiles_,
-                          perm = this->permute_tiles_ ? inner(this->perm_)
+          auto scal_op = [perm = this->permute_tiles_ ? inner(this->perm_)
                                                       : Permutation{}](
                              const left_tile_element_type& left,
                              const right_tile_element_type& right)
               -> result_tile_element_type {
             using TiledArray::scale;
             if constexpr (tot_x_t) {
-              if (do_perm)
+              if (perm)
                 return scale(left, right, perm);
               else
                 return scale(left, right);
             } else if constexpr (tot_x_t) {
-              if (do_perm)
+              if (perm)
                 return scale(right, left, perm);
               else
                 return scale(right, left);
