@@ -751,14 +751,58 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   rhs.fill_random();
 
   TiledRange ref_result_trange{lhs_trange.dim(0), rhs_trange.dim(1),
-                               rhs_trange.dim(0)};
+                               rhs_trange.dim(0), lhs_trange.dim(1)};
   tot_type ref_result(world, ref_result_trange);
-  // TODO compute ref_result
+
+  //
+  // i,l,k,j;n,m = i,j;m,n * k,l
+  //
+
+  // why cannot lhs and rhs be captured by ref?
+  auto make_tile = [lhs, rhs](TA::Range const& rng) {
+    tot_type::value_type result_tile{rng};
+    for (auto&& res_ix : result_tile.range()) {
+      auto i = res_ix[0];
+      auto l = res_ix[1];
+      auto k = res_ix[2];
+      auto j = res_ix[3];
+
+      using Ix2 = std::array<decltype(i), 2>;
+      using Ix4 = std::array<decltype(i), 4>;
+
+      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
+      auto lhs_tile = lhs.find(lhs_tile_ix).get();
+
+      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{k, l});
+      auto rhs_tile = rhs.find(rhs_tile_ix).get();
+
+      auto& res_el =
+          result_tile.at_ordinal(result_tile.range().ordinal(Ix4{i, l, k, j}));
+      auto const& lhs_el =
+          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
+      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{k, l}));
+
+      res_el = tot_type::element_type(
+          lhs_el.scale(rhs_el),            // scale
+          TiledArray::Permutation{1, 0});  // permute [0,1] -> [1,0]
+    }
+    return result_tile;
+  };
+
+  using std::begin;
+  using std::endl;
+
+  for (auto it = begin(ref_result); it != end(ref_result); ++it) {
+    auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
+    *it = tile;
+  }
 
   tot_type result;
   BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = lhs("i,j;m,n") * rhs("k,l"));
 
-  // TODO check result against ref_result
+  // todo: fix it
+  // const bool are_equal = ToTArrayFixture::are_equal(result, ref_result);
+  // BOOST_CHECK(are_equal);
 }
 
 BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
@@ -799,8 +843,11 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
                                rhs_trange.dim(1)};
   tot_type ref_result(world, ref_result_trange);
 
-  for (auto const& tile : ref_result) {
-    tot_type::value_type result_tile{tile.make_range()};
+  //
+  // why cannot lhs and rhs be captured by ref?
+  //
+  auto make_tile = [lhs, rhs](TA::Range const& rng) {
+    tot_type::value_type result_tile{rng};
     for (auto&& res_ix : result_tile.range()) {
       auto i = res_ix[0];
       auto j = res_ix[1];
@@ -823,11 +870,16 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
 
       res_el = lhs_el.scale(rhs_el);
     }
+    return result_tile;
+  };
 
-    ref_result.set(tile.index(), result_tile);
+  using std::begin;
+  using std::endl;
+
+  for (auto it = begin(ref_result); it != end(ref_result); ++it) {
+    auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
+    *it = tile;
   }
-
-  std::cout << ref_result << std::endl;
 
   /////////////////////////////////////////////////////////
   // ToT * T
