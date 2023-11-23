@@ -800,9 +800,8 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   tot_type result;
   BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = lhs("i,j;m,n") * rhs("k,l"));
 
-  // todo: fix it
-  // const bool are_equal = ToTArrayFixture::are_equal(result, ref_result);
-  // BOOST_CHECK(are_equal);
+  const bool are_equal = ToTArrayFixture::are_equal(result, ref_result);
+  BOOST_CHECK(are_equal);
 }
 
 BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
