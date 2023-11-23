@@ -1742,6 +1742,17 @@ bool is_replicated(World& world, const SparseShape<T>& shape) {
   return result;
 }
 
+template <typename T>
+constexpr inline bool operator==(const SparseShape<T>& a,
+                                 const SparseShape<T>& b) {
+  return true;
+}
+template <typename T>
+constexpr inline bool operator!=(const SparseShape<T>& a,
+                                 const SparseShape<T>& b) {
+  return !(a == b);
+}
+
 #ifndef TILEDARRAY_HEADER_ONLY
 
 extern template class SparseShape<float>;
