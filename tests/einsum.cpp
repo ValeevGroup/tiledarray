@@ -771,10 +771,10 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
       using Ix4 = std::array<decltype(i), 4>;
 
       auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
-      auto lhs_tile = lhs.find(lhs_tile_ix).get();
+      auto lhs_tile = lhs.find(lhs_tile_ix).get(/* dowork = */ false);
 
       auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{k, l});
-      auto rhs_tile = rhs.find(rhs_tile_ix).get();
+      auto rhs_tile = rhs.find(rhs_tile_ix).get(/* dowork = */ false);
 
       auto& res_el =
           result_tile.at_ordinal(result_tile.range().ordinal(Ix4{i, l, k, j}));
@@ -790,7 +790,7 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   };
 
   using std::begin;
-  using std::endl;
+  using std::end;
 
   for (auto it = begin(ref_result); it != end(ref_result); ++it) {
     auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
@@ -856,10 +856,10 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
       using Ix3 = std::array<decltype(i), 3>;
 
       auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
-      auto lhs_tile = lhs.find(lhs_tile_ix).get();
+      auto lhs_tile = lhs.find(lhs_tile_ix).get(/* dowork = */ false);
 
       auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{j, k});
-      auto rhs_tile = rhs.find(rhs_tile_ix).get();
+      auto rhs_tile = rhs.find(rhs_tile_ix).get(/* dowork = */ false);
 
       auto& res_el =
           result_tile.at_ordinal(result_tile.range().ordinal(Ix3{i, j, k}));
@@ -873,7 +873,7 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
   };
 
   using std::begin;
-  using std::endl;
+  using std::end;
 
   for (auto it = begin(ref_result); it != end(ref_result); ++it) {
     auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
