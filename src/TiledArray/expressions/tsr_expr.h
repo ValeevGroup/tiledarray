@@ -147,7 +147,11 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
         TiledArray::expressions::is_aliased<D>::value,
         "no_alias() expressions are not allowed on the right-hand side of "
         "the assignment operator.");
-    return operator=(AddExpr<TsrExpr_, D>(*this, other.derived()));
+    if (this->array().is_initialized()) {
+      return operator=(AddExpr<TsrExpr_, D>(*this, other.derived()));
+    } else {
+      return operator=(other);
+    }
   }
 
   /// Expression minus-assignment operator
@@ -160,7 +164,11 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
         TiledArray::expressions::is_aliased<D>::value,
         "no_alias() expressions are not allowed on the right-hand side of "
         "the assignment operator.");
-    return operator=(SubtExpr<TsrExpr_, D>(*this, other.derived()));
+    if (this->array().is_initialized()) {
+      return operator=(SubtExpr<TsrExpr_, D>(*this, other.derived()));
+    } else {
+      return operator=(-1 * other.derived());
+    }
   }
 
   /// Expression multiply-assignment operator
@@ -173,7 +181,11 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
         TiledArray::expressions::is_aliased<D>::value,
         "no_alias() expressions are not allowed on the right-hand side of "
         "the assignment operator.");
-    return operator=(MultExpr<TsrExpr_, D>(*this, other.derived()));
+    if (this->array().is_initialized()) {
+      return operator=(MultExpr<TsrExpr_, D>(*this, other.derived()));
+    } else {
+      return operator=(0 * other.derived());
+    }
   }
 
   /// Array accessor

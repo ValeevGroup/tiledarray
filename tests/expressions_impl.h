@@ -1049,6 +1049,23 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(add_to, F, Fixtures, F) {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
     }
   }
+
+  // try += with null this
+  std::decay_t<decltype(c)> d;
+  BOOST_REQUIRE_NO_THROW(d("a,b,c") += b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < d.size(); ++i) {
+    if (!d.is_zero(i)) {
+      BOOST_CHECK(!b.is_zero(i));
+      auto b_tile = b.find(i).get();
+      auto d_tile = d.find(i).get();
+
+      for (std::size_t j = 0ul; j < d_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(d_tile[j], b_tile[j]);
+    } else {
+      BOOST_CHECK(b.is_zero(i));
+    }
+  }
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(add_permute, F, Fixtures, F) {
@@ -1348,6 +1365,23 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(subt_to, F, Fixtures, F) {
         BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] - b_tile[j]);
     } else {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
+
+  // try -= with null this
+  std::decay_t<decltype(c)> d;
+  BOOST_REQUIRE_NO_THROW(d("a,b,c") -= b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < d.size(); ++i) {
+    if (!d.is_zero(i)) {
+      BOOST_CHECK(!b.is_zero(i));
+      auto b_tile = b.find(i).get();
+      auto d_tile = d.find(i).get();
+
+      for (std::size_t j = 0ul; j < d_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(d_tile[j], -b_tile[j]);
+    } else {
+      BOOST_CHECK(b.is_zero(i));
     }
   }
 }
@@ -1678,6 +1712,14 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mult_to, F, Fixtures, F) {
     } else {
       BOOST_CHECK(a.is_zero(i) || b.is_zero(i));
     }
+  }
+
+  // try *= with null this
+  std::decay_t<decltype(c)> d;
+  BOOST_REQUIRE_NO_THROW(d("a,b,c") *= b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < d.size(); ++i) {
+    BOOST_CHECK(d.is_zero(i));
   }
 }
 
