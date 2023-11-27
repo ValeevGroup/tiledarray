@@ -802,6 +802,13 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
 
   const bool are_equal = ToTArrayFixture::are_equal(result, ref_result);
   BOOST_CHECK(are_equal);
+
+  {  // reverse the order
+    tot_type result;
+    BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = rhs("k,l") * lhs("i,j;m,n"));
+    const bool are_equal = ToTArrayFixture::are_equal(result, ref_result);
+    BOOST_CHECK(are_equal);
+  }
 }
 
 BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
@@ -887,10 +894,10 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
   // - general product w.r.t. outer indices
   // - involves ToT * T
   // tot_type result;
-  // BOOST_REQUIRE_NO_THROW(result("i,k,j;m,n") = lhs("i,j;m,n") * rhs("j,k"));
+  // BOOST_REQUIRE_NO_THROW(result("k,i,j;n,m") = lhs("i,j;m,n") * rhs("j,k"));
 
   // will try to make this work
-  // tot_type out = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,j,k;m,n");
+  // tot_type out = einsum(lhs("i,j;m,n"), rhs("j,k"), "k,i,j;n,m");
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // einsum_tot_t
