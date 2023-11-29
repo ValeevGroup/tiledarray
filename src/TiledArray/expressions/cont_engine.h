@@ -609,7 +609,7 @@ class ContEngine : public BinaryEngine<Derived> {
                 return scale(left, right, perm);
               else
                 return scale(left, right);
-            } else if constexpr (tot_x_t) {
+            } else if constexpr (t_x_tot) {
               if (perm)
                 return scale(right, left, perm);
               else
