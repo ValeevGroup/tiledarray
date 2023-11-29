@@ -803,12 +803,12 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   const bool are_equal = ToTArrayFixture::are_equal(result, ref_result);
   BOOST_CHECK(are_equal);
 
-//  {  // reverse the order
-//    tot_type result;
-//    BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = rhs("k,l") * lhs("i,j;m,n"));
-//    const bool are_equal = ToTArrayFixture::are_equal(result, ref_result);
-//    BOOST_CHECK(are_equal);
-//  }
+  {  // reverse the order
+    tot_type result;
+    BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = rhs("k,l") * lhs("i,j;m,n"));
+    const bool are_equal = ToTArrayFixture::are_equal(result, ref_result);
+    BOOST_CHECK(are_equal);
+  }
 }
 
 BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
