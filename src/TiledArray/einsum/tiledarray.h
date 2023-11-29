@@ -93,7 +93,6 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
   using ArrayC = std::conditional_t<
       AreArraySame<ArrayA, ArrayB>, ArrayA,
       std::conditional_t<IsArrayToT<ArrayA>, ArrayA, ArrayB>>;
-  //  using Array = ArrayC;
   using ResultTensor = typename ArrayC::value_type;
   using ResultShape = typename ArrayC::shape_type;
 
@@ -105,8 +104,13 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     std::string a, b, c;
   } inner;
   if constexpr (std::tuple_size<decltype(cs)>::value == 2) {
-    inner.a = ";" + (std::string)std::get<1>(Einsum::idx(A));
-    inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
+    if constexpr (IsArrayToT<ArrayA>)
+      inner.a = ";" + (std::string)std::get<1>(Einsum::idx(A));
+
+    if constexpr (IsArrayToT<ArrayB>)
+      inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
+
+    static_assert(IsArrayToT<ArrayA> || IsArrayToT<ArrayB>);
     inner.c = ";" + (std::string)std::get<1>(cs);
   }
 
