@@ -541,9 +541,10 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 /// \param[out] result The result tensor
 /// \param[in] tensor1 The first argument tensor
 /// \param[in] tensors The argument tensors
-template <typename Op, typename TR, typename T1, typename... Ts,
-          typename std::enable_if<
-              is_tensor_of_tensor<TR, T1, Ts...>::value>::type* = nullptr>
+template <
+    typename Op, typename TR, typename T1, typename... Ts,
+    typename std::enable_if<is_nested_tensor<TR, T1, Ts...>::value &&
+                            !is_tensor<TR, T1, Ts...>::value>::type* = nullptr>
 inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
