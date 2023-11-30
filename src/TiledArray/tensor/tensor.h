@@ -492,7 +492,7 @@ class Tensor {
   /// \param perm The permutation that will be applied to the arguments
   template <
       typename T1, typename T2, typename Op, typename Perm,
-      typename std::enable_if<is_tensor<T1, T2>::value &&
+      typename std::enable_if<detail::is_nested_tensor<T1, T2>::value &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor(const T1& left, const T2& right, Op&& op, const Perm& perm)
       : Tensor(outer(perm) * left.range(), 1, default_construct{false}) {
