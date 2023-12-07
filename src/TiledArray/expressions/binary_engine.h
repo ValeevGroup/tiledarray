@@ -204,8 +204,10 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// \param target_indices The target index list for this expression
   void perm_indices(const BipartiteIndexList& target_indices) {
     if (permute_tiles_) {
-      TA_ASSERT(left_.indices().size() == target_indices.size());
-      TA_ASSERT(right_.indices().size() == target_indices.size());
+      TA_ASSERT(left_.indices().size() == target_indices.size() ||
+                (left_.indices().second().size() ^ target_indices.second().size()));
+      TA_ASSERT(right_.indices().size() == target_indices.size() ||
+                (right_.indices().second().size() ^ target_indices.second().size()));
 
       init_indices_<TensorProduct::Hadamard>(target_indices);
 
