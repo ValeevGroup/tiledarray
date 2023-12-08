@@ -797,6 +797,13 @@ class SparseShape {
     return equal;
   }
 
+  /// Bitwise comparison
+  /// \param other a SparseShape object
+  /// \return true if this object and @c other object are bitwise NOT identical
+  inline bool operator!=(const SparseShape<T>& other) const {
+    return !(*this == other);
+  }
+
  private:
   /// Create a copy of a sub-block of the shape
 
@@ -1740,17 +1747,6 @@ bool is_replicated(World& world, const SparseShape<T>& shape) {
   }
   world.gop.logic_and(&result, 1);
   return result;
-}
-
-template <typename T>
-constexpr inline bool operator==(const SparseShape<T>& a,
-                                 const SparseShape<T>& b) {
-  return true;
-}
-template <typename T>
-constexpr inline bool operator!=(const SparseShape<T>& a,
-                                 const SparseShape<T>& b) {
-  return !(a == b);
 }
 
 #ifndef TILEDARRAY_HEADER_ONLY
