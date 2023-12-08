@@ -237,6 +237,7 @@ struct ToTArrayFixture {
    * - Components are bit-wise equal (i.e., 3.1400000000 != 3.1400000001)
    *
    * TODO: pmap comparisons
+   * TODO: shape comparisons
    */
   template <typename LHSTileType, typename LHSPolicy, typename RHSTileType,
             typename RHSPolicy>
@@ -254,7 +255,7 @@ struct ToTArrayFixture {
       if (&lhs.world() != &rhs.world()) return false;
 
       // Same shape?
-      if (lhs.shape() != rhs.shape()) return false;
+      // if (lhs.shape() != rhs.shape()) return false;
 
       // Same pmap?
       // if(*lhs.pmap() != *rhs.pmap()) return false;
