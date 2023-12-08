@@ -199,7 +199,7 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         batch *= H.batch[i].at(h[i]);
       }
       ResultTensor tile(TiledArray::Range{batch},
-                        typename ResultTensor::value_type(0));
+                        typename ResultTensor::value_type{});
       for (Index i : tiles) {
         // skip this unless both input tiles exist
         const auto pahi_inv = apply_inverse(pa, h + i);
