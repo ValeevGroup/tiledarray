@@ -231,16 +231,15 @@ struct ToTArrayFixture {
    * - Same type
    * - Either both are initialized or both are not initialized
    * - Same MPI context
-   * - Same shape
+   * - Same shape (unless the template parameter ShapeCmp is set false)
    * - Same distribution
    * - Same tiling
    * - Components are bit-wise equal (i.e., 3.1400000000 != 3.1400000001)
    *
    * TODO: pmap comparisons
-   * TODO: shape comparisons
    */
-  template <typename LHSTileType, typename LHSPolicy, typename RHSTileType,
-            typename RHSPolicy>
+  template <bool ShapeCmp = true, typename LHSTileType, typename LHSPolicy,
+            typename RHSTileType, typename RHSPolicy>
   static bool are_equal(const DistArray<LHSTileType, LHSPolicy>& lhs,
                         const DistArray<RHSTileType, RHSPolicy>& rhs) {
     // Same type
@@ -255,7 +254,8 @@ struct ToTArrayFixture {
       if (&lhs.world() != &rhs.world()) return false;
 
       // Same shape?
-      // if (lhs.shape() != rhs.shape()) return false;
+      if constexpr (ShapeCmp)
+        if (lhs.shape() != rhs.shape()) return false;
 
       // Same pmap?
       // if(*lhs.pmap() != *rhs.pmap()) return false;
