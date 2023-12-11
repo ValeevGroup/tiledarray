@@ -1269,7 +1269,7 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_abi_cdi_cdab) {
                                    "abi,cdi->cdab");
 }
 
-BOOST_AUTO_TEST_CASE(einsum_tiledarray_icd_ai_abcd) {
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_icd_bai_abcd) {
   einsum_tiledarray_check<3, 3, 4>(random<SparsePolicy>(3, 12, 13),
                                    random<SparsePolicy>(14, 15, 3),
                                    "icd,bai->abcd");
