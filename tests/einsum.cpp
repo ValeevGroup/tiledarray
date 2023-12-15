@@ -580,6 +580,40 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ij_mn_times_ji_mn) {
   BOOST_CHECK(are_equal);
 }
 
+BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
+  using dist_array_t = DistArray<Tensor<Tensor<double>>, DensePolicy>;
+  using matrix_il = TiledArray::detail::matrix_il<Tensor<double>>;
+  auto& world = TiledArray::get_default_world();
+
+  auto random_tot = [](TA::Range const& rng) {
+    TA::Range inner_rng{7,14};
+    TA::Tensor<double> t{inner_rng};
+    TA::Tensor<TA::Tensor<double>> result{rng};
+    for (auto& e: result) e = t;
+    return result;
+  };
+
+  auto random_tot_darr = [&random_tot](World& world,
+                                       TiledRange const& tr) {
+    dist_array_t result(world, tr);
+    for (auto it = result.begin(); it != result.end(); ++it) {
+      auto tile =
+          TA::get_default_world().taskq.add(random_tot, it.make_range());
+      *it = tile;
+    }
+    return result;
+  };
+
+  TiledRange lhs_trange{{0, 2, 4}, {0, 5}};
+  auto lhs = random_tot_darr(world, lhs_trange);
+
+  TiledRange rhs_trange{{0, 2, 4, 6}, {0, 5}};
+  auto rhs = random_tot_darr(world, rhs_trange);
+  dist_array_t result;
+  BOOST_REQUIRE_NO_THROW(
+      result = einsum(lhs("i,j;m,n"), rhs("k,j;m,n"), "i,j,k;m,n"));
+}
+
 BOOST_AUTO_TEST_CASE(xxx) {
   using dist_array_t = DistArray<Tensor<Tensor<double>>, DensePolicy>;
   using matrix_il = TiledArray::detail::matrix_il<Tensor<double>>;
@@ -1326,6 +1360,13 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_hji_jih_hj) {
                                    "hji,jih->hj");
   einsum_tiledarray_check<3, 3, 2>(sparse_zero(14, 7, 5), sparse_zero(7, 5, 14),
                                    "hji,jih->hj");
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_ik_jk_ijk) {
+  einsum_tiledarray_check<2, 2, 3>(random<SparsePolicy>(7, 5),
+                                   random<SparsePolicy>(14, 5), "ik,jk->ijk");
+  einsum_tiledarray_check<2, 2, 3>(sparse_zero(7, 5), sparse_zero(14, 5),
+                                   "ik,jk->ijk");
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_replicated) {
