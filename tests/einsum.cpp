@@ -604,10 +604,10 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
     return result;
   };
 
-  TiledRange lhs_trange{{0, 2, 4}, {0, 5}};
+  TiledRange lhs_trange{{0, 2, 4}, {0, 2, 5}};
   auto lhs = random_tot_darr(world, lhs_trange);
 
-  TiledRange rhs_trange{{0, 2, 4, 6}, {0, 5}};
+  TiledRange rhs_trange{{0, 2, 4, 6}, {0, 2, 5}};
   auto rhs = random_tot_darr(world, rhs_trange);
   dist_array_t result;
   BOOST_REQUIRE_NO_THROW(
