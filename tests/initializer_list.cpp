@@ -471,7 +471,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
   auto array = array_from_il<TArray<T>>(world, tr, il);
   using tile_type = typename TArray<T>::value_type;
   std::vector corr{tile_type(tr.make_tile_range(0), {1.0, 2.0}),
-                   tile_type(tr.make_tile_range(1), {3.0})};
+                   tile_type(tr.make_tile_range(1), std::initializer_list<T>{3.0})};
   for (auto i = 0; i < array.size(); ++i) {
     if (!array.is_local(i)) continue;
     tile_type tile = array.find(i);
@@ -486,7 +486,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(matrix, T, scalar_type_list) {
   using tile_type = typename TArray<T>::value_type;
   std::vector corr{tile_type(tr.make_tile_range(0), {1.0, 4.0}),
                    tile_type(tr.make_tile_range(1), {2.0, 3.0, 5.0, 6.0}),
-                   tile_type(tr.make_tile_range(2), {7.0}),
+                   tile_type(tr.make_tile_range(2), std::initializer_list<T>{7.0}),
                    tile_type(tr.make_tile_range(3), {8.0, 9.0})};
   for (auto i = 0; i < array.size(); ++i) {
     if (!array.is_local(i)) continue;
@@ -503,11 +503,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tensor, T, scalar_type_list) {
   using tile_type = typename TArray<T>::value_type;
   std::vector corr{tile_type(tr.make_tile_range(0), {1.0, 4.0}),
                    tile_type(tr.make_tile_range(1), {2.0, 3.0, 5.0, 6.0}),
-                   tile_type(tr.make_tile_range(2), {7.0}),
+                   tile_type(tr.make_tile_range(2), std::initializer_list<T>{7.0}),
                    tile_type(tr.make_tile_range(3), {8.0, 9.0}),
                    tile_type(tr.make_tile_range(4), {10.0, 13.0}),
                    tile_type(tr.make_tile_range(5), {11.0, 12.0, 14.0, 15.0}),
-                   tile_type(tr.make_tile_range(6), {16.0}),
+                   tile_type(tr.make_tile_range(6), std::initializer_list<T>{16.0}),
                    tile_type(tr.make_tile_range(7), {17.0, 18.0})};
   for (auto i = 0; i < array.size(); ++i) {
     if (!array.is_local(i)) continue;
