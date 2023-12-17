@@ -787,8 +787,8 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   auto result = identity;
   for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume; ++ord) {
     auto temp =
-        tensor_reduce(reduce_op, join_op, identity, tensor1.at_ordinal(ord),
-                      tensors.at_ordinal(ord)...);
+        tensor_reduce(reduce_op, join_op, identity, tensor1.data()[ord],
+                      tensors.data()[ord]...);
     join_op(result, temp);
   }
 
