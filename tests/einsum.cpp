@@ -845,7 +845,7 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
+BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
   using t_type = DistArray<Tensor<double>, SparsePolicy>;
   using tot_type = DistArray<Tensor<Tensor<double>>, SparsePolicy>;
   using matrix_il = TiledArray::detail::matrix_il<Tensor<double>>;
@@ -877,7 +877,6 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
   t_type rhs(world, rhs_trange);
   rhs.fill_random();
 
-  // TODO compute ref_result
   // i,j;m,n * j,k => i,j,k;m,n
   TiledRange ref_result_trange{lhs_trange.dim(0), rhs_trange.dim(0),
                                rhs_trange.dim(1)};
@@ -928,10 +927,17 @@ BOOST_AUTO_TEST_CASE(ikj_mn_eq_ij_mn_times_jk) {
   // - general product w.r.t. outer indices
   // - involves ToT * T
   // tot_type result;
-  // BOOST_REQUIRE_NO_THROW(result("k,i,j;n,m") = lhs("i,j;m,n") * rhs("j,k"));
+  // BOOST_REQUIRE_NO_THROW(result("i,j,k;m,n") = lhs("i,j;m,n") * rhs("j,k"));
 
   // will try to make this work
-  // tot_type out = einsum(lhs("i,j;m,n"), rhs("j,k"), "k,i,j;n,m");
+  tot_type result = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,j,k;m,n");
+  bool are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+  BOOST_REQUIRE(are_equal);
+  {
+    result = einsum(rhs("j,k"), lhs("i,j;m,n"), "i,j,k;m,n");
+    are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+    BOOST_REQUIRE(are_equal);
+  }
 }
 
 BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {

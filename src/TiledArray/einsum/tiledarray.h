@@ -181,50 +181,51 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
   using Index = Einsum::Index<size_t>;
 
-  if constexpr (std::tuple_size<decltype(cs)>::value > 1) {
-    TA_ASSERT(e);
-  } else if (!e) {  // hadamard reduction
-    auto &[A, B] = AB;
-    TiledRange trange(range_map[i]);
-    RangeProduct tiles;
-    for (auto idx : i) {
-      tiles *= Range(range_map[idx].tiles_range());
-    }
-    auto pa = A.permutation;
-    auto pb = B.permutation;
-    for (Index h : H.tiles) {
-      if (!C.array.is_local(h)) continue;
-      size_t batch = 1;
-      for (size_t i = 0; i < h.size(); ++i) {
-        batch *= H.batch[i].at(h[i]);
+  if constexpr (std::tuple_size<decltype(cs)>::value > 1) TA_ASSERT(e);
+  if constexpr (AreArraySame<ArrayA, ArrayB>) {
+    if (!e) {  // hadamard reduction
+      auto &[A, B] = AB;
+      TiledRange trange(range_map[i]);
+      RangeProduct tiles;
+      for (auto idx : i) {
+        tiles *= Range(range_map[idx].tiles_range());
       }
-      ResultTensor tile(TiledArray::Range{batch},
-                        typename ResultTensor::value_type{});
-      for (Index i : tiles) {
-        // skip this unless both input tiles exist
-        const auto pahi_inv = apply_inverse(pa, h + i);
-        const auto pbhi_inv = apply_inverse(pb, h + i);
-        if (A.array.is_zero(pahi_inv) || B.array.is_zero(pbhi_inv)) continue;
-
-        auto ai = A.array.find(pahi_inv).get();
-        auto bi = B.array.find(pbhi_inv).get();
-        if (pa) ai = ai.permute(pa);
-        if (pb) bi = bi.permute(pb);
-        auto shape = trange.tile(i);
-        ai = ai.reshape(shape, batch);
-        bi = bi.reshape(shape, batch);
-        for (size_t k = 0; k < batch; ++k) {
-          auto hk = ai.batch(k).dot(bi.batch(k));
-          tile({k}) += hk;
+      auto pa = A.permutation;
+      auto pb = B.permutation;
+      for (Index h : H.tiles) {
+        if (!C.array.is_local(h)) continue;
+        size_t batch = 1;
+        for (size_t i = 0; i < h.size(); ++i) {
+          batch *= H.batch[i].at(h[i]);
         }
+        ResultTensor tile(TiledArray::Range{batch},
+                          typename ResultTensor::value_type{});
+        for (Index i : tiles) {
+          // skip this unless both input tiles exist
+          const auto pahi_inv = apply_inverse(pa, h + i);
+          const auto pbhi_inv = apply_inverse(pb, h + i);
+          if (A.array.is_zero(pahi_inv) || B.array.is_zero(pbhi_inv)) continue;
+
+          auto ai = A.array.find(pahi_inv).get();
+          auto bi = B.array.find(pbhi_inv).get();
+          if (pa) ai = ai.permute(pa);
+          if (pb) bi = bi.permute(pb);
+          auto shape = trange.tile(i);
+          ai = ai.reshape(shape, batch);
+          bi = bi.reshape(shape, batch);
+          for (size_t k = 0; k < batch; ++k) {
+            auto hk = ai.batch(k).dot(bi.batch(k));
+            tile({k}) += hk;
+          }
+        }
+        auto pc = C.permutation;
+        auto shape = apply_inverse(pc, C.array.trange().tile(h));
+        tile = tile.reshape(shape);
+        if (pc) tile = tile.permute(pc);
+        C.array.set(h, tile);
       }
-      auto pc = C.permutation;
-      auto shape = apply_inverse(pc, C.array.trange().tile(h));
-      tile = tile.reshape(shape);
-      if (pc) tile = tile.permute(pc);
-      C.array.set(h, tile);
+      return C.array;
     }
-    return C.array;
   }
 
   // generalized contraction
@@ -468,7 +469,8 @@ auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
             const std::string &cs, World &world = get_default_world()) {
   using ECT = expressions::TsrExpr<const T>;
   using ECU = expressions::TsrExpr<const U>;
-  return Einsum::einsum(ECT(A), ECU(B), Einsum::idx<T>(cs), world);
+  using ResultExprT = std::conditional_t<Einsum::IsArrayToT<T>, T, U>;
+  return Einsum::einsum(ECT(A), ECU(B), Einsum::idx<ResultExprT>(cs), world);
 }
 
 template <typename T, typename U, typename V>
