@@ -581,13 +581,16 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ij_mn_times_ji_mn) {
 }
 
 BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
-  using dist_array_t = DistArray<Tensor<Tensor<double>>, DensePolicy>;
+  using tot_type = DistArray<Tensor<Tensor<double>>, DensePolicy>;
   using matrix_il = TiledArray::detail::matrix_il<Tensor<double>>;
   auto& world = TiledArray::get_default_world();
 
   auto random_tot = [](TA::Range const& rng) {
     TA::Range inner_rng{7,14};
     TA::Tensor<double> t{inner_rng};
+    std::generate(t.begin(),t.end(),[]()->double{
+      return TA::detail::MakeRandom<double>::generate_value();
+    });
     TA::Tensor<TA::Tensor<double>> result{rng};
     for (auto& e: result) e = t;
     return result;
@@ -595,7 +598,7 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
 
   auto random_tot_darr = [&random_tot](World& world,
                                        TiledRange const& tr) {
-    dist_array_t result(world, tr);
+    tot_type result(world, tr);
     for (auto it = result.begin(); it != result.end(); ++it) {
       auto tile =
           TA::get_default_world().taskq.add(random_tot, it.make_range());
@@ -609,9 +612,51 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
 
   TiledRange rhs_trange{{0, 2, 4, 6}, {0, 2, 5}};
   auto rhs = random_tot_darr(world, rhs_trange);
-  dist_array_t result;
+  tot_type result;
   BOOST_REQUIRE_NO_THROW(
       result = einsum(lhs("i,j;m,n"), rhs("k,j;m,n"), "i,j,k;m,n"));
+
+  // i,j,k;m,n = i,j;m,n * k,j;m,n
+  TiledRange ref_result_trange{lhs.trange().dim(0), lhs.trange().dim(1),
+                               rhs.trange().dim(0)};
+  tot_type ref_result(world, ref_result_trange);
+
+  //
+  // why cannot lhs and rhs be captured by ref?
+  //
+  auto make_tile = [lhs, rhs](TA::Range const& rng) {
+    tot_type::value_type result_tile{rng};
+    for (auto&& res_ix: result_tile.range()) {
+      auto i = res_ix[0];
+      auto j = res_ix[1];
+      auto k = res_ix[2];
+      using Ix2 = std::array<decltype(i), 2>;
+      using Ix3 = std::array<decltype(i), 3>;
+
+      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
+      auto lhs_tile = lhs.find(lhs_tile_ix).get(/* dowork = */ false);
+      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{k, j});
+      auto rhs_tile = rhs.find(rhs_tile_ix).get(/* dowork = */ false);
+
+      auto& res_el =
+          result_tile.at_ordinal(result_tile.range().ordinal(Ix3{i, j, k}));
+      auto const& lhs_el =
+          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
+      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{k, j}));
+      res_el = lhs_el.mult(rhs_el); // m,n * m,n -> m,n
+    }
+    return result_tile;
+  };
+
+  using std::begin;
+  using std::end;
+
+  for (auto it = begin(ref_result); it != end(ref_result); ++it) {
+    auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
+    *it = tile;
+  }
+  bool are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+  BOOST_REQUIRE(are_equal);
 }
 
 BOOST_AUTO_TEST_CASE(xxx) {
