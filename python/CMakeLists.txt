@@ -1,13 +1,17 @@
 cmake_minimum_required(VERSION 3.12)
 
+project(python-tiledarray)
+
+if (NOT TARGET Python::Module)
+  find_package(Python COMPONENTS Interpreter Development REQUIRED)
+endif()
+
 FetchContent_Declare(
   pybind11
   GIT_REPOSITORY      https://github.com/ValeevGroup/pybind11.git
   GIT_TAG             ValeevGroup/v2.11
   )
 FetchContent_MakeAvailable(pybind11)
-
-project(python-tiledarray)
 
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wall)
