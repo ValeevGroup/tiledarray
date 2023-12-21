@@ -88,6 +88,12 @@ using input_archive_type = madness::archive::BinaryFstreamInputArchive;
 // Type of an output archive
 using output_archive_type = madness::archive::BinaryFstreamOutputArchive;
 
+enum class ShapeComp {
+  True,
+  False
+};
+
+
 /*
  *
  * When generating arrays containing tensors of tensors (ToT) we adopt simple
@@ -238,7 +244,7 @@ struct ToTArrayFixture {
    *
    * TODO: pmap comparisons
    */
-  template <bool ShapeCmp = true, typename LHSTileType, typename LHSPolicy,
+  template <ShapeComp ShapeCompFlag = ShapeComp::True, typename LHSTileType, typename LHSPolicy,
             typename RHSTileType, typename RHSPolicy>
   static bool are_equal(const DistArray<LHSTileType, LHSPolicy>& lhs,
                         const DistArray<RHSTileType, RHSPolicy>& rhs) {
@@ -254,7 +260,7 @@ struct ToTArrayFixture {
       if (&lhs.world() != &rhs.world()) return false;
 
       // Same shape?
-      if constexpr (ShapeCmp)
+      if constexpr (ShapeCompFlag == ShapeComp::True)
         if (lhs.shape() != rhs.shape()) return false;
 
       // Same pmap?

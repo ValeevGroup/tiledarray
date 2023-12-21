@@ -655,7 +655,7 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
     auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
     *it = tile;
   }
-  bool are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+  bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
   BOOST_REQUIRE(are_equal);
 }
 
@@ -879,13 +879,13 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   tot_type result;
   BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = lhs("i,j;m,n") * rhs("k,l"));
 
-  const bool are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+  const bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
   BOOST_CHECK(are_equal);
 
   {  // reverse the order
     tot_type result;
     BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = rhs("k,l") * lhs("i,j;m,n"));
-    const bool are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+    const bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
     BOOST_CHECK(are_equal);
   }
 }
@@ -976,11 +976,11 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
 
   // will try to make this work
   tot_type result = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,j,k;m,n");
-  bool are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+  bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
   BOOST_REQUIRE(are_equal);
   {
     result = einsum(rhs("j,k"), lhs("i,j;m,n"), "i,j,k;m,n");
-    are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+    are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
     BOOST_REQUIRE(are_equal);
   }
 }
@@ -1073,7 +1073,7 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
   tot_type result;
   BOOST_REQUIRE_NO_THROW(result("i,j;m,n") = lhs("j,i;m,n") * rhs("i,j"));
 
-  const bool are_equal = ToTArrayFixture::are_equal<false>(result, ref_result);
+  const bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
   BOOST_CHECK(are_equal);
 }
 
