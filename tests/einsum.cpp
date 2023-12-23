@@ -939,6 +939,7 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
 
   lhs.make_replicated();
   rhs.make_replicated();
+  world.gop.fence();
 
   //
   // why cannot lhs and rhs be captured by ref?
