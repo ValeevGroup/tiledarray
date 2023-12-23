@@ -672,6 +672,10 @@ class Tensor {
   /// \return The number of elements in the tensor
   ordinal_type size() const { return (this->range().volume()); }
 
+  /// \return The number of elements in the tensor by summing up the sizes of
+  /// the batches.
+  ordinal_type batched_size() const { return size() * batch_size(); }
+
   /// Tensor data size (in bytes) accessor
 
   /// \return The number of bytes occupied by this tensor's data
@@ -1064,10 +1068,10 @@ class Tensor {
     bool empty = this->empty();
     auto range = this->range_;
     auto batch_size = this->batch_size_;
-    ar& empty;
+    ar & empty;
     if (!empty) {
-      ar& range;
-      ar& batch_size;
+      ar & range;
+      ar & batch_size;
       if constexpr (madness::is_input_archive_v<Archive>) {
         *this = Tensor(std::move(range), batch_size, default_construct{true});
       }
