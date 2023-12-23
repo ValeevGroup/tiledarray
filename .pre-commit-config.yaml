@@ -38,5 +38,5 @@ repos:
                 name: Format C/C++ code using clang-format.
                 language: system
                 files: \.(c|cc|cxx|cpp|h|hpp|hxx)$
-                entry: clang-format -i
-                args: [--style=file]
+                entry: bin/admin/clang-format.sh
+                args: [--style=file -i]
