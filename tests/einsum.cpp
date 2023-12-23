@@ -586,18 +586,17 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
   auto& world = TiledArray::get_default_world();
 
   auto random_tot = [](TA::Range const& rng) {
-    TA::Range inner_rng{7,14};
+    TA::Range inner_rng{7, 14};
     TA::Tensor<double> t{inner_rng};
-    std::generate(t.begin(),t.end(),[]()->double{
+    std::generate(t.begin(), t.end(), []() -> double {
       return TA::detail::MakeRandom<double>::generate_value();
     });
     TA::Tensor<TA::Tensor<double>> result{rng};
-    for (auto& e: result) e = t;
+    for (auto& e : result) e = t;
     return result;
   };
 
-  auto random_tot_darr = [&random_tot](World& world,
-                                       TiledRange const& tr) {
+  auto random_tot_darr = [&random_tot](World& world, TiledRange const& tr) {
     tot_type result(world, tr);
     for (auto it = result.begin(); it != result.end(); ++it) {
       auto tile =
@@ -621,12 +620,9 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
                                rhs.trange().dim(0)};
   tot_type ref_result(world, ref_result_trange);
 
-  //
-  // why cannot lhs and rhs be captured by ref?
-  //
-  auto make_tile = [lhs, rhs](TA::Range const& rng) {
+  auto make_tile = [&lhs, &rhs](TA::Range const& rng) {
     tot_type::value_type result_tile{rng};
-    for (auto&& res_ix: result_tile.range()) {
+    for (auto&& res_ix : result_tile.range()) {
       auto i = res_ix[0];
       auto j = res_ix[1];
       auto k = res_ix[2];
@@ -643,7 +639,7 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
       auto const& lhs_el =
           lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
       auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{k, j}));
-      res_el = lhs_el.mult(rhs_el); // m,n * m,n -> m,n
+      res_el = lhs_el.mult(rhs_el);  // m,n * m,n -> m,n
     }
     return result_tile;
   };
@@ -651,12 +647,28 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
   using std::begin;
   using std::end;
 
-  for (auto it = begin(ref_result); it != end(ref_result); ++it) {
-    auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
-    *it = tile;
+  const auto have_spare_threads = madness::ThreadPool::size() > 0;
+  if (have_spare_threads) {
+    for (auto it = begin(ref_result); it != end(ref_result); ++it) {
+      if (ref_result.is_local(it.index())) {
+        // using tasks does not work because:
+        // - make_tile pulls possibly remote data
+        // - but it also blocks thread on a remote tile futures, whose
+        // fulfillment requires available threads in the pool
+        //
+        // *it = world.taskq.add(make_tile, it.make_range());
+
+        // this technically will only work if the number of free threads in the
+        // pool is > 0 (i.e. main is not part of the pool or pool has 2 threads)
+        //
+        // OK, fine, @bosilca, blocking in tasks is BAD
+        *it = make_tile(it.make_range());
+      }
+    }
+    bool are_equal =
+        ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
+    BOOST_REQUIRE(are_equal);
   }
-  bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
-  BOOST_REQUIRE(are_equal);
 }
 
 BOOST_AUTO_TEST_CASE(xxx) {
@@ -879,13 +891,15 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   tot_type result;
   BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = lhs("i,j;m,n") * rhs("k,l"));
 
-  const bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
+  const bool are_equal =
+      ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
   BOOST_CHECK(are_equal);
 
   {  // reverse the order
     tot_type result;
     BOOST_REQUIRE_NO_THROW(result("i,l,k,j;n,m") = rhs("k,l") * lhs("i,j;m,n"));
-    const bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
+    const bool are_equal =
+        ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
     BOOST_CHECK(are_equal);
   }
 }
@@ -976,11 +990,13 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
 
   // will try to make this work
   tot_type result = einsum(lhs("i,j;m,n"), rhs("j,k"), "i,j,k;m,n");
-  bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
+  bool are_equal =
+      ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
   BOOST_REQUIRE(are_equal);
   {
     result = einsum(rhs("j,k"), lhs("i,j;m,n"), "i,j,k;m,n");
-    are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
+    are_equal =
+        ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
     BOOST_REQUIRE(are_equal);
   }
 }
@@ -1014,12 +1030,9 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
       Range{7, 2}, {77, 53, 11, 6, 99, 63, 46, 68, 83, 56, 76, 86, 91, 79});
   Tensor<double> lhs_elem_5_1(
       Range{7, 2}, {56, 11, 33, 90, 36, 38, 33, 54, 60, 21, 16, 28, 6, 97});
-  matrix_il lhs_il{{lhs_elem_0_0, lhs_elem_0_1},
-                   {lhs_elem_1_0, lhs_elem_1_1},
-                   {lhs_elem_2_0, lhs_elem_2_1},
-                   {lhs_elem_3_0, lhs_elem_3_1},
-                   {lhs_elem_4_0, lhs_elem_4_1},
-                   {lhs_elem_5_0, lhs_elem_5_1}};
+  matrix_il lhs_il{{lhs_elem_0_0, lhs_elem_0_1}, {lhs_elem_1_0, lhs_elem_1_1},
+                   {lhs_elem_2_0, lhs_elem_2_1}, {lhs_elem_3_0, lhs_elem_3_1},
+                   {lhs_elem_4_0, lhs_elem_4_1}, {lhs_elem_5_0, lhs_elem_5_1}};
   TiledRange lhs_trange{{0, 2, 6}, {0, 2}};
   tot_type lhs(world, lhs_trange, lhs_il);
 
@@ -1046,17 +1059,15 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
       auto lhs_tile = lhs.find(lhs_tile_ix).get(/* dowork */ false);
 
       auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2({i, j}));
-      auto rhs_tile = rhs.find(rhs_tile_ix).get(/* dowork */ false );
+      auto rhs_tile = rhs.find(rhs_tile_ix).get(/* dowork */ false);
 
       auto& res_el =
           result_tile.at_ordinal(result_tile.range().ordinal(Ix2{i, j}));
       auto const& lhs_el =
           lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{j, i}));
-      auto rhs_el =
-          rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{i, j}));
-      res_el = tot_type::element_type(
-          lhs_el.scale(rhs_el), // scale
-          TiledArray::Permutation{0, 1} // permute
+      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{i, j}));
+      res_el = tot_type::element_type(lhs_el.scale(rhs_el),          // scale
+                                      TiledArray::Permutation{0, 1}  // permute
       );
     }
     return result_tile;
@@ -1073,7 +1084,8 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
   tot_type result;
   BOOST_REQUIRE_NO_THROW(result("i,j;m,n") = lhs("j,i;m,n") * rhs("i,j"));
 
-  const bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
+  const bool are_equal =
+      ToTArrayFixture::are_equal<ShapeComp::False>(result, ref_result);
   BOOST_CHECK(are_equal);
 }
 
