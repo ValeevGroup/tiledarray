@@ -839,6 +839,10 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   // i,l,k,j;n,m = i,j;m,n * k,l
   //
 
+  lhs.make_replicated();
+  rhs.make_replicated();
+  world.gop.fence();
+
   // why cannot lhs and rhs be captured by ref?
   auto make_tile = [lhs, rhs](TA::Range const& rng) {
     tot_type::value_type result_tile{rng};
@@ -852,10 +856,10 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
       using Ix4 = std::array<decltype(i), 4>;
 
       auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
-      auto lhs_tile = lhs.find(lhs_tile_ix).get(/* dowork = */ false);
+      auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
 
       auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{k, l});
-      auto rhs_tile = rhs.find(rhs_tile_ix).get(/* dowork = */ false);
+      auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork = */ false);
 
       auto& res_el =
           result_tile.at_ordinal(result_tile.range().ordinal(Ix4{i, l, k, j}));
@@ -874,8 +878,10 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
   using std::end;
 
   for (auto it = begin(ref_result); it != end(ref_result); ++it) {
-    auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
-    *it = tile;
+    if (ref_result.is_local(it.index())) {
+      auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
+      *it = tile;
+    }
   }
 
   tot_type result;
@@ -931,6 +937,9 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
                                rhs_trange.dim(1)};
   tot_type ref_result(world, ref_result_trange);
 
+  lhs.make_replicated();
+  rhs.make_replicated();
+
   //
   // why cannot lhs and rhs be captured by ref?
   //
@@ -945,10 +954,10 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
       using Ix3 = std::array<decltype(i), 3>;
 
       auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
-      auto lhs_tile = lhs.find(lhs_tile_ix).get(/* dowork = */ false);
+      auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
 
       auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{j, k});
-      auto rhs_tile = rhs.find(rhs_tile_ix).get(/* dowork = */ false);
+      auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork = */ false);
 
       auto& res_el =
           result_tile.at_ordinal(result_tile.range().ordinal(Ix3{i, j, k}));
@@ -965,8 +974,10 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
   using std::end;
 
   for (auto it = begin(ref_result); it != end(ref_result); ++it) {
-    auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
-    *it = tile;
+    if (ref_result.is_local(it.index())) {
+      auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
+      *it = tile;
+    }
   }
 
   /////////////////////////////////////////////////////////
@@ -1036,6 +1047,10 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
   TiledRange ref_result_trange{rhs_trange.dim(0), rhs_trange.dim(1)};
   tot_type ref_result(world, ref_result_trange);
 
+  lhs.make_replicated();
+  rhs.make_replicated();
+  world.gop.fence();
+
   // why cannot lhs and rhs be captured by ref?
   auto make_tile = [lhs, rhs](TA::Range const& rng) {
     tot_type::value_type result_tile{rng};
@@ -1046,10 +1061,10 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
       using Ix2 = std::array<decltype(i), 2>;
 
       auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{j, i});
-      auto lhs_tile = lhs.find(lhs_tile_ix).get(/* dowork */ false);
+      auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork */ false);
 
       auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2({i, j}));
-      auto rhs_tile = rhs.find(rhs_tile_ix).get(/* dowork */ false);
+      auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork */ false);
 
       auto& res_el =
           result_tile.at_ordinal(result_tile.range().ordinal(Ix2{i, j}));
@@ -1067,8 +1082,10 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
   using std::end;
 
   for (auto it = begin(ref_result); it != end(ref_result); ++it) {
-    auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
-    *it = tile;
+    if (ref_result.is_local(it.index())) {
+      auto tile = TA::get_default_world().taskq.add(make_tile, it.make_range());
+      *it = tile;
+    }
   }
 
   tot_type result;
