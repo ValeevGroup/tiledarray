@@ -400,6 +400,23 @@ struct ordinal_traits<T, std::enable_if_t<is_contiguous_tensor_v<T>>> {
       std::decay_t<decltype(std::declval<const T&>().range())>>::type;
 };
 
+template <class E>
+class has_batch_size {
+  /// true case
+  template <class U>
+  static auto __test(U* p) -> decltype(p->batch_size(), std::true_type());
+  /// false case
+  template <class>
+  static std::false_type __test(...);
+
+ public:
+  static constexpr const bool value =
+      std::is_same<std::true_type, decltype(__test<E>(0))>::value;
+};
+
+template <typename T>
+constexpr inline bool has_batch_size_v = has_batch_size<T>::value;
+
 }  // namespace detail
 
 }  // namespace TiledArray

@@ -714,7 +714,12 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Identity&& identity,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto volume = tensor1.range().volume();
+  const auto volume = [&tensor1]() {
+    if constexpr (detail::has_batch_size_v<T1>)
+      return tensor1.batched_size();
+    else
+      return tensor1.size();
+  }();
 
   auto init = std::forward<Identity>(identity);
   math::reduce_op(std::forward<ReduceOp>(reduce_op),
@@ -782,13 +787,17 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto volume = tensor1.range().volume();
+  const auto volume = [&tensor1]() {
+    if constexpr (detail::has_batch_size_v<T1>)
+      return tensor1.batched_size();
+    else
+      return tensor1.size();
+  }();
 
   auto result = identity;
-  for (decltype(tensor1.range().volume()) ord = 0ul; ord < volume; ++ord) {
-    auto temp =
-        tensor_reduce(reduce_op, join_op, identity, tensor1.data()[ord],
-                      tensors.data()[ord]...);
+  for (std::remove_cv_t<decltype(volume)> ord = 0ul; ord < volume; ++ord) {
+    auto temp = tensor_reduce(reduce_op, join_op, identity, tensor1.data()[ord],
+                              tensors.data()[ord]...);
     join_op(result, temp);
   }
 
@@ -825,7 +834,12 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto volume = tensor1.range().volume();
+  const auto volume = [&tensor1]() {
+    if constexpr (detail::has_batch_size_v<T1>)
+      return tensor1.batched_size();
+    else
+      return tensor1.size();
+  }();
 
   auto result = identity;
   if constexpr (detail::has_member_function_data_anyreturn_v<T1> &&
@@ -840,6 +854,8 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
       join_op(result, temp);
     }
   } else {  // if 1+ tensor lacks data() must iterate over individual elements
+    // TA_ASSERT(tensor1.batch_size() == 1); // todo: asser the same for the
+    // remaining tensors
     auto& t1_rng = tensor1.range();
     using signed_idx_t = Range::index_difference_type;
     auto t1_lobound = signed_idx_t(t1_rng.lobound());
@@ -884,8 +900,15 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
                      const Ts&... tensors) {
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
+  // TA_ASSERT(tensor1.batch_size() == 1); // todo: assert the same for the
+  // remaining tensors
 
-  const auto volume = tensor1.range().volume();
+  const auto volume = [&tensor1]() {
+    if constexpr (detail::has_batch_size_v<T1>)
+      return tensor1.batched_size();
+    else
+      return tensor1.size();
+  }();
 
   Scalar result = identity;
 
@@ -897,7 +920,7 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
             Scalar& MADNESS_RESTRICT result,
             typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
             typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
-          for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
+          for (std::remove_cv_t<decltype(volume)> i = 0ul; i < stride; ++i) {
             Scalar temp = tensor_reduce(reduce_op, join_op, identity,
                                         tensor1_data[i], tensors_data[i]...);
             join_op(result, temp);
