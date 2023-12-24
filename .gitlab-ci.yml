@@ -15,6 +15,7 @@ variables:
     TA_UT_CTEST_TIMEOUT=3000
     ${TA_PYTHON}
     ${ENABLE_CUDA}
+    CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda
     ${BLA_VENDOR}
     ${BLA_THREADS}
     ${ENABLE_SCALAPACK}

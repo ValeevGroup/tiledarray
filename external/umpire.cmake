@@ -109,6 +109,15 @@ else()
         if (DEFINED CMAKE_CUDA_ARCHITECTURES)
             list(APPEND UMPIRE_CMAKE_ARGS "-DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES}")
         endif(DEFINED CMAKE_CUDA_ARCHITECTURES)
+        # BLT will need FindCUDA until https://github.com/LLNL/blt/pull/585 is merged
+        # with CMake 3.28.1 needs to set CMP0146 to OLD
+        if (POLICY CMP0146)
+            list(APPEND UMPIRE_CMAKE_ARGS -DCMAKE_POLICY_DEFAULT_CMP0146=OLD)
+        endif()
+        # as of CMake 3.28+ FindCUDA seems to require CUDA_TOOLKIT_ROOT_DIR to be defined
+        if (DEFINED CUDA_TOOLKIT_ROOT_DIR)
+            list(APPEND UMPIRE_CMAKE_ARGS "-DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}")
+        endif()
     endif(ENABLE_CUDA)
     if (ENABLE_HIP)
         list(APPEND UMPIRE_CMAKE_ARGS
