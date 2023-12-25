@@ -401,10 +401,10 @@ struct ordinal_traits<T, std::enable_if_t<is_contiguous_tensor_v<T>>> {
 };
 
 template <class E>
-class has_batch_size {
+class has_total_size {
   /// true case
   template <class U>
-  static auto __test(U* p) -> decltype(p->batch_size(), std::true_type());
+  static auto __test(U* p) -> decltype(p->total_size(), std::true_type());
   /// false case
   template <class>
   static std::false_type __test(...);
@@ -415,7 +415,7 @@ class has_batch_size {
 };
 
 template <typename T>
-constexpr inline bool has_batch_size_v = has_batch_size<T>::value;
+constexpr inline bool has_total_size_v = has_total_size<T>::value;
 
 }  // namespace detail
 

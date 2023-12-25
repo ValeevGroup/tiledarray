@@ -674,7 +674,7 @@ class Tensor {
 
   /// \return The number of elements in the tensor by summing up the sizes of
   /// the batches.
-  ordinal_type batched_size() const { return size() * batch_size(); }
+  ordinal_type total_size() const { return size() * batch_size(); }
 
   /// Tensor data size (in bytes) accessor
 
