@@ -139,9 +139,9 @@ class Tensor {
  private:
   using default_construct = bool;
 
-  Tensor(const range_type& range, size_t batch_size, bool default_construct)
-      : range_(range), batch_size_(batch_size) {
-    size_t size = range_.volume() * batch_size;
+  Tensor(const range_type& range, size_t nbatch, bool default_construct)
+      : range_(range), nbatch_(nbatch) {
+    size_t size = range_.volume() * nbatch;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
     if (default_construct) {
@@ -177,9 +177,9 @@ class Tensor {
 #endif
   }
 
-  Tensor(range_type&& range, size_t batch_size, bool default_construct)
-      : range_(std::move(range)), batch_size_(batch_size) {
-    size_t size = range_.volume() * batch_size;
+  Tensor(range_type&& range, size_t nbatch, bool default_construct)
+      : range_(std::move(range)), nbatch_(nbatch) {
+    size_t size = range_.volume() * nbatch;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
     if (default_construct) {
@@ -232,7 +232,7 @@ class Tensor {
   range_type range_;  ///< Range
   /// Number of `range_`-sized blocks in `data_`
   /// \note this is not used for (in)equality comparison
-  size_t batch_size_ = 1;
+  size_t nbatch_ = 1;
   std::shared_ptr<value_type[]> data_;  ///< Shared pointer to the data
 
  public:
@@ -246,9 +246,7 @@ class Tensor {
   /// \post `*this` is a shallow copy of \p other ,
   /// i.e. `*this == other && this->data()==other.data()`
   Tensor(const Tensor& other)
-      : range_(other.range_),
-        batch_size_(other.batch_size_),
-        data_(other.data_) {
+      : range_(other.range_), nbatch_(other.nbatch_), data_(other.data_) {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
@@ -266,7 +264,7 @@ class Tensor {
   /// \post `other.empty()`
   Tensor(Tensor&& other)
       : range_(std::move(other.range_)),
-        batch_size_(std::move(other.batch_size_)),
+        nbatch_(std::move(other.nbatch_)),
         data_(std::move(other.data_)) {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
@@ -292,9 +290,9 @@ class Tensor {
   /// Construct a tensor with a range equal to \c range. The data is
   /// uninitialized.
   /// \param range The range of the tensor
-  /// \param batch_size The batch size (default is 1)
-  explicit Tensor(const range_type& range, size_type batch_size = 1)
-      : Tensor(range, batch_size, default_construct{true}) {}
+  /// \param nbatch The number of batches (default is 1)
+  explicit Tensor(const range_type& range, size_type nbatch = 1)
+      : Tensor(range, nbatch, default_construct{true}) {}
 
   /// Construct a tensor of tensor values, setting all elements to the same
   /// value
@@ -519,15 +517,15 @@ class Tensor {
 
   /// Construct a tensor with a range equal to \c range using existing data
   /// \param range The range of the tensor
-  /// \param batch_size The batch size
+  /// \param nbatch The number of batches
   /// \param data shared pointer to the data
-  Tensor(const range_type& range, size_t batch_size,
+  Tensor(const range_type& range, size_t nbatch,
          std::shared_ptr<value_type[]> data)
-      : range_(range), batch_size_(batch_size), data_(std::move(data)) {
+      : range_(range), nbatch_(nbatch), data_(std::move(data)) {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
-          this, make_string("TA::Tensor(range, batch_size, data)::data_.get()=",
+          this, make_string("TA::Tensor(range, nbatch, data)::data_.get()=",
                             data_.get()));
     }
 #endif
@@ -537,7 +535,7 @@ class Tensor {
   /// assuming unit batch size \param range The range of the tensor \param data
   /// shared pointer to the data
   Tensor(const range_type& range, std::shared_ptr<value_type[]> data)
-      : range_(range), batch_size_(1), data_(std::move(data)) {
+      : range_(range), nbatch_(1), data_(std::move(data)) {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
       ptr_registry()->insert(
@@ -550,14 +548,14 @@ class Tensor {
   /// The batch size accessor
 
   /// @return the size of tensor batch represented by `*this`
-  size_t batch_size() const { return this->batch_size_; }
+  size_t nbatch() const { return this->nbatch_; }
 
   /// @param[in] idx the batch index
-  /// @pre `idx < this->batch_size()`
-  /// @return (plain, i.e. batch_size=1) Tensor representing element \p idx of
+  /// @pre `idx < this->nbatch()`
+  /// @return (plain, i.e. nbatch=1) Tensor representing element \p idx of
   /// the batch
   Tensor batch(size_t idx) const {
-    TA_ASSERT(idx < this->batch_size());
+    TA_ASSERT(idx < this->nbatch());
     std::shared_ptr<value_type[]> data(this->data_,
                                        this->data_.get() + idx * this->size());
     return Tensor(this->range(), 1, data);
@@ -566,13 +564,13 @@ class Tensor {
   /// Returns Tensor representing the data using another range and batch size
 
   /// @param[in] range the Range of the result
-  /// @param[in] batch_size the batch size of the result
+  /// @param[in] nbatch the number of batches of the result
   /// @return Tensor object representing `this->data()` using @p range and @p
-  /// batch_size
-  auto reshape(const range_type& range, size_t batch_size = 1) const {
-    TA_ASSERT(this->range().volume() * this->batch_size() ==
-              range.volume() * batch_size);
-    return Tensor(range, batch_size, this->data_);
+  /// nbatch
+  auto reshape(const range_type& range, size_t nbatch = 1) const {
+    TA_ASSERT(this->range().volume() * this->nbatch() ==
+              range.volume() * nbatch);
+    return Tensor(range, nbatch, this->data_);
   }
 
   /// @return a deep copy of `*this`
@@ -617,7 +615,7 @@ class Tensor {
     }
 #endif
     range_ = other.range_;
-    batch_size_ = other.batch_size_;
+    nbatch_ = other.nbatch_;
     data_ = other.data_;
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
@@ -650,7 +648,7 @@ class Tensor {
     }
 #endif
     range_ = std::move(other.range_);
-    batch_size_ = std::move(other.batch_size_);
+    nbatch_ = std::move(other.nbatch_);
     data_ = std::move(other.data_);
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
@@ -674,14 +672,14 @@ class Tensor {
 
   /// \return The number of elements in the tensor by summing up the sizes of
   /// the batches.
-  ordinal_type total_size() const { return size() * batch_size(); }
+  ordinal_type total_size() const { return size() * nbatch(); }
 
   /// Tensor data size (in bytes) accessor
 
   /// \return The number of bytes occupied by this tensor's data
   /// \warning this only returns valid value if this is a tensor of scalars
   std::size_t nbytes() const {
-    return this->range().volume() * this->batch_size_ * sizeof(T);
+    return this->range().volume() * this->nbatch_ * sizeof(T);
   }
 
   /// Const element accessor
@@ -690,7 +688,7 @@ class Tensor {
   /// \param[in] ord an ordinal index
   /// \return Const reference to the element at position \c ord .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   const_reference operator[](const Ordinal ord) const {
@@ -700,7 +698,7 @@ class Tensor {
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator[](index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     TA_ASSERT(this->range_.includes_ordinal(ord));
     return this->data()[ord];
   }
@@ -711,7 +709,7 @@ class Tensor {
   /// \param[in] ord an ordinal index
   /// \return Reference to the element at position \c ord .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   reference operator[](const Ordinal ord) {
@@ -721,7 +719,7 @@ class Tensor {
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator[](index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     TA_ASSERT(this->range_.includes_ordinal(ord));
     return this->data()[ord];
   }
@@ -732,12 +730,12 @@ class Tensor {
   /// \param[in] ord an ordinal index
   /// \return Const reference to the element at position \c ord .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   const_reference at_ordinal(const Ordinal ord) const {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     TA_ASSERT(this->range_.includes_ordinal(ord));
     return this->data()[ord];
   }
@@ -748,12 +746,12 @@ class Tensor {
   /// \param[in] ord an ordinal index
   /// \return Reference to the element at position \c ord .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   reference at_ordinal(const Ordinal ord) {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     TA_ASSERT(this->range_.includes_ordinal(ord));
     return this->data()[ord];
   }
@@ -764,12 +762,12 @@ class Tensor {
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   const_reference operator[](const Index& i) const {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -781,12 +779,12 @@ class Tensor {
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   reference operator[](const Index& i) {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -798,12 +796,12 @@ class Tensor {
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   const_reference operator[](const std::initializer_list<Integer>& i) const {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -815,12 +813,12 @@ class Tensor {
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   reference operator[](const std::initializer_list<Integer>& i) {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -832,12 +830,12 @@ class Tensor {
   /// \param[in] ord an ordinal index
   /// \return Const reference to the element at position \c ord .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral_v<Ordinal>>* = nullptr>
   const_reference operator()(const Ordinal& ord) const {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     // can't distinguish between operator[](Index...) and operator[](ordinal)
     // thus assume at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
@@ -853,12 +851,12 @@ class Tensor {
   /// \param[in] ord an ordinal index
   /// \return Reference to the element at position \c ord .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
             std::enable_if_t<std::is_integral_v<Ordinal>>* = nullptr>
   reference operator()(const Ordinal& ord) {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     // can't distinguish between operator[](Index...) and operator[](ordinal)
     // thus assume at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
@@ -874,12 +872,12 @@ class Tensor {
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   const_reference operator()(const Index& i) const {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -891,12 +889,12 @@ class Tensor {
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   reference operator()(const Index& i) {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -908,12 +906,12 @@ class Tensor {
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   const_reference operator()(const std::initializer_list<Integer>& i) const {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -925,12 +923,12 @@ class Tensor {
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   reference operator()(const std::initializer_list<Integer>& i) {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     const auto iord = this->range_.ordinal(i);
     TA_ASSERT(this->range_.includes_ordinal(iord));
     return this->data()[iord];
@@ -943,14 +941,14 @@ class Tensor {
   /// \param[in] i an index \return Const reference to the element at position
   /// \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <
       typename... Index,
       std::enable_if_t<(sizeof...(Index) > 1ul) &&
                        detail::is_integral_list<Index...>::value>* = nullptr>
   const_reference operator()(const Index&... i) const {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     using Int = std::common_type_t<Index...>;
     const auto iord = this->range_.ordinal(
         std::array<Int, sizeof...(Index)>{{static_cast<Int>(i)...}});
@@ -965,14 +963,14 @@ class Tensor {
   /// \param[in] i an index \return Reference to the element at position \c i
   /// .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
-  /// included in the range, and `batch_size()==1`
+  /// included in the range, and `nbatch()==1`
   template <
       typename... Index,
       std::enable_if_t<(sizeof...(Index) > 1ul) &&
                        detail::is_integral_list<Index...>::value>* = nullptr>
   reference operator()(const Index&... i) {
     TA_ASSERT(!this->empty());
-    TA_ASSERT(this->batch_size() == 1);
+    TA_ASSERT(this->nbatch() == 1);
     using Int = std::common_type_t<Index...>;
     const auto iord = this->range_.ordinal(
         std::array<Int, sizeof...(Index)>{{static_cast<Int>(i)...}});
@@ -1013,18 +1011,18 @@ class Tensor {
   pointer data() { return this->data_.get(); }
 
   /// @param[in] batch_idx the batch index
-  /// @pre `batch_idx < this->batch_size()`
+  /// @pre `batch_idx < this->nbatch()`
   /// @return A const pointer to the tensor data of the batch \p batch_idx
   const_pointer batch_data(size_t batch_idx) const {
-    TA_ASSERT(batch_idx < this->batch_size());
+    TA_ASSERT(batch_idx < this->nbatch());
     return data() + batch_idx * size();
   }
 
   /// @param[in] batch_idx the batch index
-  /// @pre `batch_idx < this->batch_size()`
+  /// @pre `batch_idx < this->nbatch()`
   /// @return A const pointer to the tensor data of the batch \p batch_idx
   pointer batch_data(size_t batch_idx) {
-    TA_ASSERT(batch_idx < this->batch_size());
+    TA_ASSERT(batch_idx < this->nbatch());
     return data() + batch_idx * size();
   }
 
@@ -1049,9 +1047,9 @@ class Tensor {
   ///       (`this->empty()` is equivalent to `*this == Tensor{}`),
   ///       but is not identical
   ///       to a default-constructed Tensor (e.g., `this->empty()` does not
-  ///       imply `this->batch_size() == Tensor{}.batch_size()`)
+  ///       imply `this->nbatch() == Tensor{}.nbatch()`)
   bool empty() const {
-    // empty data_ implies default values for range_ (but NOT batch_size_)
+    // empty data_ implies default values for range_ (but NOT nbatch_)
     TA_ASSERT(
         (this->data_.use_count() == 0 && !this->range_) ||
         (this->data_.use_count() != 0 && this->range_));  // range is empty
@@ -1067,16 +1065,16 @@ class Tensor {
   void serialize(Archive& ar) {
     bool empty = this->empty();
     auto range = this->range_;
-    auto batch_size = this->batch_size_;
+    auto nbatch = this->nbatch_;
     ar & empty;
     if (!empty) {
       ar & range;
-      ar & batch_size;
+      ar & nbatch;
       if constexpr (madness::is_input_archive_v<Archive>) {
-        *this = Tensor(std::move(range), batch_size, default_construct{true});
+        *this = Tensor(std::move(range), nbatch, default_construct{true});
       }
       ar& madness::archive::wrap(this->data_.get(),
-                                 this->range_.volume() * batch_size);
+                                 this->range_.volume() * nbatch);
     } else {
       if constexpr (madness::is_input_archive_v<Archive>) {
         *this = Tensor{};
@@ -1105,7 +1103,7 @@ class Tensor {
 #endif
     std::swap(data_, other.data_);
     std::swap(range_, other.range_);
-    std::swap(batch_size_, other.batch_size_);
+    std::swap(nbatch_, other.nbatch_);
 #ifdef TA_TENSOR_MEM_TRACE
     if (other_to_be_traced) {
       ptr_registry()->insert(
@@ -2123,11 +2121,11 @@ class Tensor {
     if (this->empty()) {
       *this =
           Tensor(gemm_helper.make_result_range<range_type>(A.range_, B.range()),
-                 A.batch_size(), default_construct{true});
+                 A.nbatch(), default_construct{true});
       beta = 0;
     }
-    TA_ASSERT(this->batch_size() == A.batch_size());
-    TA_ASSERT(this->batch_size() == B.batch_size());
+    TA_ASSERT(this->nbatch() == A.nbatch());
+    TA_ASSERT(this->nbatch() == B.nbatch());
 
     // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
@@ -2138,11 +2136,11 @@ class Tensor {
       std::unique_ptr<T[]> data_copy;
       size_t tile_volume;
       if (twostep) {
-        tile_volume = range().volume() * batch_size();
+        tile_volume = range().volume() * nbatch();
         data_copy = std::make_unique<T[]>(tile_volume);
         std::copy(data_.get(), data_.get() + tile_volume, data_copy.get());
       }
-      for (size_t i = 0; i < this->batch_size(); ++i) {
+      for (size_t i = 0; i < this->nbatch(); ++i) {
         auto Ci = this->batch(i);
         TiledArray::gemm(alpha, A.batch(i), B.batch(i),
                          twostep ? numeric_type(0) : numeric_type(1), Ci,
@@ -2183,7 +2181,7 @@ class Tensor {
               TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
                   *logger.log, tformed_left_range, A.data(),
                   tformed_right_range, B.data(), tformed_right_range,
-                  this->data(), this->batch_size());
+                  this->data(), this->nbatch());
             }
           }
         }
@@ -2196,7 +2194,7 @@ class Tensor {
       }
     }
 #else   // TA_ENABLE_TILE_OPS_LOGGING
-    for (size_t i = 0; i < this->batch_size(); ++i) {
+    for (size_t i = 0; i < this->nbatch(); ++i) {
       auto Ci = this->batch(i);
       TiledArray::gemm(alpha, A.batch(i), B.batch(i), beta, Ci, gemm_helper);
     }
@@ -2218,8 +2216,8 @@ class Tensor {
     TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
     TA_ASSERT(!right.empty());
     TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
-    TA_ASSERT(left.batch_size() == right.batch_size());
-    const auto batch_sz = left.batch_size();
+    TA_ASSERT(left.nbatch() == right.nbatch());
+    const auto batch_sz = left.nbatch();
 
     // Check that the inner dimensions of left and right match
     TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
@@ -2259,7 +2257,7 @@ class Tensor {
                     right.range().upbound_data(), this->range_.upbound_data()));
 
       // check that batch size of this matches that of left and right
-      TA_ASSERT(this->batch_size() == batch_sz);
+      TA_ASSERT(this->nbatch() == batch_sz);
     }
 
     // Compute gemm dimensions
@@ -2273,7 +2271,7 @@ class Tensor {
     const integer ldb =
         (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? N : K);
 
-    for (integer b = 0; b != batch_size(); ++b) {
+    for (integer b = 0; b != nbatch(); ++b) {
       auto this_data = this->batch_data(b);
       auto left_data = left.batch_data(b);
       auto right_data = right.batch_data(b);
@@ -2599,9 +2597,9 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
     TA_ASSERT(!B.empty());
     TA_ASSERT(B.range().rank() == gemm_helper.right_rank());
 
-    TA_ASSERT(A.batch_size() == 1);
-    TA_ASSERT(B.batch_size() == 1);
-    TA_ASSERT(C.batch_size() == 1);
+    TA_ASSERT(A.nbatch() == 1);
+    TA_ASSERT(B.nbatch() == 1);
+    TA_ASSERT(C.nbatch() == 1);
 
     // Check that the outer dimensions of left match the corresponding
     // dimensions in result
@@ -2699,7 +2697,7 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
               TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
                   *logger.log, tformed_left_range, A.data(),
                   tformed_right_range, B.data(), tformed_right_range, C.data(),
-                  C.batch_size());
+                  C.nbatch());
             }
           }
         }
@@ -2725,8 +2723,8 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
 /// \param[in] a a Tensor object
 /// \param[in] b another Tensor object
 /// \return true if ranges and data of \p a and \p b are equal
-/// \internal this does not compare batch_size  so any
-///           2 empty tensors are equal even if their batch_size
+/// \internal this does not compare nbatch  so any
+///           2 empty tensors are equal even if their nbatch
 ///           differ
 template <typename T, typename A>
 bool operator==(const Tensor<T, A>& a, const Tensor<T, A>& b) {

@@ -854,7 +854,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
       join_op(result, temp);
     }
   } else {  // if 1+ tensor lacks data() must iterate over individual elements
-    // TA_ASSERT(tensor1.batch_size() == 1); // todo: asser the same for the
+    // TA_ASSERT(tensor1.nbatch() == 1); // todo: assert the same for the
     // remaining tensors
     auto& t1_rng = tensor1.range();
     using signed_idx_t = Range::index_difference_type;
@@ -900,7 +900,7 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
                      const Ts&... tensors) {
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
-  // TA_ASSERT(tensor1.batch_size() == 1); // todo: assert the same for the
+  // TA_ASSERT(tensor1.nbatch() == 1); // todo: assert the same for the
   // remaining tensors
 
   const auto volume = [&tensor1]() {

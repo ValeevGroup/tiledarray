@@ -589,7 +589,7 @@ class Tile {
   void serialize(Archive& ar) const {
     // Serialize data for empty tile check
     bool empty = !static_cast<bool>(pimpl_);
-    ar& empty;
+    ar & empty;
     if (!empty) {
       // Serialize tile data
       ar&* pimpl_;
@@ -602,12 +602,12 @@ class Tile {
   void serialize(Archive& ar) {
     // Check for empty tile
     bool empty = false;
-    ar& empty;
+    ar & empty;
 
     if (!empty) {
       // Deserialize tile data
       tensor_type tensor;
-      ar& tensor;
+      ar & tensor;
 
       // construct a new pimpl
       pimpl_ = std::make_shared<T>(std::move(tensor));
@@ -617,10 +617,10 @@ class Tile {
     }
   }
 
-  constexpr static std::size_t batch_size() { return 1; }
+  constexpr static std::size_t nbatch() { return 1; }
 
   const auto& batch(std::size_t idx) const {
-    TA_ASSERT(idx < this->batch_size());
+    TA_ASSERT(idx < this->nbatch());
     return *this;
   }
 

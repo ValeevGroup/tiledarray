@@ -293,7 +293,7 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       if (C.ei.is_zero(e)) continue;
       // TODO no need for immediate evaluation
       auto tile = C.ei.find_local(e).get();
-      assert(tile.batch_size() == batch);
+      assert(tile.nbatch() == batch);
       const Permutation &P = C.permutation;
       auto c = apply(P, h + e);
       auto shape = C.array.trange().tile(c);
