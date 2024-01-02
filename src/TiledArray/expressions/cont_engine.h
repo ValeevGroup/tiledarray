@@ -511,7 +511,7 @@ class ContEngine : public BinaryEngine<Derived> {
           // is contract then inner must implement (ternary) multiply-add;
           // if the outer is hadamard then the inner is binary multiply
           const auto outer_prod = this->product_type();
-          if (this->factor_ == 1) {
+          if (this->factor_ == scalar_type{1}) {
             using base_op_type =
                 TiledArray::detail::Mult<result_tile_element_type,
                                          left_tile_element_type,
