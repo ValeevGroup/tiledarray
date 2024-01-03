@@ -176,7 +176,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
   }
 
   /// Tile set notification
-  virtual void notify() { set_counter_++; }
+  void notify() override { set_counter_++; }
 
   /// Wait for all tiles to be assigned
   void wait() const {

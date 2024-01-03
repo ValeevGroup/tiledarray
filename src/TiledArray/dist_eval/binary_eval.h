@@ -100,7 +100,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \return A \c Future to the tile at index i
   /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
   /// \throw TiledArray::Exception When tile \c i a zero tile.
-  virtual Future<value_type> get_tile(ordinal_type i) const {
+  Future<value_type> get_tile(ordinal_type i) const override {
     TA_ASSERT(TensorImpl_::is_local(i));
     TA_ASSERT(!TensorImpl_::is_zero(i));
 
@@ -118,7 +118,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(ordinal_type i) const { get_tile(i); }
+  void discard_tile(ordinal_type i) const override { get_tile(i); }
 
  private:
   /// Task function for evaluating tiles
@@ -160,7 +160,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// until the tasks for the children are evaluated (not for the tasks of
   /// this object).
   /// \return The number of tiles that will be set by this process
-  virtual int internal_eval() {
+  int internal_eval() override {
     // Evaluate child tensors
     left_.eval();
     right_.eval();

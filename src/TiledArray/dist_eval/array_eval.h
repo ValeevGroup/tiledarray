@@ -250,7 +250,7 @@ class ArrayEvalImpl
   /// Virtual destructor
   virtual ~ArrayEvalImpl() {}
 
-  virtual Future<value_type> get_tile(ordinal_type i) const {
+  Future<value_type> get_tile(ordinal_type i) const override {
     // Get the array index that corresponds to the target index
     auto array_index = DistEvalImpl_::perm_index_to_source(i);
 
@@ -266,11 +266,7 @@ class ArrayEvalImpl
     return eval_tile(tile, consumable_tile);
   }
 
-  /// Discard a tile that is not needed
-
-  /// This function handles the cleanup for tiles that are not needed in
-  /// subsequent computation.
-  virtual void discard_tile(ordinal_type) const {
+  void discard_tile(ordinal_type i) const override {
     const_cast<ArrayEvalImpl_*>(this)->notify();
   }
 
@@ -305,7 +301,6 @@ class ArrayEvalImpl
   /// This function will evaluate the children of this distributed evaluator
   /// and evaluate the tiles for this distributed evaluator.
   /// \return The number of tiles that will be set by this process
-  virtual int internal_eval() {
     // Counter for the number of tasks submitted by this object
     int task_count = 0;
 
@@ -325,6 +320,7 @@ class ArrayEvalImpl
     }
 
     return task_count;
+  int internal_eval() override {
   }
 
 };  // class ArrayEvalImpl

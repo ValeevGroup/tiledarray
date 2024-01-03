@@ -85,7 +85,7 @@ class UnaryEvalImpl
   /// \return A \c Future to the tile at index i
   /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
   /// \throw TiledArray::Exception When tile \c i a zero tile.
-  virtual Future<value_type> get_tile(ordinal_type i) const {
+  Future<value_type> get_tile(ordinal_type i) const override {
     TA_ASSERT(TensorImpl_::is_local(i));
     TA_ASSERT(!TensorImpl_::is_zero(i));
     const auto source = arg_.owner(DistEvalImpl_::perm_index_to_source(i));
@@ -98,7 +98,7 @@ class UnaryEvalImpl
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(ordinal_type i) const { get_tile(i); }
+  void discard_tile(ordinal_type i) const override { get_tile(i); }
 
  private:
   /// Input tile argument type
@@ -144,7 +144,7 @@ class UnaryEvalImpl
   /// until the tasks for the children are evaluated (not for the tasks of
   /// this object).
   /// \return The number of tiles that will be set by this process
-  virtual int internal_eval() {
+  int internal_eval() override {
     // Convert pimpl to this object type so it can be used in tasks
     std::shared_ptr<UnaryEvalImpl_> self =
         std::enable_shared_from_this<UnaryEvalImpl_>::shared_from_this();
