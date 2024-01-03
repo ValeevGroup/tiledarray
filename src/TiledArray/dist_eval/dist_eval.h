@@ -110,7 +110,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
                const std::shared_ptr<const pmap_interface>& pmap,
                const Permutation& perm)
       : TensorImpl_(world, trange, shape, pmap),
-        id_(world.unique_obj_id()),
+        id_(world.make_unique_obj_id()),
         source_to_target_(),
         target_to_source_(),
         task_count_(-1),

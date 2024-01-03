@@ -30,9 +30,9 @@ struct DistOpFixture {
   DistOpFixture()
       : group_list(),
         world_group_list(),
-        group_did(GlobalFixture::world->unique_obj_id(),
+        group_did(GlobalFixture::world->make_unique_obj_id(),
                   GlobalFixture::world->rank() % 2),
-        world_did(GlobalFixture::world->unique_obj_id(),
+        world_did(GlobalFixture::world->make_unique_obj_id(),
                   GlobalFixture::world->size()) {
     for (ProcessID p = GlobalFixture::world->rank() % 2;
          p < GlobalFixture::world->size(); p += 2)
