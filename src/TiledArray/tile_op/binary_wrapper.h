@@ -294,10 +294,10 @@ class BinaryWrapper {
 
     if (perm_) return meta::invoke(op_, eval_left, eval_right, perm_);
 
-    auto op_left = [=](eval_t<L>& _left, eval_t<R>& _right) {
+    auto op_left = [=, this](eval_t<L>& _left, eval_t<R>& _right) {
       return op_.consume_left(_left, _right);
     };
-    auto op_right = [=](eval_t<L>& _left, eval_t<R>& _right) {
+    auto op_right = [=, this](eval_t<L>& _left, eval_t<R>& _right) {
       return op_.consume_right(_left, _right);
     };
     // Override consumable
