@@ -181,7 +181,6 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
   using Index = Einsum::Index<size_t>;
 
-  if constexpr (std::tuple_size<decltype(cs)>::value > 1) TA_ASSERT(e);
   if constexpr (AreArraySame<ArrayA, ArrayB>) {
     if (!e) {  // hadamard reduction
       auto &[A, B] = AB;
