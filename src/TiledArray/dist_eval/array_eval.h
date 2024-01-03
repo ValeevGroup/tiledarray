@@ -301,27 +301,7 @@ class ArrayEvalImpl
   /// This function will evaluate the children of this distributed evaluator
   /// and evaluate the tiles for this distributed evaluator.
   /// \return The number of tiles that will be set by this process
-    // Counter for the number of tasks submitted by this object
-    int task_count = 0;
-
-    // Get a count of the number of local tiles.
-    if (TensorImpl_::shape().is_dense()) {
-      task_count = TensorImpl_::pmap()->local_size();
-    } else {
-      // Create iterator to tiles that are local for this evaluator.
-      typename array_type::pmap_interface::const_iterator it =
-          TensorImpl_::pmap()->begin();
-      const typename array_type::pmap_interface::const_iterator end =
-          TensorImpl_::pmap()->end();
-
-      for (; it != end; ++it) {
-        if (!TensorImpl_::is_zero(*it)) ++task_count;
-      }
-    }
-
-    return task_count;
-  int internal_eval() override {
-  }
+  int internal_eval() override { return TensorImpl_::local_nnz(); }
 
 };  // class ArrayEvalImpl
 
