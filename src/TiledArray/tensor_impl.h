@@ -53,6 +53,8 @@ class TensorImpl : private NO_DEFAULTS {
   const trange_type trange_;                    ///< Tiled range type
   std::shared_ptr<const shape_type> shape_;     ///< Tensor shape
   std::shared_ptr<const pmap_interface> pmap_;  ///< Process map for tiles
+  mutable std::atomic<std::make_signed_t<ordinal_type>>
+      local_nnz_;  ///< Number of nonzero tiles assigned to this rank (memoized)
 
  public:
   /// Constructor
@@ -74,6 +76,7 @@ class TensorImpl : private NO_DEFAULTS {
         trange_(trange),
         shape_(std::make_shared<shape_type>(shape)),
         pmap_(pmap) {
+    local_nnz_ = -1;
     // ensure that shapes are identical on every rank
     if (replicate_shape && !shape.is_dense())
       world.gop.broadcast_serializable(*shape_, 0);
@@ -115,8 +118,8 @@ class TensorImpl : private NO_DEFAULTS {
 
   /// Tensor tile volume accessor
 
-  /// \return The number of tiles in the tensor
-  /// \throw nothing
+  /// \return The number of tiles in the tensor, equivalent to
+  /// `this->trange().tiles_range().volume()` \throw nothing
   ordinal_type size() const { return trange_.tiles_range().volume(); }
 
   /// Max count of local tiles
@@ -129,6 +132,27 @@ class TensorImpl : private NO_DEFAULTS {
   /// the actual number of stored tiles will be less than or equal to this.
   ordinal_type local_size() const {
     return static_cast<ordinal_type>(pmap_->local_size());
+  }
+
+  /// Count of nonzero local tiles
+
+  /// This function is primarily available for debugging  purposes.
+  /// \return The count of nonzero local tiles; for dense array this will be
+  /// equal to the value produced by local_size(), for a sparse array this will
+  /// be less than the value produced by local_size()
+  ordinal_type local_nnz() const {
+    if (local_nnz_ == -1) {
+      if (is_dense())
+        local_nnz_ = local_size();
+      else {
+        ordinal_type count = 0;
+        for (auto&& idx : trange_.tiles_range()) {
+          if (is_local(idx) && !is_zero(idx)) ++count;
+        }
+        local_nnz_ = count;
+      }
+    }
+    return local_nnz_;
   }
 
   /// Query a tile owner
