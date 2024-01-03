@@ -234,6 +234,13 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     // Return the local element.
     const_accessor acc;
     [[maybe_unused]] const bool inserted = data_.insert(acc, i);
+#ifdef MADNESS_WORLDOBJECT_FUTURE_TRACE
+    if (inserted) {
+      auto& f_nonconst_ref =
+          const_cast<std::remove_const_t<decltype(acc->second)>&>(acc->second);
+      this->trace(f_nonconst_ref);
+    }
+#endif
     return acc->second;
   }
 
@@ -249,6 +256,13 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     // Return the local element.
     accessor acc;
     [[maybe_unused]] const bool inserted = data_.insert(acc, i);
+#ifdef MADNESS_WORLDOBJECT_FUTURE_TRACE
+    if (inserted) {
+      auto& f_nonconst_ref =
+          const_cast<std::remove_const_t<decltype(acc->second)>&>(acc->second);
+      this->trace(f_nonconst_ref);
+    }
+#endif
     return acc->second;
   }
 
@@ -308,6 +322,14 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
         // Set the future
         existing_f.set(f);
       }
+#ifdef MADNESS_WORLDOBJECT_FUTURE_TRACE
+      else {
+        auto& f_nonconst_ref =
+            const_cast<std::remove_const_t<decltype(acc->second)>&>(
+                acc->second);
+        this->trace(f_nonconst_ref);
+      }
+#endif
     } else {
       if (f.probe()) {
         set_remote(i, f);
