@@ -14,6 +14,21 @@ if(_UMPIRE_INSTALL_DIR)
 #    find_package(umpire REQUIRED)
     message(STATUS "Umpire found at ${_UMPIRE_INSTALL_DIR}")
 
+    add_library(TiledArray_UMPIRE INTERFACE)
+
+    set_target_properties(
+            TiledArray_UMPIRE
+            PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES
+            "${_UMPIRE_INSTALL_DIR}/include"
+            INTERFACE_LINK_LIBRARIES
+            "umpire"
+            INTERFACE_LINK_DIRECTORIES
+            "${_UMPIRE_INSTALL_DIR}/lib/"
+            )
+
+     install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)
+
 elseif(TA_EXPERT)
 
     message("** Umpire was not found")
@@ -190,22 +205,21 @@ else()
 
     set(_UMPIRE_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
-endif(_UMPIRE_INSTALL_DIR)
 
-# manually add Umpire library
+    add_library(TiledArray_UMPIRE INTERFACE)
 
-add_library(TiledArray_UMPIRE INTERFACE)
-
-set_target_properties(
-        TiledArray_UMPIRE
-        PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES
-        "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl/umpire/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/src/tpl/umpire/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/include>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/include>"
-        INTERFACE_LINK_LIBRARIES
-        "$<BUILD_INTERFACE:${UMPIRE_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/lib/libumpire${UMPIRE_DEFAULT_LIBRARY_SUFFIX}>"
-        )
+    set_target_properties(
+            TiledArray_UMPIRE
+            PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES
+            "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl/umpire/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/src/tpl/umpire/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/include>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/include>"
+            INTERFACE_LINK_LIBRARIES
+            "$<BUILD_INTERFACE:${UMPIRE_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/lib/libumpire${UMPIRE_DEFAULT_LIBRARY_SUFFIX}>"
+            )
 
 install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)
+
+endif(_UMPIRE_INSTALL_DIR)
 
 #TODO test Umpire
 
