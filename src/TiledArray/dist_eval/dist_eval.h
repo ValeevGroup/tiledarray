@@ -123,6 +123,28 @@ class DistEvalImpl : public TensorImpl<Policy>,
       source_to_target_ = PermIndex(source_range, perm);
       target_to_source_ = PermIndex(trange.tiles_range(), inv_perm);
     }
+
+#if 0
+    {
+      // print out expected number of tiles on each rank
+      std::vector<size_t> ntiles_per_rank(world.size(), 0);
+      for (auto& i : trange.tiles_range()) {
+        if (!TensorImpl_::is_zero(i)) {
+          ntiles_per_rank[TensorImpl_::owner(i)]++;
+        }
+      }
+      std::stringstream ss;
+      ss << "DistEvalImpl: id=" << id_;
+      if (perm)
+        ss << " perm=" << perm;
+      ss << " ntiles=[";
+      for (auto& i : ntiles_per_rank) {
+        ss << i << " ";
+      }
+      ss << "]";
+      std::cout << ss.str() << std::endl;
+    }
+#endif
   }
 
   virtual ~DistEvalImpl() {}
@@ -142,7 +164,8 @@ class DistEvalImpl : public TensorImpl<Policy>,
 
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
-  /// \param i The index of the tile
+  /// \param i The index of the local tile to discard
+  /// \pre `this->is_local(i)`
   virtual void discard_tile(ordinal_type i) const = 0;
 
   /// Set tensor value
@@ -234,13 +257,36 @@ class DistEvalImpl : public TensorImpl<Policy>,
     TA_ASSERT(task_count_ >= 0);
   }
 
+  /// \return The number of tasks spawned on this rank (after invoking eval()
+  /// this should be equal to local_nnz() for simple evaluators like
+  /// unary/binary, or greater than that for more complex evaluators like SUMMA
+  ordinal_type task_count() const {
+    if (task_count_ == -1)
+      return 0;
+    else
+      return task_count_;
+  }
+
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+  /// reports evaluator status
+
+  /// intended for debugging purposes
+  /// @return string containing log of the current status of evaluator (empty
+  /// string, unless overridden in the specialization)
+  [[nodiscard]] virtual std::string status() const { return {}; }
+#endif
 };  // class DistEvalImpl
 
-/// Tensor expression object
+/// Tensor expression evaluator wrapper
 
-/// This object holds a tensor expression. It is used to store various type
-/// of tensor expressions that depend on the pimpl used to construct the
-/// expression.
+/// This object holds a tensor expression evaluator (DistEvalImpl).
+///
+/// \note Tensor expression evaluators (DistEval and DistEvalImpl)
+/// are similar to DistArray in that they has tensorial structure
+/// (TensorImpl), with shape and policy, but their semantics that
+/// differs from DistArray (e.g., data is not stored
+/// persistently).
+///
 /// \tparam Tile The output tile type
 /// \tparam Policy The tensor policy class
 template <typename Tile, typename Policy>
@@ -333,7 +379,7 @@ class DistEval {
     return pimpl_->pmap();
   }
 
-  /// Query the density of the tensor
+  /// Query if the tensor is dense
 
   /// \return \c true if the tensor is dense, otherwise false
   bool is_dense() const { return pimpl_->is_dense(); }
@@ -348,7 +394,7 @@ class DistEval {
   /// \return The tiled range of the tensor
   const trange_type& trange() const { return pimpl_->trange(); }
 
-  /// Tile move
+  /// Tile accessor
 
   /// Tile is removed after it is set.
   /// \param i The tile index
@@ -359,8 +405,12 @@ class DistEval {
 
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
-  /// \param i The index of the tile
-  virtual void discard(ordinal_type i) const { pimpl_->discard_tile(i); }
+  /// \param i The index of a local tile to discard
+  /// \pre `this->is_local(i)`
+  virtual void discard(ordinal_type i) const {
+    TA_ASSERT(this->is_local(i));
+    pimpl_->discard_tile(i);
+  }
 
   /// World object accessor
 
@@ -372,8 +422,34 @@ class DistEval {
   /// \return The unique id for this object
   madness::uniqueidT id() const { return pimpl_->id(); }
 
+  /// \return Number of nonzero tiles on this rank
+  /// \sa TensorImpl::local_nnz()
+  ordinal_type local_nnz() const { return pimpl_->local_nnz(); }
+
+  /// \return The number of tasks spawned on this rank (after invoking eval()
+  /// this should be same as the value returned by local_nnz(), if everything is
+  /// well)
+  ordinal_type task_count() const { return pimpl_->task_count(); }
+
   /// Wait for all local tiles to be evaluated
   void wait() const { pimpl_->wait(); }
+
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+  /// reports evaluator status
+
+  /// intended for debugging purposes
+  /// @return string containing log of the current status of evaluator (empty
+  /// string, unless overridden in the specialization)
+  std::string status() const {
+    std::ostringstream oss;
+    oss << "DistEval status: id=" << id()
+        << " impl_type_name=" << typeid(*(pimpl_.get())).name()
+        << "                 ";
+    oss << pimpl_->status();
+    oss << "\n";
+    return oss.str();
+  }
+#endif
 
 };  // class DistEval
 

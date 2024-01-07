@@ -74,7 +74,13 @@ class UnaryEvalImpl
                 const Perm& perm, const op_type& op)
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         arg_(arg),
-        op_(op) {}
+        op_(op)
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+        ,
+        arg_ntiles_used_(0)
+#endif
+  {
+  }
 
   /// Virtual destructor
   virtual ~UnaryEvalImpl() {}
@@ -152,10 +158,12 @@ class UnaryEvalImpl
     // Evaluate argument
     arg_.eval();
 
-    // Counter for the number of tasks submitted by this object
+    // Counter for the number of tasks that will use local tiles of arg_
     ordinal_type task_count = 0ul;
 
-    // Make sure all local tiles are present.
+    // now create tasks that will produce result tiles and push them to the
+    // destination N.B. data is pushed, rather than pulled, to be able to manage
+    // the lifetime of the argument
     const typename pmap_interface::const_iterator end = arg_.pmap()->end();
     typename pmap_interface::const_iterator it = arg_.pmap()->begin();
     for (; it != end; ++it) {
@@ -165,8 +173,10 @@ class UnaryEvalImpl
       if (!arg_.is_zero(index)) {
         // Get target tile index
         const auto target_index = DistEvalImpl_::perm_index_to_target(index);
+        TA_ASSERT(!this->is_zero(target_index));
 
         // Schedule tile evaluation task
+        TA_ASSERT(arg_.is_local(index));
 #ifdef TILEDARRAY_HAS_DEVICE
         TensorImpl_::world().taskq.add(self,
                                        &UnaryEvalImpl_::template eval_tile<>,
@@ -175,12 +185,18 @@ class UnaryEvalImpl
         TensorImpl_::world().taskq.add(self, &UnaryEvalImpl_::eval_tile,
                                        target_index, arg_.get(index));
 #endif
-
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+        arg_ntiles_used_++;
+#endif
         ++task_count;
       }
     }
 
     // Wait for local tiles of argument to be evaluated
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+    TA_ASSERT(arg_.local_nnz() == arg_ntiles_used_);
+    TA_ASSERT(arg_.task_count() >= arg_ntiles_used_);
+#endif  //
     arg_.wait();
 
     return task_count;
@@ -188,7 +204,14 @@ class UnaryEvalImpl
 
   arg_type arg_;  ///< Argument
   op_type op_;    ///< The unary tile operation
-};                // class UnaryEvalImpl
+
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+  // artifacts of tracing/debugging
+  mutable ordinal_type arg_ntiles_used_;  // # of tiles used from arg_ ; N.B. no
+                                          // tiles are discarded!
+#endif
+
+};  // class UnaryEvalImpl
 
 }  // namespace detail
 }  // namespace TiledArray
