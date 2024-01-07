@@ -165,6 +165,10 @@ if(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
   set(TA_TILE_OPS_LOG_LEVEL 1)
 endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 
+option(TA_TRACE_GLOBAL_COMM_STATS "Enable tracing of communication stats of global objects (DistEval's and DIstributedStorage) TiledArray" OFF)
+add_feature_info(TASK_TRACE_DEBUG TA_TRACE_GLOBAL_COMM_STATS "Debug communication stats of global objects (DistEval's and DIstributedStorage) TiledArray")
+set(TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE ${TA_TRACE_GLOBAL_COMM_STATS})
+
 option(TA_RANGEV3 "Enable Range-V3 library" OFF)
 add_feature_info(TA_RANGEV3 TA_RANGEV3 "Range-V3 ranges library")
 
