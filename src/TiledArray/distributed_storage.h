@@ -23,6 +23,17 @@
 #include <TiledArray/pmap/pmap.h>
 
 namespace TiledArray {
+
+/// Describes how to get remote data
+enum class RemoteDataGetPolicy {
+  /// no caching = each get will trigger data fetch
+  nocache,
+  /// aggregate gets until data arrives, subsequent gets will trigger new gets
+  aggregate,
+  /// get once, read forever
+  cache
+};
+
 namespace detail {
 
 /// Distributed storage container.
@@ -41,7 +52,7 @@ namespace detail {
 /// thread. DO NOT construct world objects within tasks where the order of
 /// execution is nondeterministic.
 template <typename T>
-class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
+class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
  public:
   typedef DistributedStorage<T> DistributedStorage_;  ///< This object type
   typedef madness::WorldObject<DistributedStorage_>
@@ -64,8 +75,22 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
                               ///< stored by this container
   std::shared_ptr<const pmap_interface>
       pmap_;  ///< The process map that defines the element distribution
-  mutable container_type data_;     ///< The local data container
-  madness::AtomicInt num_live_ds_;  ///< Number of live DelayedSet objects
+  mutable container_type data_;  ///< The local data container
+
+  // tracing/defensive driving artifacts
+  mutable std::atomic<std::size_t>
+      num_live_ds_;  ///< Number of live DelayedSet objects
+  mutable std::atomic<std::size_t>
+      num_live_df_;  ///< Number of live DelayedForward objects
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+  mutable std::vector<std::atomic<std::size_t>>
+      ngets_served_per_rank_;  ///< Counts # of gets served to remote ranks
+  mutable std::vector<std::atomic<std::size_t>>
+      ngets_sent_per_rank_;  ///< Counts # of gets sent to remote ranks
+  mutable std::vector<std::atomic<std::size_t>>
+      ngets_received_per_rank_;  ///< Counts # of gets received from remote
+                                 ///< ranks
+#endif
 
   // not allowed
   DistributedStorage(const DistributedStorage_&);
@@ -120,6 +145,124 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   };  // struct DelayedSet
   friend struct DelayedSet;
 
+  /// Tile cache works just like madness::detail::DistCache (and in fact is
+  /// based on it) in that it implements a local cache for asynchronous data
+  /// pulls. Unlike madness::detail::DistCache:
+  /// - this is unidirectional, i.e. there is no need to manually push data into
+  /// the cache (a task sending data
+  ///   will be posted).
+  /// - depending on get policy data will either stay in the cache forever or
+  /// will be discarded upon arrival;
+  ///   subsequent gets will need to fetch the data again (may make this
+  ///   user-controllable in the future)
+  mutable container_type remote_data_cache_;
+
+  /// Get the cache value accosted with \c key
+
+  /// This will get the value associated with \c key to \c value. If
+  /// the cache element does not exist, a task requesting the data will be sent
+  /// to the owner, a future referring to the result will be inserted in the
+  /// cache so that the subsequent gets will receive the same data. After data
+  /// arrival the future will be removed from the cache, thus subsequent gets
+  /// will need to fetch the data again. \param[in] key The target key \return A
+  /// future that holds/will hold the cache value
+  future get_cached(const key_type& key, bool keep_in_cache = false) const {
+    // Retrieve the cached future
+    typename container_type::const_accessor acc;
+    if (remote_data_cache_.insert(
+            acc, key)) {  // no future in cache yet, create a task
+      static_assert(std::is_signed_v<ProcessID>);
+      const ProcessID rank = this->get_world().rank();
+      ProcessID rank_w_persistence = keep_in_cache ? rank : -(rank + 1);
+      WorldObject_::task(owner(key), &DistributedStorage_::get_cached_handler,
+                         key, rank_w_persistence,
+                         madness::TaskAttributes::hipri());
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+      ngets_sent_per_rank_.at(owner(key))++;
+#endif
+    }
+    return acc->second;
+  }
+
+  /// used to forward data that were unassigned at the time of request arrival
+  struct DelayedForward : public madness::CallbackInterface {
+   public:
+    DelayedForward(const DistributedStorage_& ds, key_type key,
+                   ProcessID destination_rank, bool keep_in_cache)
+        : ds(ds),
+          key(key),
+          destination_rank(destination_rank),
+          keep_in_cache(keep_in_cache) {}
+
+    void notify() override {
+      auto& data_fut = ds.get_local(key);
+      TA_ASSERT(
+          data_fut.probe());  // must be ready, otherwise why is this invoked?
+      if (keep_in_cache) {
+        ds.task(destination_rank,
+                &DistributedStorage_::template set_cached_handler<true>, key,
+                data_fut, madness::TaskAttributes::hipri());
+      } else {
+        ds.task(destination_rank,
+                &DistributedStorage_::template set_cached_handler<false>, key,
+                data_fut, madness::TaskAttributes::hipri());
+      }
+      delete this;
+    }
+
+   private:
+    const DistributedStorage_& ds;
+    key_type key;
+    ProcessID destination_rank;
+    bool keep_in_cache;
+  };
+
+  void get_cached_handler(const size_type key,
+                          ProcessID destination_rank_w_persistence) const {
+    const bool keep_in_cache = destination_rank_w_persistence >= 0;
+    const ProcessID destination_rank =
+        destination_rank_w_persistence < 0
+            ? (-destination_rank_w_persistence - 1)
+            : destination_rank_w_persistence;
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+    ngets_served_per_rank_.at(destination_rank)++;
+#endif
+    auto& data_fut = get_local(key);
+    if (data_fut.probe()) {
+      if (keep_in_cache) {
+        WorldObject_::task(
+            destination_rank,
+            &DistributedStorage_::template set_cached_handler<true>, key,
+            data_fut, madness::TaskAttributes::hipri());
+      } else {
+        WorldObject_::task(
+            destination_rank,
+            &DistributedStorage_::template set_cached_handler<false>, key,
+            data_fut, madness::TaskAttributes::hipri());
+      }
+    } else {  // data not ready yet, defer send to a callback (maybe task??)
+      const_cast<future&>(data_fut).register_callback(
+          new DelayedForward(*this, key, destination_rank, keep_in_cache));
+    }
+  }
+
+  template <bool KeepInCache>
+  void set_cached_handler(const size_type key, const value_type& datum) const {
+    // assign the future first, then remove from the cache
+    typename container_type::accessor acc;
+    [[maybe_unused]] const bool inserted = remote_data_cache_.insert(acc, key);
+    // future must be in cache
+    TA_ASSERT(!inserted);
+    // assign it
+    acc->second.set(datum);
+    // remove it from the cache
+    if constexpr (!KeepInCache) remote_data_cache_.erase(acc);
+
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+    ngets_received_per_rank_.at(this->owner(key))++;
+#endif
+  }
+
  public:
   /// Makes an initialized, empty container with default data distribution (no
   /// communication)
@@ -136,23 +279,47 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
       : WorldObject_(world),
         max_size_(max_size),
         pmap_(pmap),
-        data_((max_size / world.size()) + 11) {
+        data_((max_size / world.size()) + 11)
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+        ,
+        ngets_served_per_rank_(world.size()),
+        ngets_sent_per_rank_(world.size()),
+        ngets_received_per_rank_(world.size())
+#endif
+  {
     // Check that the process map is appropriate for this storage object
     TA_ASSERT(pmap_);
     TA_ASSERT(pmap_->size() == max_size);
     TA_ASSERT(pmap_->rank() == pmap_interface::size_type(world.rank()));
     TA_ASSERT(pmap_->procs() == pmap_interface::size_type(world.size()));
     num_live_ds_ = 0;
+    num_live_df_ = 0;
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+    for (auto rank = 0; rank != world.size(); ++rank) {
+      ngets_served_per_rank_[rank] = 0;
+      ngets_sent_per_rank_[rank] = 0;
+      ngets_received_per_rank_[rank] = 0;
+    }
+#endif
     WorldObject_::process_pending();
   }
 
   virtual ~DistributedStorage() {
     if (num_live_ds_ != 0) {
-      madness::print_error(
-          "DistributedStorage (object id=", this->id(),
-          ") destroyed while "
-          "outstanding tasks exist. Add a fence() to extend the lifetime of "
-          "this object.");
+      madness::print_error("DistributedStorage (object id=", this->id(),
+                           ") destroyed while "
+                           "pending tasks that set its data exist. Add a "
+                           "fence() to extend the lifetime of "
+                           "this object.");
+      abort();
+    }
+    if (num_live_df_ != 0) {
+      madness::print_error("DistributedStorage (object id=", this->id(),
+                           ") destroyed while "
+                           "pending callbacks that forward its data to other "
+                           "ranks exist. This may indicate a bug in your "
+                           "program or you may need to extend the lifetime of "
+                           "this object.");
       abort();
     }
   }
@@ -207,18 +374,21 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   /// \return A future to element \c i
   /// \throw TiledArray::Exception If \c i is greater than or equal to \c
   /// max_size() .
-  future get(size_type i) const {
+  future get(size_type i,
+             RemoteDataGetPolicy policy = RemoteDataGetPolicy::nocache) const {
     TA_ASSERT(i < max_size_);
     if (is_local(i)) {
       return get_local(i);
     } else {
-      // Send a request to the owner of i for the element.
-      future result;
-      WorldObject_::task(owner(i), &DistributedStorage_::get_handler, i,
-                         result.remote_ref(get_world()),
-                         madness::TaskAttributes::hipri());
-
-      return result;
+      if (policy == RemoteDataGetPolicy::nocache) {
+        // Send a request to the owner of i for the element.
+        future result;
+        WorldObject_::task(owner(i), &DistributedStorage_::get_handler, i,
+                           result.remote_ref(get_world()),
+                           madness::TaskAttributes::hipri());
+        return result;
+      } else
+        return get_cached(i, policy == RemoteDataGetPolicy::cache);
     }
   }
 
@@ -343,7 +513,25 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   /// Reports the number of live DelayedSet requests
 
   /// @return const reference to the atomic counter of live DelayedSet requests
-  const madness::AtomicInt& num_live_ds() const { return num_live_ds_; }
+  const std::atomic<std::size_t>& num_live_ds() const { return num_live_ds_; }
+
+  /// Reports the number of live DelayedForward requests
+
+  /// @return const reference to the atomic counter of live DelayedForward
+  /// requests
+  const std::atomic<std::size_t>& num_live_df() const { return num_live_df_; }
+
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+  const std::vector<std::atomic<std::size_t>>& ngets_served_per_rank() const {
+    return ngets_served_per_rank_;
+  }
+  const std::vector<std::atomic<std::size_t>>& ngets_sent_per_rank() const {
+    return ngets_sent_per_rank_;
+  }
+  const std::vector<std::atomic<std::size_t>>& ngets_received_per_rank() const {
+    return ngets_received_per_rank_;
+  }
+#endif
 };  // class DistributedStorage
 
 }  // namespace detail
