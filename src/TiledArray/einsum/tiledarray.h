@@ -102,6 +102,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
   struct {
     std::string a, b, c;
+    // Hadamard, external, internal indices for inner tensor
+    Einsum::Index<std::string> h, e, i;
   } inner;
   if constexpr (std::tuple_size<decltype(cs)>::value == 2) {
     if constexpr (IsArrayToT<ArrayA>)
@@ -112,22 +114,34 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
     static_assert(IsArrayToT<ArrayA> || IsArrayToT<ArrayB>);
     inner.c = ";" + (std::string)std::get<1>(cs);
+
+    Einsum::Index<std::string> a_idx, b_idx, c_idx;
+    if constexpr (IsArrayToT<ArrayA>) a_idx = std::get<1>(Einsum::idx(A));
+    if constexpr (IsArrayToT<ArrayB>) b_idx = std::get<1>(Einsum::idx(B));
+    if constexpr (IsArrayToT<ArrayA> || IsArrayToT<ArrayB>)
+      c_idx = std::get<1>(cs);
+
+    inner.h = a_idx & b_idx & c_idx;
+    inner.e = (a_idx ^ b_idx);
+    inner.i = (a_idx & b_idx) - inner.h;
   }
 
   // these are "Hadamard" (fused) indices
   auto h = a & b & c;
 
+  // external indices
+  auto e = (a ^ b);
+
+  // contracted indices
+  auto i = (a & b) - h;
+
   // no Hadamard indices => standard contraction (or even outer product)
   // same a, b, and c => pure Hadamard
-  if (!h || (!(a ^ b) && !(b ^ c))) {
+  if (!h || (h && !(i || e))) {
     ArrayC C;
     C(std::string(c) + inner.c) = A * B;
     return C;
   }
-
-  auto e = (a ^ b);
-  // contracted indices
-  auto i = (a & b) - h;
 
   TA_ASSERT(e || h);
 
