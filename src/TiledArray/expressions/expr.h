@@ -420,6 +420,10 @@ class Expr {
     dist_eval.wait();
     // Swap the new array with the result array object.
     result.swap(tsr.array());
+
+#if 0
+    std::cout << "array.id()=" << tsr.array().id() << " evaluated using dist_eval.id=" << dist_eval.id() << std::endl;
+#endif
   }
 
   /// Evaluate this object and assign it to \c tsr

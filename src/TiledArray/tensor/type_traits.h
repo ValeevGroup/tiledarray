@@ -114,7 +114,7 @@ struct is_nested_tensor<T1, T2, Ts...> {
 /// @c is_nested_tensor_v<Ts...> is an alias for @c
 /// is_nested_tensor<Ts...>::value
 template <typename... Ts>
-constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
+inline constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -150,7 +150,7 @@ struct is_tensor<T1, T2, Ts...> {
 /// @tparam Ts a parameter pack
 /// @c is_tensor_v<Ts...> is an alias for @c is_tensor<Ts...>::value
 template <typename... Ts>
-constexpr const bool is_tensor_v = is_tensor<Ts...>::value;
+inline constexpr const bool is_tensor_v = is_tensor<Ts...>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -172,7 +172,8 @@ struct is_tensor_of_tensor<T1, T2, Ts...> {
 /// @c is_tensor_of_tensor_v<Ts...> is an alias for @c
 /// is_tensor_of_tensor<Ts...>::value
 template <typename... Ts>
-constexpr const bool is_tensor_of_tensor_v = is_tensor_of_tensor<Ts...>::value;
+inline constexpr const bool is_tensor_of_tensor_v =
+    is_tensor_of_tensor<Ts...>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -398,6 +399,23 @@ struct ordinal_traits<T, std::enable_if_t<is_contiguous_tensor_v<T>>> {
   static constexpr const auto type = ordinal_traits<
       std::decay_t<decltype(std::declval<const T&>().range())>>::type;
 };
+
+template <class E>
+class has_total_size {
+  /// true case
+  template <class U>
+  static auto __test(U* p) -> decltype(p->total_size(), std::true_type());
+  /// false case
+  template <class>
+  static std::false_type __test(...);
+
+ public:
+  static constexpr const bool value =
+      std::is_same<std::true_type, decltype(__test<E>(0))>::value;
+};
+
+template <typename T>
+constexpr inline bool has_total_size_v = has_total_size<T>::value;
 
 }  // namespace detail
 

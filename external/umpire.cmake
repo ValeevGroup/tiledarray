@@ -102,6 +102,7 @@ else()
         -DENABLE_EXAMPLES=OFF
         -DENABLE_LOGGING=OFF
         -DENABLE_ASSERTS=${enable_umpire_asserts}
+        -DENABLE_CLANGFORMAT=OFF
         )
 
     # caveat: on recent Ubuntu default libstdc++ provides filesystem, but if using older gcc (gcc-8) must link against

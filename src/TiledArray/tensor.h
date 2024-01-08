@@ -63,8 +63,8 @@ inline std::ostream& operator<<(std::ostream& os, const T& t) {
   os << t.range() << " { ";
   const auto n = t.range().volume();
   std::size_t offset = 0ul;
-  const auto more_than_1_batch = t.batch_size() > 1;
-  for (auto b = 0ul; b != t.batch_size(); ++b) {
+  const auto more_than_1_batch = t.nbatch() > 1;
+  for (auto b = 0ul; b != t.nbatch(); ++b) {
     if (more_than_1_batch) {
       os << "[batch " << b << "]{ ";
     }

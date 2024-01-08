@@ -14,7 +14,8 @@ using small_vector = TiledArray::container::svector<T>;
 struct Range {
   using value_type = int64_t;
   using iterator = boost::counting_iterator<value_type>;
-  template<class Pair>
+  template <class Pair, typename std::enable_if_t<
+                            !std::is_convertible_v<Pair, Range>, bool> = true>
   explicit Range(Pair &&pair) : Range(pair.first, pair.second) {}
   Range(value_type begin, value_type end) : begin_(begin), end_(end) {}
   auto begin() const { return iterator(begin_); }

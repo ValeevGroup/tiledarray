@@ -406,7 +406,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
                                 // dimensions as well
         return op_type(op_base_type());
       } else if (inner_prod == TensorProduct::Contraction) {
-        return op_type(op_base_type(this->inner_tile_return_op_));
+        return op_type(op_base_type(this->element_return_op_));
+      } else if (inner_prod == TensorProduct::Scale) {
+        return op_type(op_base_type());
       } else
         abort();
     } else {  // plain tensors
@@ -431,7 +433,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
                                 // dimensions as well
         return op_type(op_base_type(), perm);
       } else if (inner_prod == TensorProduct::Contraction) {
-        return op_type(op_base_type(this->inner_tile_return_op_), perm);
+        return op_type(op_base_type(this->element_return_op_), perm);
+      } else if (inner_prod == TensorProduct::Scale) {
+        return op_type(op_base_type(this->element_return_op_), perm);
       } else
         abort();
     } else {  // plain tensor

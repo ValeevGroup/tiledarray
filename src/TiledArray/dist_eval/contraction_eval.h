@@ -118,6 +118,7 @@ class Summa
   typedef std::pair<ordinal_type, left_future>
       col_datum;  ///< Datum element type for a left-hand argument column
 
+  // various tracing/debugging artifacts
   static constexpr const bool trace_tasks =
 #ifdef TILEDARRAY_ENABLE_TASK_DEBUG_TRACE
       true
@@ -125,6 +126,16 @@ class Summa
       false
 #endif
       ;
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+  mutable std::atomic<ordinal_type>
+      left_ntiles_used_;  // # of tiles used from left_
+  mutable std::atomic<ordinal_type>
+      right_ntiles_used_;  // # of tiles used from right_
+  mutable std::atomic<ordinal_type>
+      left_ntiles_discarded_;  // # of tiles discarded from left_
+  mutable std::atomic<ordinal_type>
+      right_ntiles_discarded_;  // # of tiles discarded from right_
+#endif
 
  protected:
   // Import base class functions
@@ -705,11 +716,17 @@ class Summa
 
         if (do_broadcast) {
           // Broadcast the tile
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+          ++left_ntiles_used_;
+#endif
           const madness::DistributedID key(DistEvalImpl_::id(), index);
           auto tile = get_tile(left_, index);
           TensorImpl_::world().gop.bcast(key, tile, group_root, row_group);
         } else {
           // Discard the tile
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+          ++left_ntiles_discarded_;
+#endif
           left_.discard(index);
         }
       }
@@ -748,12 +765,18 @@ class Summa
 
         if (do_broadcast) {
           // Broadcast the tile
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+          ++right_ntiles_used_;
+#endif
           const madness::DistributedID key(DistEvalImpl_::id(),
                                            index + left_.size());
           auto tile = get_tile(right_, index);
           TensorImpl_::world().gop.bcast(key, tile, group_root, col_group);
         } else {
           // Discard the tile
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+          ++right_ntiles_discarded_;
+#endif
           right_.discard(index);
         }
       }
@@ -1550,7 +1573,16 @@ class Summa
         left_stride_(k),
         left_stride_local_(proc_grid.proc_rows() * k),
         right_stride_(1ul),
-        right_stride_local_(proc_grid.proc_cols()) {}
+        right_stride_local_(proc_grid.proc_cols())
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+        ,
+        left_ntiles_used_(0),
+        right_ntiles_used_(0),
+        left_ntiles_discarded_(0),
+        right_ntiles_discarded_(0)
+#endif
+  {
+  }
 
   virtual ~Summa() {}
 
@@ -1560,7 +1592,7 @@ class Summa
   /// \return A \c Future to the tile at index i
   /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
   /// \throw TiledArray::Exception When tile \c i a zero tile.
-  virtual Future<value_type> get_tile(ordinal_type i) const {
+  Future<value_type> get_tile(ordinal_type i) const override {
     TA_ASSERT(TensorImpl_::is_local(i));
     TA_ASSERT(!TensorImpl_::is_zero(i));
 
@@ -1584,7 +1616,7 @@ class Summa
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(ordinal_type i) const { get_tile(i); }
+  void discard_tile(ordinal_type i) const override { get_tile(i); }
 
  private:
   /// Adjust iteration depth based on memory constraints
@@ -1647,7 +1679,7 @@ class Summa
   /// until the tasks for the children are evaluated (not for the tasks of
   /// this object).
   /// \return The number of tiles that will be set by this process
-  virtual int internal_eval() {
+  int internal_eval() override {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
     printf("eval: start eval children rank=%i\n", TensorImpl_::world().rank());
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
@@ -1728,6 +1760,16 @@ class Summa
     // Wait for child tensors to be evaluated, and process tasks while waiting.
     left_.wait();
     right_.wait();
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+    // values of left_ntiles_used_ etc. are not available until all broadcasts
+    // have been completed ...
+//    TA_ASSERT(left_.local_nnz() == left_ntiles_used_ +
+//    left_ntiles_discarded_); TA_ASSERT(right_.local_nnz() ==
+//    right_ntiles_used_ + right_ntiles_discarded_);
+//    TA_ASSERT(left_.task_count() >= left_ntiles_used_ +
+//    left_ntiles_discarded_); TA_ASSERT(right_.task_count() >=
+//    right_ntiles_used_ + right_ntiles_discarded_);
+#endif
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
     printf("eval: finished wait children rank=%i\n",
