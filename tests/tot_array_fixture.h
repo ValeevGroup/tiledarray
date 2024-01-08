@@ -88,11 +88,52 @@ using input_archive_type = madness::archive::BinaryFstreamInputArchive;
 // Type of an output archive
 using output_archive_type = madness::archive::BinaryFstreamOutputArchive;
 
-enum class ShapeComp {
-  True,
-  False
-};
+enum class ShapeComp { True, False };
 
+template <typename NumericT>
+auto random_tensor(TA::Range const& rng) {
+  TA::Tensor<NumericT> result{rng};
+  std::generate(result.begin(), result.end(),
+                TA::detail::MakeRandom<NumericT>::generate_value);
+  return result;
+}
+
+// note: all the inner tensors (elements of the outer tensor)
+//       have the same @c inner_rng
+template <typename NumericT>
+auto random_tensor_of_tensor(TA::Range const& outer_rng,
+                             TA::Range const& inner_rng) {
+  TA::Tensor<TA::Tensor<NumericT>> result{outer_rng};
+
+  std::generate(result.begin(), result.end(),
+                [inner_rng]() { return random_tensor<NumericT>(inner_rng); });
+
+  return result;
+}
+
+template <typename NumericT, typename Policy = TA::DensePolicy>
+auto make_random_array(TA::TiledRange const& trange) {
+  using ArrayT = TA::DistArray<TA::Tensor<NumericT>, Policy>;
+
+  auto make_tile = [](TA::Tensor<NumericT>& tile, TA::Range const& rng) {
+    tile = random_tensor<NumericT>(rng);
+    if constexpr (std::is_same_v<Policy, TA::SparsePolicy>) return tile.norm();
+  };
+
+  return TA::make_array<ArrayT>(TA::get_default_world(), trange, make_tile);
+}
+
+template <typename NumericT, typename Policy = TA::DensePolicy>
+auto make_random_array(TA::TiledRange const& trange, TA::Range const& inner) {
+  using ArrayT = TA::DistArray<TA::Tensor<TA::Tensor<NumericT>>, Policy>;
+
+  auto make_tile = [inner](TA::Tensor<TA::Tensor<NumericT>>& tile,
+                           TA::Range const& rng) {
+    tile = random_tensor_of_tensor<NumericT>(rng, inner);
+    if constexpr (std::is_same_v<Policy, TA::SparsePolicy>) return tile.norm();
+  };
+  return TA::make_array<ArrayT>(TA::get_default_world(), trange, make_tile);
+}
 
 /*
  *
@@ -244,8 +285,8 @@ struct ToTArrayFixture {
    *
    * TODO: pmap comparisons
    */
-  template <ShapeComp ShapeCompFlag = ShapeComp::True, typename LHSTileType, typename LHSPolicy,
-            typename RHSTileType, typename RHSPolicy>
+  template <ShapeComp ShapeCompFlag = ShapeComp::True, typename LHSTileType,
+            typename LHSPolicy, typename RHSTileType, typename RHSPolicy>
   static bool are_equal(const DistArray<LHSTileType, LHSPolicy>& lhs,
                         const DistArray<RHSTileType, RHSPolicy>& rhs) {
     // Same type
