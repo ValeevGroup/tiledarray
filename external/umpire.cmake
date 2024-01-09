@@ -170,6 +170,8 @@ else()
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${UMPIRE_URL}
             GIT_TAG ${UMPIRE_TAG}
+            #--Patch step-----------------
+            PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/external/umpire.finalize_io.patch
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
             LIST_SEPARATOR ::

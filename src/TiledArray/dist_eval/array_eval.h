@@ -337,7 +337,7 @@ class ArrayEvalImpl
     Future<value_type> result;
     bool task_created = false;
     if (arg_tile_is_remote) {
-      TA_ASSERT(arg_tile_owner != this->world().rank());
+      TA_ASSERT(arg_tile_owner != array_.world().rank());
 #ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
       ntiles_pending_[arg_tile_owner]++;
 #endif
@@ -355,7 +355,7 @@ class ArrayEvalImpl
 #endif
           );
     } else {
-      TA_ASSERT(arg_tile_owner == this->world().rank());
+      TA_ASSERT(arg_tile_owner == array_.world().rank());
       std::tie(result, task_created) = eval_tile(array_.find_local(array_index),
                                                  /* consumable_tile = */ false
 #ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
