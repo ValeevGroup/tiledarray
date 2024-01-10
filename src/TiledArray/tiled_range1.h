@@ -29,6 +29,7 @@
 #include <madness/world/archive.h>
 #include <cassert>
 #include <initializer_list>
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -56,8 +57,7 @@ class TiledRange1 {
   ///   assert(tr.elements_range() == (TiledRange1::range_type{0,0}));
   ///   assert(tr.begin() == tr.end());
   /// \endcode
-  TiledRange1()
-      : range_(0, 0), elements_range_(0, 0), tiles_ranges_(), elem2tile_() {}
+  TiledRange1() : range_(0, 0), elements_range_(0, 0) {}
 
   /// Constructs a range with the tile boundaries ("hashmarks") provided by
   /// the range [ \p first , \p last ).
@@ -66,8 +66,7 @@ class TiledRange1 {
   template <typename RandIter,
             typename std::enable_if<
                 detail::is_random_iterator<RandIter>::value>::type* = nullptr>
-  explicit TiledRange1(RandIter first, RandIter last)
-      : range_(), elements_range_(), tiles_ranges_(), elem2tile_() {
+  explicit TiledRange1(RandIter first, RandIter last) {
     init_tiles_(first, last, 0);
   }
 
@@ -227,7 +226,7 @@ class TiledRange1 {
   ///       across ALL TiledRange1 instances.
   const index1_type& element_to_tile(const index1_type& i) const {
     TA_ASSERT(includes(elements_range_, i));
-    if (elem2tile_.empty()) {
+    if (!elem2tile_) {
       init_elem2tile_();
     }
     return elem2tile_[i - elements_range_.first];
@@ -290,14 +289,14 @@ class TiledRange1 {
             typename std::enable_if<madness::is_input_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) {
-    ar& range_& elements_range_& tiles_ranges_& elem2tile_;
+    ar & range_ & elements_range_ & tiles_ranges_;
   }
 
   template <typename Archive,
             typename std::enable_if<madness::is_output_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) const {
-    ar& range_& elements_range_& tiles_ranges_& elem2tile_;
+    ar & range_ & elements_range_ & tiles_ranges_;
   }
 
  private:
@@ -345,19 +344,29 @@ class TiledRange1 {
   void init_elem2tile_() const {
     using TiledArray::extent;
     // check for 0 size range.
-    if (extent(elements_range_) == 0) return;
+    const auto n = extent(elements_range_);
+    if (n == 0) return;
 
     static std::mutex mtx;
     {
       std::lock_guard<std::mutex> lock(mtx);
-      if (elem2tile_.empty()) {
+      if (!elem2tile_) {
         // initialize elem2tile map
-        elem2tile_.resize(extent(elements_range_));
+        auto e2t =
+#if __cplusplus >= 202002L
+            std::make_shared<index1_type[]>(n);
+#else
+            std::shared_ptr<index1_type[]>(
+                new index1_type[n], [](index1_type* ptr) { delete[] ptr; });
+#endif
         const auto end = extent(range_);
         for (index1_type t = 0; t < end; ++t)
           for (index1_type e = tiles_ranges_[t].first;
                e < tiles_ranges_[t].second; ++e)
-            elem2tile_[e - elements_range_.first] = t + range_.first;
+            e2t[e - elements_range_.first] = t + range_.first;
+        auto e2t_const = std::const_pointer_cast<const index1_type[]>(e2t);
+        // commit the changes
+        std::swap(elem2tile_, e2t_const);
       }
     }
   }
@@ -369,7 +378,7 @@ class TiledRange1 {
   range_type elements_range_;  ///< the range of element indices
   std::vector<range_type>
       tiles_ranges_;  ///< ranges of each tile (NO GAPS between tiles)
-  mutable std::vector<index1_type>
+  mutable std::shared_ptr<const index1_type[]>
       elem2tile_;  ///< maps element index to tile index (memoized data).
 
 };  // class TiledRange1
