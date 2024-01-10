@@ -130,7 +130,7 @@ class Replicator : public madness::WorldObject<Replicator<A> >,
 
     if (dest != world_.rank()) {
       wobj_type::task(dest, &Replicator_::send_handler, indices_, data_,
-                      madness::TaskAttributes::hipri());
+                      madness::TaskAttributes::hipri_unordered());
     } else
       do_callbacks();  // Replication is done
   }
