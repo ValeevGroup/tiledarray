@@ -277,6 +277,18 @@ class TiledRange {
     return result;
   }
 
+  /// Convert an element index to a tile index
+
+  /// \tparam Integer An integral type
+  /// \param index The element index to convert
+  /// \return The tile index that corresponds to the given element index
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  typename range_type::index element_to_tile(
+      const std::initializer_list<Integer>& index) const {
+    return this->element_to_tile<std::initializer_list<Integer>>(index);
+  }
+
   /// The rank accessor
 
   /// \return the rank (=number of dimensions) of this object
@@ -316,14 +328,14 @@ class TiledRange {
             typename std::enable_if<madness::is_input_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) {
-    ar& range_& elements_range_& ranges_;
+    ar & range_ & elements_range_ & ranges_;
   }
 
   template <typename Archive,
             typename std::enable_if<madness::is_output_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) const {
-    ar& range_& elements_range_& ranges_;
+    ar & range_ & elements_range_ & ranges_;
   }
 
  private:
