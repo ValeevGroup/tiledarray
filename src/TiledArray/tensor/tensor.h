@@ -36,11 +36,6 @@
 
 namespace TiledArray {
 
-template <typename Alpha, typename... As, typename... Bs, typename Beta,
-          typename... Cs>
-void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
-          Beta beta, Tensor<Cs...>& C, const math::GemmHelper& gemm_helper);
-
 namespace detail {
 
 /// Signals that we can take the trace of a Tensor<T, A> (for numeric \c T)
@@ -2205,7 +2200,8 @@ class Tensor {
 #else   // TA_ENABLE_TILE_OPS_LOGGING
     for (size_t i = 0; i < this->nbatch(); ++i) {
       auto Ci = this->batch(i);
-      TiledArray::gemm(alpha, A.batch(i), B.batch(i), beta, Ci, gemm_helper);
+      TiledArray::detail::gemm(alpha, A.batch(i), B.batch(i), beta, Ci,
+                               gemm_helper);
     }
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
 
@@ -2540,189 +2536,6 @@ std::size_t Tensor<T, A>::trace_if_larger_than_ =
 template <typename T, typename A>
 Tensor<T, A> operator*(const Permutation& p, const Tensor<T, A>& t) {
   return t.permute(p);
-}
-
-/// Contract two tensors and accumulate the scaled result to this tensor
-
-/// GEMM is limited to matrix like contractions. For example, the following
-/// contractions are supported:
-/// \code
-/// C[a,b] = A[a,i,j] * B[i,j,b]
-/// C[a,b] = A[a,i,j] * B[b,i,j]
-/// C[a,b] = A[i,j,a] * B[i,j,b]
-/// C[a,b] = A[i,j,a] * B[b,i,j]
-///
-/// C[a,b,c,d] = A[a,b,i,j] * B[i,j,c,d]
-/// C[a,b,c,d] = A[a,b,i,j] * B[c,d,i,j]
-/// C[a,b,c,d] = A[i,j,a,b] * B[i,j,c,d]
-/// C[a,b,c,d] = A[i,j,a,b] * B[c,d,i,j]
-/// \endcode
-/// Notice that in the above contractions, the inner and outer indices of
-/// the arguments for exactly two contiguous groups in each tensor and that
-/// each group is in the same order in all tensors. That is, the indices of
-/// the tensors must fit the one of the following patterns:
-/// \code
-/// C[M...,N...] = A[M...,K...] * B[K...,N...]
-/// C[M...,N...] = A[M...,K...] * B[N...,K...]
-/// C[M...,N...] = A[K...,M...] * B[K...,N...]
-/// C[M...,N...] = A[K...,M...] * B[N...,K...]
-/// \endcode
-/// This allows use of optimized BLAS functions to evaluate tensor
-/// contractions. Tensor contractions that do not fit this pattern require
-/// one or more tensor permutation so that the tensors fit the required
-/// pattern.
-/// \tparam U The left-hand tensor element type
-/// \tparam AU The left-hand tensor allocator type
-/// \tparam V The right-hand tensor element type
-/// \tparam AV The right-hand tensor allocator type
-/// \tparam W The type of the scaling factor
-/// \param left The left-hand tensor that will be contracted
-/// \param right The right-hand tensor that will be contracted
-/// \param factor The contraction result will be scaling by this value, then
-/// accumulated into \c this \param gemm_helper The *GEMM operation meta data
-/// \return A reference to \c this
-/// \note if this is uninitialized, i.e., if \c this->empty()==true will
-/// this is equivalent to
-/// \code
-///   return (*this = left.gemm(right, factor, gemm_helper));
-/// \endcode
-template <typename Alpha, typename... As, typename... Bs, typename Beta,
-          typename... Cs>
-void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
-          Beta beta, Tensor<Cs...>& C, const math::GemmHelper& gemm_helper) {
-  static_assert(!detail::is_tensor_of_tensor_v<Tensor<As...>, Tensor<Bs...>,
-                                               Tensor<Cs...>>,
-                "TA::Tensor<T,Allocator>::gemm without custom element op is "
-                "only applicable to "
-                "plain tensors");
-  {
-    // Check that tensor C is not empty and has the correct rank
-    TA_ASSERT(!C.empty());
-    TA_ASSERT(C.range().rank() == gemm_helper.result_rank());
-
-    // Check that the arguments are not empty and have the correct ranks
-    TA_ASSERT(!A.empty());
-    TA_ASSERT(A.range().rank() == gemm_helper.left_rank());
-    TA_ASSERT(!B.empty());
-    TA_ASSERT(B.range().rank() == gemm_helper.right_rank());
-
-    TA_ASSERT(A.nbatch() == 1);
-    TA_ASSERT(B.nbatch() == 1);
-    TA_ASSERT(C.nbatch() == 1);
-
-    // Check that the outer dimensions of left match the corresponding
-    // dimensions in result
-    TA_ASSERT(gemm_helper.left_result_congruent(A.range().extent_data(),
-                                                C.range().extent_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_result_congruent(A.range().lobound_data(),
-                                                C.range().lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_result_congruent(A.range().upbound_data(),
-                                                C.range().upbound_data()));
-
-    // Check that the outer dimensions of right match the corresponding
-    // dimensions in result
-    TA_ASSERT(gemm_helper.right_result_congruent(B.range().extent_data(),
-                                                 C.range().extent_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.right_result_congruent(B.range().lobound_data(),
-                                                 C.range().lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.right_result_congruent(B.range().upbound_data(),
-                                                 C.range().upbound_data()));
-
-    // Check that the inner dimensions of left and right match
-    TA_ASSERT(gemm_helper.left_right_congruent(A.range().extent_data(),
-                                               B.range().extent_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_right_congruent(A.range().lobound_data(),
-                                               B.range().lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_right_congruent(A.range().upbound_data(),
-                                               B.range().upbound_data()));
-
-    // Compute gemm dimensions
-    using integer = TiledArray::math::blas::integer;
-    integer m, n, k;
-    gemm_helper.compute_matrix_sizes(m, n, k, A.range(), B.range());
-
-    // Get the leading dimension for left and right matrices.
-    const integer lda =
-        (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose ? k : m);
-    const integer ldb =
-        (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n : k);
-
-    // may need to split gemm into multiply + accumulate for tracing purposes
-#ifdef TA_ENABLE_TILE_OPS_LOGGING
-    {
-      using numeric_type = typename Tensor<Cs...>::numeric_type;
-      using T = numeric_type;
-      const bool twostep =
-          TiledArray::TileOpsLogger<T>::get_instance().gemm &&
-          TiledArray::TileOpsLogger<T>::get_instance().gemm_print_contributions;
-      std::unique_ptr<T[]> data_copy;
-      size_t tile_volume;
-      if (twostep) {
-        tile_volume = C.range().volume();
-        data_copy = std::make_unique<T[]>(tile_volume);
-        std::copy(C.data(), C.data() + tile_volume, data_copy.get());
-      }
-      non_distributed::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
-                            k, alpha, A.data(), lda, B.data(), ldb,
-                            twostep ? numeric_type(0) : beta, C.data(), n);
-
-      if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
-          TiledArray::TileOpsLogger<T>::get_instance().gemm) {
-        auto& logger = TiledArray::TileOpsLogger<T>::get_instance();
-        auto apply = [](auto& fnptr, const Range& arg) {
-          return fnptr ? fnptr(arg) : arg;
-        };
-        auto tformed_left_range =
-            apply(logger.gemm_left_range_transform, A.range());
-        auto tformed_right_range =
-            apply(logger.gemm_right_range_transform, B.range());
-        auto tformed_result_range =
-            apply(logger.gemm_result_range_transform, C.range());
-        if ((!logger.gemm_result_range_filter ||
-             logger.gemm_result_range_filter(tformed_result_range)) &&
-            (!logger.gemm_left_range_filter ||
-             logger.gemm_left_range_filter(tformed_left_range)) &&
-            (!logger.gemm_right_range_filter ||
-             logger.gemm_right_range_filter(tformed_right_range))) {
-          logger << "TA::Tensor::gemm+: left=" << tformed_left_range
-                 << " right=" << tformed_right_range
-                 << " result=" << tformed_result_range << std::endl;
-          if (TiledArray::TileOpsLogger<T>::get_instance()
-                  .gemm_print_contributions) {
-            if (!TiledArray::TileOpsLogger<T>::get_instance()
-                     .gemm_printer) {  // default printer
-              // must use custom printer if result's range transformed
-              if (!logger.gemm_result_range_transform)
-                logger << C << std::endl;
-              else
-                logger << make_map(C.data(), tformed_result_range) << std::endl;
-            } else {
-              TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
-                  *logger.log, tformed_left_range, A.data(),
-                  tformed_right_range, B.data(), tformed_right_range, C.data(),
-                  C.nbatch());
-            }
-          }
-        }
-      }
-
-      if (twostep) {
-        for (size_t v = 0; v != tile_volume; ++v) {
-          C.data()[v] += data_copy[v];
-        }
-      }
-    }
-#else   // TA_ENABLE_TILE_OPS_LOGGING
-    math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                     alpha, A.data(), lda, B.data(), ldb, beta, C.data(), n);
-#endif  // TA_ENABLE_TILE_OPS_LOGGING
-  }
 }
 
 // template <typename T, typename A>
