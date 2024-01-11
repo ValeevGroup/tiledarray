@@ -3,10 +3,10 @@
 
 #include "TiledArray/expressions/fwd.h"
 
+#include <TiledArray/einsum/string.h>
 #include <TiledArray/error.h>
 #include <TiledArray/permutation.h>
 #include <TiledArray/util/vector.h>
-#include <TiledArray/einsum/string.h>
 
 #include <iosfwd>
 #include <string>
@@ -45,18 +45,14 @@ class Index {
   Index(const char (&s)[N]) : Index(std::string(s)) {}
 
   template <typename U = void>
-  explicit Index(const char* &s) : Index(std::string(s)) {}
+  explicit Index(const char *&s) : Index(std::string(s)) {}
 
   template <typename U = void>
   explicit Index(const std::string &s) {
-    static_assert(
-      std::is_same_v<T,char> ||
-      std::is_same_v<T,std::string>
-    );
-    if constexpr (std::is_same_v<T,std::string>) {
+    static_assert(std::is_same_v<T, char> || std::is_same_v<T, std::string>);
+    if constexpr (std::is_same_v<T, std::string>) {
       data_ = index::tokenize(s);
-    }
-    else {
+    } else {
       using std::begin;
       using std::end;
       data_.assign(begin(s), end(s));
@@ -78,8 +74,11 @@ class Index {
 
   size_t size() const { return data_.size(); }
 
-  auto begin() const { return data_.begin(); }
-  auto end() const { return data_.end(); }
+  auto begin() const { return data_.cbegin(); }
+  auto end() const { return data_.cend(); }
+
+  auto begin() { return data_.begin(); }
+  auto end() { return data_.end(); }
 
   auto find(const T &v) const {
     return std::find(this->begin(), this->end(), v);
@@ -209,11 +208,8 @@ auto permute(const Permutation &p, const Index<T> &s,
   if (!p) return s;
   using R = typename Index<T>::container_type;
   R r(p.size());
-  TiledArray::detail::permute_n(
-    p.size(),
-    p.begin(), s.begin(), r.begin(),
-    std::bool_constant<Inverse>{}
-  );
+  TiledArray::detail::permute_n(p.size(), p.begin(), s.begin(), r.begin(),
+                                std::bool_constant<Inverse>{});
   return Index<T>{r};
 }
 
@@ -306,8 +302,8 @@ IndexMap<K, V> operator|(const IndexMap<K, V> &a, const IndexMap<K, V> &b) {
 }  // namespace Einsum::index
 
 namespace Einsum {
-  using index::Index;
-  using index::IndexMap;
-}  // namespace TiledArray::Einsum
+using index::Index;
+using index::IndexMap;
+}  // namespace Einsum
 
 #endif /* TILEDARRAY_EINSUM_INDEX_H__INCLUDED */
