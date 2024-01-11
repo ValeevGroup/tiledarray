@@ -121,8 +121,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
   set_remote(const size_type i, Value&& value) {
     WorldObject_::task(
         owner(i), &DistributedStorage_::set_handler<std::decay_t<value_type>&>,
-        i, std::forward<Value>(value),
-        madness::TaskAttributes::hipri_unordered());
+        i, std::forward<Value>(value), madness::TaskAttributes::hipri());
   }
 
   struct DelayedSet : public madness::CallbackInterface {
@@ -177,7 +176,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
       ProcessID rank_w_persistence = keep_in_cache ? rank : -(rank + 1);
       WorldObject_::task(owner(key), &DistributedStorage_::get_cached_handler,
                          key, rank_w_persistence,
-                         madness::TaskAttributes::hipri_unordered());
+                         madness::TaskAttributes::hipri());
 #ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
       ngets_sent_per_rank_.at(owner(key))++;
 #endif
@@ -234,12 +233,12 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
         WorldObject_::task(
             destination_rank,
             &DistributedStorage_::template set_cached_handler<true>, key,
-            data_fut, madness::TaskAttributes::hipri_unordered());
+            data_fut, madness::TaskAttributes::hipri());
       } else {
         WorldObject_::task(
             destination_rank,
             &DistributedStorage_::template set_cached_handler<false>, key,
-            data_fut, madness::TaskAttributes::hipri_unordered());
+            data_fut, madness::TaskAttributes::hipri());
       }
     } else {  // data not ready yet, defer send to a callback (maybe task??)
       const_cast<future&>(data_fut).register_callback(
@@ -386,7 +385,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
         future result;
         WorldObject_::task(owner(i), &DistributedStorage_::get_handler, i,
                            result.remote_ref(get_world()),
-                           madness::TaskAttributes::hipri_unordered());
+                           madness::TaskAttributes::hipri());
         return result;
       } else
         return get_cached(i, policy == RemoteDataGetPolicy::cache);
