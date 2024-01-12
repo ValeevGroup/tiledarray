@@ -1258,8 +1258,9 @@ struct is_array : public std::false_type {};
 template <typename T, typename P>
 struct is_array<DistArray<T, P>> : public std::true_type {};
 
-template <typename T>
-static constexpr bool is_array_v = is_array<T>::value;
+template <typename... Ts>
+constexpr bool is_array_v =
+    (is_array<std::remove_reference_t<Ts>>::value && ...);
 
 template <typename T>
 using trange_t = typename T::trange_type;
