@@ -1182,8 +1182,8 @@ auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
 
   struct {
     Indices A, B, C;
-  } const blas_layout{(indices.A - indices.B) + indices.i,
-                      indices.i + (indices.B - indices.A), indices.e};
+  } const blas_layout{(indices.A - indices.B) | indices.i,
+                      indices.i | (indices.B - indices.A), indices.e};
 
   struct {
     Permutation A, B, C;
@@ -1196,30 +1196,42 @@ auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
   } const do_perm{indices.A != blas_layout.A, indices.B != blas_layout.B,
                   indices.C != blas_layout.C};
 
-  auto permedA = [&]() -> TensorA {
-    return do_perm.A ? A.permute(perm.A) : std::cref(A);
-  };
-
-  auto permedB = [&]() -> TensorB {
-    return do_perm.B ? B.permute(perm.B) : std::cref(B);
-  };
-
   math::GemmHelper gemm_helper{blas::Op::NoTrans, blas::Op::NoTrans,
                                static_cast<unsigned int>(indices.e.size()),
                                static_cast<unsigned int>(indices.A.size()),
                                static_cast<unsigned int>(indices.B.size())};
 
-  // initialize result with correct rank
+  // initialize result with the correct extents
   Result result;
   {
-    container::vector<size_t> rng(indices.e.size(), 0);
+    using Index = typename Indices::value_type;
+    using Extent = std::remove_cv_t<
+        typename decltype(std::declval<Range>().extent())::value_type>;
+    using ExtentMap = ::Einsum::index::IndexMap<Index, Extent>;
+
+    // Map tensor indices to their extents.
+    // Note that whether the contracting indices have matching extents is
+    // implicitly checked here by the pipe(|) operator on ExtentMap.
+
+    ExtentMap extent = (ExtentMap{indices.A, A.range().extent()} |
+                        ExtentMap{indices.B, B.range().extent()});
+
+    container::vector<Extent> rng;
+    rng.reserve(indices.e.size());
+    for (auto&& ix : indices.e) {
+      // assuming ix _exists_ in extent
+      rng.emplace_back(extent[ix]);
+    }
     result = Result{TA::Range(rng)};
   }
 
   using Numeric = typename Result::numeric_type;
 
   // call gemm
-  gemm(Numeric{1}, permedA(), permedB(), Numeric{0}, result, gemm_helper);
+  gemm(Numeric{1},                         //
+       do_perm.A ? A.permute(perm.A) : A,  //
+       do_perm.B ? B.permute(perm.B) : B,  //
+       Numeric{0}, result, gemm_helper);
 
   return do_perm.C ? result.permute(perm.C.inv()) : result;
 }
