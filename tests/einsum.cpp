@@ -630,8 +630,6 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
       auto i = res_ix[0];
       auto j = res_ix[1];
       auto k = res_ix[2];
-      using Ix2 = std::array<decltype(i), 2>;
-      using Ix3 = std::array<decltype(i), 3>;
 
       auto lhs_tile_ix = lhs.trange().element_to_tile({i, j});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
@@ -850,20 +848,15 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
       auto k = res_ix[2];
       auto j = res_ix[3];
 
-      using Ix2 = std::array<decltype(i), 2>;
-      using Ix4 = std::array<decltype(i), 4>;
-
-      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
+      auto lhs_tile_ix = lhs.trange().element_to_tile({i, j});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
 
-      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{k, l});
+      auto rhs_tile_ix = rhs.trange().element_to_tile({k, l});
       auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork = */ false);
 
-      auto& res_el =
-          result_tile.at_ordinal(result_tile.range().ordinal(Ix4{i, l, k, j}));
-      auto const& lhs_el =
-          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
-      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{k, l}));
+      auto& res_el = result_tile({i, l, k, j});
+      auto const& lhs_el = lhs_tile({i, j});
+      auto rhs_el = rhs_tile({k, l});
 
       res_el = tot_type::element_type(
           lhs_el.scale(rhs_el),            // scale
@@ -949,20 +942,15 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
       auto j = res_ix[1];
       auto k = res_ix[2];
 
-      using Ix2 = std::array<decltype(i), 2>;
-      using Ix3 = std::array<decltype(i), 3>;
-
-      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
+      auto lhs_tile_ix = lhs.trange().element_to_tile({i, j});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
 
-      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{j, k});
+      auto rhs_tile_ix = rhs.trange().element_to_tile({j, k});
       auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork = */ false);
 
-      auto& res_el =
-          result_tile.at_ordinal(result_tile.range().ordinal(Ix3{i, j, k}));
-      auto const& lhs_el =
-          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
-      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{j, k}));
+      auto& res_el = result_tile({i, j, k});
+      auto const& lhs_el = lhs_tile({i, j});
+      auto rhs_el = rhs_tile({j, k});
 
       res_el = lhs_el.scale(rhs_el);
     }
@@ -1057,19 +1045,15 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
       auto i = res_ix[0];
       auto j = res_ix[1];
 
-      using Ix2 = std::array<decltype(i), 2>;
-
-      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{j, i});
+      auto lhs_tile_ix = lhs.trange().element_to_tile({j, i});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork */ false);
 
-      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2({i, j}));
+      auto rhs_tile_ix = rhs.trange().element_to_tile({i, j});
       auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork */ false);
 
-      auto& res_el =
-          result_tile.at_ordinal(result_tile.range().ordinal(Ix2{i, j}));
-      auto const& lhs_el =
-          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{j, i}));
-      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{i, j}));
+      auto& res_el = result_tile({i, j});
+      auto const& lhs_el = lhs_tile({j, i});
+      auto rhs_el = rhs_tile({i, j});
       res_el = tot_type::element_type(lhs_el.scale(rhs_el),          // scale
                                       TiledArray::Permutation{0, 1}  // permute
       );
