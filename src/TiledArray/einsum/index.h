@@ -29,6 +29,7 @@ class Index {
  public:
   using container_type = small_vector<T>;
   using value_type = typename container_type::value_type;
+  using iterator = typename container_type::iterator;
 
   Index() = default;
   Index(const container_type &s) : data_(s) {}
