@@ -329,6 +329,13 @@ class Permutation {
     return result;
   }
 
+  ///
+  /// Checks if this permutation is the identity permutation.
+  ///
+  [[nodiscard]] bool is_identity() const {
+    std::is_sorted(p_.begin(), p_.end());
+  }
+
   /// Identity permutation factory function
 
   /// \return An identity permutation
@@ -421,7 +428,7 @@ class Permutation {
   /// \param[in,out] ar The serialization archive
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& p_;
+    ar & p_;
   }
 
 };  // class Permutation
@@ -795,7 +802,7 @@ class BipartitePermutation {
   /// \param[in,out] ar The serialization archive
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& base_& second_size_;
+    ar & base_ & second_size_;
     if constexpr (madness::is_input_archive_v<Archive>) {
       first_ = {};
       second_ = {};
