@@ -1236,6 +1236,48 @@ auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
   return do_perm.C ? result.permute(perm.C.inv()) : result;
 }
 
+template <typename TensorA, typename TensorB, typename Annot,
+          typename = std::enable_if_t<is_tensor_v<TensorA, TensorB> &&
+                                      is_annotation_v<Annot>>>
+auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
+                     Annot const& aB, Annot const& aC) {
+  using ::Einsum::index::Permutation;
+  using ::Einsum::index::permutation;
+  using Indices = ::Einsum::index::Index<typename Annot::value_type>;
+
+  struct {
+    Permutation  //
+        AB,      // permutes A to B
+        AC,      // permutes A to C
+        BC;      // permutes B to C
+  } const perm{permutation(Indices{aA}, Indices{aB}),
+               permutation(Indices{aA}, Indices{aC}),
+               permutation(Indices{aB}, Indices{aC})};
+
+  struct {
+    bool no_perm, perm_to_c, perm_a, perm_b;
+  } do_this{perm.AB.is_identity() && perm.AC.is_identity() &&
+                perm.BC.is_identity(),  //
+            perm.AB.is_identity(),      //
+            perm.AC.is_identity()};
+
+  if (do_this.no_perm) {
+    return A.mult(B);
+  } else if (do_this.perm_to_c) {
+    return A.mult(B, perm.AC);
+  } else if (do_this.perm_a) {
+    auto pA = A.permute(perm.AC);
+    return pA.mult(B);
+  } else if (do_this.perm_b) {
+    auto pB = B.permute(perm.BC);
+    return A.mult(pB);
+  } else {
+    auto pA = A.permute(perm.AC);
+    auto pB = B.permute(perm.BC);
+    return pA.mult(pB);
+  }
+}
+
 }  // namespace detail
 }  // namespace TiledArray
 
