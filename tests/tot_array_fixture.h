@@ -99,7 +99,7 @@ auto random_tensor(TA::Range const& rng) {
   using NumericT = typename TensorT::numeric_type;
   std::generate(/*std::execution::par, */
                 result.begin(), result.end(),
-                TA::detail::MakeRandom<NumericT>::generate_value);
+                TA::detail::MakeRandom<char>::generate_value);
   return result;
 }
 
