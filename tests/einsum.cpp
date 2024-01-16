@@ -887,13 +887,14 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ijk_mo_times_ijk_no) {
         auto j = res_ix[1];
 
         InnerT mn{ref_inner_rng};
+        std::fill(mn.begin(), mn.end(), typename InnerT::value_type{0});
         for (Ix k = 0; k < K; ++k) {
           auto lhs_tile =
               lhs.find_local(lhs.trange().element_to_tile({i, j, k}))
                   .get(/*dowork = */ false);
           auto rhs_tile =
               rhs.find_local(rhs.trange().element_to_tile({i, j, k}))
-                  .get(/*doworkd = */ false);
+                  .get(/*dowork = */ false);
           mn.add_to(tensor_contract("mo,no->mn", lhs_tile({i, j, k}),
                                     rhs_tile({i, j, k})));
         }
@@ -913,14 +914,6 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ijk_mo_times_ijk_no) {
 
   auto out = einsum(lhs("i,j,k;m,o"), rhs("i,j,k;n,o"), "i,j;m,n");
   bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(ref, out);
-
-  world.gop.fence();
-  std::cout << "ij_mn_eq_ijk_mo_times_ijk_no\n";
-  std::cout << "LHS:\n"
-            << lhs << "\nRHS:\n"
-            << rhs << "\nOut:\n"
-            << out << "\nRef:\n"
-            << ref << std::endl;
 
   BOOST_CHECK(are_equal);
 }
