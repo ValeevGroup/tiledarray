@@ -333,7 +333,7 @@ class Permutation {
   /// Checks if this permutation is the identity permutation.
   ///
   [[nodiscard]] bool is_identity() const {
-    std::is_sorted(p_.begin(), p_.end());
+    return std::is_sorted(p_.begin(), p_.end());
   }
 
   /// Identity permutation factory function
