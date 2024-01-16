@@ -914,9 +914,14 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ijk_mo_times_ijk_no) {
   auto out = einsum(lhs("i,j,k;m,o"), rhs("i,j,k;n,o"), "i,j;m,n");
   bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(ref, out);
 
-  std::cout << "LHS:\n" << lhs << "\nRHS:\n" << rhs << "\n";
+  world.gop.fence();
+  std::cout << "ij_mn_eq_ijk_mo_times_ijk_no\n";
+  std::cout << "LHS:\n"
+            << lhs << "\nRHS:\n"
+            << rhs << "\nOut:\n"
+            << out << "\nRef:\n"
+            << ref << std::endl;
 
-  // std::cout << "ref:\n" << ref << '\n' << "out:\n" << out << '\n';
   BOOST_CHECK(are_equal);
 }
 
