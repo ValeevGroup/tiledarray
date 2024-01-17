@@ -886,8 +886,7 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ijk_mo_times_ijk_no) {
         auto i = res_ix[0];
         auto j = res_ix[1];
 
-        InnerT mn{ref_inner_rng};
-        std::fill(mn.begin(), mn.end(), typename InnerT::value_type{0});
+        InnerT mn;
         for (Ix k = 0; k < K; ++k) {
           auto lhs_tile =
               lhs.find_local(lhs.trange().element_to_tile({i, j, k}))
