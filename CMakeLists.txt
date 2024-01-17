@@ -328,10 +328,9 @@ if (ENABLE_WFN91_LINALG_DISCOVERY_KIT)
   include(FetchWfn91LinAlgModules)
   include(FindLinalg)
 endif(ENABLE_WFN91_LINALG_DISCOVERY_KIT)
-# BTAS does a better job of building and checking Boost since it uses Boost::serialization
-# it also memorized the location of its config for use from install tree
+# Boost is to be discovered by the top cmake project, and every (sub)project needs to make sure it has all of its targets
+include(external/boost.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBTAS.cmake)
-include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBoost.cmake)
 if(ENABLE_SCALAPACK)
   include(external/scalapackpp.cmake)
 endif()
