@@ -1687,11 +1687,6 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor& add_to(const Right& right) {
-    if (empty()) {
-      *this = Tensor{right.range()};
-      if constexpr (detail::is_numeric_v<value_type>)
-        std::fill(begin(), end(), value_type{0});
-    }
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right> r) { l += r; });
   }
