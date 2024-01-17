@@ -95,17 +95,12 @@ enum class ShapeComp { True, False };
 template <typename TensorT,
           std::enable_if_t<TA::detail::is_tensor_v<TensorT>, bool> = true>
 auto random_tensor(TA::Range const& rng) {
-  using Ix1 = typename TA::Range::index1_type;
-  using Num = typename TensorT::numeric_type;
-  TensorT result{rng};
   using NumericT = typename TensorT::numeric_type;
-  for (auto const& ix : rng) {
-    result(ix) =
-        static_cast<Num>(std::accumulate(ix.begin(), ix.end(), Ix1{0}));
-  }
-  //  std::generate(/*std::execution::par, */
-  //                result.begin(), result.end(),
-  //                TA::detail::MakeRandom<char>::generate_value);
+  TensorT result{rng};
+
+  std::generate(/*std::execution::par, */
+                result.begin(), result.end(),
+                TA::detail::MakeRandom<NumericT>::generate_value);
   return result;
 }
 
@@ -118,21 +113,12 @@ template <
     std::enable_if_t<TA::detail::is_tensor_of_tensor_v<TensorT>, bool> = true>
 auto random_tensor(TA::Range const& outer_rng, TA::Range const& inner_rng) {
   using InnerTensorT = typename TensorT::value_type;
-  using Num = typename TensorT::numeric_type;
-  using Ix1 = typename TA::Range::index1_type;
   TensorT result{outer_rng};
 
-  for (auto const& ix : outer_rng) {
-    auto inner = random_tensor<InnerTensorT>(inner_rng);
-    auto plus = std::accumulate(ix.begin(), ix.end(), Ix1{0});
-    inner.add_to(static_cast<Num>(plus));
-    result(ix) = inner;
-  }
-
-  //  std::generate(/*std::execution::par,*/
-  //                result.begin(), result.end(), [inner_rng]() {
-  //                  return random_tensor<InnerTensorT>(inner_rng);
-  //                });
+  std::generate(/*std::execution::par,*/
+                result.begin(), result.end(), [inner_rng]() {
+                  return random_tensor<InnerTensorT>(inner_rng);
+                });
 
   return result;
 }
