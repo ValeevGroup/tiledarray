@@ -354,12 +354,12 @@ class TiledRange1 {
       if (!elem2tile_) {
         // initialize elem2tile map
         auto e2t =
-#if __cplusplus >= 202002L
-            std::make_shared<index1_type[]>(n);
-#else
+            // #if __cplusplus >= 202002L  ... still broken in Xcode 14
+            //             std::make_shared<index1_type[]>(n);
+            // #else
             std::shared_ptr<index1_type[]>(
                 new index1_type[n], [](index1_type* ptr) { delete[] ptr; });
-#endif
+        // #endif
         const auto end = extent(range_);
         for (index1_type t = 0; t < end; ++t)
           for (index1_type e = tiles_ranges_[t].first;
