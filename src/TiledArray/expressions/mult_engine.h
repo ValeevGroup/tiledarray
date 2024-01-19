@@ -299,7 +299,6 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     // the tile op; the type of the tile op does not need to match the type of
     // the operation on the outer indices
     if (this->product_type() == TensorProduct::Hadamard) {
-      // assumes inner op is also Hadamard
       BinaryEngine_::perm_indices(target_indices);
     } else {
       auto children_initialized = true;

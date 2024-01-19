@@ -797,8 +797,8 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ij_mo_times_ji_on) {
   using Array = TA::DistArray<TA::Tensor<TA::Tensor<int>>, TA::DensePolicy>;
   using Perm = TA::Permutation;
 
-  TA::TiledRange lhs_trng{{0, 2, 3}, {0, 2, 4}};
-  TA::TiledRange rhs_trng{{0, 2, 4}, {0, 2, 3}};
+  TA::TiledRange lhs_trng{{0, 2, 3}, {0, 1}};
+  TA::TiledRange rhs_trng{{0, 1}, {0, 2, 3}};
   TA::Range lhs_inner_rng{1, 1};
   TA::Range rhs_inner_rng{1, 1};
 

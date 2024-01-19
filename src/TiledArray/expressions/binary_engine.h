@@ -150,43 +150,34 @@ class BinaryEngine : public ExprEngine<Derived> {
         !left_tile_is_tot && !right_tile_is_tot;
     constexpr bool args_are_mixed_tensors =
         left_tile_is_tot ^ right_tile_is_tot;
-    if (args_are_plain_tensors &&
-        (left_outer_permtype_ == PermutationType::matrix_transpose ||
-         left_outer_permtype_ == PermutationType::identity)) {
-      left_.permute_tiles(false);
+    // permute_tiles() denotes what happens to outer OR inner modes
+    // if we have contraction happening to BOTH inner and outer modes, no need
+    // to involve permutation, can fuse it into GEMMs
+    if (left_tile_is_tot) {
+      if ((left_outer_permtype_ == PermutationType::matrix_transpose ||
+           left_outer_permtype_ == PermutationType::identity) &&
+          (left_inner_permtype_ == PermutationType::matrix_transpose ||
+           left_inner_permtype_ == PermutationType::identity)) {
+        left_.permute_tiles(false);
+      }
+    } else {  // !left_tile_is_tot
+      if (left_outer_permtype_ == PermutationType::matrix_transpose ||
+          left_outer_permtype_ == PermutationType::identity) {
+        left_.permute_tiles(false);
+      }
     }
-    if (!args_are_plain_tensors &&
-        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
-          left_outer_permtype_ == PermutationType::identity) ||
-         (left_inner_permtype_ == PermutationType::matrix_transpose ||
-          left_inner_permtype_ == PermutationType::identity))) {
-      left_.permute_tiles(false);
-    }
-    if (args_are_plain_tensors &&
-        (right_outer_permtype_ == PermutationType::matrix_transpose ||
-         right_outer_permtype_ == PermutationType::identity)) {
-      right_.permute_tiles(false);
-    }
-    if (!args_are_plain_tensors &&
-        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
-          left_outer_permtype_ == PermutationType::identity) ||
-         (right_inner_permtype_ == PermutationType::matrix_transpose ||
-          right_inner_permtype_ == PermutationType::identity))) {
-      right_.permute_tiles(false);
-    }
-    if (args_are_mixed_tensors &&
-        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
-          left_outer_permtype_ == PermutationType::identity) ||
-         (left_inner_permtype_ == PermutationType::matrix_transpose ||
-          left_inner_permtype_ == PermutationType::identity))) {
-      left_.permute_tiles(false);
-    }
-    if (args_are_mixed_tensors &&
-        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
-          left_outer_permtype_ == PermutationType::identity) ||
-         (right_inner_permtype_ == PermutationType::matrix_transpose ||
-          right_inner_permtype_ == PermutationType::identity))) {
-      right_.permute_tiles(false);
+    if (right_tile_is_tot) {
+      if ((right_outer_permtype_ == PermutationType::matrix_transpose ||
+           right_outer_permtype_ == PermutationType::identity) &&
+          (right_inner_permtype_ == PermutationType::matrix_transpose ||
+           right_inner_permtype_ == PermutationType::identity)) {
+        right_.permute_tiles(false);
+      }
+    } else {  // !right_tile_is_tot
+      if (right_outer_permtype_ == PermutationType::matrix_transpose ||
+          right_outer_permtype_ == PermutationType::identity) {
+        right_.permute_tiles(false);
+      }
     }
   }
 
@@ -204,10 +195,12 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// \param target_indices The target index list for this expression
   void perm_indices(const BipartiteIndexList& target_indices) {
     if (permute_tiles_) {
-      TA_ASSERT(left_.indices().size() == target_indices.size() ||
-                (left_.indices().second().size() ^ target_indices.second().size()));
-      TA_ASSERT(right_.indices().size() == target_indices.size() ||
-                (right_.indices().second().size() ^ target_indices.second().size()));
+      TA_ASSERT(
+          left_.indices().size() == target_indices.size() ||
+          (left_.indices().second().size() ^ target_indices.second().size()));
+      TA_ASSERT(
+          right_.indices().size() == target_indices.size() ||
+          (right_.indices().second().size() ^ target_indices.second().size()));
 
       init_indices_<TensorProduct::Hadamard>(target_indices);
 
