@@ -17,6 +17,7 @@
 #endif
 
 #include <cerrno>
+#include <csignal>
 #include <cstdlib>
 
 namespace TiledArray {
@@ -187,7 +188,17 @@ TiledArray::detail::Finalizer::~Finalizer() noexcept {
 
 TiledArray::detail::Finalizer TiledArray::scoped_finalizer() { return {}; }
 
-void TiledArray::ta_abort() { SafeMPI::COMM_WORLD.Abort(); }
+void TiledArray::ta_abort() {
+  // if have a custom signal handler for SIGABRT (i.e. we are running under a
+  // debugger) then call abort()
+  struct sigaction sa;
+  auto rc = sigaction(SIGABRT, NULL, &sa);
+  if (rc == 0 && sa.sa_handler != SIG_DFL) {
+    abort();
+  } else {
+    SafeMPI::COMM_WORLD.Abort();
+  }
+}
 
 void TiledArray::ta_abort(const std::string& m) {
   std::cerr << m << std::endl;

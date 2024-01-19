@@ -329,7 +329,7 @@ add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
 
   target_link_libraries(${targetname} PUBLIC ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
   target_link_libraries(${targetname} PUBLIC MADworld)
-  target_link_libraries(${targetname} PUBLIC Boost::boost)
+  target_link_libraries(${targetname} PUBLIC Boost::headers)
 
   # build all external deps before building tiledarray
   add_dependencies(${targetname} External-tiledarray)

@@ -12,11 +12,17 @@ set(TILEDARRAY_EXT_VERSION "@TILEDARRAY_EXT_VERSION@")
 
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+
 # Include library IMPORT targets
+
+@Boost_CONFIG_FILE_CONTENTS@
+
 if (NOT TARGET BTAS::BTAS)
   get_filename_component(BTAS_DIR "@BTAS_CONFIG@" DIRECTORY)
-  find_package(BTAS 1.0.0 QUIET CONFIG REQUIRED HINTS "${BTAS_DIR}")
+  find_dependency(BTAS 1.0.0 QUIET CONFIG REQUIRED HINTS "${BTAS_DIR}")
 endif()
+
 if(NOT TARGET MADworld)
   # if madness installed separately, use the madness install discovered when configuring TA
   set(MADNESS_CONFIG_DIR "@MADNESS_CONFIG_DIR@")
@@ -38,7 +44,7 @@ set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
 if(TILEDARRAY_HAS_CUDA)
   cmake_minimum_required(VERSION 3.17)
   if (NOT TARGET CUDA::cublas)
-    find_package(CUDAToolkit REQUIRED COMPONENTS cublas nvToolsExt)
+    find_dependency(CUDAToolkit REQUIRED COMPONENTS cublas nvToolsExt)
   endif(NOT TARGET CUDA::cublas)
   set(CMAKE_CUDA_HOST_COMPILER "@CMAKE_CUDA_HOST_COMPILER@")
   # workaround from https://gitlab.kitware.com/cmake/cmake/issues/18614#note_485631
