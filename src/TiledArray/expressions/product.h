@@ -73,8 +73,10 @@ inline TensorProduct compute_product_type(const IndexList& left_indices,
                                           const IndexList& right_indices,
                                           const IndexList& target_indices) {
   auto result = compute_product_type(left_indices, right_indices);
-  if (result == TensorProduct::Hadamard)
+  if (result == TensorProduct::Hadamard) {
     TA_ASSERT(left_indices.is_permutation(target_indices));
+    TA_ASSERT(right_indices.is_permutation(target_indices));
+  }
   return result;
 }
 

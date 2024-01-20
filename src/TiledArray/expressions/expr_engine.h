@@ -54,6 +54,8 @@ class ExprEngine : private NO_DEFAULTS {
       typename EngineTrait<Derived>::op_type op_type;  ///< Tile operation type
   typedef
       typename EngineTrait<Derived>::policy policy;  ///< The result policy type
+  typedef typename EngineTrait<Derived>::eval_type
+      eval_type;  ///< Evaluation tile type
   typedef typename EngineTrait<Derived>::dist_eval_type
       dist_eval_type;  ///< This expression's distributed evaluator type
 
@@ -74,9 +76,12 @@ class ExprEngine : private NO_DEFAULTS {
   BipartiteIndexList
       indices_;  ///< The index list of this expression; bipartite due to need
                  ///< to support nested tensors (e.g. tensors of tensors)
-  bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
-                        ///< tile)
-  /// The permutation that will be applied to the outer tensor of tensors
+  bool implicit_permute_outer_ = false;  ///< If false, result tiles' outer
+                                         ///< modes will not need to be permuted
+  bool implicit_permute_inner_ = false;  ///< If false, result tiles' inner
+                                         ///< modes will not need to be permuted
+  /// The permutation that will be applied to the result tensor (or tensor of
+  /// tensors)
   BipartitePermutation perm_;
   trange_type trange_;  ///< The tiled range of the result tensor
   shape_type shape_;    ///< The shape of the result tensor
@@ -93,7 +98,6 @@ class ExprEngine : private NO_DEFAULTS {
   ExprEngine(const Expr<D>& expr)
       : world_(NULL),
         indices_(),
-        permute_tiles_(true),
         perm_(),
         trange_(),
         shape_(),
@@ -141,7 +145,7 @@ class ExprEngine : private NO_DEFAULTS {
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor. These members are initialized with the
-  /// <tt>make_perm()</tt>, \c make_trange(), and make_shape() functions.
+  /// \c init_perm(), \c make_trange(), and make_shape() functions.
   /// Derived classes may customize the structure initialization by
   /// providing their own implementation of this function or any of the
   /// above initialization.
@@ -149,7 +153,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
     if (target_indices != indices_) {
-      perm_ = derived().make_perm(target_indices);
+      if (!perm_) perm_ = make_perm(target_indices);
       trange_ = derived().make_trange(outer(perm_));
       shape_ = derived().make_shape(outer(perm_));
     } else {
@@ -187,20 +191,41 @@ class ExprEngine : private NO_DEFAULTS {
   /// providing their own implementation it.
   BipartitePermutation make_perm(
       const BipartiteIndexList& target_indices) const {
+    TA_ASSERT(target_indices != indices_);
     return target_indices.permutation(indices_);
+  }
+
+  void init_perm(const BipartiteIndexList& target_indices) {
+    if (!perm_ && target_indices != indices_) perm_ = make_perm(target_indices);
   }
 
   /// Tile operation factory function
 
   /// This function will generate the tile operations by calling
   /// \c make_tile_op(). The permuting or non-permuting version of the tile
-  /// operation will be selected based on permute_tiles(). Derived classes
-  /// may customize this function by providing their own implementation it.
+  /// operation will be selected based on implicit_permute_outer(). Derived
+  /// classes may customize this function by providing their own implementation
+  /// it.
   op_type make_op() const {
-    if (perm_ && permute_tiles_)
-      // permutation can only be applied to the tile, not to its element (if
-      // tile = tensor-of-tensors)
-      return derived().make_tile_op(perm_);
+    // figure out which permutations (of outer or inner modes) must be enacted
+    // explicitly
+    BipartitePermutation explicit_perm;
+    if (implicit_permute_outer_) {
+      if (!implicit_permute_inner_) {
+        explicit_perm = BipartitePermutation(Permutation{}, inner(perm_));
+      }
+    } else {
+      if (implicit_permute_inner_) {
+        explicit_perm = BipartitePermutation(outer(perm_), Permutation{});
+      } else {
+        explicit_perm = perm_;
+      }
+    }
+    const bool explicit_perm_is_nontrivial =
+        !(explicit_perm.first().is_identity() &&
+          explicit_perm.second().is_identity());
+    if (explicit_perm && explicit_perm_is_nontrivial)
+      return derived().make_tile_op(explicit_perm);
     else
       return derived().make_tile_op();
   }
@@ -243,11 +268,45 @@ class ExprEngine : private NO_DEFAULTS {
   /// \return A const reference to the process map
   const std::shared_ptr<const pmap_interface>& pmap() const { return pmap_; }
 
-  /// Set the permute tiles flag
+  /// Set the flag that controls whether tiles' permutation will be implicit
 
-  /// \param status The new status for permute tiles (true == permute result
-  /// tiles)
-  void permute_tiles(const bool status) { permute_tiles_ = status; }
+  /// some consuming operations (like GEMM) permutation can perform some
+  /// permutation types implicitly. setting this to true indicates that the
+  /// result tiles' outer modes do not need to be permuted and permutation will
+  /// be performed implicitly by the consuming operation \param status The new
+  /// value for the implicit permute flag (true => will not permute outer modes
+  /// of result tiles; false => will permute outer modes of result tiles if
+  /// needed) \note for plain tensors, i.e., tensor-of-scalars, any mode is
+  /// outer
+  void implicit_permute_outer(const bool status) {
+    implicit_permute_outer_ = status;
+  }
+
+  /// Set the flag that controls whether tiles' permutation will be implicit
+
+  /// some consuming operations (like GEMM) permutation can perform some
+  /// permutation types implicitly. setting this to true indicates that the
+  /// result tiles' inner modes do not need to be permuted and permutation will
+  /// be performed implicitly by the consuming operation \param status The new
+  /// value for the implicit permute flag (true => will not permute inner modes
+  /// of result tiles; false => will permute inner modes of result tiles if
+  /// needed) \note for plain tensors, i.e., tensor-of-scalars, there are no
+  /// inner modes and this should not be used
+  void implicit_permute_inner(const bool status) {
+    TA_ASSERT(TiledArray::detail::is_tensor_of_tensor_v<eval_type>);
+    implicit_permute_inner_ = status;
+  }
+
+  /// Reports whether permutation of the result tiles will be implicit, i.e.
+  /// will be fused into the consuming operation
+
+  /// \return true if will not permute of result tiles; false will indicate that
+  /// the  result tiles will be permuted if needed
+  bool implicit_permute() const {
+    constexpr bool is_tot =
+        TiledArray::detail::is_tensor_of_tensor_v<eval_type>;
+    return (implicit_permute_outer_ || (is_tot && implicit_permute_inner_));
+  }
 
   /// Expression print
 
@@ -255,9 +314,23 @@ class ExprEngine : private NO_DEFAULTS {
   /// \param target_indices The target index list for this expression
   void print(ExprOStream& os, const BipartiteIndexList& target_indices) const {
     if (perm_) {
-      os << "[P " << target_indices << "]"
-         << (permute_tiles_ ? " " : " [no permute tiles] ")
-         << derived().make_tag() << indices_ << "\n";
+      os << "[P " << target_indices << "]";
+      if (implicit_permute_outer_ || implicit_permute_inner_) {
+        os << " [implicit ";
+        constexpr bool is_tot =
+            TiledArray::detail::is_tensor_of_tensor_v<eval_type>;
+        if constexpr (is_tot) {
+          if (implicit_permute_outer_ && implicit_permute_inner_) {
+            os << "outer&inner ";
+          } else if (implicit_permute_outer_) {
+            os << "outer ";
+          } else
+            os << "inner ";
+        }
+        os << "permute ] ";
+      } else
+        os << " ";
+      os << derived().make_tag() << indices_ << "\n";
     } else {
       os << derived().make_tag() << indices_ << "\n";
     }

@@ -147,9 +147,10 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
 
  protected:
   // Import base class variables to this scope
+  using ExprEngine_::implicit_permute_inner_;
+  using ExprEngine_::implicit_permute_outer_;
   using ExprEngine_::indices_;
   using ExprEngine_::perm_;
-  using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
@@ -335,9 +336,10 @@ class BlkTsrEngine
   // Import base class variables to this scope
   using BlkTsrEngineBase_::lower_bound_;
   using BlkTsrEngineBase_::upper_bound_;
+  using ExprEngine_::implicit_permute_inner_;
+  using ExprEngine_::implicit_permute_outer_;
   using ExprEngine_::indices_;
   using ExprEngine_::perm_;
-  using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
@@ -478,9 +480,10 @@ class ScalBlkTsrEngine
   // Import base class variables to this scope
   using BlkTsrEngineBase_::lower_bound_;
   using BlkTsrEngineBase_::upper_bound_;
+  using ExprEngine_::implicit_permute_inner_;
+  using ExprEngine_::implicit_permute_outer_;
   using ExprEngine_::indices_;
   using ExprEngine_::perm_;
-  using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;

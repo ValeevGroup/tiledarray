@@ -334,6 +334,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    this->init_perm(target_indices);
+
+    // for ContEngine_::init_struct need to initialize element op first
     this->init_inner_tile_op(inner(target_indices));
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_struct(target_indices);
@@ -592,6 +595,9 @@ class ScalMultEngine
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    this->init_perm(target_indices);
+
+    // for ContEngine_::init_struct need to initialize element op first
     this->init_inner_tile_op(inner(target_indices));
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_struct(target_indices);
