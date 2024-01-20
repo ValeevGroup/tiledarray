@@ -613,10 +613,10 @@ class Range {
 
   /// Permuting copy constructor
 
-  /// \param perm The permutation applied to other
-  /// \param other The range to be permuted and copied
+  /// \param perm The permutation applied to other; if `!perm` then no
+  /// permutation is applied \param other The range to be permuted and copied
   Range(const Permutation& perm, const Range_& other) {
-    TA_ASSERT(perm.size() == other.rank_);
+    TA_ASSERT(perm.size() == other.rank_ || !perm);
 
     if (other.rank_ > 0ul) {
       rank_ = other.rank_;
@@ -1139,7 +1139,7 @@ class Range {
 
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& rank_;
+    ar & rank_;
     const auto four_x_rank = rank_ << 2;
     // read via madness::archive::wrap to be able to
     // - avoid having to serialize datavec_'s size
@@ -1151,7 +1151,7 @@ class Range {
       ar << madness::archive::wrap(datavec_.data(), four_x_rank);
     } else
       abort();  // unreachable
-    ar& offset_& volume_;
+    ar & offset_ & volume_;
   }
 
   void swap(Range_& other) {
