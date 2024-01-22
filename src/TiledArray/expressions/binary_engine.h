@@ -97,14 +97,14 @@ class BinaryEngine : public ExprEngine<Derived> {
   PermutationType right_inner_permtype_ =
       PermutationType::general;  ///< Right-hand permutation type
 
-  template <TensorProduct ProductType>
+  template <TensorProduct OuterProductType>
   void init_indices_(const BipartiteIndexList& target_indices = {}) {
-    static_assert(ProductType == TensorProduct::Contraction ||
-                  ProductType == TensorProduct::Hadamard);
+    static_assert(OuterProductType == TensorProduct::Contraction ||
+                  OuterProductType == TensorProduct::Hadamard);
     // prefer to permute the arg with fewest leaves to try to minimize the
     // number of possible permutations
     using permopt_type =
-        std::conditional_t<ProductType == TensorProduct::Contraction,
+        std::conditional_t<OuterProductType == TensorProduct::Contraction,
                            GEMMPermutationOptimizer,
                            HadamardPermutationOptimizer>;
 
