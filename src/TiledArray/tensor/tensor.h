@@ -397,7 +397,7 @@ class Tensor {
   /// \param perm The permutation that will be applied to the copy
   /// \warning if `T1` is a tensor of tensors its elements are _cloned_ rather
   ///          than copied to make the semantics of  this to be consistent
-  ///          between tensors of scalars and tensors of scalars; specifically,
+  ///          between tensors of scalars and tensors of tensors; specifically,
   ///          if `T1` is a tensor of scalars the constructed tensor is
   ///          is independent of \p other, thus should apply clone to inner
   ///          tensor nests to behave similarly for nested tensors
@@ -407,8 +407,14 @@ class Tensor {
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor(const T1& other, const Perm& perm)
       : Tensor(outer(perm) * other.range(), 1, default_construct{false}) {
-    detail::tensor_init(value_converter<typename T1::value_type>, outer(perm),
-                        *this, other);
+    const auto outer_perm = outer(perm);
+    if (outer_perm) {
+      detail::tensor_init(value_converter<typename T1::value_type>, outer_perm,
+                          *this, other);
+    } else {
+      detail::tensor_init(value_converter<typename T1::value_type>, *this,
+                          other);
+    }
 
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
@@ -419,7 +425,7 @@ class Tensor {
     // not match Tensor");
     if constexpr (is_tot && is_bperm) {
       if (inner_size(perm) != 0) {
-        auto inner_perm = inner(perm);
+        const auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
         for (auto& x : *this) x = p(x, inner_perm);
       }
@@ -1294,30 +1300,7 @@ class Tensor {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
     [[maybe_unused]] constexpr bool is_bperm =
         detail::is_bipartite_permutation_v<Perm>;
-    // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
-    if constexpr (!is_tot) {
-      if constexpr (is_bperm) {
-        TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
-        return Tensor(*this, outer(perm));
-      } else
-        return Tensor(*this, perm);
-    } else {
-      // If we have a ToT we need to apply the permutation in two steps. The
-      // first step is identical to the non-ToT case (permute the outer modes)
-      // the second step does the inner modes
-      Tensor rv(*this, outer(perm));
-      if constexpr (is_bperm) {
-        if (inner_size(perm) != 0) {
-          auto inner_perm = inner(perm);
-          Permute<value_type, value_type> p;
-          for (auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
-        }
-      }
-      return rv;
-    }
-    abort();  // unreachable
+    return Tensor(*this, perm);
   }
 
   /// Shift the lower and upper bound of this tensor
