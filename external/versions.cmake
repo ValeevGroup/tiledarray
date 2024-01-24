@@ -1,7 +1,7 @@
 # for each dependency track both current and previous id (the variable for the latter must contain PREVIOUS)
 # to be able to auto-update them
 
-set(TA_TRACKED_VGCMAKEKIT_TAG 8713beb71ff6b7d4b1c758e9e1c7d814bd97b0af)
+set(TA_TRACKED_VGCMAKEKIT_TAG 45e7d0d8d7f994a88c5af5fc082332db7bd0d6b3)
 
 # N.B. may need to update INSTALL.md manually with the CUDA-specific version
 set(TA_TRACKED_EIGEN_VERSION 3.3.5)
@@ -16,8 +16,8 @@ set(TA_TRACKED_MADNESS_PREVIOUS_TAG 39de6cb4d262b3df1f67b3c04a37a935564ca657)
 set(TA_TRACKED_MADNESS_VERSION 0.10.1)
 set(TA_TRACKED_MADNESS_PREVIOUS_VERSION 0.10.1)
 
-set(TA_TRACKED_BTAS_TAG 85eea7796651de1bcb4781b0081a352b32bf91d5)
-set(TA_TRACKED_BTAS_PREVIOUS_TAG bf0c376d5cdd6f668174b2a4c67b19634d1c0da7)
+set(TA_TRACKED_BTAS_TAG b2c18c797122b149eb088ae494dbd12f2f5ff81b)
+set(TA_TRACKED_BTAS_PREVIOUS_TAG 85eea7796651de1bcb4781b0081a352b32bf91d5)
 
 set(TA_TRACKED_LIBRETT_TAG 6eed30d4dd2a5aa58840fe895dcffd80be7fbece)
 set(TA_TRACKED_LIBRETT_PREVIOUS_TAG 354e0ccee54aeb2f191c3ce2c617ebf437e49d83)
