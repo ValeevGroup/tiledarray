@@ -8,6 +8,11 @@ set(required_components
         random            # TA, BTAS
         tuple             # TA
 )
+if (BUILD_TESTING)
+    list(APPEND required_components
+            test # TA
+    )
+endif()
 if (DEFINED Boost_REQUIRED_COMPONENTS)
     list(APPEND Boost_REQUIRED_COMPONENTS
             ${required_components})
