@@ -1,16 +1,16 @@
 # Boost can be discovered by every (sub)package but only the top package can *build* it ...
-# in either case must declare the components used by BTAS
+# in either case must declare the components used by TA
 set(required_components
-        headers           # TA, BTAS
-        algorithm         # TA
-        container         # TA, BTAS
-        iterator          # TA, BTAS
-        random            # TA, BTAS
-        tuple             # TA
+        headers
+        algorithm
+        container
+        iterator
+        random
+        tuple
 )
 if (BUILD_TESTING)
     list(APPEND required_components
-            test # TA
+            test
     )
 endif()
 if (DEFINED Boost_REQUIRED_COMPONENTS)
