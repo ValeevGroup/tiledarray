@@ -1256,10 +1256,11 @@ auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
 
   struct {
     bool no_perm, perm_to_c, perm_a, perm_b;
-  } do_this{perm.AB.is_identity() && perm.AC.is_identity() &&
-                perm.BC.is_identity(),  //
-            perm.AB.is_identity(),      //
-            perm.AC.is_identity()};
+  } const do_this{
+      perm.AB.is_identity() && perm.AC.is_identity() && perm.BC.is_identity(),
+      perm.AB.is_identity(),  //
+      perm.BC.is_identity(),  //
+      perm.AC.is_identity()};
 
   if (do_this.no_perm) {
     return A.mult(B);
@@ -1267,14 +1268,16 @@ auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
     return A.mult(B, perm.AC);
   } else if (do_this.perm_a) {
     auto pA = A.permute(perm.AC);
-    return pA.mult(B);
+    pA.mult_to(B);
+    return pA;
   } else if (do_this.perm_b) {
     auto pB = B.permute(perm.BC);
-    return A.mult(pB);
+    pB.mult_to(A);
+    return pB;
   } else {
     auto pA = A.permute(perm.AC);
-    auto pB = B.permute(perm.BC);
-    return pA.mult(pB);
+    return pA.mult_to(B.permute(perm.BC));
+    return pA;
   }
 }
 
