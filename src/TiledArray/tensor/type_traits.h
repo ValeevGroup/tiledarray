@@ -210,6 +210,25 @@ template <typename T1, typename T2, typename... Ts>
 constexpr const bool tensors_have_equal_nested_rank_v =
     tensors_have_equal_nested_rank<T1, T2, Ts...>::value;
 
+template <typename>
+constexpr size_t nested_rank = 0;
+
+template <typename T, typename... Ts>
+constexpr size_t nested_rank<TA::Tensor<T, Ts...>> = 1 + nested_rank<T>;
+
+template <typename T, typename P>
+constexpr size_t nested_rank<TA::DistArray<T, P>> = nested_rank<T>;
+
+template <typename...>
+constexpr size_t max_nested_rank = 0;
+
+template <typename T>
+constexpr size_t max_nested_rank<T> = nested_rank<T>;
+
+template <typename T, typename U, typename... Us>
+constexpr size_t max_nested_rank<T, U, Us...> =
+    std::max(nested_rank<T>, std::max(nested_rank<U>, max_nested_rank<Us...>));
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename Enabler = void>
