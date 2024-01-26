@@ -531,11 +531,40 @@ using expressions::einsum;
 template <typename T, typename P>
 auto einsum(const std::string &expr, const DistArray<T, P> &A,
             const DistArray<T, P> &B, World &world = get_default_world()) {
-  namespace string = ::Einsum::string;
-  auto [lhs, rhs] = string::split2(expr, "->");
-  auto [a, b] = string::split2(lhs, ",");
-  return einsum(A(string::join(a, ",")), B(string::join(b, ",")),
-                string::join(rhs, ","), world);
+  using ::Einsum::string::join;
+  using ::Einsum::string::split2;
+
+  struct {
+    std::string A, B, C;
+  } annot;
+
+  {
+    struct {
+      std::string A, B, C;
+    } outer;
+
+    struct {
+      std::string A, B, C;
+    } inner;
+
+    auto [ab, aC] = split2(expr, "->");
+    std::tie(outer.C, inner.C) = split2(aC, ";");
+
+    auto [aA, aB] = split2(ab, ",");
+    std::tie(outer.A, inner.A) = split2(aA, ";");
+    std::tie(outer.B, inner.B) = split2(aB, ";");
+
+    auto combine = [](auto const &outer, auto const &inner) {
+      return inner.empty() ? join(outer, ",")
+                           : (join(outer, ",") + ";" + join(inner, ","));
+    };
+
+    annot.A = combine(outer.A, inner.A);
+    annot.B = combine(outer.B, inner.B);
+    annot.C = combine(outer.C, inner.C);
+  }
+
+  return einsum(A(annot.A), B(annot.B), annot.C, world);
 }
 
 /// Computes ternary tensor product whose result
