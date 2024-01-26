@@ -25,6 +25,135 @@
 
 #include "TiledArray/expressions/contraction_helpers.h"
 
+BOOST_AUTO_TEST_SUITE(manual)
+
+template <typename ArrayA, typename ArrayB,
+          ShapeComp ShapeCompFlag = ShapeComp::False,
+          typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
+bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
+  auto ref = TA::einsum(annot, A, B);
+  auto out = manual_eval(annot, A, B);
+  return ToTArrayFixture::are_equal<ShapeCompFlag>(ref, out);
+}
+
+template <typename Array, ShapeComp ShapeCompFlag = ShapeComp::False>
+bool check_manual_eval(
+    std::string const& annot,
+    std::initializer_list<std::initializer_list<size_t>> trangeA,
+    std::initializer_list<std::initializer_list<size_t>> trangeB) {
+  auto A = random_array<Array>(TA::TiledRange(trangeA));
+  auto B = random_array<Array>(TA::TiledRange(trangeB));
+  return check_manual_eval<Array, Array, ShapeCompFlag>(annot, A, B);
+}
+
+template <typename ArrayA, typename ArrayB,
+          ShapeComp ShapeCompFlag = ShapeComp::False>
+bool check_manual_eval(
+    std::string const& annot,
+    std::initializer_list<std::initializer_list<size_t>> trangeA,
+    std::initializer_list<std::initializer_list<size_t>> trangeB,
+    std::initializer_list<size_t> inner_extents) {
+  if constexpr (TA::detail::is_tensor_of_tensor_v<typename ArrayA::value_type>)
+    return check_manual_eval<ArrayA, ArrayB, ShapeCompFlag>(
+        annot, random_array<ArrayA>(trangeA, inner_extents),
+        random_array<ArrayB>(trangeB));
+  else
+    return check_manual_eval<ArrayA, ArrayB, ShapeCompFlag>(
+        annot, random_array<ArrayA>(trangeA),
+        random_array<ArrayB>(trangeB, inner_extents));
+}
+
+template <typename Array, ShapeComp ShapeCompFlag = ShapeComp::False>
+bool check_manual_eval(
+    std::string const& annot,
+    std::initializer_list<std::initializer_list<size_t>> trangeA,
+    std::initializer_list<std::initializer_list<size_t>> trangeB,
+    std::initializer_list<size_t> inner_extentsA,
+    std::initializer_list<size_t> inner_extentsB) {
+  return check_manual_eval<Array, Array, ShapeCompFlag>(
+      annot, random_array<Array>(trangeA, inner_extentsA),
+      random_array<Array>(trangeB, inner_extentsB));
+}
+
+BOOST_AUTO_TEST_CASE(manual_contract) {
+  using Array = TA::Array<int>;
+
+  BOOST_REQUIRE(check_manual_eval<Array>("ij,j->i",
+                                         {{0, 2, 4}, {0, 4, 8}},  // A's trange
+                                         {{0, 4, 8}}              // B's trange
+                                         ));
+  BOOST_REQUIRE(check_manual_eval<Array>("ik,jk->ji",
+                                         {{0, 2, 4}, {0, 4, 8}},  // A's trange
+                                         {{0, 3}, {0, 4, 8}}      // B's trange
+                                         ));
+
+  BOOST_REQUIRE(check_manual_eval<Array>(
+      "ijkl,jm->lkmi",                      //
+      {{0, 2}, {0, 4, 8}, {0, 3}, {0, 7}},  //
+      {{0, 4, 8}, {0, 5}}                   //
+      ));
+}
+
+BOOST_AUTO_TEST_CASE(manual_hadamard) {
+  using Array = TA::Array<int>;
+  BOOST_REQUIRE(check_manual_eval<Array>("i,i->i",  //
+                                         {{0, 1}},  //
+                                         {{0, 1}}   //
+                                         ));
+  BOOST_REQUIRE(check_manual_eval<Array>("i,i->i",     //
+                                         {{0, 2, 4}},  //
+                                         {{0, 2, 4}}   //
+                                         ));
+
+  BOOST_REQUIRE(check_manual_eval<Array>("ijk,kij->ikj",                  //
+                                         {{0, 2, 4}, {0, 2, 3}, {0, 5}},  //
+                                         {{0, 5}, {0, 2, 4}, {0, 2, 3}}   //
+                                         ));
+}
+
+BOOST_AUTO_TEST_CASE(manual_general) {
+  using Array = TA::Array<int>;
+  BOOST_REQUIRE(check_manual_eval<Array>("ijk,kil->ijl",                  //
+                                         {{0, 2}, {0, 3, 5}, {0, 2, 4}},  //
+                                         {{0, 2, 4}, {0, 2}, {0, 1}}      //
+                                         ));
+
+  using Array = TA::Array<int>;
+  using Tensor = typename Array::value_type;
+  using namespace std::string_literals;
+
+  Tensor A(TA::Range{2, 3}, {1, 2, 3, 4, 5, 6});
+  Tensor B(TA::Range{2}, {2, 10});
+  Tensor C(TA::Range{2, 3}, {2, 4, 6, 40, 50, 60});
+  BOOST_REQUIRE(C == general_product(A, B, ProductSetup("ij"s, "i"s, "ij"s)));
+}
+
+BOOST_AUTO_TEST_CASE(manual_nested_ranks) {
+  using ArrayT = TA::DistArray<TA::Tensor<int>>;
+  using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;
+
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mn,ji;nm->ij;mn",  //
+                                            {{0, 2, 4}, {0, 3}},   //
+                                            {{0, 3}, {0, 2, 4}},   //
+                                            {5, 7},                //
+                                            {7, 5}                 //
+                                            ));
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mo,ji;on->ij;mn",  //
+                                            {{0, 2, 4}, {0, 3}},   //
+                                            {{0, 3}, {0, 2, 4}},   //
+                                            {3, 7},                //
+                                            {7, 4}                 //
+                                            ));
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mo,ji;o->ij;m",   //
+                                            {{0, 2, 4}, {0, 3}},  //
+                                            {{0, 3}, {0, 2, 4}},  //
+                                            {3, 7},               //
+                                            {7}                   //
+                                            ));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
