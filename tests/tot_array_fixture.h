@@ -448,9 +448,11 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
                                    TileA, TileB>;
   TA_ASSERT(setup.valid());
 
+  auto& world = TA::get_default_world();
+
   A.make_replicated();
   B.make_replicated();
-  TA::get_default_world().gop.fence();
+  world.gop.fence();
 
   TA::Tensor<TileA> tensorA{A.trange().tiles_range()};
   for (auto&& ix : tensorA.range()) tensorA(ix) = A.find_local(ix).get(false);
@@ -485,9 +487,9 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
   }
 
   using TileC = typename decltype(result_tensor)::value_type;
-  TA::DistArray<TileC, TA::DensePolicy> C(TA::get_default_world(),
-                                          result_trange);
+  TA::DistArray<TileC, TA::DensePolicy> C(world, result_trange);
   C.make_replicated();
+  world.gop.fence();
   for (auto it : C) it = result_tensor(it.index());
   return C;
 }
