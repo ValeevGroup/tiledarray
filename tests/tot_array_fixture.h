@@ -104,6 +104,12 @@ auto random_tensor(TA::Range const& rng) {
   return result;
 }
 
+template <typename TensorT>
+auto random_tensor(std::initializer_list<size_t> const& extents) {
+  auto lobounds = TA::container::svector<size_t>(extents.size(), 0);
+  return random_tensor<TensorT>(TA::Range{lobounds, extents});
+}
+
 //
 // note: all the inner tensors (elements of the outer tensor)
 //       have the same @c inner_rng
@@ -121,6 +127,13 @@ auto random_tensor(TA::Range const& outer_rng, TA::Range const& inner_rng) {
                 });
 
   return result;
+}
+
+template <typename TensorT>
+auto random_tensor(TA::Range const& outer_rng,
+                   std::initializer_list<size_t> const& inner_extents) {
+  TA::container::svector<size_t> lobounds(inner_extents.size(), 0);
+  return random_tensor<TensorT>(outer_rng, TA::Range(lobounds, inner_extents));
 }
 
 ///
@@ -153,9 +166,6 @@ auto random_array(TA::TiledRange const& trange, Args const&... args) {
       (sizeof...(Args) == 1) &&
           (TA::detail::is_tensor_of_tensor_v<typename Array::value_type>));
 
-  if constexpr (sizeof...(Args) == 1)
-    static_assert(std::is_convertible_v<Args..., TA::Range>);
-
   using TensorT = typename Array::value_type;
   using PolicyT = typename Array::policy_type;
 
@@ -169,6 +179,13 @@ auto random_array(TA::TiledRange const& trange, Args const&... args) {
 
   return TA::make_array<Array>(TA::get_default_world(), trange,
                                make_tile_meta(args...));
+}
+
+template <typename Array, typename... Args>
+auto random_array(std::initializer_list<std::initializer_list<size_t>> trange,
+                  Args&&... args) {
+  return random_array<Array>(TA::TiledRange(trange),
+                             std::forward<Args>(args)...);
 }
 
 ///
@@ -188,6 +205,310 @@ auto tensor_contract(std::string const& einsum_annot, T const& A, T const& B) {
   auto [aA, aB] = split2(ab, ",");
 
   return TA::detail::tensor_contract(A, aA, B, aB, aC);
+}
+
+using PartialPerm = TA::container::svector<std::pair<size_t, size_t>>;
+
+template <typename T>
+PartialPerm partial_perm(::Einsum::index::Index<T> const& from,
+                         ::Einsum::index::Index<T> const& to) {
+  PartialPerm result;
+  for (auto i = 0; i < from.size(); ++i)
+    if (auto found = to.find(from[i]); found != to.end())
+      result.emplace_back(i, std::distance(to.begin(), found));
+  return result;
+}
+
+template <typename T, typename = std::enable_if_t<
+                          TA::detail::is_random_access_container_v<T>>>
+void apply_partial_perm(T& to, T const& from, PartialPerm const& p) {
+  for (auto [f, t] : p) {
+    TA_ASSERT(f < from.size() && t < to.size() && "Invalid permutation used");
+    to[t] = from[f];
+  }
+}
+
+///
+/// Example: To represent A("ik;ac") * B("kj;cb") -> C("ij;ab"),
+/// construct with std::string("ij;ac,kj;cb->ij;ab");
+/// outer_indices;inner_indices annotates a single object (DistArray, Tensor
+/// etc.) A_indices,B_indices annotates first(A) and second(B) object
+/// '->' separates argument objects' annotation from the result's annotation
+///
+class OuterInnerIndices {
+  // array[0] annotes A
+  // array[1] annotes B
+  // array[2] annotes C
+  std::array<std::string, 3> outer_, inner_;
+
+ public:
+  OuterInnerIndices(std::string const& annot) {
+    using ::Einsum::string::split2;
+
+    constexpr size_t A = 0;
+    constexpr size_t B = 1;
+    constexpr size_t C = 2;
+
+    auto [ab, aC] = split2(annot, "->");
+    std::tie(outer_[C], inner_[C]) = split2(aC, ";");
+
+    auto [aA, aB] = split2(ab, ",");
+
+    std::tie(outer_[A], inner_[A]) = split2(aA, ";");
+    std::tie(outer_[B], inner_[B]) = split2(aB, ";");
+  }
+
+  template <int N>
+  OuterInnerIndices(const char (&s)[N]) : OuterInnerIndices{std::string(s)} {}
+
+  [[nodiscard]] auto const& outer() const noexcept { return outer_; }
+  [[nodiscard]] auto const& inner() const noexcept { return inner_; }
+
+  [[nodiscard]] auto const& outerA() const noexcept { return outer_[0]; }
+  [[nodiscard]] auto const& outerB() const noexcept { return outer_[1]; }
+  [[nodiscard]] auto const& outerC() const noexcept { return outer_[2]; }
+  [[nodiscard]] auto const& innerA() const noexcept { return inner_[0]; }
+  [[nodiscard]] auto const& innerB() const noexcept { return inner_[1]; }
+  [[nodiscard]] auto const& innerC() const noexcept { return inner_[2]; }
+};
+
+struct ProductSetup {
+  TA::expressions::TensorProduct product_type{
+      TA::expressions::TensorProduct::Invalid};
+
+  PartialPerm
+      // {<k,v>} index at kth position in C appears at vth position in A
+      // and so on...
+      C_to_A,
+      C_to_B,
+      I_to_A,  // 'I' implies for contracted indices
+      I_to_B;
+  size_t       //
+      rank_A,  //
+      rank_B,
+      rank_C,  //
+      rank_H,
+      rank_E,  //
+      rank_I;
+
+  ProductSetup() = default;
+
+  template <typename T,
+            typename = std::enable_if_t<TA::detail::is_annotation_v<T>>>
+  ProductSetup(T const& aA, T const& aB, T const& aC) {
+    using Indices = ::Einsum::index::Index<typename T::value_type>;
+
+    struct {
+      // A, B, C tensor indices
+      // H, E, I Hadamard, external, internal, and target indices
+      Indices A, B, C, H, E, I;
+    } const ixs{Indices{aA},     Indices{aB},
+                Indices{aC},     (ixs.A & ixs.B & ixs.C),
+                (ixs.A ^ ixs.B), ((ixs.A & ixs.B) - ixs.H)};
+
+    rank_A = ixs.A.size();
+    rank_B = ixs.B.size();
+    rank_C = ixs.C.size();
+    rank_H = ixs.H.size();
+    rank_E = ixs.E.size();
+    rank_I = ixs.I.size();
+
+    C_to_A = partial_perm(ixs.C, ixs.A);
+    C_to_B = partial_perm(ixs.C, ixs.B);
+    I_to_A = partial_perm(ixs.I, ixs.A);
+    I_to_B = partial_perm(ixs.I, ixs.B);
+
+    using TP = decltype(product_type);
+    if (!(ixs.E || ixs.H))
+      product_type = TP::Invalid;  // no target indices
+    else if (!(ixs.E || ixs.I))
+      product_type = TP::Hadamard;
+    else if (!ixs.H)
+      product_type = TP::Contraction;
+    else if (ixs.H && (ixs.E || ixs.I))
+      product_type = TP::General;
+  }
+
+  template <typename ArrayLike,
+            typename = std::enable_if_t<
+                TA::detail::is_annotation_v<typename ArrayLike::value_type>>>
+  ProductSetup(ArrayLike const& arr)
+      : ProductSetup(std::get<0>(arr), std::get<1>(arr), std::get<2>(arr)) {}
+
+  [[nodiscard]] bool valid() const noexcept {
+    return (rank_A + rank_B) != 0 && (rank_E + rank_H) != 0;
+  }
+};
+
+namespace {
+template <typename Tensor, typename... Args>
+inline auto general_product(Tensor const& t, typename Tensor::numeric_type s,
+                            Args&&...) {
+  return t * s;
+}
+
+template <typename Tensor, typename... Args>
+inline auto general_product(typename Tensor::numeric_type s, Tensor const& t,
+                            Args&&...) {
+  return s * t;
+}
+}  // namespace
+
+template <typename TensorA,                                     //
+          typename TensorB,                                     //
+          typename... Setups,                                   //
+          std::enable_if_t<                                     //
+              TA::detail::is_nested_tensor_v<TensorA, TensorB>  //
+                  && sizeof...(Setups) ==
+                         TA::detail::max_nested_rank<TensorA, TensorB> - 1,
+              bool> = true>
+auto general_product(TensorA const& A, TensorB const& B,
+                     ProductSetup const& setup, Setups const&... args) {
+  static_assert(std::is_same_v<typename TensorA::numeric_type,
+                               typename TensorB::numeric_type>);
+  using TensorC = std::conditional_t<(TA::detail::nested_rank<TensorA> >
+                                      TA::detail::nested_rank<TensorB>),
+                                     TensorA, TensorB>;
+  TA_ASSERT(setup.valid());
+
+  constexpr bool is_tot = TA::detail::max_nested_rank<TensorA, TensorB> > 1;
+
+  // creating the contracted TA::Range
+  TA::Range const rng_I = [&setup, &A, &B]() {
+    TA::container::svector<TA::Range1> rng1_I(setup.rank_I, TA::Range1{});
+    for (auto [f, t] : setup.I_to_A)
+      // I_to_A implies I[f] == A[t]
+      rng1_I[f] = A.range().dim(t);
+
+    return TA::Range(rng1_I);
+  }();
+
+  // creating the target (ie. C's) TA::Range.
+  TA::Range const rng_C = [&setup, &A, &B]() {
+    TA::container::svector<TA::Range1> rng1_C(setup.rank_C, TA::Range1{0, 0});
+    for (auto [f, t] : setup.C_to_A)
+      // C_to_A implies C[f] = A[t]
+      rng1_C[f] = A.range().dim(t);
+
+    for (auto [f, t] : setup.C_to_B)
+      // C_to_B implies C[f] = B[t]
+      rng1_C[f] = B.range().dim(t);
+
+    auto zero_r1 = [](TA::Range1 const& r) { return r == TA::Range1{0, 0}; };
+
+    TA_ASSERT(std::none_of(rng1_C.begin(), rng1_C.end(), zero_r1));
+
+    return TA::Range(rng1_C);
+  }();
+
+  TensorC C{rng_C};
+
+  // do the computation
+  for (auto ix_C : rng_C) {
+    // finding corresponding indices of A, and B.
+    TA::Range::index_type ix_A(setup.rank_A, 0), ix_B(setup.rank_B, 0);
+    apply_partial_perm(ix_A, ix_C, setup.C_to_A);
+    apply_partial_perm(ix_B, ix_C, setup.C_to_B);
+
+    if (setup.rank_I == 0)
+      if constexpr (is_tot)
+        C(ix_C) = general_product(A(ix_A), B(ix_B), args...);
+      else {
+        TA_ASSERT(!(ix_A.empty() && ix_B.empty()));
+        C(ix_C) = ix_A.empty()   ? B(ix_B)
+                  : ix_B.empty() ? A(ix_B)
+                                 : A(ix_A) * B(ix_B);
+      }
+
+    else {
+      typename TensorC::value_type temp{};
+      for (auto ix_I : rng_I) {
+        apply_partial_perm(ix_A, ix_I, setup.I_to_A);
+        apply_partial_perm(ix_B, ix_I, setup.I_to_B);
+        if constexpr (is_tot)
+          temp += general_product(A(ix_A), B(ix_B), args...);
+        else {
+          TA_ASSERT(!(ix_A.empty() || ix_B.empty()));
+          temp += A(ix_A) * B(ix_B);
+        }
+      }
+      C(ix_C) = temp;
+    }
+  }
+
+  return C;
+}
+
+template <typename TileA, typename TileB, typename... Setups>
+auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
+                     TA::DistArray<TileB, TA::DensePolicy> B,
+                     ProductSetup const& setup, Setups const&... args) {
+  using TileC = std::conditional_t<(TA::detail::nested_rank<TileA> >
+                                    TA::detail::nested_rank<TileB>),
+                                   TileA, TileB>;
+  TA_ASSERT(setup.valid());
+
+  A.make_replicated();
+  B.make_replicated();
+  TA::get_default_world().gop.fence();
+
+  TA::Tensor<TileA> tensorA{A.trange().tiles_range()};
+  for (auto&& ix : tensorA.range()) tensorA(ix) = A.find_local(ix).get(false);
+
+  TA::Tensor<TileB> tensorB{B.trange().tiles_range()};
+  for (auto&& ix : tensorB.range()) tensorB(ix) = B.find_local(ix).get(false);
+
+  auto result_tensor = general_product(tensorA, tensorB, setup, setup, args...);
+
+  TA::TiledRange result_trange;
+  {
+    auto const rank = result_tensor.range().rank();
+    auto const result_range = result_tensor.range();
+
+    TA::container::svector<TA::container::svector<size_t>> tr1s(rank, {0});
+
+    TA::container::svector<size_t> const ix_hi(result_range.upbound());
+    for (auto d = 0; d < rank; ++d) {
+      TA::container::svector<size_t> ix(result_range.lobound());
+      for (auto& i = ix[d]; i < ix_hi[d]; ++i) {
+        auto const& elem_tensor = result_tensor(ix);
+        auto& tr1 = tr1s[d];
+        tr1.emplace_back(tr1.back() + elem_tensor.range().extent(d));
+      }
+    }
+
+    TA::container::svector<TA::TiledRange1> tr1s_explicit;
+    tr1s_explicit.reserve(tr1s.size());
+    for (auto const& v : tr1s) tr1s_explicit.emplace_back(v.begin(), v.end());
+
+    result_trange = TA::TiledRange(tr1s_explicit);
+  }
+
+  using TileC = typename decltype(result_tensor)::value_type;
+  TA::DistArray<TileC, TA::DensePolicy> C(TA::get_default_world(),
+                                          result_trange);
+  C.make_replicated();
+  for (auto it : C) it = result_tensor(it.index());
+  return C;
+}
+
+template <typename ArrayA, typename ArrayB,
+          typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
+auto manual_eval(OuterInnerIndices const& oixs, ArrayA A, ArrayB B) {
+  constexpr auto mnr = TA::detail::max_nested_rank<ArrayA, ArrayB>;
+  static_assert(mnr == 1 || mnr == 2);
+
+  auto const outer_setup = ProductSetup(oixs.outer());
+
+  TA_ASSERT(outer_setup.valid());
+
+  if constexpr (mnr == 2) {
+    auto const inner_setup = ProductSetup(oixs.inner());
+    TA_ASSERT(inner_setup.valid());
+    return general_product(A, B, outer_setup, inner_setup);
+  } else {
+    return general_product(A, B, outer_setup);
+  }
 }
 
 #ifdef TILEDARRAY_HAS_BTAS
