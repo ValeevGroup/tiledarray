@@ -300,7 +300,7 @@ struct ProductSetup {
 
     struct {
       // A, B, C tensor indices
-      // H, E, I Hadamard, external, internal, and target indices
+      // H, E, I Hadamard, external, and internal indices
       Indices A, B, C, H, E, I;
     } const ixs{Indices{aA},     Indices{aB},
                 Indices{aC},     (ixs.A & ixs.B & ixs.C),
@@ -443,9 +443,6 @@ template <typename TileA, typename TileB, typename... Setups>
 auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
                      TA::DistArray<TileB, TA::DensePolicy> B,
                      ProductSetup const& setup, Setups const&... args) {
-  using TileC = std::conditional_t<(TA::detail::nested_rank<TileA> >
-                                    TA::detail::nested_rank<TileB>),
-                                   TileA, TileB>;
   TA_ASSERT(setup.valid());
 
   auto& world = TA::get_default_world();
