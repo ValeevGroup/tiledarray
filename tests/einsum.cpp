@@ -128,39 +128,135 @@ BOOST_AUTO_TEST_CASE(manual_general) {
   BOOST_REQUIRE(C == general_product(A, B, ProductSetup("ij"s, "i"s, "ij"s)));
 }
 
-BOOST_AUTO_TEST_CASE(manual_nested_ranks) {
-  using ArrayT = TA::DistArray<TA::Tensor<int>>;
+BOOST_AUTO_TEST_CASE(manual_equal_nested_ranks) {
   using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;
 
+  // H;H (Hadamard outer; Hadamard inner)
   BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mn,ji;nm->ij;mn",  //
                                             {{0, 2, 4}, {0, 3}},   //
                                             {{0, 3}, {0, 2, 4}},   //
                                             {5, 7},                //
                                             {7, 5}                 //
                                             ));
+
+  // H;C (Hadamard outer; contraction inner)
   BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mo,ji;on->ij;mn",  //
                                             {{0, 2, 4}, {0, 3}},   //
                                             {{0, 3}, {0, 2, 4}},   //
                                             {3, 7},                //
                                             {7, 4}                 //
                                             ));
+
+  // H;C
   BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mo,ji;o->ij;m",   //
                                             {{0, 2, 4}, {0, 3}},  //
                                             {{0, 3}, {0, 2, 4}},  //
                                             {3, 7},               //
                                             {7}                   //
                                             ));
+
+  // C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ik;mo,kj;on->ij;mn",    //
+                                            {{0, 3, 5}, {0, 2, 4}},  //
+                                            {{0, 2, 4}, {0, 2}},     //
+                                            {2, 2},                  //
+                                            {2, 2}));
+  // H+C;H
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;mn,ijk;nm->ij;mn",    //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {2, 2},                    //
+                                            {2, 2}));
+
+  // H+C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;mo,ijk;no->ij;nm",    //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {3, 2},                    //
+                                            {3, 2}));
+
+  // H+C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;m,ijk;n->ij;nm",      //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {3},                       //
+                                            {2}));
+  // H+C;H+C not supported
 }
 
-BOOST_AUTO_TEST_CASE(debug) {
+BOOST_AUTO_TEST_CASE(manual_different_nested_ranks) {
   using ArrayT = TA::DistArray<TA::Tensor<int>>;
   using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;
 
-  bool are_equal = check_manual_eval<ArrayToT, ArrayT>("ik;mn,jk->ij;mn",  //
-                                                       {{0, 2}, {0, 3}},   //
-                                                       {{0, 2}, {0, 3}},   //
-                                                       {2, 2});
-  BOOST_REQUIRE(are_equal);
+  // H
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;mn,ji->ji;nm",       //
+                                                     {{0, 2, 4}, {0, 3, 5}},  //
+                                                     {{0, 3, 5}, {0, 2, 4}},  //
+                                                     {2, 3})));
+
+  // H (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("ji,ij;mn->ji;nm",       //
+                                                     {{0, 3, 5}, {0, 2, 4}},  //
+                                                     {{0, 2, 4}, {0, 3, 5}},  //
+                                                     {2, 3})));
+
+  // H+C (outer product)
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;mn,ik->ijk;mn",  //
+                                                     {{0, 2}, {0, 1}},    //
+                                                     {{0, 2}, {0, 3}},    //
+                                                     {2, 3})));
+
+  // H+C (outer product) (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("ik,ij;mn->ijk;mn",  //
+                                                     {{0, 2}, {0, 3}},    //
+                                                     {{0, 2}, {0, 1}},    //
+                                                     {2, 3})));
+
+  // todo: bug fix in expression layer
+
+  // C (outer product)
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("i;mn,j->ij;nm",  //
+                                                     {{0, 2}},         //
+                                                     {{0, 3}},         //
+                                                     {1, 2})));
+
+  // C (outer product) (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("j,i;mn->ij;nm",  //
+                                                     {{0, 3}},         //
+                                                     {{0, 2}},         //
+                                                     {1, 2})));
+
+  // C
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;m,j->i;m",     //
+                                                     {{0, 2}, {0, 2}},  //
+                                                     {{0, 2}},          //
+                                                     {3})));
+
+  // C (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("j,ij;m->i;m",     //
+                                                     {{0, 2}},          //
+                                                     {{0, 2}, {0, 2}},  //
+                                                     {3})));
+
+  // C (outer product) (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("j,i;m->ij;m",  //
+                                                     {{0, 2}},       //
+                                                     {{0, 2}},       //
+                                                     {3})));
+
+  // H+C
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, ArrayT>("ik;mn,ijk->ij;nm",        //
+                                           {{0, 2}, {0, 3}},          //
+                                           {{0, 2}, {0, 2}, {0, 3}},  //
+                                           {2, 2})));
+
+  // H+C (reversed arguments)
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayT, ArrayToT>("ijk,ik;mn->ij;nm",        //
+                                           {{0, 2}, {0, 2}, {0, 3}},  //
+                                           {{0, 2}, {0, 3}},          //
+                                           {2, 2})));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
