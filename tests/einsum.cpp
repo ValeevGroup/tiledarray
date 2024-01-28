@@ -75,7 +75,7 @@ bool check_manual_eval(
       random_array<Array>(trangeB, inner_extentsB));
 }
 
-BOOST_AUTO_TEST_CASE(manual_contract) {
+BOOST_AUTO_TEST_CASE(contract) {
   using Array = TA::Array<int>;
 
   BOOST_REQUIRE(check_manual_eval<Array>("ij,j->i",
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(manual_contract) {
       ));
 }
 
-BOOST_AUTO_TEST_CASE(manual_hadamard) {
+BOOST_AUTO_TEST_CASE(hadamard) {
   using Array = TA::Array<int>;
   BOOST_REQUIRE(check_manual_eval<Array>("i,i->i",  //
                                          {{0, 1}},  //
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(manual_hadamard) {
                                          ));
 }
 
-BOOST_AUTO_TEST_CASE(manual_general) {
+BOOST_AUTO_TEST_CASE(general) {
   using Array = TA::Array<int>;
   BOOST_REQUIRE(check_manual_eval<Array>("ijk,kil->ijl",                  //
                                          {{0, 2}, {0, 3, 5}, {0, 2, 4}},  //
@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE(manual_general) {
   BOOST_REQUIRE(C == general_product(A, B, ProductSetup("ij"s, "i"s, "ij"s)));
 }
 
-BOOST_AUTO_TEST_CASE(manual_equal_nested_ranks) {
+BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
   using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;
 
   // H;H (Hadamard outer; Hadamard inner)
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE(manual_equal_nested_ranks) {
   // H+C;H+C not supported
 }
 
-BOOST_AUTO_TEST_CASE(manual_different_nested_ranks) {
+BOOST_AUTO_TEST_CASE(different_nested_ranks) {
   using ArrayT = TA::DistArray<TA::Tensor<int>>;
   using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;
 
