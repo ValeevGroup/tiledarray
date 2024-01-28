@@ -528,9 +528,9 @@ namespace TiledArray {
 using expressions::dot;
 using expressions::einsum;
 
-template <typename T, typename P>
-auto einsum(const std::string &expr, const DistArray<T, P> &A,
-            const DistArray<T, P> &B, World &world = get_default_world()) {
+template <typename T1, typename T2, typename P>
+auto einsum(const std::string &expr, const DistArray<T1, P> &A,
+            const DistArray<T2, P> &B, World &world = get_default_world()) {
   using ::Einsum::string::join;
   using ::Einsum::string::split2;
 
