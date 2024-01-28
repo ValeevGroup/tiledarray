@@ -1401,11 +1401,7 @@ class Tensor {
       using result_allocator_type = typename std::allocator_traits<
           Allocator>::template rebind_alloc<result_value_type>;
       using ResultTensor = Tensor<result_value_type, result_allocator_type>;
-      if constexpr (is_bperm) {
-        TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
-        return ResultTensor(*this, right, op, outer(perm));
-      } else
-        return ResultTensor(*this, right, op, perm);
+      return ResultTensor(*this, right, op, perm);
     } else {
       // AFAIK the other branch fundamentally relies on raw pointer arithmetic,
       // which won't work for ToTs.
