@@ -124,6 +124,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     inner.h = inner.A & inner.B & inner.C;
     inner.e = (inner.A ^ inner.B);
     inner.i = (inner.A & inner.B) - inner.h;
+    TA_ASSERT(!(inner.h && (inner.i || inner.e)) &&
+              "General product between inner tensors not supported");
   }
 
   // these are "Hadamard" (fused) indices
@@ -229,10 +231,6 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
           for (size_t k = 0; k < batch; ++k) {
             using Ix = ::Einsum::Index<std::string>;
             if constexpr (AreArrayToT<ArrayA, ArrayB>) {
-              TA_ASSERT(inner.h ^ inner.i &&
-                        "Hadamard with contraction not supported between the "
-                        "inner tensors");
-
               auto aik = ai.batch(k);
               auto bik = bi.batch(k);
               auto vol = aik.total_size();
