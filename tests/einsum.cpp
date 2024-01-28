@@ -152,6 +152,17 @@ BOOST_AUTO_TEST_CASE(manual_nested_ranks) {
                                             ));
 }
 
+BOOST_AUTO_TEST_CASE(debug) {
+  using ArrayT = TA::DistArray<TA::Tensor<int>>;
+  using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;
+
+  bool are_equal = check_manual_eval<ArrayToT, ArrayT>("ik;mn,jk->ij;mn",  //
+                                                       {{0, 2}, {0, 3}},   //
+                                                       {{0, 2}, {0, 3}},   //
+                                                       {2, 2});
+  BOOST_REQUIRE(are_equal);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 using namespace TiledArray;
