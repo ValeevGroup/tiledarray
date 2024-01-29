@@ -277,8 +277,9 @@ struct ProductSetup {
       TA::expressions::TensorProduct::Invalid};
 
   PartialPerm
-      // {<k,v>} index at kth position in C appears at vth position in A
-      // and so on...
+      // - {<k,v>} index at kth position in C appears at vth position in A
+      //   and so on...
+      // - {<k,v>} is sorted by k
       C_to_A,
       C_to_B,
       I_to_A,  // 'I' implies for contracted indices
@@ -341,16 +342,27 @@ struct ProductSetup {
 };
 
 namespace {
-template <typename Tensor, typename... Args>
-inline auto general_product(Tensor const& t, typename Tensor::numeric_type s,
-                            Args&&...) {
-  return t * s;
+
+auto make_perm(PartialPerm const& pp) {
+  TA::container::svector<TA::Permutation::index_type> p(pp.size());
+  for (auto [k, v] : pp) p[k] = v;
+  return TA::Permutation(p);
 }
 
-template <typename Tensor, typename... Args>
+template <typename Tensor, typename... Setups>
+inline auto general_product(Tensor const& t, typename Tensor::numeric_type s,
+                            ProductSetup const& setup, Setups const&... args) {
+  static_assert(sizeof...(args) == 0,
+                "To-Do: Only scalar times once-nested tensor supported now");
+  return t.scale(s, make_perm(setup.C_to_A).inv());
+}
+
+template <typename Tensor, typename... Setups>
 inline auto general_product(typename Tensor::numeric_type s, Tensor const& t,
-                            Args&&...) {
-  return s * t;
+                            ProductSetup const& setup, Setups const&... args) {
+  static_assert(sizeof...(args) == 0,
+                "To-Do: Only scalar times once-nested tensor supported now");
+  return t.scale(s, make_perm(setup.C_to_B).inv());
 }
 }  // namespace
 
