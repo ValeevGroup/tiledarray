@@ -618,10 +618,21 @@ class ContEngine : public BinaryEngine<Derived> {
               abort();  // unreachable
           };
           this->element_nonreturn_op_ =
-              [scal_op](result_tile_element_type& result,
-                        const left_tile_element_type& left,
-                        const right_tile_element_type& right) {
-                result = scal_op(left, right);
+              [scal_op, outer_prod = (this->product_type())](
+                  result_tile_element_type& result,
+                  const left_tile_element_type& left,
+                  const right_tile_element_type& right) {
+                if (outer_prod == TensorProduct::Contraction) {
+                  if (empty(result))
+                    result = scal_op(left, right);
+                  else {
+                    auto result_increment = scal_op(left, right);
+                    add_to(result, result_increment);
+                  }
+                  // result += scal_op(left, right);
+                } else {
+                  result = scal_op(left, right);
+                }
               };
         }
       } else
