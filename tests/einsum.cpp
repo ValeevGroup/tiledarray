@@ -217,6 +217,18 @@ BOOST_AUTO_TEST_CASE(different_nested_ranks) {
                                                        {2, 2})));
   }
 
+  // C (outer product)
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ik;mn,j->ijk;nm",    //
+                                                     {{0, 2, 4}, {0, 4}},  //
+                                                     {{0, 3, 5}},          //
+                                                     {3, 2})));
+
+  // C (outer product) (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("jl,ik;mn->ijkl;nm",  //
+                                                     {{0, 3, 5}, {0, 3}},  //
+                                                     {{0, 2, 4}, {0, 4}},  //
+                                                     {3, 2})));
+
   // H+C (outer product)
   BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;mn,ik->ijk;nm",      //
                                                      {{0, 2, 5}, {0, 3, 7}},  //
@@ -259,18 +271,6 @@ BOOST_AUTO_TEST_CASE(different_nested_ranks) {
                                                      {{0, 1}, {0, 2}},   //
                                                      {{0, 2}, {0, 1}},   //
                                                      {2, 2})));
-
-  // C (outer product)
-  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("i;mn,j->ij;nm",  //
-                                                     {{0, 2}},         //
-                                                     {{0, 3}},         //
-                                                     {1, 2})));
-
-  // C (outer product) (reversed arguments)
-  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("j,i;mn->ij;nm",  //
-                                                     {{0, 3}},         //
-                                                     {{0, 2}},         //
-                                                     {1, 2})));
 
   // C
   BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;m,j->i;m",     //
