@@ -633,16 +633,14 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
       using Ix2 = std::array<decltype(i), 2>;
       using Ix3 = std::array<decltype(i), 3>;
 
-      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
+      auto lhs_tile_ix = lhs.trange().element_to_tile({i, j});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
-      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{k, j});
+      auto rhs_tile_ix = rhs.trange().element_to_tile({k, j});
       auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork = */ false);
 
-      auto& res_el =
-          result_tile.at_ordinal(result_tile.range().ordinal(Ix3{i, j, k}));
-      auto const& lhs_el =
-          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
-      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{k, j}));
+      auto& res_el = result_tile({i, j, k});
+      auto const& lhs_el = lhs_tile({i, j});
+      auto rhs_el = rhs_tile({k, j});
       res_el = lhs_el.mult(rhs_el);  // m,n * m,n -> m,n
     }
     return result_tile;
