@@ -280,7 +280,7 @@ BOOST_AUTO_TEST_CASE(different_nested_ranks) {
   BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("j,ij;m->i;m",     //
                                                      {{0, 2}},          //
                                                      {{0, 1}, {0, 2}},  //
-                                                     {3, 5})));
+                                                     {3})));
 
   // H+C
   BOOST_REQUIRE((
@@ -294,7 +294,7 @@ BOOST_AUTO_TEST_CASE(different_nested_ranks) {
       (check_manual_eval<ArrayT, ArrayToT>("ijk,ik;mn->ij;nm",        //
                                            {{0, 2}, {0, 4}, {0, 3}},  //
                                            {{0, 2}, {0, 3}},          //
-                                           {2})));
+                                           {2, 4})));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
