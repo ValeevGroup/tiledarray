@@ -31,8 +31,8 @@ template <typename ArrayA, typename ArrayB,
           ShapeComp ShapeCompFlag = ShapeComp::False,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
 bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
-  auto ref = TA::einsum(annot, A, B);
-  auto out = manual_eval(annot, A, B);
+  auto out = TA::einsum(annot, A, B);
+  auto ref = manual_eval(annot, A, B);
   return ToTArrayFixture::are_equal<ShapeCompFlag>(ref, out);
 }
 
@@ -241,8 +241,6 @@ BOOST_AUTO_TEST_CASE(different_nested_ranks) {
                                                      {{0, 2, 5}, {0, 3, 7}},  //
                                                      {2, 5})));
 
-  // todo: bug fix in expression layer for following tests to pass
-
   {
     // these tests do not involve permutation of inner tensors
     // H+C
@@ -261,42 +259,42 @@ BOOST_AUTO_TEST_CASE(different_nested_ranks) {
   }
 
   // H
-  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;mn,ji->ji;nm",  //
-                                                     {{0, 2}, {0, 1}},   //
-                                                     {{0, 1}, {0, 2}},   //
-                                                     {2, 2})));
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;mn,ji->ji;nm",       //
+                                                     {{0, 2, 4, 6}, {0, 3}},  //
+                                                     {{0, 3}, {0, 2, 4, 6}},  //
+                                                     {4, 2})));
 
   // H (reversed arguments)
-  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("ji,ij;mn->ji;nm",  //
-                                                     {{0, 1}, {0, 2}},   //
-                                                     {{0, 2}, {0, 1}},   //
-                                                     {2, 2})));
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("ji,ij;mn->ji;nm",       //
+                                                     {{0, 3, 5}, {0, 2, 4}},  //
+                                                     {{0, 2, 4}, {0, 3, 5}},  //
+                                                     {1, 2})));
 
   // C
-  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;m,j->i;m",     //
-                                                     {{0, 2}, {0, 2}},  //
-                                                     {{0, 2}},          //
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;m,j->i;m",        //
+                                                     {{0, 5}, {0, 2, 3}},  //
+                                                     {{0, 2, 3}},          //
                                                      {3})));
 
   // C (reversed arguments)
   BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("j,ij;m->i;m",     //
                                                      {{0, 2}},          //
-                                                     {{0, 2}, {0, 2}},  //
-                                                     {3})));
+                                                     {{0, 1}, {0, 2}},  //
+                                                     {3, 5})));
 
   // H+C
-  BOOST_REQUIRE(
-      (check_manual_eval<ArrayToT, ArrayT>("ik;mn,ijk->ij;nm",        //
-                                           {{0, 2}, {0, 3}},          //
-                                           {{0, 2}, {0, 2}, {0, 3}},  //
-                                           {2, 2})));
+  BOOST_REQUIRE((
+      check_manual_eval<ArrayToT, ArrayT>("ik;mn,ijk->ij;nm",                 //
+                                          {{0, 2}, {0, 3, 5}},                //
+                                          {{0, 2}, {0, 2, 4, 6}, {0, 3, 5}},  //
+                                          {2, 2})));
 
   // H+C (reversed arguments)
   BOOST_REQUIRE(
       (check_manual_eval<ArrayT, ArrayToT>("ijk,ik;mn->ij;nm",        //
-                                           {{0, 2}, {0, 2}, {0, 3}},  //
+                                           {{0, 2}, {0, 4}, {0, 3}},  //
                                            {{0, 2}, {0, 3}},          //
-                                           {2, 2})));
+                                           {2})));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
