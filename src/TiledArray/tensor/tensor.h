@@ -144,9 +144,12 @@ class Tensor {
     size_t size = range_.volume() * nbatch;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
-    if (default_construct) {
-      std::uninitialized_default_construct_n(ptr, size);
-      // std::uninitialized_value_construct_n(ptr, size);
+    // default construct elements of data only if can have any effect ...
+    if constexpr (!std::is_trivially_default_constructible_v<T>) {
+      // .. and requested
+      if (default_construct) {
+        std::uninitialized_default_construct_n(ptr, size);
+      }
     }
     auto deleter = [
 #ifdef TA_TENSOR_MEM_TRACE
@@ -182,9 +185,12 @@ class Tensor {
     size_t size = range_.volume() * nbatch;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
-    if (default_construct) {
-      std::uninitialized_default_construct_n(ptr, size);
-      // std::uninitialized_value_construct_n(ptr, size);
+    // default construct elements of data only if can have any effect ...
+    if constexpr (!std::is_trivially_default_constructible_v<T>) {
+      // .. and requested
+      if (default_construct) {
+        std::uninitialized_default_construct_n(ptr, size);
+      }
     }
     auto deleter = [
 #ifdef TA_TENSOR_MEM_TRACE
@@ -288,7 +294,8 @@ class Tensor {
   }
 
   /// Construct a tensor with a range equal to \c range. The data is
-  /// uninitialized.
+  /// default-initialized (which, for `T` with trivial default constructor,
+  /// means data is uninitialized).
   /// \param range The range of the tensor
   /// \param nbatch The number of batches (default is 1)
   explicit Tensor(const range_type& range, size_type nbatch = 1)
@@ -336,9 +343,10 @@ class Tensor {
                 value_type, ElementIndexOp, const Range::index_type&>>>
   Tensor(const range_type& range, const ElementIndexOp& element_idx_op)
       : Tensor(range, 1, default_construct{false}) {
-    auto* data_ptr = data_.get();
+    pointer MADNESS_RESTRICT const data = this->data();
     for (auto&& element_idx : range) {
-      data_ptr[range.ordinal(element_idx)] = element_idx_op(element_idx);
+      const auto ord = range.ordinal(element_idx);
+      new (data + ord) value_type(element_idx_op(element_idx));
     }
   }
 
@@ -350,8 +358,9 @@ class Tensor {
   Tensor(const range_type& range, InIter it)
       : Tensor(range, 1, default_construct{false}) {
     auto n = range.volume();
-    pointer MADNESS_RESTRICT const data = this->data();
-    for (size_type i = 0ul; i < n; ++i, ++it) data[i] = *it;
+    pointer MADNESS_RESTRICT data = this->data();
+    for (size_type i = 0ul; i < n; ++i, ++it, ++data)
+      new (data) value_type(*it);
   }
 
   template <typename U>
