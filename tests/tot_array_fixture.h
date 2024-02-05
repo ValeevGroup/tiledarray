@@ -496,10 +496,12 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
   }
 
   using TileC = typename decltype(result_tensor)::value_type;
+
   TA::DistArray<TileC, TA::DensePolicy> C(world, result_trange);
-  C.make_replicated();
-  world.gop.fence();
-  for (auto it : C) it = result_tensor(it.index());
+
+  for (auto it : C) {
+    if (C.is_local(it.index())) it = result_tensor(it.index());
+  }
   return C;
 }
 
