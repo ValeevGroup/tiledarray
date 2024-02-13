@@ -733,6 +733,11 @@ class BipartitePermutation {
     init();
   }
 
+  BipartitePermutation(Permutation&& p, index_type second_partition_size = 0)
+      : base_(std::move(p)), second_size_(second_partition_size) {
+    init();
+  }
+
   BipartitePermutation(const Permutation& first, const Permutation& second)
       : second_size_(second.size()) {
     vector<index_type> base;
@@ -790,9 +795,14 @@ class BipartitePermutation {
   }
 
   /// \return reference to the first partition
-  const Permutation& first() const { return first_; }
+  const Permutation& first() const& { return first_; }
   /// \return reference to the second partition
-  const Permutation& second() const { return second_; }
+  const Permutation& second() const& { return second_; }
+
+  /// \return rvalue-reference to the first partition
+  Permutation&& first() && { return std::move(first_); }
+  /// \return reference to the second partition
+  Permutation&& second() && { return std::move(second_); }
 
   /// \return the size of the first partition
   index_type first_size() const { return this->size() - second_size_; }
@@ -870,6 +880,8 @@ inline auto inner(const Permutation& p) {
 // temporary
 inline auto outer(const Permutation& p) { return p; }
 
+inline Permutation&& outer(Permutation&& p) { return std::move(p); }
+
 inline auto inner_size(const Permutation& p) {
   abort();
   return 0;
@@ -879,7 +891,15 @@ inline auto outer_size(const Permutation& p) { return p.size(); }
 
 inline auto inner(const BipartitePermutation& p) { return p.second(); }
 
+inline Permutation&& inner(BipartitePermutation&& p) {
+  return std::move(p).second();
+}
+
 inline auto outer(const BipartitePermutation& p) { return p.first(); }
+
+inline Permutation&& outer(BipartitePermutation&& p) {
+  return std::move(p).first();
+}
 
 inline auto inner_size(const BipartitePermutation& p) {
   return p.second_size();
