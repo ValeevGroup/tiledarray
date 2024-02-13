@@ -1389,19 +1389,21 @@ class Tensor {
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   auto binary(const Right& right, Op&& op, const Perm& perm) const {
-    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
+    using result_value_type = decltype(op(
+        std::declval<const T&>(), std::declval<const value_t<Right>&>()));
+    using result_allocator_type = typename std::allocator_traits<
+        Allocator>::template rebind_alloc<result_value_type>;
+    using ResultTensor = Tensor<result_value_type, result_allocator_type>;
+    // tile ops pass bipartite permutations here even if the result is a plain
+    // tensor
     [[maybe_unused]] constexpr bool is_bperm =
         detail::is_bipartite_permutation_v<Perm>;
-    // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
-    if constexpr (!is_tot) {
-      using result_value_type = decltype(op(
-          std::declval<const T&>(), std::declval<const value_t<Right>&>()));
-      using result_allocator_type = typename std::allocator_traits<
-          Allocator>::template rebind_alloc<result_value_type>;
-      using ResultTensor = Tensor<result_value_type, result_allocator_type>;
+    constexpr bool result_is_tot = detail::is_tensor_of_tensor_v<ResultTensor>;
+
+    if constexpr (!result_is_tot) {
       if constexpr (is_bperm) {
+        TA_ASSERT(!inner(perm));  // ensure this is a plain permutation since
+                                  // ResultTensor is plain
         return ResultTensor(*this, right, op, outer(perm));
       } else
         return ResultTensor(*this, right, op, perm);
@@ -1410,7 +1412,12 @@ class Tensor {
       // which won't work for ToTs.
       auto temp = binary(right, std::forward<Op>(op));
       Permute<decltype(temp), decltype(temp)> p;
-      return p(temp, perm);
+      if constexpr (is_bperm) {
+        TA_ASSERT(!inner(perm));  // ensure this is a plain permutation since
+                                  // ResultTensor is plain
+        return p(temp, outer(perm));
+      } else
+        return p(temp, perm);
     }
     abort();  // unreachable
   }
