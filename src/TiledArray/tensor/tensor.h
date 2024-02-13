@@ -421,8 +421,6 @@ class Tensor {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
     constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
     if constexpr (is_tot && is_bperm) {
       if (inner_size(perm) != 0) {
         const auto inner_perm = inner(perm);
@@ -1378,11 +1376,12 @@ class Tensor {
   /// \param perm The permutation to be applied to this tensor
   /// \return A tensor where element \c i of the new tensor is equal to
   /// \c op(*this[i],other[i])
-  template <
-      typename Right, typename Op, typename Perm,
-      typename std::enable_if<is_tensor<Right>::value &&
-                              detail::is_permutation_v<Perm>>::type* = nullptr>
-  auto binary(const Right& right, Op&& op, const Perm& perm) const {
+  template <typename Right, typename Op, typename Perm,
+            typename std::enable_if<is_tensor<Right>::value &&
+                                    detail::is_permutation_v<
+                                        std::remove_reference_t<Perm>>>::type* =
+                nullptr>
+  auto binary(const Right& right, Op&& op, Perm&& perm) const {
     using result_value_type = decltype(op(
         std::declval<const T&>(), std::declval<const value_t<Right>&>()));
     using result_allocator_type = typename std::allocator_traits<
@@ -1398,9 +1397,9 @@ class Tensor {
       if constexpr (is_bperm) {
         TA_ASSERT(!inner(perm));  // ensure this is a plain permutation since
                                   // ResultTensor is plain
-        return ResultTensor(*this, right, op, outer(perm));
+        return ResultTensor(*this, right, op, outer(std::forward<Perm>(perm)));
       } else
-        return ResultTensor(*this, right, op, perm);
+        return ResultTensor(*this, right, op, std::forward<Perm>(perm));
     } else {
       // AFAIK the other branch fundamentally relies on raw pointer arithmetic,
       // which won't work for ToTs.
@@ -1454,24 +1453,23 @@ class Tensor {
   /// \throw TiledArray::Exception The dimension of \c perm does not match
   /// that of this tensor.
   template <typename Op, typename Perm,
-            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
-  Tensor unary(Op&& op, const Perm& perm) const {
+            typename = std::enable_if_t<
+                detail::is_permutation_v<std::remove_reference_t<Perm>>>>
+  Tensor unary(Op&& op, Perm&& perm) const {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
     [[maybe_unused]] constexpr bool is_bperm =
         detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
     if constexpr (!is_tot) {
       if constexpr (is_bperm) {
         TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
-        return Tensor(*this, op, outer(perm));
+        return Tensor(*this, op, outer(std::forward<Perm>(perm)));
       } else
-        return Tensor(*this, op, perm);
+        return Tensor(*this, op, std::forward<Perm>(perm));
     } else {
       auto temp = unary(std::forward<Op>(op));
       Permute<Tensor, Tensor> p;
-      return p(temp, perm);
+      return p(temp, std::forward<Perm>(perm));
     }
     abort();  // unreachable
   }

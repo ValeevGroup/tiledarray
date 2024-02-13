@@ -393,9 +393,10 @@ class BlkTsrEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  op_type make_tile_op(const Perm& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  op_type make_tile_op(Perm&& perm) const {
     const unsigned int rank = trange_.tiles_range().rank();
 
     // Construct and allocate memory for the shift range
@@ -415,7 +416,7 @@ class BlkTsrEngine
       range_shift[perm_d] = -base_d;
     }
 
-    return op_type(op_base_type(range_shift), perm);
+    return op_type(op_base_type(range_shift), std::forward<Perm>(perm));
   }
 
   /// Expression identification tag
@@ -540,9 +541,10 @@ class ScalBlkTsrEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  op_type make_tile_op(const Perm& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  op_type make_tile_op(Perm&& perm) const {
     const unsigned int rank = trange_.tiles_range().rank();
 
     // Construct and allocate memory for the shift range
@@ -562,7 +564,8 @@ class ScalBlkTsrEngine
       range_shift[perm_d] = -base_d;
     }
 
-    return op_type(op_base_type(range_shift, factor_), perm);
+    return op_type(op_base_type(range_shift, factor_),
+                   std::forward<Perm>(perm));
   }
 
   /// Expression identification tag

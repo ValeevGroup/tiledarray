@@ -274,15 +274,17 @@ class ContEngine : public BinaryEngine<Derived> {
       const auto outer_perm = outer(perm_);
       // Initialize permuted structure
       if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-        op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
-                      outer_size(left_indices_), outer_size(right_indices_),
-                      (!implicit_permute_outer_ ? outer_perm : Permutation{}));
+        op_ = op_type(
+            left_op, right_op, factor_, outer_size(indices_),
+            outer_size(left_indices_), outer_size(right_indices_),
+            (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}));
       } else {
         // factor_ is absorbed into inner_tile_nonreturn_op_
-        op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
-                      outer_size(left_indices_), outer_size(right_indices_),
-                      (!implicit_permute_outer_ ? outer_perm : Permutation{}),
-                      this->element_nonreturn_op_);
+        op_ = op_type(
+            left_op, right_op, scalar_type(1), outer_size(indices_),
+            outer_size(left_indices_), outer_size(right_indices_),
+            (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}),
+            this->element_nonreturn_op_);
       }
       trange_ = ContEngine_::make_trange(outer_perm);
       shape_ = ContEngine_::make_shape(outer_perm);
