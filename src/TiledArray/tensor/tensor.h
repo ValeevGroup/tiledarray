@@ -464,10 +464,8 @@ class Tensor {
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
-    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
+    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     if constexpr (is_tot && is_bperm) {
       if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
@@ -512,10 +510,8 @@ class Tensor {
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
-    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
+    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     if constexpr (is_tot && is_bperm) {
       if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
@@ -1297,9 +1293,6 @@ class Tensor {
   template <typename Perm,
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor permute(const Perm& perm) const {
-    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
-    [[maybe_unused]] constexpr bool is_bperm =
-        detail::is_bipartite_permutation_v<Perm>;
     return Tensor(*this, perm);
   }
 
@@ -1371,7 +1364,8 @@ class Tensor {
         std::declval<const T&>(), std::declval<const value_t<Right>&>()));
     using result_allocator_type = typename std::allocator_traits<
         Allocator>::template rebind_alloc<result_value_type>;
-    return Tensor<result_value_type, result_allocator_type>(*this, right, op);
+    using ResultTensor = Tensor<result_value_type, result_allocator_type>;
+    return ResultTensor(*this, right, op);
   }
 
   /// Use a binary, element wise operation to construct a new, permuted tensor
