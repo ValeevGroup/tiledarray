@@ -271,7 +271,10 @@ class Permutation {
 
   /// \param i The element index
   /// \return The i-th element
-  index_type operator[](unsigned int i) const { return p_[i]; }
+  index_type operator[](unsigned int i) const {
+    TA_ASSERT(i < p_.size());
+    return p_[i];
+  }
 
   /// Cycles decomposition
 
@@ -409,11 +412,13 @@ class Permutation {
   /// Bool conversion
 
   /// \return \c true if the permutation is not empty, otherwise \c false.
+  /// \note equivalent to `this->size() != 0`
   explicit operator bool() const { return !p_.empty(); }
 
   /// Not operator
 
   /// \return \c true if the permutation is empty, otherwise \c false.
+  /// \note equivalent to `this->size() == 0`
   bool operator!() const { return p_.empty(); }
 
   /// Permutation data accessor
