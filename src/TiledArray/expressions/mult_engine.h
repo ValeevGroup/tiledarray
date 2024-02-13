@@ -423,9 +423,10 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// \param perm The permutation to be applied to the result
   /// \return The tile operation
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  op_type make_tile_op(const Perm& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  op_type make_tile_op(Perm&& perm) const {
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<
                       value_type>) {  // nested tensors
       const auto inner_prod = this->inner_product_type();
@@ -433,15 +434,21 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
         TA_ASSERT(this->product_type() ==
                   inner_prod);  // Hadamard automatically works for inner
                                 // dimensions as well
-        return op_type(op_base_type(), perm);
+        return op_type(op_base_type(), std::forward<Perm>(perm));
       } else if (inner_prod == TensorProduct::Contraction) {
-        return op_type(op_base_type(this->element_return_op_), perm);
+        // inner permutation, if needed, was fused into inner op, do not apply
+        // inner part of the perm again
+        return op_type(op_base_type(this->element_return_op_),
+                       outer(std::forward<Perm>(perm)));
       } else if (inner_prod == TensorProduct::Scale) {
-        return op_type(op_base_type(this->element_return_op_), perm);
+        // inner permutation, if needed, was fused into inner op, do not apply
+        // inner part of the perm again
+        return op_type(op_base_type(this->element_return_op_),
+                       outer(std::forward<Perm>(perm)));
       } else
         abort();
     } else {  // plain tensor
-      return op_type(op_base_type(), perm);
+      return op_type(op_base_type(), std::forward<Perm>(perm));
     }
     abort();  // unreachable
   }

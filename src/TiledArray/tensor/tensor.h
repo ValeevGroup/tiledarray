@@ -1406,12 +1406,7 @@ class Tensor {
       // which won't work for ToTs.
       auto temp = binary(right, std::forward<Op>(op));
       Permute<decltype(temp), decltype(temp)> p;
-      if constexpr (is_bperm) {
-        TA_ASSERT(!inner(perm));  // ensure this is a plain permutation since
-                                  // ResultTensor is plain
-        return p(temp, outer(perm));
-      } else
-        return p(temp, perm);
+      return p(temp, std::forward<Perm>(perm));
     }
     abort();  // unreachable
   }
