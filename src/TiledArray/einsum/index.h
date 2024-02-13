@@ -33,7 +33,7 @@ class Index {
 
   Index() = default;
   Index(const container_type &s) : data_(s) {}
-  Index(const std::initializer_list<T> &s) : data_(s) {}
+  explicit Index(const std::initializer_list<T> &s) : data_(s) {}
 
   template <typename S, typename U = void>
   Index(const S &s) {

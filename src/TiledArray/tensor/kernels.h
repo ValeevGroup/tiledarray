@@ -1250,9 +1250,9 @@ auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
         AB,      // permutes A to B
         AC,      // permutes A to C
         BC;      // permutes B to C
-  } const perm{permutation(Indices{aA}, Indices{aB}),
-               permutation(Indices{aA}, Indices{aC}),
-               permutation(Indices{aB}, Indices{aC})};
+  } const perm{permutation(Indices(aA), Indices(aB)),
+               permutation(Indices(aA), Indices(aC)),
+               permutation(Indices(aB), Indices(aC))};
 
   struct {
     bool no_perm, perm_to_c, perm_a, perm_b;

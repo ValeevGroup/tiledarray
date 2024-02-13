@@ -303,8 +303,8 @@ struct ProductSetup {
       // A, B, C tensor indices
       // H, E, I Hadamard, external, and internal indices
       Indices A, B, C, H, E, I;
-    } const ixs{Indices{aA},     Indices{aB},
-                Indices{aC},     (ixs.A & ixs.B & ixs.C),
+    } const ixs{Indices(aA),     Indices(aB),
+                Indices(aC),     (ixs.A & ixs.B & ixs.C),
                 (ixs.A ^ ixs.B), ((ixs.A & ixs.B) - ixs.H)};
 
     rank_A = ixs.A.size();
