@@ -273,10 +273,11 @@ class ExprEngine : private NO_DEFAULTS {
   /// some consuming operations (like GEMM) permutation can perform some
   /// permutation types implicitly. setting this to true indicates that the
   /// result tiles' outer modes do not need to be permuted and permutation will
-  /// be performed implicitly by the consuming operation \param status The new
-  /// value for the implicit permute flag (true => will not permute outer modes
-  /// of result tiles; false => will permute outer modes of result tiles if
-  /// needed) \note for plain tensors, i.e., tensor-of-scalars, any mode is
+  /// be performed implicitly by the consuming operation
+  /// \param status The new value for the implicit permute flag
+  /// (true => will not permute outer modes of result tiles;
+  ///  false => will permute outer modes of result tiles if needed)
+  /// \note for plain tensors, i.e., tensor-of-scalars, any mode is
   /// outer
   void implicit_permute_outer(const bool status) {
     implicit_permute_outer_ = status;
@@ -287,10 +288,11 @@ class ExprEngine : private NO_DEFAULTS {
   /// some consuming operations (like GEMM) permutation can perform some
   /// permutation types implicitly. setting this to true indicates that the
   /// result tiles' inner modes do not need to be permuted and permutation will
-  /// be performed implicitly by the consuming operation \param status The new
-  /// value for the implicit permute flag (true => will not permute inner modes
-  /// of result tiles; false => will permute inner modes of result tiles if
-  /// needed) \note for plain tensors, i.e., tensor-of-scalars, there are no
+  /// be performed implicitly by the consuming operation
+  /// \param status The new value for the implicit permute flag
+  /// (true => will not permute inner modes of result tiles;
+  ///  false => will permute inner modes of result tiles if needed)
+  /// \note for plain tensors, i.e., tensor-of-scalars, there are no
   /// inner modes and this should not be used
   void implicit_permute_inner(const bool status) {
     TA_ASSERT(TiledArray::detail::is_tensor_of_tensor_v<eval_type>);
