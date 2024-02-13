@@ -126,7 +126,7 @@ class ContEngine : public BinaryEngine<Derived> {
                               ///< nested tensor expressions)
   std::function<result_tile_element_type(const left_tile_element_type&,
                                          const right_tile_element_type&)>
-      element_return_op_;  ///< Same as inner_tile_nonreturn_op_ but returns
+      element_return_op_;  ///< Same as element_nonreturn_op_ but returns
                            ///< the result
   TiledArray::detail::ProcGrid
       proc_grid_;    ///< Process grid for the contraction
