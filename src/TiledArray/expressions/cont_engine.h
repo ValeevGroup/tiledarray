@@ -350,7 +350,7 @@ class ContEngine : public BinaryEngine<Derived> {
     left_.init_distribution(world, proc_grid_.make_row_phase_pmap(K_));
     right_.init_distribution(world, proc_grid_.make_col_phase_pmap(K_));
 
-    // Initialize the process map in not already defined
+    // Initialize the process map if not already defined
     if (!pmap) pmap = proc_grid_.make_pmap();
     ExprEngine_::init_distribution(world, pmap);
   }
