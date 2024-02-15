@@ -62,9 +62,11 @@ struct ExpressionsFixture : public TiledRangeFixture {
         s_tr1_1(make_random_sparseshape(trange1)),
         s_tr1_2(make_random_sparseshape(trange1)),
         s_tr2(make_random_sparseshape(trange2)),
+        s_trC(make_random_sparseshape(trangeC)),
         a(*GlobalFixture::world, tr, s_tr_1),
         b(*GlobalFixture::world, tr, s_tr_2),
         c(*GlobalFixture::world, tr, s_tr_2),
+        aC(*GlobalFixture::world, trangeC, s_trC),
         u(*GlobalFixture::world, trange1, s_tr1_1),
         v(*GlobalFixture::world, trange1, s_tr1_2),
         w(*GlobalFixture::world, trange2, s_tr2) {
@@ -72,6 +74,7 @@ struct ExpressionsFixture : public TiledRangeFixture {
     random_fill(b);
     random_fill(u);
     random_fill(v);
+    random_fill(aC);
     GlobalFixture::world->gop.fence();
     a.truncate();
     b.truncate();
@@ -88,11 +91,13 @@ struct ExpressionsFixture : public TiledRangeFixture {
         c(*GlobalFixture::world, tr),
         u(*GlobalFixture::world, trange1),
         v(*GlobalFixture::world, trange1),
-        w(*GlobalFixture::world, trange2) {
+        w(*GlobalFixture::world, trange2),
+        aC(*GlobalFixture::world, trangeC) {
     random_fill(a);
     random_fill(b);
     random_fill(u);
     random_fill(v);
+    random_fill(aC);
     GlobalFixture::world->gop.fence();
   }
 
@@ -213,17 +218,22 @@ struct ExpressionsFixture : public TiledRangeFixture {
   const TiledRange trange1{{0, 2, 5, 10, 17, 28, 41}};
   const TiledRange trange2{{0, 2, 5, 10, 17, 28, 41},
                            {0, 3, 6, 11, 18, 29, 42}};
+  // contains empty trange1
+  const TiledRange trangeC{TiledRange1{0, 2, 5, 10}, TiledRange1{},
+                           TiledRange1{0, 2, 7, 11}};
   SparseShape<float> s_tr_1;
   SparseShape<float> s_tr_2;
   SparseShape<float> s_tr1_1;
   SparseShape<float> s_tr1_2;
   SparseShape<float> s_tr2;
+  SparseShape<float> s_trC;
   TArray a;
   TArray b;
   TArray c;
   TArray u;
   TArray v;
   TArray w;
+  TArray aC;
 };  // ExpressionsFixture
 
 #endif  // TILEDARRAY_TEST_EXPRESSIONS_FIXTURE_H

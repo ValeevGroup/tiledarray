@@ -179,7 +179,7 @@ class BlkTsrExprBase : public Expr<Derived> {
     const bool lower_upper_bound_check =
         std::equal(std::begin(lower_bound_), std::end(lower_bound_),
                    std::begin(upper_bound_),
-                   [](std::size_t l, std::size_t r) { return l < r; });
+                   [](std::size_t l, std::size_t r) { return l <= r; });
     if (!lower_upper_bound_check) {
       if (TiledArray::get_default_world().rank() == 0) {
         using TiledArray::operator<<;
