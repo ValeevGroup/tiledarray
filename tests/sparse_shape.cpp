@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(block) {
   // change default threshold to make sure it's not inherited
   auto resetter = set_threshold_to_max();
 
-  auto less = std::less<std::size_t>();
+  auto less_equal = std::less_equal<std::size_t>();
 
   for (auto lower_it = tr.tiles_range().begin();
        lower_it != tr.tiles_range().end(); ++lower_it) {
@@ -287,7 +287,7 @@ BOOST_AUTO_TEST_CASE(block) {
       auto upper = *upper_it;
       for (auto it = upper.begin(); it != upper.end(); ++it) *it += 1;
 
-      if (std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
+      if (std::equal(lower.begin(), lower.end(), upper.begin(), less_equal)) {
         // Check that the block function does not throw an exception
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper));
@@ -369,7 +369,7 @@ BOOST_AUTO_TEST_CASE(block_scale) {
   // change default threshold to make sure it's not inherited
   auto resetter = set_threshold_to_max();
 
-  auto less = std::less<std::size_t>();
+  auto less_equal = std::less_equal<std::size_t>();
   const float factor = 3.3;
 
   for (auto lower_it = tr.tiles_range().begin();
@@ -381,7 +381,7 @@ BOOST_AUTO_TEST_CASE(block_scale) {
       auto upper = *upper_it;
       for (auto it = upper.begin(); it != upper.end(); ++it) *it += 1;
 
-      if (std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
+      if (std::equal(lower.begin(), lower.end(), upper.begin(), less_equal)) {
         // Check that the block function does not throw an exception
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(result =
@@ -468,7 +468,7 @@ BOOST_AUTO_TEST_CASE(block_perm) {
   // change default threshold to make sure it's not inherited
   auto resetter = set_threshold_to_max();
 
-  auto less = std::less<std::size_t>();
+  auto less_equal = std::less_equal<std::size_t>();
   const auto inv_perm = perm.inv();
 
   for (auto lower_it = tr.tiles_range().begin();
@@ -480,7 +480,7 @@ BOOST_AUTO_TEST_CASE(block_perm) {
       auto upper = *upper_it;
       for (auto it = upper.begin(); it != upper.end(); ++it) *it += 1;
 
-      if (std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
+      if (std::equal(lower.begin(), lower.end(), upper.begin(), less_equal)) {
         // Check that the block function does not throw an exception
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper, perm));
@@ -569,7 +569,7 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
   // change default threshold to make sure it's not inherited
   auto resetter = set_threshold_to_max();
 
-  auto less = std::less<std::size_t>();
+  auto less_equal = std::less_equal<std::size_t>();
   const float factor = 3.3;
   const auto inv_perm = perm.inv();
 
@@ -582,7 +582,7 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
       auto upper = *upper_it;
       for (auto it = upper.begin(); it != upper.end(); ++it) *it += 1;
 
-      if (std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
+      if (std::equal(lower.begin(), lower.end(), upper.begin(), less_equal)) {
         // Check that the block function does not throw an exception
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(

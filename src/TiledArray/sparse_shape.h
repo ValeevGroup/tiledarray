@@ -840,7 +840,7 @@ class SparseShape {
 
       // Check that the input indices are in range
       TA_ASSERT(lower_d >= tile_norms_.range().lobound(d));
-      TA_ASSERT(lower_d < upper_d);
+      TA_ASSERT(lower_d <= upper_d);
       TA_ASSERT(upper_d <= tile_norms_.range().upbound(d));
 
       // Construct the size vector for rank i
@@ -874,7 +874,7 @@ class SparseShape {
 
       // Check that the input indices are in range
       TA_ASSERT(lower_d >= tile_norms_.range().lobound(d));
-      TA_ASSERT(lower_d < upper_d);
+      TA_ASSERT(lower_d <= upper_d);
       TA_ASSERT(upper_d <= tile_norms_.range().upbound(d));
 
       // Construct the size vector for rank i
