@@ -58,6 +58,14 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r1.elements_range().area(), 0);
   }
 
+  // construct with ranges containing empty tiles only
+  {
+    BOOST_REQUIRE_NO_THROW(TiledRange r1({dims[0], TiledRange1{1, 1, 1}}));
+    TiledRange r1{dims[0], TiledRange1{1, 1, 1}};
+    BOOST_CHECK_EQUAL(r1.tiles_range().area(), dims[0].tile_extent() * 2);
+    BOOST_CHECK_EQUAL(r1.elements_range().area(), 0);
+  }
+
   // check initializer list of initializer list constructor
   {
     TiledRange r1{
