@@ -121,9 +121,12 @@ BOOST_AUTO_TEST_CASE(non_comm_constructor) {
     }
   }
 
-  BOOST_CHECK_CLOSE(x.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      x.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
   BOOST_CHECK(x.nnz() == x.data().size() - zero_tile_count);
 
   // use the sparse ctor
@@ -194,9 +197,12 @@ BOOST_AUTO_TEST_CASE(comm_constructor) {
     }
   }
 
-  BOOST_CHECK_CLOSE(x.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      x.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
   BOOST_CHECK_EQUAL(x.nnz(), x.data().size() - zero_tile_count);
 
   // use the sparse ctor
@@ -321,7 +327,9 @@ BOOST_AUTO_TEST_CASE(block) {
         }
         BOOST_CHECK_CLOSE(
             result.sparsity(),
-            float(zero_tile_count) / float(result.data().range().volume()),
+            result.data().range().volume() > 0
+                ? float(zero_tile_count) / float(result.data().range().volume())
+                : 0,
             tolerance);
 
         // validate other block functions
@@ -413,7 +421,9 @@ BOOST_AUTO_TEST_CASE(block_scale) {
         }
         BOOST_CHECK_CLOSE(
             result.sparsity(),
-            float(zero_tile_count) / float(result.data().range().volume()),
+            result.data().range().volume() > 0
+                ? float(zero_tile_count) / float(result.data().range().volume())
+                : 0,
             tolerance);
 
         // validate other block functions
@@ -513,7 +523,9 @@ BOOST_AUTO_TEST_CASE(block_perm) {
         }
         BOOST_CHECK_CLOSE(
             result.sparsity(),
-            float(zero_tile_count) / float(result.data().range().volume()),
+            result.data().range().volume() > 0
+                ? float(zero_tile_count) / float(result.data().range().volume())
+                : 0,
             tolerance);
 
         // validate other block functions
@@ -614,7 +626,9 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
         }
         BOOST_CHECK_CLOSE(
             result.sparsity(),
-            float(zero_tile_count) / float(result.data().range().volume()),
+            result.data().range().volume() > 0
+                ? float(zero_tile_count) / float(result.data().range().volume())
+                : 0,
             tolerance);
 
         // validate other block functions
@@ -706,9 +720,12 @@ BOOST_AUTO_TEST_CASE(transform) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(mask) {
@@ -745,9 +762,12 @@ BOOST_AUTO_TEST_CASE(mask) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(scale) {
@@ -778,9 +798,12 @@ BOOST_AUTO_TEST_CASE(scale) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(scale_perm) {
@@ -812,9 +835,12 @@ BOOST_AUTO_TEST_CASE(scale_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(add) {
@@ -848,9 +874,12 @@ BOOST_AUTO_TEST_CASE(add) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
   BOOST_CHECK_EQUAL(result.nnz(), result.data().size() - zero_tile_count);
 }
 
@@ -885,9 +914,12 @@ BOOST_AUTO_TEST_CASE(add_scale) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(add_perm) {
@@ -922,9 +954,12 @@ BOOST_AUTO_TEST_CASE(add_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(add_scale_perm) {
@@ -959,9 +994,12 @@ BOOST_AUTO_TEST_CASE(add_scale_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(add_const) {
@@ -998,9 +1036,12 @@ BOOST_AUTO_TEST_CASE(add_const) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(add_const_perm) {
@@ -1037,9 +1078,12 @@ BOOST_AUTO_TEST_CASE(add_const_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(subt) {
@@ -1073,9 +1117,12 @@ BOOST_AUTO_TEST_CASE(subt) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(subt_scale) {
@@ -1109,9 +1156,12 @@ BOOST_AUTO_TEST_CASE(subt_scale) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(subt_perm) {
@@ -1146,9 +1196,12 @@ BOOST_AUTO_TEST_CASE(subt_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(subt_scale_perm) {
@@ -1183,9 +1236,12 @@ BOOST_AUTO_TEST_CASE(subt_scale_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(subt_const) {
@@ -1220,9 +1276,12 @@ BOOST_AUTO_TEST_CASE(subt_const) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(subt_const_perm) {
@@ -1260,9 +1319,12 @@ BOOST_AUTO_TEST_CASE(subt_const_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(mult) {
@@ -1295,9 +1357,12 @@ BOOST_AUTO_TEST_CASE(mult) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(mult_scale) {
@@ -1330,9 +1395,12 @@ BOOST_AUTO_TEST_CASE(mult_scale) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(mult_perm) {
@@ -1368,9 +1436,12 @@ BOOST_AUTO_TEST_CASE(mult_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(mult_scale_perm) {
@@ -1406,9 +1477,12 @@ BOOST_AUTO_TEST_CASE(mult_scale_perm) {
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(tr.tiles_range().volume()),
-                    tolerance);
+  BOOST_CHECK_CLOSE(
+      result.sparsity(),
+      tr.tiles_range().volume() > 0
+          ? float(zero_tile_count) / float(tr.tiles_range().volume())
+          : 0,
+      tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(gemm) {
@@ -1470,7 +1544,9 @@ BOOST_AUTO_TEST_CASE(gemm) {
   }
 
   BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(result_norms.size()),
+                    result_norms.size() > 0
+                        ? float(zero_tile_count) / float(result_norms.size())
+                        : 0,
                     tolerance);
 }
 
@@ -1538,7 +1614,9 @@ BOOST_AUTO_TEST_CASE(gemm_perm) {
   }
 
   BOOST_CHECK_CLOSE(result.sparsity(),
-                    float(zero_tile_count) / float(result_norms.size()),
+                    result_norms.size() > 0
+                        ? float(zero_tile_count) / float(result_norms.size())
+                        : 0,
                     tolerance);
 }
 
