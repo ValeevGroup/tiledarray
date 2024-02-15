@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
-                     [](std::size_t l, std::size_t r0) { return l < r0; })) {
+                     [](std::size_t l, std::size_t r0) { return l <= r0; })) {
         if (count_valid == target_count) continue;
         ++count_valid;
 
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(block) {
       for (unsigned int i = 0u; i < r.rank(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
-                     [](std::size_t l, std::size_t r) { return l < r; })) {
+                     [](std::size_t l, std::size_t r) { return l <= r; })) {
         if (count_valid == target_count) continue;
         ++count_valid;
 
@@ -267,6 +267,28 @@ BOOST_AUTO_TEST_CASE(block) {
     }
   }
 end:;
+}
+
+BOOST_AUTO_TEST_CASE(empty_trange1) {
+  using TiledArray::eigen::iv;
+  // host range is non-empty but one of the dimensions will have no tiles
+  {
+    BOOST_CHECK_NO_THROW(BlockRange(r, iv(3, 3, 3), iv(4, 3, 5)));
+    BlockRange br(r, iv(3, 3, 3), iv(4, 3, 5));
+    BOOST_CHECK_EQUAL(br.volume(), 0);
+    BOOST_CHECK_TA_ASSERT(br.ordinal(0), Exception);
+  }
+
+  // host range is non-empty but one of the dimensions will have no tiles
+  {
+    BOOST_CHECK_NO_THROW(
+        BlockRange(Range({Range1{0, 3}, Range1{}, Range1{0, 4}}), iv(0, 0, 0),
+                   iv(1, 0, 1)));
+    BlockRange br(Range({Range1{0, 3}, Range1{}, Range1{0, 4}}), iv(0, 0, 0),
+                  iv(1, 0, 1));
+    BOOST_CHECK_EQUAL(br.volume(), 0);
+    BOOST_CHECK_TA_ASSERT(br.ordinal(0), Exception);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
