@@ -107,17 +107,17 @@ void replicate_tensor(Tensor &to, Tensor const &from) {
   // (same as the number of elements in @c from)
   auto const N = from.range().volume();
   for (auto i = 0; i < to.range().volume(); i += N)
-    std::copy(from.begin(), from.end(), to.data()+i);
+    std::copy(from.begin(), from.end(), to.data() + i);
 }
 
 template <typename Array,
           typename = std::enable_if_t<detail::is_array_v<Array>>>
-auto replicate_array(Array from, TiledRange const& prepend_trng) {
+auto replicate_array(Array from, TiledRange const &prepend_trng) {
   auto const result_rank = prepend_trng.rank() + rank(from);
   container::svector<TiledRange1> tr1s;
   tr1s.reserve(result_rank);
-  for (auto const& r : prepend_trng) tr1s.emplace_back(r);
-  for (auto const& r : from.trange()) tr1s.emplace_back(r);
+  for (auto const &r : prepend_trng) tr1s.emplace_back(r);
+  for (auto const &r : from.trange()) tr1s.emplace_back(r);
   auto const result_trange = TiledRange(tr1s);
 
   from.make_replicated();
@@ -125,7 +125,7 @@ auto replicate_array(Array from, TiledRange const& prepend_trng) {
   auto result = make_array<Array>(
       get_default_world(), result_trange,
       [from, res_tr = result_trange.tiles_range(),
-       delta_rank = prepend_trng.rank()](auto& tile, auto const& res_rng,
+       delta_rank = prepend_trng.rank()](auto &tile, auto const &res_rng,
                                          auto res_ord) {
         using std::begin;
         using std::end;
@@ -137,6 +137,7 @@ auto replicate_array(Array from, TiledRange const& prepend_trng) {
             next(begin(res_coord_ix), delta_rank), end(res_coord_ix));
         replicate_tensor(repped, from.find_local(from_coord_ix).get(false));
         tile = repped;
+        return tile.norm();
       });
 
   //clang-format off
@@ -161,6 +162,14 @@ auto replicate_array(Array from, TiledRange const& prepend_trng) {
   //clang-format on
 
   return result;
+}
+
+template <typename Ixs>
+TiledRange make_trange(RangeMap const &map, Ixs const &ixs) {
+  container::svector<TiledRange1> tr1s;
+  tr1s.reserve(ixs.size());
+  for (auto &&i : ixs) tr1s.emplace_back(map[i]);
+  return TiledRange(tr1s);
 }
 
 }  // namespace
@@ -230,6 +239,37 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
   auto range_map =
       (RangeMap(a, A.array().trange()) | RangeMap(b, B.array().trange()));
+
+  auto perm_and_rank_replicate = [delta_trng = make_trange(range_map, e)](
+                                     auto pre,                      //
+                                     std::string const &pre_annot,  //
+                                     std::string const &permed_annot) {
+    decltype(pre) permed;
+    permed(permed_annot) = pre(pre_annot);
+    return replicate_array(permed, delta_trng);
+  };
+
+  // special Hadamard
+  if (h.size() == a.size() || h.size() == b.size()) {
+    TA_ASSERT(!i && e);
+    bool small_a = h.size() == a.size();
+    std::string const eh_annot = (e | h);
+    std::string const permed_annot =
+        std::string(h) + (small_a ? inner.a : inner.b);
+    std::string const C_annot = std::string(c) + inner.c;
+    std::string const temp_annot = std::string(e) + "," + permed_annot;
+    ArrayC C;
+    if (small_a) {
+      auto temp =
+          perm_and_rank_replicate(A.array(), A.annotation(), permed_annot);
+      C(C_annot) = temp(temp_annot) * B;
+    } else {
+      auto temp =
+          perm_and_rank_replicate(B.array(), B.annotation(), permed_annot);
+      C(C_annot) = A * temp(temp_annot);
+    }
+    return C;
+  }
 
   using ::Einsum::index::permutation;
   using TiledArray::Permutation;

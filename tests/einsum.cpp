@@ -297,6 +297,28 @@ BOOST_AUTO_TEST_CASE(different_nested_ranks) {
                                            {2, 4})));
 }
 
+BOOST_AUTO_TEST_CASE(corner_cases) {
+  using T = TA::Tensor<int>;
+  using ToT = TA::Tensor<T>;
+  using ArrayT = TA::DistArray<T>;
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("ia,i->ia",                   //
+                                          {{0, 2, 5}, {0, 7, 11, 16}},  //
+                                          {{0, 2, 5}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("i,ai->ia",   //
+                                          {{0, 2, 5}},  //
+                                          {{0, 7, 11, 16}, {0, 2, 5}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("ijk,kj->kij",                      //
+                                          {{0, 2, 5}, {0, 3, 6}, {0, 2, 7}},  //
+                                          {{0, 2, 7}, {0, 3, 6}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("kj,ijk->kij",           //
+                                          {{0, 2, 7}, {0, 3, 6}},  //
+                                          {{0, 2, 5}, {0, 3, 6}, {0, 2, 7}}));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 using namespace TiledArray;
