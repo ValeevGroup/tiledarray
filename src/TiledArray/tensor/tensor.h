@@ -2648,10 +2648,13 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
     gemm_helper.compute_matrix_sizes(m, n, k, A.range(), B.range());
 
     // Get the leading dimension for left and right matrices.
-    const integer lda =
-        (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose ? k : m);
-    const integer ldb =
-        (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n : k);
+    const integer lda = std::max(
+        integer{1},
+        (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose ? k : m));
+    const integer ldb = std::max(
+        integer{1},
+        (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n
+                                                                       : k));
 
     // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
@@ -2719,8 +2722,9 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
       }
     }
 #else   // TA_ENABLE_TILE_OPS_LOGGING
+    const integer ldc = std::max(integer{1}, n);
     math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                     alpha, A.data(), lda, B.data(), ldb, beta, C.data(), n);
+                     alpha, A.data(), lda, B.data(), ldb, beta, C.data(), ldc);
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
   }
 }
