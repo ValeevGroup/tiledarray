@@ -517,6 +517,9 @@ BOOST_AUTO_TEST_CASE(permutation) {
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.stride_data(), r3.stride_data() + r3.rank(),
                                 r2.stride_data(), r2.stride_data() + r2.rank());
   BOOST_CHECK_EQUAL(r3, r2);
+
+  // using null Permutation is allowed
+  BOOST_CHECK_EQUAL(Range(Permutation{}, r1), r1);
 }
 
 BOOST_AUTO_TEST_CASE(include) {
@@ -700,13 +703,13 @@ BOOST_AUTO_TEST_CASE(serialization) {
       2 * (sizeof(Range) + sizeof(std::size_t) * (4 * GlobalFixture::dim + 1));
   unsigned char* buf = new unsigned char[buf_size];
   madness::archive::BufferOutputArchive oar(buf, buf_size);
-  oar& r;
+  oar & r;
   std::size_t nbyte = oar.size();
   oar.close();
 
   Range rs;
   madness::archive::BufferInputArchive iar(buf, nbyte);
-  iar& rs;
+  iar & rs;
   iar.close();
 
   delete[] buf;

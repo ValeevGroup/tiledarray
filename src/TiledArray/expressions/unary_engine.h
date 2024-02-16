@@ -70,9 +70,10 @@ class UnaryEngine : ExprEngine<Derived> {
 
  protected:
   // Import base class variables to this scope
+  using ExprEngine_::implicit_permute_inner_;
+  using ExprEngine_::implicit_permute_outer_;
   using ExprEngine_::indices_;
   using ExprEngine_::perm_;
-  using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
@@ -99,7 +100,7 @@ class UnaryEngine : ExprEngine<Derived> {
   /// children such that the number of permutations is minimized.
   /// \param target_indices The target index list for this expression
   void perm_indices(const BipartiteIndexList& target_indices) {
-    TA_ASSERT(permute_tiles_);
+    TA_ASSERT(!this->implicit_permute());
 
     indices_ = target_indices;
     if (arg_.indices() != target_indices) arg_.perm_indices(target_indices);

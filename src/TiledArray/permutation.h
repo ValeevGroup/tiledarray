@@ -271,7 +271,10 @@ class Permutation {
 
   /// \param i The element index
   /// \return The i-th element
-  index_type operator[](unsigned int i) const { return p_[i]; }
+  index_type operator[](unsigned int i) const {
+    TA_ASSERT(i < p_.size());
+    return p_[i];
+  }
 
   /// Cycles decomposition
 
@@ -327,6 +330,13 @@ class Permutation {
     result.p_.reserve(dim);
     for (unsigned int i = 0u; i < dim; ++i) result.p_.emplace_back(i);
     return result;
+  }
+
+  ///
+  /// Checks if this permutation is the identity permutation.
+  ///
+  [[nodiscard]] bool is_identity() const {
+    return std::is_sorted(p_.begin(), p_.end());
   }
 
   /// Identity permutation factory function
@@ -402,11 +412,13 @@ class Permutation {
   /// Bool conversion
 
   /// \return \c true if the permutation is not empty, otherwise \c false.
+  /// \note equivalent to `this->size() != 0`
   explicit operator bool() const { return !p_.empty(); }
 
   /// Not operator
 
   /// \return \c true if the permutation is empty, otherwise \c false.
+  /// \note equivalent to `this->size() == 0`
   bool operator!() const { return p_.empty(); }
 
   /// Permutation data accessor
@@ -421,7 +433,7 @@ class Permutation {
   /// \param[in,out] ar The serialization archive
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& p_;
+    ar & p_;
   }
 
 };  // class Permutation
@@ -721,6 +733,11 @@ class BipartitePermutation {
     init();
   }
 
+  BipartitePermutation(Permutation&& p, index_type second_partition_size = 0)
+      : base_(std::move(p)), second_size_(second_partition_size) {
+    init();
+  }
+
   BipartitePermutation(const Permutation& first, const Permutation& second)
       : second_size_(second.size()) {
     vector<index_type> base;
@@ -778,9 +795,14 @@ class BipartitePermutation {
   }
 
   /// \return reference to the first partition
-  const Permutation& first() const { return first_; }
+  const Permutation& first() const& { return first_; }
   /// \return reference to the second partition
-  const Permutation& second() const { return second_; }
+  const Permutation& second() const& { return second_; }
+
+  /// \return rvalue-reference to the first partition
+  Permutation&& first() && { return std::move(first_); }
+  /// \return reference to the second partition
+  Permutation&& second() && { return std::move(second_); }
 
   /// \return the size of the first partition
   index_type first_size() const { return this->size() - second_size_; }
@@ -795,7 +817,7 @@ class BipartitePermutation {
   /// \param[in,out] ar The serialization archive
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& base_& second_size_;
+    ar & base_ & second_size_;
     if constexpr (madness::is_input_archive_v<Archive>) {
       first_ = {};
       second_ = {};
@@ -858,6 +880,8 @@ inline auto inner(const Permutation& p) {
 // temporary
 inline auto outer(const Permutation& p) { return p; }
 
+inline Permutation&& outer(Permutation&& p) { return std::move(p); }
+
 inline auto inner_size(const Permutation& p) {
   abort();
   return 0;
@@ -867,7 +891,15 @@ inline auto outer_size(const Permutation& p) { return p.size(); }
 
 inline auto inner(const BipartitePermutation& p) { return p.second(); }
 
+inline Permutation&& inner(BipartitePermutation&& p) {
+  return std::move(p).second();
+}
+
 inline auto outer(const BipartitePermutation& p) { return p.first(); }
+
+inline Permutation&& outer(BipartitePermutation&& p) {
+  return std::move(p).first();
+}
 
 inline auto inner_size(const BipartitePermutation& p) {
   return p.second_size();

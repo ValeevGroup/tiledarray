@@ -75,9 +75,10 @@ class BinaryEngine : public ExprEngine<Derived> {
 
  protected:
   // Import base class variables to this scope
+  using ExprEngine_::implicit_permute_inner_;
+  using ExprEngine_::implicit_permute_outer_;
   using ExprEngine_::indices_;
   using ExprEngine_::perm_;
-  using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
@@ -96,14 +97,14 @@ class BinaryEngine : public ExprEngine<Derived> {
   PermutationType right_inner_permtype_ =
       PermutationType::general;  ///< Right-hand permutation type
 
-  template <TensorProduct ProductType>
+  template <TensorProduct OuterProductType>
   void init_indices_(const BipartiteIndexList& target_indices = {}) {
-    static_assert(ProductType == TensorProduct::Contraction ||
-                  ProductType == TensorProduct::Hadamard);
+    static_assert(OuterProductType == TensorProduct::Contraction ||
+                  OuterProductType == TensorProduct::Hadamard);
     // prefer to permute the arg with fewest leaves to try to minimize the
     // number of possible permutations
     using permopt_type =
-        std::conditional_t<ProductType == TensorProduct::Contraction,
+        std::conditional_t<OuterProductType == TensorProduct::Contraction,
                            GEMMPermutationOptimizer,
                            HadamardPermutationOptimizer>;
 
@@ -150,43 +151,25 @@ class BinaryEngine : public ExprEngine<Derived> {
         !left_tile_is_tot && !right_tile_is_tot;
     constexpr bool args_are_mixed_tensors =
         left_tile_is_tot ^ right_tile_is_tot;
-    if (args_are_plain_tensors &&
-        (left_outer_permtype_ == PermutationType::matrix_transpose ||
-         left_outer_permtype_ == PermutationType::identity)) {
-      left_.permute_tiles(false);
+    // implicit_permute_{outer,inner}() denotes whether permutations will be
+    // fused into consuming operation
+    if (left_outer_permtype_ == PermutationType::matrix_transpose ||
+        left_outer_permtype_ == PermutationType::identity) {
+      left_.implicit_permute_outer(true);
     }
-    if (!args_are_plain_tensors &&
-        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
-          left_outer_permtype_ == PermutationType::identity) ||
-         (left_inner_permtype_ == PermutationType::matrix_transpose ||
-          left_inner_permtype_ == PermutationType::identity))) {
-      left_.permute_tiles(false);
+    if (left_tile_is_tot &&
+        (left_inner_permtype_ == PermutationType::matrix_transpose ||
+         left_inner_permtype_ == PermutationType::identity)) {
+      left_.implicit_permute_inner(true);
     }
-    if (args_are_plain_tensors &&
-        (right_outer_permtype_ == PermutationType::matrix_transpose ||
-         right_outer_permtype_ == PermutationType::identity)) {
-      right_.permute_tiles(false);
+    if (right_outer_permtype_ == PermutationType::matrix_transpose ||
+        right_outer_permtype_ == PermutationType::identity) {
+      right_.implicit_permute_outer(true);
     }
-    if (!args_are_plain_tensors &&
-        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
-          left_outer_permtype_ == PermutationType::identity) ||
-         (right_inner_permtype_ == PermutationType::matrix_transpose ||
-          right_inner_permtype_ == PermutationType::identity))) {
-      right_.permute_tiles(false);
-    }
-    if (args_are_mixed_tensors &&
-        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
-          left_outer_permtype_ == PermutationType::identity) ||
-         (left_inner_permtype_ == PermutationType::matrix_transpose ||
-          left_inner_permtype_ == PermutationType::identity))) {
-      left_.permute_tiles(false);
-    }
-    if (args_are_mixed_tensors &&
-        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
-          left_outer_permtype_ == PermutationType::identity) ||
-         (right_inner_permtype_ == PermutationType::matrix_transpose ||
-          right_inner_permtype_ == PermutationType::identity))) {
-      right_.permute_tiles(false);
+    if (right_tile_is_tot &&
+        (right_inner_permtype_ == PermutationType::matrix_transpose ||
+         right_inner_permtype_ == PermutationType::identity)) {
+      right_.implicit_permute_inner(true);
     }
   }
 
@@ -203,16 +186,18 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// result of this expression will be permuted to match \c target_indices.
   /// \param target_indices The target index list for this expression
   void perm_indices(const BipartiteIndexList& target_indices) {
-    if (permute_tiles_) {
-      TA_ASSERT(left_.indices().size() == target_indices.size() ||
-                (left_.indices().second().size() ^ target_indices.second().size()));
-      TA_ASSERT(right_.indices().size() == target_indices.size() ||
-                (right_.indices().second().size() ^ target_indices.second().size()));
+    if (!this->implicit_permute()) {
+      TA_ASSERT(
+          left_.indices().size() == target_indices.size() ||
+          (left_.indices().second().size() ^ target_indices.second().size()));
+      TA_ASSERT(
+          right_.indices().size() == target_indices.size() ||
+          (right_.indices().second().size() ^ target_indices.second().size()));
 
       init_indices_<TensorProduct::Hadamard>(target_indices);
 
-      TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
-                right_inner_permtype_ == PermutationType::general);
+      TA_ASSERT(left_outer_permtype_ == PermutationType::general &&
+                right_outer_permtype_ == PermutationType::general);
 
       if (left_.indices() != left_indices_) left_.perm_indices(left_indices_);
       if (right_.indices() != right_indices_)

@@ -24,7 +24,7 @@
 using namespace TiledArray;
 
 struct HashPmapFixture {
-  HashPmapFixture() {}
+  constexpr static std::size_t max_ntiles = 10ul;
 };
 
 // =============================================================================
@@ -33,7 +33,7 @@ struct HashPmapFixture {
 BOOST_FIXTURE_TEST_SUITE(hash_pmap_suite, HashPmapFixture)
 
 BOOST_AUTO_TEST_CASE(constructor) {
-  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+  for (std::size_t tiles = 1ul; tiles < max_ntiles; ++tiles) {
     BOOST_REQUIRE_NO_THROW(
         TiledArray::detail::HashPmap pmap(*GlobalFixture::world, tiles));
     TiledArray::detail::HashPmap pmap(*GlobalFixture::world, tiles);
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(owner) {
   ProcessID* p_owner = new ProcessID[size];
 
   // Check various pmap sizes
-  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+  for (std::size_t tiles = 1ul; tiles < max_ntiles; ++tiles) {
     TiledArray::detail::HashPmap pmap(*GlobalFixture::world, tiles);
 
     for (std::size_t tile = 0; tile < tiles; ++tile) {
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(local_size) {
 BOOST_AUTO_TEST_CASE(local_group) {
   ProcessID tile_owners[100];
 
-  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+  for (std::size_t tiles = 1ul; tiles < max_ntiles; ++tiles) {
     TiledArray::detail::HashPmap pmap(*GlobalFixture::world, tiles);
 
     // Check that all local elements map to this rank

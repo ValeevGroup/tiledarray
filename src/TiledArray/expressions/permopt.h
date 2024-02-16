@@ -45,8 +45,11 @@ namespace expressions {
 enum class PermutationType { identity = 1, matrix_transpose = 2, general = 3 };
 
 inline blas::Op to_cblas_op(PermutationType permtype) {
-  TA_ASSERT(permtype == PermutationType::matrix_transpose ||
-            permtype == PermutationType::identity);
+  // N.B. 3 cases:
+  // - permtype == identity : no transpose needed
+  // - permtype == matrix_transpose : transpose needed
+  // - permtype == general : the argument will be explicitly permuted to be in a
+  // layout which does not require permutation hence no need for a switch ...
   return permtype == PermutationType::matrix_transpose
              ? math::blas::Transpose
              : math::blas::NoTranspose;

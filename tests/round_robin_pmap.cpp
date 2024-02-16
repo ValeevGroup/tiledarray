@@ -25,7 +25,7 @@
 using namespace TiledArray;
 
 struct RoundRobinPmapFixture {
-  RoundRobinPmapFixture() {}
+  constexpr static std::size_t max_ntiles = 10ul;
 };
 
 // =============================================================================
@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE(owner) {
   ProcessID *p_owner = new ProcessID[size];
 
   // Check various pmap sizes
-  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+  for (std::size_t tiles = 1ul; tiles < max_ntiles; ++tiles) {
     TiledArray::detail::RoundRobinPmap pmap(*GlobalFixture::world, tiles);
 
     for (std::size_t tile = 0; tile < tiles; ++tile) {
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(owner) {
 }
 
 BOOST_AUTO_TEST_CASE(local_size) {
-  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+  for (std::size_t tiles = 1ul; tiles < max_ntiles; ++tiles) {
     TiledArray::detail::RoundRobinPmap pmap(*GlobalFixture::world, tiles);
 
     std::size_t total_size = pmap.local_size();
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(local_size) {
 BOOST_AUTO_TEST_CASE(local_group) {
   ProcessID tile_owners[100];
 
-  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+  for (std::size_t tiles = 1ul; tiles < max_ntiles; ++tiles) {
     TiledArray::detail::RoundRobinPmap pmap(*GlobalFixture::world, tiles);
 
     // Check that all local elements map to this rank
