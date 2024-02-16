@@ -301,6 +301,7 @@ BOOST_AUTO_TEST_CASE(corner_cases) {
   using T = TA::Tensor<int>;
   using ToT = TA::Tensor<T>;
   using ArrayT = TA::DistArray<T>;
+  using ArrayToT = TA::DistArray<ToT>;
 
   BOOST_REQUIRE(check_manual_eval<ArrayT>("ia,i->ia",                   //
                                           {{0, 2, 5}, {0, 7, 11, 16}},  //
@@ -317,6 +318,23 @@ BOOST_AUTO_TEST_CASE(corner_cases) {
   BOOST_REQUIRE(check_manual_eval<ArrayT>("kj,ijk->kij",           //
                                           {{0, 2, 7}, {0, 3, 6}},  //
                                           {{0, 2, 5}, {0, 3, 6}, {0, 2, 7}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("kij;ab,kj;bc->kji;ac",          //
+                                            {{0, 2}, {0, 3, 5}, {0, 4, 7}},  //
+                                            {{0, 2}, {0, 4, 7}},             //
+                                            {3, 5}, {5, 2}));
+
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, ArrayT>("ijk;ab,kj->kij;ba",             //
+                                           {{0, 2}, {0, 4, 6}, {0, 3, 5}},  //
+                                           {{0, 3, 5}, {0, 4, 6}},          //
+                                           {7, 5})));
+
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayT, ArrayToT>("ij,jik;ab->kji;ab",             //
+                                           {{0, 3, 5}, {0, 3, 8}},          //
+                                           {{0, 3, 8}, {0, 3, 5}, {0, 2}},  //
+                                           {3, 9})));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
