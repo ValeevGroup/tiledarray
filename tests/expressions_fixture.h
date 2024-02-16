@@ -63,10 +63,12 @@ struct ExpressionsFixture : public TiledRangeFixture {
         s_tr1_2(make_random_sparseshape(trange1)),
         s_tr2(make_random_sparseshape(trange2)),
         s_trC(make_random_sparseshape(trangeC)),
+        s_trC_f(make_random_sparseshape(trangeC_f)),
         a(*GlobalFixture::world, tr, s_tr_1),
         b(*GlobalFixture::world, tr, s_tr_2),
         c(*GlobalFixture::world, tr, s_tr_2),
         aC(*GlobalFixture::world, trangeC, s_trC),
+        aC_f(*GlobalFixture::world, trangeC_f, s_trC_f),
         u(*GlobalFixture::world, trange1, s_tr1_1),
         v(*GlobalFixture::world, trange1, s_tr1_2),
         w(*GlobalFixture::world, trange2, s_tr2) {
@@ -92,12 +94,14 @@ struct ExpressionsFixture : public TiledRangeFixture {
         u(*GlobalFixture::world, trange1),
         v(*GlobalFixture::world, trange1),
         w(*GlobalFixture::world, trange2),
-        aC(*GlobalFixture::world, trangeC) {
+        aC(*GlobalFixture::world, trangeC),
+        aC_f(*GlobalFixture::world, trangeC_f) {
     random_fill(a);
     random_fill(b);
     random_fill(u);
     random_fill(v);
     random_fill(aC);
+    random_fill(aC_f);
     GlobalFixture::world->gop.fence();
   }
 
@@ -221,12 +225,17 @@ struct ExpressionsFixture : public TiledRangeFixture {
   // contains empty trange1
   const TiledRange trangeC{TiledRange1{0, 2, 5, 10}, TiledRange1{},
                            TiledRange1{0, 2, 7, 11}};
+  // like trC, but with all dimension nonempty
+  const TiledRange trangeC_f{trangeC.dim(0), TiledRange1{0, 4, 7},
+                             trangeC.dim(2)};
+
   SparseShape<float> s_tr_1;
   SparseShape<float> s_tr_2;
   SparseShape<float> s_tr1_1;
   SparseShape<float> s_tr1_2;
   SparseShape<float> s_tr2;
   SparseShape<float> s_trC;
+  SparseShape<float> s_trC_f;
   TArray a;
   TArray b;
   TArray c;
@@ -234,6 +243,7 @@ struct ExpressionsFixture : public TiledRangeFixture {
   TArray v;
   TArray w;
   TArray aC;
+  TArray aC_f;
 };  // ExpressionsFixture
 
 #endif  // TILEDARRAY_TEST_EXPRESSIONS_FIXTURE_H

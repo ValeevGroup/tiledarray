@@ -2946,6 +2946,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(inner_product, F, Fixtures, F) {
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_trange1, F, Fixtures, F) {
   auto& c = F::c;
   auto& aC = F::aC;
+  auto& aC_f = F::aC_f;
 
   // unary/binary expressions
   {
@@ -2981,6 +2982,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_trange1, F, Fixtures, F) {
     BOOST_CHECK_NO_THROW(t2("a,d") = aC("a,b,c") * aC("d,b,c"));
     // contraction over nonempty dims
     BOOST_CHECK_NO_THROW(t4("b,a,e,d") = aC("a,b,c") * aC("d,e,c"));
+    // contraction over nonempty dims, involving expressions with nonzero-volume
+    BOOST_CHECK_NO_THROW(t4("b,a,e,d") = aC("a,b,c") * (2. * aC_f("d,e,c")));
   }
 
   // reduction expressions
