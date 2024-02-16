@@ -77,10 +77,12 @@ template <typename T, typename Scalar, typename Range, typename Storage,
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
-  const integer lda =
-      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
-  const integer ldb =
-      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+  const integer lda = std::max(
+      integer{1},
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m));
+  const integer ldb = std::max(
+      integer{1},
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
 
   T factor_t = T(factor);
   T zero(0);
@@ -112,10 +114,11 @@ template <typename T, typename Scalar, typename Range, typename Storage,
 
     static_assert(::btas::boxrange_iteration_order<Range>::value ==
                   ::btas::boxrange_iteration_order<Range>::row_major);
+    const integer ldc = std::max(integer{1}, n);
     blas::gemm(blas::Layout::ColMajor, gemm_helper.right_op(),
                gemm_helper.left_op(), n, m, k, factor_t,
                device_data(right.storage()), ldb, device_data(left.storage()),
-               lda, zero, device_data(result.storage()), n, queue);
+               lda, zero, device_data(result.storage()), ldc, queue);
 
     device::sync_madness_task_with(stream);
   }
@@ -185,10 +188,12 @@ void gemm(::btas::Tensor<T, Range, Storage> &result,
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
-  const integer lda =
-      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
-  const integer ldb =
-      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+  const integer lda = std::max(
+      integer{1},
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m));
+  const integer ldb = std::max(
+      integer{1},
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
 
   auto &queue = blasqueue_for(result.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
@@ -207,10 +212,11 @@ void gemm(::btas::Tensor<T, Range, Storage> &result,
 
     static_assert(::btas::boxrange_iteration_order<Range>::value ==
                   ::btas::boxrange_iteration_order<Range>::row_major);
+    const integer ldc = std::max(integer{1}, n);
     blas::gemm(blas::Layout::ColMajor, gemm_helper.right_op(),
                gemm_helper.left_op(), n, m, k, factor_t,
                device_data(right.storage()), ldb, device_data(left.storage()),
-               lda, one, device_data(result.storage()), n, queue);
+               lda, one, device_data(result.storage()), ldc, queue);
     device::sync_madness_task_with(stream);
   }
 }

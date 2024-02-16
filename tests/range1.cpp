@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_CHECK_NO_THROW((Range1{1, 1}));
   BOOST_CHECK_NO_THROW(Range1(1, 1));
   BOOST_CHECK_EQUAL(Range1(1, 1).first, 1);
-  BOOST_CHECK_EQUAL(Range1(1, 1).first, 1);
+  BOOST_CHECK_EQUAL(Range1(1, 1).second, 1);
 
   BOOST_CHECK_NO_THROW((Range1{-11, 13}));
   BOOST_CHECK_EQUAL(Range1(-11, 13).first, -11);
@@ -86,6 +86,15 @@ BOOST_AUTO_TEST_CASE(accessors) {
   BOOST_CHECK_EQUAL(r.upbound(), 10);
   BOOST_CHECK_NO_THROW(r.extent());
   BOOST_CHECK_EQUAL(r.extent(), 9);
+
+  // corner case: empty range
+  Range1 r1{1, 1};
+  BOOST_CHECK_NO_THROW(r1.lobound());
+  BOOST_CHECK_EQUAL(r1.lobound(), 1);
+  BOOST_CHECK_NO_THROW(r1.upbound());
+  BOOST_CHECK_EQUAL(r1.upbound(), 1);
+  BOOST_CHECK_NO_THROW(r.extent());
+  BOOST_CHECK_EQUAL(r1.extent(), 0);
 }
 
 BOOST_AUTO_TEST_CASE(iteration) {
@@ -134,13 +143,13 @@ BOOST_AUTO_TEST_CASE(serialization) {
   std::size_t buf_size = sizeof(Range1);
   unsigned char* buf = new unsigned char[buf_size];
   madness::archive::BufferOutputArchive oar(buf, buf_size);
-  oar& r;
+  oar & r;
   std::size_t nbyte = oar.size();
   oar.close();
 
   Range1 rs;
   madness::archive::BufferInputArchive iar(buf, nbyte);
-  iar& rs;
+  iar & rs;
   iar.close();
 
   delete[] buf;
