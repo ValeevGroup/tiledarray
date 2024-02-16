@@ -891,9 +891,9 @@ class Summa
   ordinal_type initialize(const DenseShape&) {
     // Construct static broadcast groups for dense arguments
     const madness::DistributedID col_did(DistEvalImpl_::id(), 0ul);
-    col_group_ = proc_grid_.make_col_group(col_did);
+    if (k_ > 0) col_group_ = proc_grid_.make_col_group(col_did);
     const madness::DistributedID row_did(DistEvalImpl_::id(), k_);
-    row_group_ = proc_grid_.make_row_group(row_did);
+    if (k_ > 0) row_group_ = proc_grid_.make_row_group(row_did);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
     std::stringstream ss;
@@ -1347,7 +1347,6 @@ class Summa
 
     template <typename Derived>
     void make_next_step_tasks(Derived* task, ordinal_type depth) {
-      TA_ASSERT(depth > 0);
       // Set the depth to be no greater than the maximum number steps
       if (depth > owner_->k_) depth = owner_->k_;
 
@@ -1705,6 +1704,9 @@ class Summa
       ordinal_type depth =
           std::max(ProcGrid::size_type(2),
                    std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
+
+      // corner case: empty result
+      if (k_ == 0) return 0;
 
       // Construct the first SUMMA iteration task
       if (TensorImpl_::shape().is_dense()) {

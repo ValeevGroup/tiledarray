@@ -84,10 +84,6 @@ class CyclicPmap : public Pmap {
         cols_(cols),
         proc_cols_(proc_cols),
         proc_rows_(proc_rows) {
-    // Check that the size is non-zero
-    TA_ASSERT(rows_ >= 1ul);
-    TA_ASSERT(cols_ >= 1ul);
-
     // Check limits of process rows and columns
     TA_ASSERT(proc_rows_ >= 1ul);
     TA_ASSERT(proc_cols_ >= 1ul);
