@@ -85,7 +85,12 @@ inline Array make_array(
     auto tile = world.taskq.add(
         [=](const range_type& range) -> value_type {
           value_type tile;
-          op(tile, range);
+          if constexpr (std::is_invocable_v<decltype(op), decltype(tile)&,
+                                            Range const&,
+                                            std::remove_cv_t<decltype(index)>>)
+            op(tile, range, index);
+          else
+            op(tile, range);
           return tile;
         },
         trange.make_tile_range(index));
@@ -155,7 +160,12 @@ inline Array make_array(
   int task_count = 0;
   auto task = [&](const ordinal_type index) -> value_type {
     value_type tile;
-    tile_norms.at_ordinal(index) = op(tile, trange.make_tile_range(index));
+    if constexpr (std::is_invocable_v<Op, decltype(tile)&, Range const&,
+                                      ordinal_type>)
+      tile_norms.at_ordinal(index) =
+          op(tile, trange.make_tile_range(index), index);
+    else
+      tile_norms.at_ordinal(index) = op(tile, trange.make_tile_range(index));
     ++counter;
     return tile;
   };

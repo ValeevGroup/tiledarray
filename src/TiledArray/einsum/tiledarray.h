@@ -84,6 +84,87 @@ constexpr bool AreArraySame =
 
 }  // namespace
 
+namespace {
+
+///
+/// \brief This function replicates a tensor B into a tensor A such that
+///        A(a_1,...a_k,i_1,...,i_l) = B(i_1,...,i_l). Evidently, the
+///        extents of i_n modes must match in both A and B.
+///
+/// \tparam Tensor TiledArray::Tensor type.
+/// \param to The target tensor.
+/// \param from The source tensor that will be replicated into \c to.
+///
+template <typename Tensor,
+          typename = std::enable_if_t<detail::is_nested_tensor_v<Tensor>>>
+void replicate_tensor(Tensor &to, Tensor const &from) {
+  // assert that corresponding modes have the same extents
+  TA_ASSERT(std::equal(from.range().extent().rbegin(),
+                       from.range().extent().rend(),
+                       to.range().extent().rbegin()));
+
+  // number of elements to be copied
+  // (same as the number of elements in @c from)
+  auto const N = from.range().volume();
+  for (auto i = 0; i < to.range().volume(); i += N)
+    std::copy(from.begin(), from.end(), to.data()+i);
+}
+
+template <typename Array,
+          typename = std::enable_if_t<detail::is_array_v<Array>>>
+auto replicate_array(Array from, TiledRange const& prepend_trng) {
+  auto const result_rank = prepend_trng.rank() + rank(from);
+  container::svector<TiledRange1> tr1s;
+  tr1s.reserve(result_rank);
+  for (auto const& r : prepend_trng) tr1s.emplace_back(r);
+  for (auto const& r : from.trange()) tr1s.emplace_back(r);
+  auto const result_trange = TiledRange(tr1s);
+
+  from.make_replicated();
+
+  auto result = make_array<Array>(
+      get_default_world(), result_trange,
+      [from, res_tr = result_trange.tiles_range(),
+       delta_rank = prepend_trng.rank()](auto& tile, auto const& res_rng,
+                                         auto res_ord) {
+        using std::begin;
+        using std::end;
+        using std::next;
+
+        typename Array::value_type repped(res_rng);
+        auto res_coord_ix = res_tr.idx(res_ord);
+        auto from_coord_ix = decltype(res_coord_ix)(
+            next(begin(res_coord_ix), delta_rank), end(res_coord_ix));
+        replicate_tensor(repped, from.find_local(from_coord_ix).get(false));
+        tile = repped;
+      });
+
+  //clang-format off
+  //  using std::begin;
+  //  using std::next;
+  //  using std::end;
+  //
+  //  Array result(get_default_world(), result_trange);
+  //
+  //  for (auto tile : result) {
+  //    auto res_tix = tile.index();
+  //    auto from_tix = decltype(res_tix)(next(begin(res_tix),
+  //    prepend_trng.rank()), end(res_tix));
+  //    if (result.is_local(res_tix) && !result.is_zero(res_tix) &&
+  //        !from.is_zero(from_tix)) {
+  //      typename Array::value_type
+  //      repped(result.trange().make_tile_range(res_tix)); auto found =
+  //      from.find_local(from_tix).get(false); replicate_tensor(repped, found);
+  //      tile = repped;
+  //    }
+  //  }
+  //clang-format on
+
+  return result;
+}
+
+}  // namespace
+
 template <typename ArrayA_, typename ArrayB_, typename... Indices>
 auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             std::tuple<Einsum::Index<std::string>, Indices...> cs,
