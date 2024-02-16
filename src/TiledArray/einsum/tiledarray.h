@@ -110,6 +110,17 @@ void replicate_tensor(Tensor &to, Tensor const &from) {
     std::copy(from.begin(), from.end(), to.data() + i);
 }
 
+///
+/// \brief This function is the @c DistArray counterpart of the function
+///        @c replicate_tensor(TA::Tensor&, TA::Tensor const&).
+///
+/// \tparam Array
+/// \param from The DistArray to be by-rank replicated.
+/// \parama prepend_trng TiledRange1's in this argument will be prepended to the
+///         `TiledRange` of the argument array.
+/// \return An array whose rank is increased by `prepend_trng.rank()`.
+/// \see `replicate_tensor`
+///
 template <typename Array,
           typename = std::enable_if_t<detail::is_array_v<Array>>>
 auto replicate_array(Array from, TiledRange const &prepend_trng) {
@@ -121,46 +132,25 @@ auto replicate_array(Array from, TiledRange const &prepend_trng) {
   auto const result_trange = TiledRange(tr1s);
 
   from.make_replicated();
+  auto &world = from.world();
+  world.gop.fence();
 
   auto result = make_array<Array>(
-      get_default_world(), result_trange,
-      [from, res_tr = result_trange.tiles_range(),
-       delta_rank = prepend_trng.rank()](auto &tile, auto const &res_rng,
-                                         auto res_ord) {
+      world, result_trange,
+      [from, res_tr = result_trange, delta_rank = prepend_trng.rank()](
+          auto &tile, auto const &res_rng) {
         using std::begin;
         using std::end;
         using std::next;
 
         typename Array::value_type repped(res_rng);
-        auto res_coord_ix = res_tr.idx(res_ord);
+        auto res_coord_ix = res_tr.element_to_tile(res_rng.lobound());
         auto from_coord_ix = decltype(res_coord_ix)(
             next(begin(res_coord_ix), delta_rank), end(res_coord_ix));
         replicate_tensor(repped, from.find_local(from_coord_ix).get(false));
         tile = repped;
         return tile.norm();
       });
-
-  //clang-format off
-  //  using std::begin;
-  //  using std::next;
-  //  using std::end;
-  //
-  //  Array result(get_default_world(), result_trange);
-  //
-  //  for (auto tile : result) {
-  //    auto res_tix = tile.index();
-  //    auto from_tix = decltype(res_tix)(next(begin(res_tix),
-  //    prepend_trng.rank()), end(res_tix));
-  //    if (result.is_local(res_tix) && !result.is_zero(res_tix) &&
-  //        !from.is_zero(from_tix)) {
-  //      typename Array::value_type
-  //      repped(result.trange().make_tile_range(res_tix)); auto found =
-  //      from.find_local(from_tix).get(false); replicate_tensor(repped, found);
-  //      tile = repped;
-  //    }
-  //  }
-  //clang-format on
-
   return result;
 }
 
