@@ -662,21 +662,20 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// \param[in] tensors The argument tensors
 template <
     typename Op, typename TR, typename... Ts,
-    typename std::enable_if<(is_nested_tensor<TR, Ts...>::value &&
-                             !is_tensor<TR, Ts...>::value) &&
-                            is_contiguous_tensor<TR>::value>::type* = nullptr>
+    typename std::enable_if<
+        (is_nested_tensor<TR, Ts...>::value && !is_tensor<TR, Ts...>::value) &&
+        is_contiguous_tensor<TR, Ts...>::value>::type* = nullptr>
 inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
 
-  const auto volume = result.range().volume();
-
   if constexpr (std::is_invocable_r_v<TR, Op, const Ts&...>) {
     result = std::forward<Op>(op)(tensors...);
   } else {
-    for (decltype(result.range().volume()) ord = 0ul; ord < volume; ++ord) {
+    const auto volume = result.total_size();
+    for (std::remove_cv_t<decltype(volume)> ord = 0ul; ord < volume; ++ord) {
       new (result.data() + ord) typename TR::value_type(
-          tensor_op<typename TR::value_type>(op, tensors.at_ordinal(ord)...));
+          tensor_op<typename TR::value_type>(op, (*(tensors.data() + ord))...));
     }
   }
 }
