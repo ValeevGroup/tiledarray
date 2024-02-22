@@ -161,6 +161,14 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
                                             {{0, 2, 4}, {0, 2}},     //
                                             {2, 2},                  //
                                             {2, 2}));
+
+  // C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;dcb,ik;bc->ij;d",     //
+                                            {{0, 3}, {0, 4}, {0, 5}},  //
+                                            {{0, 3}, {0, 5}},          //
+                                            {2, 3, 4},                 //
+                                            {4, 3}));
+
   // H+C;H
   BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;mn,ijk;nm->ij;mn",    //
                                             {{0, 2}, {0, 3}, {0, 2}},  //
@@ -335,17 +343,6 @@ BOOST_AUTO_TEST_CASE(corner_cases) {
                                            {{0, 3, 5}, {0, 3, 8}},          //
                                            {{0, 3, 8}, {0, 3, 5}, {0, 2}},  //
                                            {3, 9})));
-}
-
-BOOST_AUTO_TEST_CASE(debug) {
-  using T = TA::Tensor<int>;
-  using ToT = TA::Tensor<T>;
-  using ArrayToT = TA::DistArray<ToT>;
-  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;dcb,ik;bc->ij;d",     //
-                                            {{0, 3}, {0, 4}, {0, 5}},  //
-                                            {{0, 3}, {0, 5}},          //
-                                            {2, 3, 4},                 //
-                                            {4, 3}));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
