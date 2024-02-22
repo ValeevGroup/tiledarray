@@ -406,7 +406,8 @@ class Tensor {
       typename std::enable_if<detail::is_nested_tensor_v<T1> &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor(const T1& other, const Perm& perm)
-      : Tensor(outer(perm) * other.range(), 1, default_construct{false}) {
+      : Tensor(outer(perm) * other.range(), other.nbatch(),
+               default_construct{false}) {
     const auto outer_perm = outer(perm);
     if (outer_perm) {
       detail::tensor_init(value_converter<typename T1::value_type>, outer_perm,
@@ -425,7 +426,12 @@ class Tensor {
       if (inner_size(perm) != 0) {
         const auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
-        for (auto& x : *this) x = p(x, inner_perm);
+
+        auto volume = total_size();
+        for (decltype(volume) i = 0; i < volume; ++i) {
+          auto& el = *(data() + i);
+          el = p(el, inner_perm);
+        }
       }
     }
   }
