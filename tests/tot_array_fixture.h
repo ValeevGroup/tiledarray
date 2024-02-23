@@ -272,9 +272,10 @@ class OuterInnerIndices {
   [[nodiscard]] auto const& innerC() const noexcept { return inner_[2]; }
 };
 
+enum struct TensorProduct { General, Dot, Invalid };
+
 struct ProductSetup {
-  TA::expressions::TensorProduct product_type{
-      TA::expressions::TensorProduct::Invalid};
+  TensorProduct product_type{TensorProduct::Invalid};
 
   PartialPerm
       // - {<k,v>} index at kth position in C appears at vth position in A
@@ -292,7 +293,7 @@ struct ProductSetup {
       rank_E,  //
       rank_I;
 
-  ProductSetup() = default;
+  // ProductSetup() = default;
 
   template <typename T,
             typename = std::enable_if_t<TA::detail::is_annotation_v<T>>>
@@ -320,14 +321,13 @@ struct ProductSetup {
     I_to_B = partial_perm(ixs.I, ixs.B);
 
     using TP = decltype(product_type);
-    if (!(ixs.E || ixs.H))
-      product_type = TP::Invalid;  // no target indices
-    else if (!(ixs.E || ixs.I))
-      product_type = TP::Hadamard;
-    else if (!ixs.H)
-      product_type = TP::Contraction;
-    else if (ixs.H && (ixs.E || ixs.I))
+
+    if (rank_A + rank_B != 0 && rank_C != 0)
       product_type = TP::General;
+    else if (rank_A == rank_B && rank_B != 0 && rank_C == 0)
+      product_type = TP::Dot;
+    else
+      product_type = TP::Invalid;
   }
 
   template <typename ArrayLike,
@@ -337,7 +337,7 @@ struct ProductSetup {
       : ProductSetup(std::get<0>(arr), std::get<1>(arr), std::get<2>(arr)) {}
 
   [[nodiscard]] bool valid() const noexcept {
-    return (rank_A + rank_B) != 0 && (rank_E + rank_H) != 0;
+    return product_type != TensorProduct::Invalid;
   }
 };
 
@@ -349,112 +349,154 @@ auto make_perm(PartialPerm const& pp) {
   return TA::Permutation(p);
 }
 
-template <typename Tensor, typename... Setups>
-inline auto general_product(Tensor const& t, typename Tensor::numeric_type s,
-                            ProductSetup const& setup, Setups const&... args) {
+template <typename Result, typename Tensor, typename... Setups,
+          typename = std::enable_if_t<TA::detail::is_nested_tensor_v<Tensor>>>
+inline Result general_product(Tensor const& t, typename Tensor::numeric_type s,
+                              ProductSetup const& setup,
+                              Setups const&... args) {
+  static_assert(std::is_same_v<Result, Tensor>);
   static_assert(sizeof...(args) == 0,
                 "To-Do: Only scalar times once-nested tensor supported now");
   return t.scale(s, make_perm(setup.C_to_A).inv());
 }
 
-template <typename Tensor, typename... Setups>
-inline auto general_product(typename Tensor::numeric_type s, Tensor const& t,
-                            ProductSetup const& setup, Setups const&... args) {
+template <typename Result, typename Tensor, typename... Setups,
+          typename = std::enable_if_t<TA::detail::is_nested_tensor_v<Tensor>>>
+inline Result general_product(typename Tensor::numeric_type s, Tensor const& t,
+                              ProductSetup const& setup,
+                              Setups const&... args) {
+  static_assert(std::is_same_v<Result, Tensor>);
   static_assert(sizeof...(args) == 0,
                 "To-Do: Only scalar times once-nested tensor supported now");
   return t.scale(s, make_perm(setup.C_to_B).inv());
 }
+
 }  // namespace
 
-template <typename TensorA,                                     //
-          typename TensorB,                                     //
-          typename... Setups,                                   //
-          std::enable_if_t<                                     //
-              TA::detail::is_nested_tensor_v<TensorA, TensorB>  //
-                  && sizeof...(Setups) ==
-                         TA::detail::max_nested_rank<TensorA, TensorB> - 1,
-              bool> = true>
-auto general_product(TensorA const& A, TensorB const& B,
-                     ProductSetup const& setup, Setups const&... args) {
+template <
+    typename Result, typename TensorA, typename TensorB, typename... Setups,
+    typename =
+        std::enable_if_t<TA::detail::is_nested_tensor_v<TensorA, TensorB>>>
+Result general_product(TensorA const& A, TensorB const& B,
+                       ProductSetup const& setup, Setups const&... args) {
+  using TA::detail::max_nested_rank;
+  using TA::detail::nested_rank;
+
   static_assert(std::is_same_v<typename TensorA::numeric_type,
                                typename TensorB::numeric_type>);
-  using TensorC = std::conditional_t<(TA::detail::nested_rank<TensorA> >
-                                      TA::detail::nested_rank<TensorB>),
-                                     TensorA, TensorB>;
+
+  static_assert(max_nested_rank<TensorA, TensorB> == sizeof...(args) + 1);
+
   TA_ASSERT(setup.valid());
 
-  constexpr bool is_tot = TA::detail::max_nested_rank<TensorA, TensorB> > 1;
+  constexpr bool is_tot = max_nested_rank<TensorA, TensorB> > 1;
 
-  // creating the contracted TA::Range
-  TA::Range const rng_I = [&setup, &A, &B]() {
-    TA::container::svector<TA::Range1> rng1_I(setup.rank_I, TA::Range1{});
-    for (auto [f, t] : setup.I_to_A)
-      // I_to_A implies I[f] == A[t]
-      rng1_I[f] = A.range().dim(t);
+  if constexpr (std::is_same_v<Result, typename TensorA::numeric_type>) {
+    //
+    // tensor dot product evaluation
+    // T * T -> scalar
+    // ToT * ToT -> scalar
+    //
+    static_assert(nested_rank<TensorA> == nested_rank<TensorB>);
 
-    return TA::Range(rng1_I);
-  }();
+    TA_ASSERT(setup.rank_C == 0 &&
+              "Attempted to evaluate dot product when the product setup does "
+              "not allow");
 
-  // creating the target (ie. C's) TA::Range.
-  TA::Range const rng_C = [&setup, &A, &B]() {
-    TA::container::svector<TA::Range1> rng1_C(setup.rank_C, TA::Range1{0, 0});
-    for (auto [f, t] : setup.C_to_A)
-      // C_to_A implies C[f] = A[t]
-      rng1_C[f] = A.range().dim(t);
+    TA_ASSERT(false && "Dot product not yet supported!");
 
-    for (auto [f, t] : setup.C_to_B)
-      // C_to_B implies C[f] = B[t]
-      rng1_C[f] = B.range().dim(t);
+  } else {
+    //
+    // general product:
+    // T * T -> T
+    // ToT * T -> ToT
+    // ToT * ToT -> ToT
+    // ToT * ToT -> T
+    //
 
-    auto zero_r1 = [](TA::Range1 const& r) { return r == TA::Range1{0, 0}; };
+    static_assert(nested_rank<Result> <= max_nested_rank<TensorA, TensorB>,
+                  "Tensor product not supported with increased nested rank in "
+                  "the result");
 
-    TA_ASSERT(std::none_of(rng1_C.begin(), rng1_C.end(), zero_r1));
+    constexpr bool de_nest =
+        nested_rank<Result> < max_nested_rank<TensorA, TensorB>;
 
-    return TA::Range(rng1_C);
-  }();
+    // creating the contracted TA::Range
+    TA::Range const rng_I = [&setup, &A, &B]() {
+      TA::container::svector<TA::Range1> rng1_I(setup.rank_I, TA::Range1{});
+      for (auto [f, t] : setup.I_to_A)
+        // I_to_A implies I[f] == A[t]
+        rng1_I[f] = A.range().dim(t);
 
-  TensorC C{rng_C};
+      return TA::Range(rng1_I);
+    }();
 
-  // do the computation
-  for (auto ix_C : rng_C) {
-    // finding corresponding indices of A, and B.
-    TA::Range::index_type ix_A(setup.rank_A, 0), ix_B(setup.rank_B, 0);
-    apply_partial_perm(ix_A, ix_C, setup.C_to_A);
-    apply_partial_perm(ix_B, ix_C, setup.C_to_B);
+    // creating the target TA::Range.
+    TA::Range const rng_C = [&setup, &A, &B]() {
+      TA::container::svector<TA::Range1> rng1_C(setup.rank_C, TA::Range1{0, 0});
+      for (auto [f, t] : setup.C_to_A)
+        // C_to_A implies C[f] = A[t]
+        rng1_C[f] = A.range().dim(t);
 
-    if (setup.rank_I == 0)
-      if constexpr (is_tot)
-        C(ix_C) = general_product(A(ix_A), B(ix_B), args...);
-      else {
-        TA_ASSERT(!(ix_A.empty() && ix_B.empty()));
-        C(ix_C) = ix_A.empty()   ? B(ix_B)
-                  : ix_B.empty() ? A(ix_B)
-                                 : A(ix_A) * B(ix_B);
-      }
+      for (auto [f, t] : setup.C_to_B)
+        // C_to_B implies C[f] = B[t]
+        rng1_C[f] = B.range().dim(t);
 
-    else {
-      typename TensorC::value_type temp{};
-      for (auto ix_I : rng_I) {
-        apply_partial_perm(ix_A, ix_I, setup.I_to_A);
-        apply_partial_perm(ix_B, ix_I, setup.I_to_B);
-        if constexpr (is_tot)
-          temp += general_product(A(ix_A), B(ix_B), args...);
-        else {
-          TA_ASSERT(!(ix_A.empty() || ix_B.empty()));
-          temp += A(ix_A) * B(ix_B);
+      auto zero_r1 = [](TA::Range1 const& r) { return r == TA::Range1{0, 0}; };
+
+      TA_ASSERT(std::none_of(rng1_C.begin(), rng1_C.end(), zero_r1));
+
+      return TA::Range(rng1_C);
+    }();
+
+    Result C{rng_C};
+
+    // do the computation
+    for (auto ix_C : rng_C) {
+      // finding corresponding indices of A, and B.
+      TA::Range::index_type ix_A(setup.rank_A, 0), ix_B(setup.rank_B, 0);
+      apply_partial_perm(ix_A, ix_C, setup.C_to_A);
+      apply_partial_perm(ix_B, ix_C, setup.C_to_B);
+
+      if (setup.rank_I == 0) {
+        if constexpr (is_tot) {
+          C(ix_C) = general_product<typename Result::value_type>(
+              A(ix_A), B(ix_B), args...);
+        } else {
+          TA_ASSERT(!(ix_A.empty() && ix_B.empty()));
+          C(ix_C) = ix_A.empty()   ? B(ix_B)
+                    : ix_B.empty() ? A(ix_B)
+                                   : A(ix_A) * B(ix_B);
         }
+      } else {
+        typename Result::value_type temp{};
+        for (auto ix_I : rng_I) {
+          apply_partial_perm(ix_A, ix_I, setup.I_to_A);
+          apply_partial_perm(ix_B, ix_I, setup.I_to_B);
+          if constexpr (is_tot)
+            temp += general_product<typename Result::value_type>(
+                A(ix_A), B(ix_B), args...);
+          else {
+            TA_ASSERT(!(ix_A.empty() || ix_B.empty()));
+            temp += A(ix_A) * B(ix_B);
+          }
+        }
+        C(ix_C) = temp;
       }
-      C(ix_C) = temp;
     }
-  }
 
-  return C;
+    return C;
+  }
 }
 
 template <typename TileA, typename TileB, typename... Setups>
 auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
                      TA::DistArray<TileB, TA::DensePolicy> B,
                      ProductSetup const& setup, Setups const&... args) {
+  using TA::detail::nested_rank;
+  static_assert(!TA::detail::is_scalar_v<TileA>,
+                "Dot product of DistArrays not yet supported!");
+
   TA_ASSERT(setup.valid());
 
   auto& world = TA::get_default_world();
@@ -469,7 +511,11 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
   TA::Tensor<TileB> tensorB{B.trange().tiles_range()};
   for (auto&& ix : tensorB.range()) tensorB(ix) = B.find_local(ix).get(false);
 
-  auto result_tensor = general_product(tensorA, tensorB, setup, setup, args...);
+  using TileC = std::conditional_t<(nested_rank<TileA> < nested_rank<TileB>),
+                                   TileB, TileA>;
+
+  auto result_tensor = general_product<TA::Tensor<TileC>>(
+      tensorA, tensorB, setup, setup, args...);
 
   TA::TiledRange result_trange;
   {
@@ -494,8 +540,6 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
 
     result_trange = TA::TiledRange(tr1s_explicit);
   }
-
-  using TileC = typename decltype(result_tensor)::value_type;
 
   TA::DistArray<TileC, TA::DensePolicy> C(world, result_trange);
 

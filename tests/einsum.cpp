@@ -125,7 +125,8 @@ BOOST_AUTO_TEST_CASE(general) {
   Tensor A(TA::Range{2, 3}, {1, 2, 3, 4, 5, 6});
   Tensor B(TA::Range{2}, {2, 10});
   Tensor C(TA::Range{2, 3}, {2, 4, 6, 40, 50, 60});
-  BOOST_REQUIRE(C == general_product(A, B, ProductSetup("ij"s, "i"s, "ij"s)));
+  BOOST_REQUIRE(
+      C == general_product<Tensor>(A, B, ProductSetup("ij"s, "i"s, "ij"s)));
 }
 
 BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
