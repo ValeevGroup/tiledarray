@@ -431,9 +431,6 @@ Result general_product(TensorA const& A, TensorB const& B,
                   "Tensor product not supported with increased nested rank in "
                   "the result");
 
-    constexpr bool de_nest =
-        nested_rank<Result> < max_nested_rank<TensorA, TensorB>;
-
     // creating the contracted TA::Range
     TA::Range const rng_I = [&setup, &A, &B]() {
       TA::container::svector<TA::Range1> rng1_I(setup.rank_I, TA::Range1{});
