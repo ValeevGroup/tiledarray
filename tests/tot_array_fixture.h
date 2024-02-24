@@ -403,8 +403,21 @@ Result general_product(TensorA const& A, TensorB const& B,
               "Attempted to evaluate dot product when the product setup does "
               "not allow");
 
-    TA_ASSERT(false && "Dot product not yet supported!");
+    Result result{};
 
+    for (auto&& ix_A : A.range()) {
+      TA::Range::index_type ix_B(setup.rank_B, 0);
+      apply_partial_perm(ix_B, ix_A, setup.I_to_B);
+
+      if constexpr (is_tot) {
+        auto const& lhs = A(ix_A);
+        auto const& rhs = B(ix_B);
+        result += general_product<Result>(lhs, rhs, args...);
+      } else
+        result += A(ix_A) * B(ix_B);
+    }
+
+    return result;
   } else {
     //
     // general product:
@@ -494,8 +507,6 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
                      TA::DistArray<TileB, TA::DensePolicy> B,
                      ProductSetup const& setup, Setups const&... args) {
   using TA::detail::nested_rank;
-  static_assert(!TA::detail::is_scalar_v<TileA>,
-                "Dot product of DistArrays not yet supported!");
 
   TA_ASSERT(setup.valid());
 
