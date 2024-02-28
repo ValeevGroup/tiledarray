@@ -499,13 +499,15 @@ Result general_product(TensorA const& A, TensorB const& B,
   }
 }
 
-template <typename TileA, typename TileB, typename... Setups>
+template <typename TileC, typename TileA, typename TileB, typename... Setups>
 auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
                      TA::DistArray<TileB, TA::DensePolicy> B,
                      ProductSetup const& setup, Setups const&... args) {
+  using TA::detail::max_nested_rank;
   using TA::detail::nested_rank;
-
-  TA_ASSERT(setup.valid());
+  static_assert(nested_rank<TileC> <= max_nested_rank<TileA, TileB>);
+  static_assert(nested_rank<TileC> != 0);
+  TA_ASSERT(setup.product_type == TensorProduct::General);
 
   auto& world = TA::get_default_world();
 
@@ -518,9 +520,6 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
 
   TA::Tensor<TileB> tensorB{B.trange().tiles_range()};
   for (auto&& ix : tensorB.range()) tensorB(ix) = B.find_local(ix).get(false);
-
-  using TileC = std::conditional_t<(nested_rank<TileA> < nested_rank<TileB>),
-                                   TileB, TileA>;
 
   auto result_tensor = general_product<TA::Tensor<TileC>>(
       tensorA, tensorB, setup, setup, args...);
@@ -557,7 +556,19 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
   return C;
 }
 
-template <typename ArrayA, typename ArrayB,
+template <typename TileA, typename TileB, typename... Setups>
+auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
+                     TA::DistArray<TileB, TA::DensePolicy> B,
+                     Setups const&... args) {
+  using TA::detail::nested_rank;
+  using TileC = std::conditional_t<(nested_rank<TileB> > nested_rank<TileA>),
+                                   TileB, TileA>;
+  return general_product<TileC>(A, B, args...);
+}
+
+enum struct DeNest { True, False };
+
+template <DeNest DeNestFlag = DeNest::False, typename ArrayA, typename ArrayB,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
 auto manual_eval(OuterInnerIndices const& oixs, ArrayA A, ArrayB B) {
   constexpr auto mnr = TA::detail::max_nested_rank<ArrayA, ArrayB>;
@@ -570,7 +581,15 @@ auto manual_eval(OuterInnerIndices const& oixs, ArrayA A, ArrayB B) {
   if constexpr (mnr == 2) {
     auto const inner_setup = ProductSetup(oixs.inner());
     TA_ASSERT(inner_setup.valid());
-    return general_product(A, B, outer_setup, inner_setup);
+    if constexpr (DeNestFlag == DeNest::True) {
+      // reduced nested rank in result
+      using TA::detail::nested_rank;
+      static_assert(nested_rank<ArrayA> == nested_rank<ArrayB>);
+      TA_ASSERT(inner_setup.rank_C == 0);
+      using TileC = typename ArrayA::value_type::value_type;
+      return general_product<TileC>(A, B, outer_setup, inner_setup);
+    } else
+      return general_product(A, B, outer_setup, inner_setup);
   } else {
     return general_product(A, B, outer_setup);
   }
