@@ -82,6 +82,15 @@ template <typename ArrayT1, typename ArrayT2>
 constexpr bool AreArraySame =
     AreArrayT<ArrayT1, ArrayT2> || AreArrayToT<ArrayT1, ArrayT2>;
 
+template <typename Array>
+using DeNestedArray = DistArray<typename Array::value_type::value_type,
+                                typename Array::policy_type>;
+
+template <typename Array1, typename Array2>
+using MaxNestedArray = std::conditional_t<(detail::nested_rank<Array2> >
+                                           detail::nested_rank<Array1>),
+                                          Array2, Array1>;
+
 }  // namespace
 
 namespace {
@@ -164,15 +173,24 @@ TiledRange make_trange(RangeMap const &map, Ixs const &ixs) {
 
 }  // namespace
 
-template <typename ArrayA_, typename ArrayB_, typename... Indices>
+enum struct DeNest { True, False };
+
+template <DeNest DeNestFlag = DeNest::False, typename ArrayA_, typename ArrayB_,
+          typename... Indices>
 auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             std::tuple<Einsum::Index<std::string>, Indices...> cs,
             World &world) {
   using ArrayA = std::remove_cv_t<ArrayA_>;
   using ArrayB = std::remove_cv_t<ArrayB_>;
-  using ArrayC = std::conditional_t<
-      AreArraySame<ArrayA, ArrayB>, ArrayA,
-      std::conditional_t<IsArrayToT<ArrayA>, ArrayA, ArrayB>>;
+
+  if constexpr (DeNestFlag == DeNest::True)
+    static_assert(detail::nested_rank<ArrayA> == detail::nested_rank<ArrayB> &&
+                  detail::nested_rank<ArrayA> == 2);
+
+  using ArrayC =
+      std::conditional_t<DeNestFlag == DeNest::True, DeNestedArray<ArrayA>,
+                         MaxNestedArray<ArrayA, ArrayB>>;
+
   using ResultTensor = typename ArrayC::value_type;
   using ResultShape = typename ArrayC::shape_type;
 
@@ -185,27 +203,48 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     // Hadamard, external, internal indices for inner tensor
     Einsum::Index<std::string> A, B, C, h, e, i;
   } inner;
+
+  if constexpr (IsArrayToT<ArrayA>) {
+    inner.a = ";" + (std::string)std::get<1>(Einsum::idx(A));
+    inner.A = std::get<1>(Einsum::idx(A));
+  }
+
+  if constexpr (IsArrayToT<ArrayB>) {
+    inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
+    inner.B = std::get<1>(Einsum::idx(B));
+  }
+
   if constexpr (std::tuple_size<decltype(cs)>::value == 2) {
-    if constexpr (IsArrayToT<ArrayA>)
-      inner.a = ";" + (std::string)std::get<1>(Einsum::idx(A));
-
-    if constexpr (IsArrayToT<ArrayB>)
-      inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
-
-    static_assert(IsArrayToT<ArrayA> || IsArrayToT<ArrayB>);
+    static_assert(IsArrayToT<ArrayC>);
     inner.c = ";" + (std::string)std::get<1>(cs);
+    inner.C = std::get<1>(cs);
+  }
 
-    Einsum::Index<std::string> a_idx, b_idx, c_idx;
-    if constexpr (IsArrayToT<ArrayA>) inner.A = std::get<1>(Einsum::idx(A));
-    if constexpr (IsArrayToT<ArrayB>) inner.B = std::get<1>(Einsum::idx(B));
-    if constexpr (IsArrayToT<ArrayA> || IsArrayToT<ArrayB>)
-      inner.C = std::get<1>(cs);
-
+  {
     inner.h = inner.A & inner.B & inner.C;
     inner.e = (inner.A ^ inner.B);
     inner.i = (inner.A & inner.B) - inner.h;
-    TA_ASSERT(!(inner.h && (inner.i || inner.e)) &&
-              "General product between inner tensors not supported");
+    if constexpr (IsArrayToT<ArrayC>)
+      TA_ASSERT(!(inner.h && (inner.i || inner.e)) &&
+                "General product between inner tensors not supported");
+  }
+
+  if constexpr (DeNestFlag == DeNest::True) {
+    TA_ASSERT(!inner.C &&
+              "Denested result cannot have inner-tensor annotation");
+    // Step  I:  A * B -> C'
+    // Step II:  C'    -> C
+    //
+    // At "Step I", a general product (without reduction) in outer indices,
+    // and pure Hadamard product in inner indices is carried out.
+    // Then at "Step II", the inner tensors are reduced with a unary function.
+    // The reducing function is determined by looking at the contracting and
+    // non-contracting outer indices.
+    //
+    // eg. A(i,j,k;a,b) * B(k,j;a,b) -> C(i,j) involves following two steps:
+    //   Step  I: A(i,j,k;a,b) * B(k,j;a,b) -> C'(i,j,k;a,b)
+    //   Step II: C'(i,j,k;a,b) -> C(i,j)
+    TA_ASSERT(false && "Denesting not yet implemented!");
   }
 
   // these are "Hadamard" (fused) indices
