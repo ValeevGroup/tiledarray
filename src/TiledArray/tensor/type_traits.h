@@ -216,8 +216,16 @@ constexpr size_t nested_rank = 0;
 template <typename T, typename... Ts>
 constexpr size_t nested_rank<TA::Tensor<T, Ts...>> = 1 + nested_rank<T>;
 
+template <typename T, typename... Ts>
+constexpr size_t nested_rank<const TA::Tensor<T, Ts...>> =
+    nested_rank<TA::Tensor<T, Ts...>>;
+
 template <typename T, typename P>
 constexpr size_t nested_rank<TA::DistArray<T, P>> = nested_rank<T>;
+
+template <typename T, typename P>
+constexpr size_t nested_rank<const TA::DistArray<T, P>> =
+    nested_rank<TA::DistArray<T, P>>;
 
 template <typename...>
 constexpr size_t max_nested_rank = 0;
