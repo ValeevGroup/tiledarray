@@ -19,7 +19,8 @@
 
 #ifndef TILEDARRAY_TEST_TOT_ARRAY_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_TOT_ARRAY_FIXTURE_H__INCLUDED
-#include "tiledarray.h"
+#include <TiledArray/einsum/tiledarray.h>
+#include <tiledarray.h>
 #include "unit_test_config.h"
 #ifdef TILEDARRAY_HAS_BTAS
 #include <TiledArray/conversions/btas.h>
@@ -565,8 +566,6 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
                                    TileB, TileA>;
   return general_product<TileC>(A, B, args...);
 }
-
-enum struct DeNest { True, False };
 
 template <DeNest DeNestFlag = DeNest::False, typename ArrayA, typename ArrayB,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
