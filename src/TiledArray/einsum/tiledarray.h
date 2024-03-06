@@ -293,7 +293,7 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         apply_partial_perm(lannot, rng.lobound(), C_to_Cp);
 
         // eg. find C'(i,0,j,0,k) tile
-        auto ltile = Cp.find(lannot).get(false);
+        auto ltile = Cp.find(Cp.trange().element_to_tile(lannot)).get(false);
 
         // set the lannot now to the actual element of lhs argument
         apply_partial_perm(lannot, rix, C_to_Cp);
