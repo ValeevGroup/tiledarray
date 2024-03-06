@@ -33,7 +33,7 @@ using il_extent = std::initializer_list<size_t>;
 }  // namespace
 
 template <DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = DeNest::False, typename ArrayA,
+          ShapeComp ShapeCompFlag = ShapeComp::False, typename ArrayA,
           typename ArrayB,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
 bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
