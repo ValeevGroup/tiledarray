@@ -249,88 +249,23 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     // non-contracting outer indices.
     //
     // eg. A(i,j,k;a,b) * B(k,j;a,b) -> C(i,j) involves following two steps:
-    //   Step  I: A(i,j,k;a,b) * B(k,j;a,b) -> C'(i,j,k;a,b)
-    //   Step II: C'(i,j,k;a,b) -> C(i,j)
+    //   Step  I: A(i,j,k;a,b) * B(k,j;a,b) -> C'(i,j;a,b)
+    //   Step II: C'(i,j;a,b) -> C(i,j)
 
-    using PartialPerm = TA::container::svector<std::pair<size_t, size_t>>;
-    auto partial_perm = [](auto const &from, auto const &to) {
-      PartialPerm result;
-      for (auto i = 0; i < from.size(); ++i)
-        if (auto found = to.find(from[i]); found != to.end())
-          result.emplace_back(i, std::distance(to.begin(), found));
+    auto Cp = einsum(A, B, std::string(c) + ";" + std::string(inner.i));
+
+    auto sum_tot_2_tos = [](auto const &tot) {
+      typename std::remove_reference_t<decltype(tot)>::value_type result(
+          tot.range(), [tot](auto &&ix) { return tot(ix).sum(); });
       return result;
     };
 
-    auto apply_partial_perm = [](auto &to, auto const &from,
-                                 PartialPerm const &p) {
-      for (auto [f, t] : p) {
-        TA_ASSERT(f < from.size() && t < to.size() &&
-                  "Invalid permutation used");
-        to[t] = from[f];
-      }
-    };
+    auto result = TA::foreach<typename ArrayC::value_type>(
+        Cp, [sum_tot_2_tos](auto &out_tile, auto const &in_tile) {
+          out_tile = sum_tot_2_tos(in_tile);
+        });
 
-    auto ix_outer_Cp = (a | b);
-
-    auto C_to_Cp = partial_perm(c, ix_outer_Cp);
-    auto I_to_Cp = partial_perm(ix_outer_Cp - c, ix_outer_Cp);
-
-    auto Cp =
-        einsum(A, B, std::string(ix_outer_Cp) + ";" + std::string(inner.i));
-
-    auto make_tile = [Cp, apply_partial_perm, C_to_Cp, I_to_Cp](
-                         auto &target, TA::Range const &rng) {
-      typename ArrayC::value_type result(rng);
-
-      // ijk;ab * ijk;ab -> ij
-      // ijk;ab
-
-      for (auto rix : rng) {
-        // eg. C'(0,0,0,0,0)
-        container::svector<size_t> lannot(rank(Cp), 0);
-
-        // eg. C'(i,0,j,0,k)
-        apply_partial_perm(lannot, rng.lobound(), C_to_Cp);
-
-        // eg. find C'(i,0,j,0,k) tile
-        auto ltile = Cp.find(Cp.trange().element_to_tile(lannot)).get(false);
-
-        // set the lannot now to the actual element of lhs argument
-        apply_partial_perm(lannot, rix, C_to_Cp);
-
-        // creating the traced TA::Range
-        TA::Range const rng_I = [&ltile, &I_to_Cp]() {
-          container::svector<Range1> rng1_I(I_to_Cp.size(), TA::Range1{});
-          for (auto [f, t] : I_to_Cp)
-            // I_to_Cp implies I[f] == Cp[t]
-            rng1_I[f] = ltile.range().dim(t);
-
-          return TA::Range(rng1_I);
-        }();
-
-        if (rng_I.rank() == 0) {
-          result(rix) = ltile(lannot).sum();
-        } else {
-          for (auto iix : rng_I) {
-            auto lannot_ = lannot;
-            apply_partial_perm(lannot_, iix, I_to_Cp);
-            result(rix) += ltile(lannot_).sum();
-          }
-        }
-      }
-
-      target = result;
-      return result.norm();
-    };
-
-    auto range_map =
-        (RangeMap(a, A.array().trange()) | RangeMap(b, B.array().trange()));
-    container::svector<TiledRange1> result_tr1s;
-    for (auto const &ix : c) result_tr1s.emplace_back(range_map[ix]);
-
-    return make_array<ArrayC>(
-        Cp.world(), TiledRange(result_tr1s.begin(), result_tr1s.end()),
-        make_tile);
+    return result;
   } else {
     // these are "Hadamard" (fused) indices
     auto h = a & b & c;
