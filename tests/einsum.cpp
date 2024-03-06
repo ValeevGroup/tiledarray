@@ -358,6 +358,12 @@ BOOST_AUTO_TEST_CASE(nested_rank_reduction) {
                                                  {{0, 2, 4}, {0, 4}},  //
                                                  {3, 2},               //
                                                  {3, 2})));
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, DeNest::True>("ij;ab,ij;ab->i",     //
+                                                 {{0, 2, 4}, {0, 4}},  //
+                                                 {{0, 2, 4}, {0, 4}},  //
+                                                 {3, 2},               //
+                                                 {3, 2})));
 }
 
 BOOST_AUTO_TEST_CASE(corner_cases) {
