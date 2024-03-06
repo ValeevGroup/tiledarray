@@ -27,52 +27,93 @@
 
 BOOST_AUTO_TEST_SUITE(manual)
 
-template <typename ArrayA, typename ArrayB,
-          ShapeComp ShapeCompFlag = ShapeComp::False,
+namespace {
+using il_trange = std::initializer_list<std::initializer_list<size_t>>;
+using il_extent = std::initializer_list<size_t>;
+}  // namespace
+
+template <DeNest DeNestFlag = DeNest::False,
+          ShapeComp ShapeCompFlag = DeNest::False, typename ArrayA,
+          typename ArrayB,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
 bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
-  auto out = TA::einsum(annot, A, B);
-  auto ref = manual_eval(annot, A, B);
+  auto out = TA::einsum<DeNestFlag>(annot, A, B);
+  auto ref = manual_eval<DeNestFlag>(annot, A, B);
   return ToTArrayFixture::are_equal<ShapeCompFlag>(ref, out);
 }
 
-template <typename Array, ShapeComp ShapeCompFlag = ShapeComp::False>
-bool check_manual_eval(
-    std::string const& annot,
-    std::initializer_list<std::initializer_list<size_t>> trangeA,
-    std::initializer_list<std::initializer_list<size_t>> trangeB) {
+template <ShapeComp ShapeCompFlag, DeNest DeNestFlag = DeNest::False,
+          typename ArrayA, typename ArrayB,
+          typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
+bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
+  return check_manual_eval<DeNestFlag, ShapeCompFlag>(annot, A, B);
+}
+
+template <typename Array, DeNest DeNestFlag = DeNest::False,
+          ShapeComp ShapeCompFlag = ShapeComp::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB) {
+  static_assert(detail::is_array_v<Array> &&
+                detail::is_tensor_v<typename Array::value_type>);
   auto A = random_array<Array>(TA::TiledRange(trangeA));
   auto B = random_array<Array>(TA::TiledRange(trangeB));
-  return check_manual_eval<Array, Array, ShapeCompFlag>(annot, A, B);
+  return check_manual_eval<DeNestFlag, ShapeCompFlag>(annot, A, B);
 }
 
-template <typename ArrayA, typename ArrayB,
+template <typename Array, ShapeComp ShapeCompFlag,
+          DeNest DeNestFlag = DeNest::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB) {
+  return check_manual_eval<Array, ShapeCompFlag, DeNestFlag>(annot, trangeA,
+                                                             trangeB);
+}
+
+template <typename ArrayA, typename ArrayB, DeNest DeNestFlag = DeNest::False,
           ShapeComp ShapeCompFlag = ShapeComp::False>
-bool check_manual_eval(
-    std::string const& annot,
-    std::initializer_list<std::initializer_list<size_t>> trangeA,
-    std::initializer_list<std::initializer_list<size_t>> trangeB,
-    std::initializer_list<size_t> inner_extents) {
-  if constexpr (TA::detail::is_tensor_of_tensor_v<typename ArrayA::value_type>)
-    return check_manual_eval<ArrayA, ArrayB, ShapeCompFlag>(
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB, il_extent inner_extents) {
+  static_assert(detail::is_array_v<ArrayA, ArrayB>);
+
+  if constexpr (detail::is_tensor_of_tensor_v<typename ArrayA::value_type>) {
+    static_assert(!detail::is_tensor_of_tensor_v<typename ArrayB::value_type>);
+    return check_manual_eval<DeNestFlag, ShapeCompFlag>(
         annot, random_array<ArrayA>(trangeA, inner_extents),
         random_array<ArrayB>(trangeB));
-  else
-    return check_manual_eval<ArrayA, ArrayB, ShapeCompFlag>(
+  } else {
+    static_assert(detail::is_tensor_of_tensor_v<typename ArrayB::value_type>);
+    return check_manual_eval<DeNestFlag, ShapeCompFlag>(
         annot, random_array<ArrayA>(trangeA),
         random_array<ArrayB>(trangeB, inner_extents));
+  }
 }
 
-template <typename Array, ShapeComp ShapeCompFlag = ShapeComp::False>
-bool check_manual_eval(
-    std::string const& annot,
-    std::initializer_list<std::initializer_list<size_t>> trangeA,
-    std::initializer_list<std::initializer_list<size_t>> trangeB,
-    std::initializer_list<size_t> inner_extentsA,
-    std::initializer_list<size_t> inner_extentsB) {
-  return check_manual_eval<Array, Array, ShapeCompFlag>(
+template <typename ArrayA, typename ArrayB, ShapeComp ShapeCompFlag,
+          DeNest DeNestFlag = DeNest::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB, il_extent inner_extents) {
+  return check_manual_eval<DeNestFlag, ShapeCompFlag, ArrayA, ArrayB>(
+      annot, trangeA, trangeB);
+}
+
+template <typename Array, DeNest DeNestFlag = DeNest::False,
+          ShapeComp ShapeCompFlag = ShapeComp::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB, il_extent inner_extentsA,
+                       il_extent inner_extentsB) {
+  static_assert(detail::is_array_v<Array> &&
+                detail::is_tensor_of_tensor_v<typename Array::value_type>);
+  return check_manual_eval<DeNestFlag, ShapeCompFlag>(
       annot, random_array<Array>(trangeA, inner_extentsA),
       random_array<Array>(trangeB, inner_extentsB));
+}
+
+template <typename Array, ShapeComp ShapeCompFlag,
+          DeNest DeNestFlag = DeNest::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB, il_extent inner_extentsA,
+                       il_extent inner_extentsB) {
+  return check_manual_eval<Array, DeNestFlag, ShapeCompFlag>(
+      annot, trangeA, trangeB, inner_extentsA, inner_extentsB);
 }
 
 BOOST_AUTO_TEST_CASE(contract) {
@@ -304,6 +345,19 @@ BOOST_AUTO_TEST_CASE(different_nested_ranks) {
                                            {{0, 2}, {0, 4}, {0, 3}},  //
                                            {{0, 2}, {0, 3}},          //
                                            {2, 4})));
+}
+
+BOOST_AUTO_TEST_CASE(nested_rank_reduction) {
+  using T = TA::Tensor<int>;
+  using ToT = TA::Tensor<T>;
+  using Array = TA::DistArray<T>;
+  using ArrayToT = TA::DistArray<ToT>;
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, DeNest::True>("ij;ab,ij;ab->ij",    //
+                                                 {{0, 2, 4}, {0, 4}},  //
+                                                 {{0, 2, 4}, {0, 4}},  //
+                                                 {3, 2},               //
+                                                 {3, 2})));
 }
 
 BOOST_AUTO_TEST_CASE(corner_cases) {
