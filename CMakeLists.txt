@@ -175,6 +175,9 @@ add_feature_info(TA_RANGEV3 TA_RANGEV3 "Range-V3 ranges library")
 option(TA_TTG "Enable search/build of TTG library" OFF)
 add_feature_info(TA_TTG TA_TTG "TTG library")
 
+option(IntelMKL_FAIR_DISPATCH "Enable fair dispatch in Intel MKL" OFF)
+add_feature_info(IntelMKL_FAIR_DISPATCH IntelMKL_FAIR_DISPATCH "Use of fair dispatch in Intel MKL")
+
 # Enable shared library support options
 redefaultable_option(TA_ASSUMES_ASLR_DISABLED "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled" OFF)
 add_feature_info(ASSUMES_ASLR_DISABLED TA_ASSUMES_ASLR_DISABLED

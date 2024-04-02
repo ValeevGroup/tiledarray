@@ -113,6 +113,8 @@
 #endif  // !defined(TILEDARRAY_HAS_BTAS)
 #if defined(TILEDARRAY_HAS_BTAS) && defined(BTAS_HAS_INTEL_MKL)
 #  define TILEDARRAY_HAS_INTEL_MKL
+/* use fair dispatch in Intel MKL? */
+#cmakedefine IntelMKL_FAIR_DISPATCH
 #endif
 
 /* Add macro TILEDARRAY_FORCE_INLINE which does as the name implies. */

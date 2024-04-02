@@ -423,6 +423,7 @@ support may be added.
 * `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile host memory allocations used by TA::Tensor. This causes the use of Umpire for host memory allocation. This also enables additional tracing facilities provided by Umpire; these can be controlled via [environment variable `UMPIRE_LOG_LEVEL`](https://umpire.readthedocs.io/en/develop/sphinx/features/logging_and_replay.html), but note that the default is to log Umpire info into a file rather than stdout.
 * `TA_TENSOR_MEM_TRACE` -- Set to `ON` to *trace* host memory allocations used by TA::Tensor. This turns on support for tracking memory used by `Tensor` objects; such tracking must be enabled programmatically. This can greatly increase memory consumption by the application and is only intended for expert developers troubleshooting memory use by TiledArray.
 * `TA_UT_CTEST_TIMEOUT` -- The value (in seconds) of the timeout to use for running the TA unit tests via CTest when building the `check`/`check-tiledarray` targets. The default timeout is 1500s.
+* `IntelMKL_FAIR_DISPATCH` -- If want to use Intel MKL library on non-Intel (e.g., AMD) CPUs, set to `ON` to use fair kernel dispatch. [Default=OFF].
 
 # Build TiledArray
 

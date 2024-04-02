@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
   // Start clock
   const double wall_time_start = madness::wall_time();
 
-  // Do matrix multiplcation
+  // Do matrix multiplication
   // Note: If TiledArray has not been configured with blas, this will be an
   // eigen call.
   for (int i = 0; i < repeat; ++i) {
