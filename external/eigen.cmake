@@ -104,7 +104,9 @@ else()
 
   ExternalProject_Add(eigen3
     PREFIX ${CMAKE_INSTALL_PREFIX}
-   #--Download step--------------
+    STAMP_DIR ${FETCHCONTENT_BASE_DIR}/eigen3-ep-artifacts
+    TMP_DIR ${FETCHCONTENT_BASE_DIR}/eigen3-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
+    #--Download step--------------
     DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
     URL ${EIGEN3_URL}
     URL_HASH ${EIGEN3_URL_HASH}
