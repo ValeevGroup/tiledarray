@@ -31,6 +31,7 @@ constexpr int nrepeats = 5;
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(tensor_factories, F, Fixtures, F) {
   auto& a = F::a;
   auto& c = F::c;
+  auto& aC = F::aC;
 
   const auto& ca = a;
   const std::array<int, 3> lobound{{3, 3, 3}};
@@ -2939,6 +2940,58 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(inner_product, F, Fixtures, F) {
 
   // Check the result of dot
   BOOST_CHECK_EQUAL(result, expected);
+}
+
+// corner case: expressions involving array with empty trange1
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_trange1, F, Fixtures, F) {
+  auto& c = F::c;
+  auto& aC = F::aC;
+  auto& aC_f = F::aC_f;
+
+  // unary/binary expressions
+  {
+    BOOST_CHECK_NO_THROW(c("a,b,c") = aC("a,b,c"));
+    BOOST_CHECK_NO_THROW(c("a,b,c") += aC("a,b,c"));
+    BOOST_CHECK_NO_THROW(c("a,b,c") *= aC("a,b,c"));
+    BOOST_CHECK_NO_THROW(c("a,b,c") *= 2 * aC("a,b,c"));
+    BOOST_CHECK_NO_THROW(c("a,b,c") += 2 * aC("a,b,c").conj());
+    BOOST_CHECK_NO_THROW(c("a,b,c") = aC("a,c,b"));
+    BOOST_CHECK_NO_THROW(c("a,b,c") += 2 * aC("a,c,b").conj());
+    BOOST_CHECK_NO_THROW(c("a,b,c") *= 2 * aC("a,c,b").conj());
+  }
+
+  using TiledArray::eigen::iv;
+  const std::array<int, 3> lobound{{0, 0, 1}};
+  const std::array<int, 3> upbound{{1, 0, 2}};
+
+  // unary/binary block expressions
+  {
+    BOOST_CHECK_NO_THROW(c("a,b,c") = aC("a,b,c").block(lobound, upbound));
+    BOOST_CHECK_NO_THROW(c("a,b,c") +=
+                         2 * aC("a,b,c").block(lobound, upbound).conj());
+    BOOST_CHECK_NO_THROW(c("a,b,c") =
+                             2 * conj(aC("a,c,b").block(lobound, upbound)));
+  }
+
+  // contraction expressions
+  {
+    std::decay_t<decltype(c)> t2, t4;
+    // contraction over empty dim
+    BOOST_CHECK_NO_THROW(t4("a,c,e,d") = aC("a,b,c") * aC("d,b,e"));
+    // contraction over empty and nonempty dims
+    BOOST_CHECK_NO_THROW(t2("a,d") = aC("a,b,c") * aC("d,b,c"));
+    // contraction over nonempty dims
+    BOOST_CHECK_NO_THROW(t4("b,a,e,d") = aC("a,b,c") * aC("d,e,c"));
+    // contraction over nonempty dims, involving expressions with nonzero-volume
+    BOOST_CHECK_NO_THROW(t4("b,a,e,d") = aC("a,b,c") * (2. * aC_f("d,e,c")));
+  }
+
+  // reduction expressions
+  {
+    // contraction over empty dim
+    BOOST_CHECK_NO_THROW(aC("a,b,c").dot(2 * aC("a,b,c").conj()).get());
+    BOOST_CHECK_EQUAL(aC("a,b,c").dot(2 * aC("a,b,c").conj()).get(), 0);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -144,9 +144,12 @@ class Tensor {
     size_t size = range_.volume() * nbatch;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
-    if (default_construct) {
-      std::uninitialized_default_construct_n(ptr, size);
-      // std::uninitialized_value_construct_n(ptr, size);
+    // default construct elements of data only if can have any effect ...
+    if constexpr (!std::is_trivially_default_constructible_v<T>) {
+      // .. and requested
+      if (default_construct) {
+        std::uninitialized_default_construct_n(ptr, size);
+      }
     }
     auto deleter = [
 #ifdef TA_TENSOR_MEM_TRACE
@@ -182,9 +185,12 @@ class Tensor {
     size_t size = range_.volume() * nbatch;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
-    if (default_construct) {
-      std::uninitialized_default_construct_n(ptr, size);
-      // std::uninitialized_value_construct_n(ptr, size);
+    // default construct elements of data only if can have any effect ...
+    if constexpr (!std::is_trivially_default_constructible_v<T>) {
+      // .. and requested
+      if (default_construct) {
+        std::uninitialized_default_construct_n(ptr, size);
+      }
     }
     auto deleter = [
 #ifdef TA_TENSOR_MEM_TRACE
@@ -288,7 +294,8 @@ class Tensor {
   }
 
   /// Construct a tensor with a range equal to \c range. The data is
-  /// uninitialized.
+  /// default-initialized (which, for `T` with trivial default constructor,
+  /// means data is uninitialized).
   /// \param range The range of the tensor
   /// \param nbatch The number of batches (default is 1)
   explicit Tensor(const range_type& range, size_type nbatch = 1)
@@ -336,9 +343,10 @@ class Tensor {
                 value_type, ElementIndexOp, const Range::index_type&>>>
   Tensor(const range_type& range, const ElementIndexOp& element_idx_op)
       : Tensor(range, 1, default_construct{false}) {
-    auto* data_ptr = data_.get();
+    pointer MADNESS_RESTRICT const data = this->data();
     for (auto&& element_idx : range) {
-      data_ptr[range.ordinal(element_idx)] = element_idx_op(element_idx);
+      const auto ord = range.ordinal(element_idx);
+      new (data + ord) value_type(element_idx_op(element_idx));
     }
   }
 
@@ -350,8 +358,9 @@ class Tensor {
   Tensor(const range_type& range, InIter it)
       : Tensor(range, 1, default_construct{false}) {
     auto n = range.volume();
-    pointer MADNESS_RESTRICT const data = this->data();
-    for (size_type i = 0ul; i < n; ++i, ++it) data[i] = *it;
+    pointer MADNESS_RESTRICT data = this->data();
+    for (size_type i = 0ul; i < n; ++i, ++it, ++data)
+      new (data) value_type(*it);
   }
 
   template <typename U>
@@ -2639,10 +2648,13 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
     gemm_helper.compute_matrix_sizes(m, n, k, A.range(), B.range());
 
     // Get the leading dimension for left and right matrices.
-    const integer lda =
-        (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose ? k : m);
-    const integer ldb =
-        (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n : k);
+    const integer lda = std::max(
+        integer{1},
+        (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose ? k : m));
+    const integer ldb = std::max(
+        integer{1},
+        (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n
+                                                                       : k));
 
     // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
@@ -2710,8 +2722,9 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
       }
     }
 #else   // TA_ENABLE_TILE_OPS_LOGGING
+    const integer ldc = std::max(integer{1}, n);
     math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                     alpha, A.data(), lda, B.data(), ldb, beta, C.data(), n);
+                     alpha, A.data(), lda, B.data(), ldb, beta, C.data(), ldc);
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
   }
 }

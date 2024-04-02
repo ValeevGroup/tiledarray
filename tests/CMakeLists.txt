@@ -34,6 +34,7 @@ set(executable ta_test)
 set(ta_test_src_files  ta_test.cpp
     range1.cpp
     range.cpp
+    block_range.cpp
     type_traits.cpp
     tensor.cpp
     tensor_of_tensor.cpp
@@ -130,6 +131,10 @@ if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE
   endif(LAPACK_COMPILE_DEFINITIONS)
 else()
   add_ta_executable(${executable} "${ta_test_src_files}" "tiledarray")
+endif()
+# if Boost is modularized, need to explicitly state that we need Boost::test module
+if (Boost_IS_MODULARIZED)
+  target_link_libraries(${executable} PRIVATE Boost::unit_test_framework)
 endif()
 # Add include directories and compiler flags for ta_test
 target_include_directories(${executable} PRIVATE

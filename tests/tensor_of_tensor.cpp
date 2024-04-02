@@ -200,6 +200,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(default_constructor, ITensor, itensor_types) {
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(unary_constructor, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
+
+  // apply element-wise op with default initializer
+  // this is a reproducer for
+  // https://github.com/ValeevGroup/tiledarray/issues/445
+  {
+    BOOST_CHECK_NO_THROW(
+        Tensor<ITensor> t(a.range(), [](auto&& l) { return ITensor(); }));
+  }
+
   // apply element-wise op
   BOOST_CHECK_NO_THROW(Tensor<ITensor> t(a, [](const int l) { return l * 2; }));
   Tensor<ITensor> t(a, [](const int l) { return l * 2; });
