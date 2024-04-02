@@ -16,6 +16,10 @@
 #include <ttg.h>
 #endif
 
+#ifdef IntelMKL_FAIR_DISPATCH
+extern "C" void intel_mkl_use_fair_dispatch();
+#endif
+
 #include <cerrno>
 #include <csignal>
 #include <cstdlib>
@@ -100,6 +104,9 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     TiledArray::set_default_world(default_world);
 #ifdef TILEDARRAY_HAS_DEVICE
     TiledArray::device_initialize();
+#endif
+#ifdef IntelMKL_FAIR_DISPATCH
+    intel_mkl_use_fair_dispatch();
 #endif
     TiledArray::max_threads = TiledArray::get_num_threads();
     TiledArray::set_num_threads(1);
