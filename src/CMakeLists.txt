@@ -313,6 +313,16 @@ if( TARGET ttg-parsec )
   list(APPEND _TILEDARRAY_DEPENDENCIES ttg-parsec)
 endif()
 
+if (IntelMKL_FAIR_DISPATCH AND BLAS_IS_MKL)
+    message(WARNING "created tiledarray_mkl_dispatch")
+    add_library(tiledarray_mkl_dispatch OBJECT
+      TiledArray/external/agnerfog/intel_mkl_cpuid_patch.c
+      TiledArray/external/agnerfog/intel_mkl_feature_patch.c
+    )
+    # N.B. --allow-multiple-definition is a GNU linker extension
+    list(APPEND _TILEDARRAY_DEPENDENCIES $<TARGET_OBJECTS:tiledarray_mkl_dispatch> -Wl,--allow-multiple-definition)
+endif()
+
 # cache deps as TILEDARRAY_PRIVATE_LINK_LIBRARIES
 set(TILEDARRAY_PRIVATE_LINK_LIBRARIES ${_TILEDARRAY_DEPENDENCIES} CACHE STRING "List of libraries on which TiledArray depends on")
 

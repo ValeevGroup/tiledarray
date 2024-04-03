@@ -17,6 +17,7 @@
  *
  */
 
+#include <TiledArray/util/time.h>
 #include <tiledarray.h>
 #include <iostream>
 
@@ -50,24 +51,16 @@ int main(int argc, char** argv) {
   b.fill(1.0);
   c.fill(0.0);
 
-  // Start clock
-  const double wall_time_start = madness::wall_time();
-
-  // Do matrix multiplcation
+  // Do matrix multiplication
   for (int i = 0; i < repeat; ++i) {
-    c.noalias() = 1.0 * a * b + 0.0 * c;
+    TA_RECORD_DURATION(c.noalias() = 1.0 * a * b + 0.0 * c);
   }
 
-  // Stop clock
-  const double wall_time_stop = madness::wall_time();
-
-  std::cout << "Average wall time = "
-            << (wall_time_stop - wall_time_start) / double(repeat)
-            << "\nAverage GFLOPS = "
-            << double(repeat) * 2.0 *
-                   double(matrix_size * matrix_size * matrix_size) /
-                   (wall_time_stop - wall_time_start) / 1.0e9
-            << "\n";
+  auto durations = TiledArray::duration_statistics();
+  std::cout << "Average wall time = " << durations.mean << "\nAverage GFLOPS = "
+            << (2.0 * double(matrix_size * matrix_size * matrix_size) / 1.0e9) *
+                   durations.mean_reciprocal
+            << std::endl;
 
   return 0;
 }

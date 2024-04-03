@@ -17,6 +17,7 @@
  *
  */
 
+#include <TiledArray/util/time.h>
 #include <TiledArray/version.h>
 #include <tiledarray.h>
 #include <iostream>
@@ -35,13 +36,13 @@ bool to_bool(const char* str) {
 // the last tile absorbs the remainder
 std::vector<unsigned int> make_tiling(unsigned int range_size,
                                       unsigned int ntiles) {
-  const auto average_tile_size = range_size / ntiles;
-  TA_ASSERT(average_tile_size > ntiles);
+  const int average_tile_size = range_size / ntiles;
   std::vector<unsigned int> result(ntiles + 1);
   result[0] = 0;
   for (long t = 0; t != ntiles - 1; ++t) {
-    result[t + 1] =
-        result[t] + average_tile_size + ((t % 2 == 0) ? (t + 1) : (-t));
+    result[t + 1] = result[t] + average_tile_size +
+                    std::max(static_cast<int>((t % 2 == 0) ? (t + 1) : (-t)),
+                             1 - average_tile_size);
   }
   result[ntiles] = range_size;
   return result;
@@ -174,8 +175,8 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   const double flops_per_fma =
       (complex_T ? 8 : 2);  // 1 multiply takes 6/1 flops for complex/real
                             // 1 add takes 2/1 flops for complex/real
-  const double n_gflop = flops_per_fma * std::pow(n_occ, 2) *
-                         std::pow(n_uocc, 4) / std::pow(1024., 3);
+  const double gflops_per_call = flops_per_fma * std::pow(n_occ, 2) *
+                                 std::pow(n_uocc, 4) / std::pow(1024., 3);
 
   // Construct tensors
   TA::TArrayD t2(world, trange_oovv);
@@ -196,13 +197,9 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
     std::cout << "Starting iterations: "
               << "\n";
 
-  double total_time = 0.0;
-  double total_gflop_rate = 0.0;
-
   // Do matrix multiplication
   for (int i = 0; i < repeat; ++i) {
-    const double start = madness::wall_time();
-
+    auto tp_start = TiledArray::now();
     // this is how the user would express this contraction
     if (false) t2_v("i,j,a,b") = t2("i,j,c,d") * v("a,b,c,d");
 
@@ -223,23 +220,25 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
                   << error("i,j,a,b").squared_norm().get() << std::endl;
       }
     }
+    TiledArray::record_duration_since(tp_start);
 
-    const double stop = madness::wall_time();
-    const double time = stop - start;
-    total_time += time;
-    const double gflop_rate = n_gflop / time;
-    total_gflop_rate += gflop_rate;
+    const double time = TiledArray::durations().back();
+    const double gflop_rate = gflops_per_call / time;
     if (world.rank() == 0)
       std::cout << "Iteration " << i + 1 << "   time=" << time
                 << "   GFLOPS=" << gflop_rate << "\n";
   }
 
   // Print results
-  if (world.rank() == 0)
-    std::cout << "Average wall time   = "
-              << total_time / static_cast<double>(repeat)
-              << " sec\nAverage GFLOPS      = "
-              << total_gflop_rate / static_cast<double>(repeat) << "\n";
+  if (world.rank() == 0) {
+    auto durations = TiledArray::duration_statistics();
+    std::cout << "Average wall time   = " << durations.mean
+              << " s\nAverage GFLOPS      = "
+              << gflops_per_call * durations.mean_reciprocal
+              << "\nMedian wall time   = " << durations.median
+              << " s\nMedian GFLOPS      = "
+              << gflops_per_call / durations.median << "\n";
+  }
 }
 
 template <typename LeftTile, typename RightTile, typename Policy, typename Op>

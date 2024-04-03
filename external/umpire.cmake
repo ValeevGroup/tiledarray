@@ -163,7 +163,7 @@ else()
     message(STATUS "custom target Umpire is expected to build these byproducts: ${UMPIRE_BUILD_BYPRODUCTS}")
 
     ExternalProject_Add(Umpire
-            PREFIX ${CMAKE_INSTALL_PREFIX}
+            PREFIX ${FETCHCONTENT_BASE_DIR}
             STAMP_DIR ${FETCHCONTENT_BASE_DIR}/umpire-ep-artifacts
             TMP_DIR ${FETCHCONTENT_BASE_DIR}/umpire-ep-artifacts   # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
