@@ -109,7 +109,7 @@ else()
     message(STATUS "custom target librett is expected to build these byproducts: ${LIBRETT_BUILD_BYPRODUCTS}")
 
     ExternalProject_Add(librett
-            PREFIX ${CMAKE_INSTALL_PREFIX}
+            PREFIX ${FETCHCONTENT_BASE_DIR}
             STAMP_DIR ${FETCHCONTENT_BASE_DIR}/librett-ep-artifacts
             TMP_DIR ${FETCHCONTENT_BASE_DIR}/librett-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
