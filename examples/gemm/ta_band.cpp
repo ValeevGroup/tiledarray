@@ -17,6 +17,7 @@
  *
  */
 
+#include <TiledArray/util/time.h>
 #include <tiledarray.h>
 #include <iostream>
 
@@ -104,38 +105,33 @@ int main(int argc, char** argv) {
       for (; j < j_end; ++j, ++ij) shape_tensor[ij] = 1.0;
     }
 
-    TiledArray::SparseShape<float> shape(shape_tensor, trange);
+    TiledArray::SparseShape<float> shape(
+        shape_tensor, trange, /* per_element_norms_already = */ true);
 
     // Construct and initialize arrays
     TiledArray::TSpArrayD a(world, trange, shape);
     TiledArray::TSpArrayD b(world, trange, shape);
-    TiledArray::TSpArrayD c(world, trange);
+    TiledArray::TSpArrayD c;
     a.fill(1.0);
     b.fill(1.0);
 
-    // Start clock
-    world.gop.fence();
-    const double wall_time_start = madness::wall_time();
-
     // Do matrix multiplication
+    world.gop.fence();
     for (int i = 0; i < repeat; ++i) {
-      c("m,n") = a("m,k") * b("k,n");
-      world.gop.fence();
+      TA_RECORD_DURATION(c("m,n") = a("m,k") * b("k,n"); world.gop.fence();)
       if (world.rank() == 0) std::cout << "Iteration " << i + 1 << "\n";
     }
 
-    // Stop clock
-    const double wall_time_stop = madness::wall_time();
-
     // Print results
-    const long flop = 2.0 * c("m,n").sum().get();
+    const auto gflops_per_call = 2.0 * c("m,n").sum().get() / 1.e9;
     if (world.rank() == 0) {
-      std::cout << "Average wall time = "
-                << (wall_time_stop - wall_time_start) / double(repeat)
-                << "\nAverage GFLOPS = "
-                << double(repeat) * double(flop) /
-                       (wall_time_stop - wall_time_start) / 1.0e9
-                << "\n";
+      auto durations = TiledArray::duration_statistics();
+      std::cout << "Average wall time   = " << durations.mean
+                << " s\nAverage GFLOPS      = "
+                << gflops_per_call * durations.mean_reciprocal
+                << "\nMedian wall time   = " << durations.median
+                << " s\nMedian GFLOPS      = "
+                << gflops_per_call / durations.median << "\n";
     }
 
   } catch (TiledArray::Exception& e) {

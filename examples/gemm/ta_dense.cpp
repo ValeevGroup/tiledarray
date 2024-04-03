@@ -17,6 +17,7 @@
  *
  */
 
+#include <TiledArray/util/time.h>
 #include <TiledArray/version.h>
 #include <madness/world/worldmem.h>
 #include <tiledarray.h>
@@ -129,7 +130,7 @@ void gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange,
 
   const auto n = trange.elements_range().extent()[0];
   const auto complex_T = TiledArray::detail::is_complex<T>::value;
-  const double gflop =
+  const double gflops_per_call =
       (complex_T ? 8 : 2)  // 1 multiply takes 6/1 flops for complex/real
                            // 1 add takes 2/1 flops for complex/real
       * double(n * n * n) / 1.0e9;
@@ -168,28 +169,26 @@ void gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange,
       std::cout << "Starting iterations: "
                 << "\n";
 
-    double total_time = 0.0;
-    double total_gflop_rate = 0.0;
-
     // Do matrix multiplication
     for (int i = 0; i < repeat; ++i) {
-      const double start = madness::wall_time();
-      c("m,n") = a("m,k") * b("k,n");
-      memtrace("c=a*b");
-      const double time = madness::wall_time() - start;
-      total_time += time;
-      const double gflop_rate = gflop / time;
-      total_gflop_rate += gflop_rate;
+      TA_RECORD_DURATION(c("m,n") = a("m,k") * b("k,n"); memtrace("c=a*b");)
+      const auto time = TiledArray::durations().back();
+      const double gflop_rate = gflops_per_call / time;
       if (world.rank() == 0)
         std::cout << "Iteration " << i + 1 << "   time=" << time
                   << "   GFLOPS=" << gflop_rate << "\n";
     }
 
     // Print results
-    if (world.rank() == 0)
-      std::cout << "Average wall time   = " << total_time / double(repeat)
-                << " sec\nAverage GFLOPS      = "
-                << total_gflop_rate / double(repeat) << "\n";
+    if (world.rank() == 0) {
+      auto durations = TiledArray::duration_statistics();
+      std::cout << "Average wall time   = " << durations.mean
+                << " s\nAverage GFLOPS      = "
+                << gflops_per_call * durations.mean_reciprocal
+                << "\nMedian wall time   = " << durations.median
+                << " s\nMedian GFLOPS      = "
+                << gflops_per_call / durations.median << "\n";
+    }
 
   }  // array lifetime scope
   memtrace("stop");

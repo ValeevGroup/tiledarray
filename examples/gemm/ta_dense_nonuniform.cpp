@@ -17,23 +17,10 @@
  *
  */
 
+#include <TiledArray/util/time.h>
 #include <TiledArray/version.h>
 #include <tiledarray.h>
 #include <iostream>
-
-using Tile_t = TiledArray::Tile<TiledArray::Tensor<double>>;
-using Array_t = TiledArray::DistArray<Tile_t>;
-
-void set_tiles(double val, Array_t& a) {
-  auto const& trange = a.trange();
-
-  auto pmap = a.pmap();
-  const auto end = pmap->end();
-  for (auto it = pmap->begin(); it != end; ++it) {
-    auto range = trange.make_tile_range(*it);
-    a.set(*it, Tile_t(TiledArray::Tensor<double>(range, val)));
-  }
-}
 
 int main(int argc, char** argv) {
   int rc = 0;
@@ -59,8 +46,8 @@ int main(int argc, char** argv) {
       return 1;
     }
     if ((matrix_size % block_size) != 0ul) {
-      std::cerr << "Error: matrix size must be evenly divisible by block "
-                   "size.\n";
+      std::cerr
+          << "Error: matrix size must be evenly divisible by block size.\n";
       return 1;
     }
     const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
@@ -69,46 +56,65 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    const std::size_t num_blocks = matrix_size / block_size;
-    const std::size_t block_count = num_blocks * num_blocks;
+    const long num_blocks = matrix_size / block_size;
+    const long block_count = num_blocks * num_blocks;
+
+    const double gflops_per_call =
+        2.0 * double(matrix_size * matrix_size * matrix_size) / 1.0e9;
+
+    // Construct TiledRange
+    std::vector<unsigned long> blocking[3];
+    world.srand(42);
+    unsigned long min = std::numeric_limits<unsigned long>::max(), max = 0;
+    for (long n = 0l; n < 3l; ++n) {
+      blocking[n].resize(num_blocks + 1, 1);
+
+      blocking[n][0] = 0;
+      for (long i = num_blocks; i < matrix_size; ++i)
+        ++(blocking[n][(world.rand() % num_blocks) + 1]);
+
+      for (long i = 1l; i <= num_blocks; ++i) {
+        min = std::min(blocking[n][i], min);
+        max = std::max(blocking[n][i], max);
+        blocking[n][i] += blocking[n][i - 1l];
+      }
+    }
 
     if (world.rank() == 0)
-      std::cout << "TiledArray: dense matrix multiply test..."
+      std::cout << "TiledArray: dense-nonuniform matrix multiply test..."
                 << "\nGit description: " << TiledArray::git_description()
                 << "\nNumber of nodes     = " << world.size()
                 << "\nMatrix size         = " << matrix_size << "x"
-                << matrix_size << "\nBlock size          = " << block_size
-                << "x" << block_size << "\nMemory per matrix   = "
+                << matrix_size << "\nAverage block size  = " << block_size
+                << "x" << block_size << "\nMaximum block size  = " << max
+                << "\nMinimum block size  = " << min
+                << "\nMemory per matrix   = "
                 << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
                 << " GB\nNumber of blocks    = " << block_count
                 << "\nAverage blocks/node = "
                 << double(block_count) / double(world.size()) << "\n";
 
-    const double flop =
-        2.0 * double(matrix_size * matrix_size * matrix_size) / 1.0e9;
+    std::vector<TiledArray::TiledRange1> blockingA, blockingB;
+    blockingA.reserve(2);
+    blockingA.push_back(
+        TiledArray::TiledRange1(blocking[0].begin(), blocking[0].end()));
+    blockingA.push_back(
+        TiledArray::TiledRange1(blocking[1].begin(), blocking[1].end()));
+    blockingB.reserve(2);
+    blockingB.push_back(
+        TiledArray::TiledRange1(blocking[1].begin(), blocking[1].end()));
+    blockingB.push_back(
+        TiledArray::TiledRange1(blocking[2].begin(), blocking[2].end()));
 
-    // Construct TiledRange
-    std::vector<unsigned int> blocking;
-    blocking.reserve(num_blocks + 1);
-    for (long i = 0l; i <= matrix_size; i += block_size) blocking.push_back(i);
-
-    std::vector<TiledArray::TiledRange1> blocking2(
-        2, TiledArray::TiledRange1(blocking.begin(), blocking.end()));
-
-    TiledArray::TiledRange trange(blocking2.begin(), blocking2.end());
+    TiledArray::TiledRange trangeA(blockingA.begin(), blockingA.end()),
+        trangeB(blockingB.begin(), blockingB.end());
 
     // Construct and initialize arrays
-    Array_t a(world, trange);
-    Array_t b(world, trange);
-    Array_t c(world, trange);
-    set_tiles(1.0, a);
-    set_tiles(1.0, b);
-
-    TiledArray::TArrayD a_check(world, trange);
-    TiledArray::TArrayD b_check(world, trange);
-    TiledArray::TArrayD c_check(world, trange);
-    a_check.fill(1.0);
-    b_check.fill(1.0);
+    TiledArray::TArrayD a(world, trangeA);
+    TiledArray::TArrayD b(world, trangeB);
+    TiledArray::TArrayD c;
+    a.fill(1.0);
+    b.fill(1.0);
 
     // Start clock
     world.gop.fence();
@@ -116,36 +122,25 @@ int main(int argc, char** argv) {
       std::cout << "Starting iterations: "
                 << "\n";
 
-    double total_time = 0.0;
-
     // Do matrix multiplication
     for (int i = 0; i < repeat; ++i) {
-      const double start = madness::wall_time();
-      c("m,n") = a("m,k") * b("k,n");
-      c_check("m,n") = a_check("m,k") * b_check("k,n");
-      //      world.gop.fence();
-      const double time = madness::wall_time() - start;
-      total_time += time;
+      TA_RECORD_DURATION(c("m,n") = a("m,k") * b("k,n"); world.gop.fence();)
+      const double time = TiledArray::durations().back();
       if (world.rank() == 0)
         std::cout << "Iteration " << i + 1 << "   time=" << time
-                  << "   GFLOPS=" << flop / time << "\n";
-      auto check_it = c_check.begin();
-      for (auto it = c.begin(); it != c.end() && check_it != c_check.end();
-           ++it, ++check_it) {
-        auto tile_diff = it->get().tensor().subt(check_it->get()).norm();
-        if (tile_diff >= 1e-15) {
-          std::cout << "Tile " << it.ordinal() << " failed test "
-                    << " with norm diff " << tile_diff << std::endl;
-          assert(false);
-        }
-      }
+                  << "   GFLOPS=" << gflops_per_call / time << "\n";
     }
 
     // Print results
-    if (world.rank() == 0)
-      std::cout << "Average wall time   = " << total_time / double(repeat)
-                << " sec\nAverage GFLOPS      = "
-                << double(repeat) * flop / total_time << "\n";
+    if (world.rank() == 0) {
+      auto durations = TiledArray::duration_statistics();
+      std::cout << "Average wall time   = " << durations.mean
+                << " s\nAverage GFLOPS      = "
+                << gflops_per_call * durations.mean_reciprocal
+                << "\nMedian wall time   = " << durations.median
+                << " s\nMedian GFLOPS      = "
+                << gflops_per_call / durations.median << "\n";
+    }
 
   } catch (TiledArray::Exception& e) {
     std::cerr << "!! TiledArray exception: " << e.what() << "\n";

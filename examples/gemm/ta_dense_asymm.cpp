@@ -18,6 +18,7 @@
  */
 
 #include <TiledArray/external/btas.h>
+#include <TiledArray/util/time.h>
 #include <tiledarray.h>
 #include <iostream>
 
@@ -125,11 +126,11 @@ int main(int argc, char** argv) {
     using Array = std::decay_t<std::remove_pointer_t<decltype(tarray_ptr)>>;
     using T = TiledArray::detail::numeric_t<Array>;
     const auto complex_T = TiledArray::detail::is_complex_v<T>;
-    const std::int64_t nflops =
+    const double gflops_per_call =
         (complex_T ? 8 : 2)  // 1 multiply takes 6/1 flops for complex/real
                              // 1 add takes 2/1 flops for complex/real
         * static_cast<std::int64_t>(Nn) * static_cast<std::int64_t>(Nm) *
-        static_cast<std::int64_t>(Nk);
+        static_cast<std::int64_t>(Nk) / 1.e9;
 
     if (world.rank() == 0)
       std::cout << "TiledArray: dense matrix multiply test...\n"
@@ -182,18 +183,11 @@ int main(int argc, char** argv) {
         std::cout << "Starting iterations: "
                   << "\n";
 
-      double total_time = 0.0;
-      double total_gflop_rate = 0.0;
-
       // Do matrix multiplication
       for (int i = 0; i < repeat; ++i) {
-        const double start = madness::wall_time();
-        c("m,n") = a("m,k") * b("k,n");
-        memtrace("c=a*b");
-        const double time = madness::wall_time() - start;
-        total_time += time;
-        const double gflop_rate = double(nflops) / (time * 1.e9);
-        total_gflop_rate += gflop_rate;
+        TA_RECORD_DURATION(c("m,n") = a("m,k") * b("k,n"); memtrace("c=a*b");)
+        const double time = TiledArray::durations().back();
+        const double gflop_rate = gflops_per_call / time;
         if (world.rank() == 0)
           std::cout << "Iteration " << i + 1 << "   time=" << time
                     << "   GFLOPS=" << gflop_rate << "\n";
@@ -203,9 +197,13 @@ int main(int argc, char** argv) {
       const double wall_time_stop = madness::wall_time();
 
       if (world.rank() == 0) {
-        std::cout << "Average wall time   = " << total_time / double(repeat)
-                  << " sec\nAverage GFLOPS      = "
-                  << total_gflop_rate / double(repeat) << "\n";
+        auto durations = TiledArray::duration_statistics();
+        std::cout << "Average wall time   = " << durations.mean
+                  << " s\nAverage GFLOPS      = "
+                  << gflops_per_call * durations.mean_reciprocal
+                  << "\nMedian wall time   = " << durations.median
+                  << " s\nMedian GFLOPS      = "
+                  << gflops_per_call / durations.median << "\n";
       }
 
     }  // array lifetime scope
