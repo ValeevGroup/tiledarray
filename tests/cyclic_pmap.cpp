@@ -61,12 +61,6 @@ BOOST_AUTO_TEST_CASE(constructor) {
   ProcessID size = GlobalFixture::world->size();
 
   BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(
-                            *GlobalFixture::world, 0ul, 10ul, 1, 1),
-                        TiledArray::Exception);
-  BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(
-                            *GlobalFixture::world, 10ul, 0ul, 1, 1),
-                        TiledArray::Exception);
-  BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(
                             *GlobalFixture::world, 10ul, 10ul, 0, 1),
                         TiledArray::Exception);
   BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(

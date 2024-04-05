@@ -661,16 +661,19 @@ inline btas::Tensor<T, Range, Storage> gemm(
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
-  const integer lda =
-      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
-  const integer ldb =
-      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+  const integer lda = std::max(
+      integer{1},
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m));
+  const integer ldb = std::max(
+      integer{1},
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
 
   T factor_t(factor);
 
+  const integer ldc = std::max(integer{1}, n);
   TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m,
                                n, k, factor_t, left.data(), lda, right.data(),
-                               ldb, T(0), result.data(), n);
+                               ldb, T(0), result.data(), ldc);
 
   return result;
 }
@@ -736,16 +739,19 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
-  const integer lda =
-      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
-  const integer ldb =
-      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+  const integer lda = std::max(
+      integer{1},
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m));
+  const integer ldb = std::max(
+      integer{1},
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
 
   T factor_t(factor);
 
+  const integer ldc = std::max(integer{1}, n);
   TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m,
                                n, k, factor_t, left.data(), lda, right.data(),
-                               ldb, T(1), result.data(), n);
+                               ldb, T(1), result.data(), ldc);
 }
 
 // sum of the hyperdiagonal elements

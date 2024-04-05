@@ -889,45 +889,63 @@ class Summa
 
   /// Initialize reduce tasks and construct broadcast groups
   ordinal_type initialize(const DenseShape&) {
-    // Construct static broadcast groups for dense arguments
-    const madness::DistributedID col_did(DistEvalImpl_::id(), 0ul);
-    col_group_ = proc_grid_.make_col_group(col_did);
-    const madness::DistributedID row_did(DistEvalImpl_::id(), k_);
-    row_group_ = proc_grid_.make_row_group(row_did);
+    // if contraction is over zero-volume range just initialize tiles to zero
+    if (k_ == 0) {
+      ordinal_type tile_count = 0;
+      const auto& tiles_range = this->trange().tiles_range();
+      for (auto&& tile_idx : tiles_range) {
+        auto tile_ord = tiles_range.ordinal(tile_idx);
+        if (this->is_local(tile_ord)) {
+          this->world().taskq.add([this, tile_ord, tile_idx]() {
+            this->set_tile(tile_ord,
+                           value_type(this->trange().tile(tile_idx),
+                                      typename value_type::value_type{}));
+          });
+          ++tile_count;
+        }
+      }
+      return tile_count;
+    } else {
+      // Construct static broadcast groups for dense arguments
+      const madness::DistributedID col_did(DistEvalImpl_::id(), 0ul);
+      col_group_ = proc_grid_.make_col_group(col_did);
+      const madness::DistributedID row_did(DistEvalImpl_::id(), k_);
+      row_group_ = proc_grid_.make_row_group(row_did);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
-    std::stringstream ss;
-    ss << "init: rank=" << TensorImpl_::world().rank() << "\n    col_group_=("
-       << col_did.first << ", " << col_did.second << ") { ";
-    for (ProcessID gproc = 0ul; gproc < col_group_.size(); ++gproc)
-      ss << col_group_.world_rank(gproc) << " ";
-    ss << "}\n    row_group_=(" << row_did.first << ", " << row_did.second
-       << ") { ";
-    for (ProcessID gproc = 0ul; gproc < row_group_.size(); ++gproc)
-      ss << row_group_.world_rank(gproc) << " ";
-    ss << "}\n";
-    printf(ss.str().c_str());
+      std::stringstream ss;
+      ss << "init: rank=" << TensorImpl_::world().rank() << "\n    col_group_=("
+         << col_did.first << ", " << col_did.second << ") { ";
+      for (ProcessID gproc = 0ul; gproc < col_group_.size(); ++gproc)
+        ss << col_group_.world_rank(gproc) << " ";
+      ss << "}\n    row_group_=(" << row_did.first << ", " << row_did.second
+         << ") { ";
+      for (ProcessID gproc = 0ul; gproc < row_group_.size(); ++gproc)
+        ss << row_group_.world_rank(gproc) << " ";
+      ss << "}\n";
+      printf(ss.str().c_str());
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
-    // Allocate memory for the reduce pair tasks.
-    std::allocator<ReducePairTask<op_type>> alloc;
-    reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
+      // Allocate memory for the reduce pair tasks.
+      std::allocator<ReducePairTask<op_type>> alloc;
+      reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
-    // Iterate over all local tiles
-    const ordinal_type n = proc_grid_.local_size();
-    for (ordinal_type t = 0ul; t < n; ++t) {
-      // Initialize the reduction task
-      ReducePairTask<op_type>* MADNESS_RESTRICT const reduce_task =
-          reduce_tasks_ + t;
-      new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
+      // Iterate over all local tiles
+      const ordinal_type n = proc_grid_.local_size();
+      for (ordinal_type t = 0ul; t < n; ++t) {
+        // Initialize the reduction task
+        ReducePairTask<op_type>* MADNESS_RESTRICT const reduce_task =
+            reduce_tasks_ + t;
+        new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
-                                                ,
-                                                nullptr, t
+                                                  ,
+                                                  nullptr, t
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
-      );
+        );
+      }
+
+      return proc_grid_.local_size();
     }
-
-    return proc_grid_.local_size();
   }
 
   /// Initialize reduce tasks
@@ -937,6 +955,9 @@ class Summa
     std::stringstream ss;
     ss << "    initialize rank=" << TensorImpl_::world().rank() << " tiles={ ";
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
+
+    // fast return if there is no work to do
+    if (k_ == 0) return 0;
 
     // Allocate memory for the reduce pair tasks.
     std::allocator<ReducePairTask<op_type>> alloc;
@@ -1347,7 +1368,6 @@ class Summa
 
     template <typename Derived>
     void make_next_step_tasks(Derived* task, ordinal_type depth) {
-      TA_ASSERT(depth > 0);
       // Set the depth to be no greater than the maximum number steps
       if (depth > owner_->k_) depth = owner_->k_;
 
@@ -1706,56 +1726,78 @@ class Summa
           std::max(ProcGrid::size_type(2),
                    std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
 
-      // Construct the first SUMMA iteration task
-      if (TensorImpl_::shape().is_dense()) {
-        // We cannot have more iterations than there are blocks in the k
-        // dimension
-        if (depth > k_) depth = k_;
+      // watch out for the corner case: contraction over zero-volume range
+      // producing nonzero-volume result ... in that case there is nothing to do
+      // the appropriate initialization was performed in the initialize() method
+      if (k_ != 0) {
+        // Construct the first SUMMA iteration task
+        if (TensorImpl_::shape().is_dense()) {
+          // We cannot have more iterations than there are blocks in the k
+          // dimension
+          if (depth > k_) depth = k_;
 
-        // Modify the number of concurrent iterations based on the available
-        // memory.
-        depth = mem_bound_depth(depth, 0.0f, 0.0f);
+          // Modify the number of concurrent iterations based on the available
+          // memory.
+          depth = mem_bound_depth(depth, 0.0f, 0.0f);
 
-        // Enforce user defined depth bound
-        if (max_depth_) depth = std::min(depth, max_depth_);
+          // Enforce user defined depth bound
+          if (max_depth_) depth = std::min(depth, max_depth_);
 
-        TensorImpl_::world().taskq.add(
-            new DenseStepTask(shared_from_this(), depth));
-      } else {
-        // Increase the depth based on the amount of sparsity in an iteration.
+          TensorImpl_::world().taskq.add(
+              new DenseStepTask(shared_from_this(), depth));
+        } else {
+          // Increase the depth based on the amount of sparsity in an iteration.
 
-        // Get the sparsity fractions for the left- and right-hand arguments.
-        const float left_sparsity = left_.shape().sparsity();
-        const float right_sparsity = right_.shape().sparsity();
+          // Get the sparsity fractions for the left- and right-hand arguments.
+          const float left_sparsity = left_.shape().sparsity();
+          const float right_sparsity = right_.shape().sparsity();
 
-        // Compute the fraction of non-zero result tiles in a single SUMMA
-        // iteration.
-        const float frac_non_zero = (1.0f - std::min(left_sparsity, 0.9f)) *
-                                    (1.0f - std::min(right_sparsity, 0.9f));
+          // Compute the fraction of non-zero result tiles in a single SUMMA
+          // iteration.
+          const float frac_non_zero = (1.0f - std::min(left_sparsity, 0.9f)) *
+                                      (1.0f - std::min(right_sparsity, 0.9f));
 
-        // Compute the new depth based on sparsity of the arguments
-        depth =
-            float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) + 0.5f;
+          // Compute the new depth based on sparsity of the arguments
+          depth = float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) +
+                  0.5f;
 
-        // We cannot have more iterations than there are blocks in the k
-        // dimension
-        if (depth > k_) depth = k_;
+          // We cannot have more iterations than there are blocks in the k
+          // dimension
+          if (depth > k_) depth = k_;
 
-        // Modify the number of concurrent iterations based on the available
-        // memory and sparsity of the argument tensors.
-        depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
+          // Modify the number of concurrent iterations based on the available
+          // memory and sparsity of the argument tensors.
+          depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
 
-        // Enforce user defined depth bound
-        if (max_depth_) depth = std::min(depth, max_depth_);
+          // Enforce user defined depth bound
+          if (max_depth_) depth = std::min(depth, max_depth_);
 
-        TensorImpl_::world().taskq.add(
-            new SparseStepTask(shared_from_this(), depth));
-      }
+          TensorImpl_::world().taskq.add(
+              new SparseStepTask(shared_from_this(), depth));
+        }
+      }  // k_ != 0
     }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
     printf("eval: start wait children rank=%i\n", TensorImpl_::world().rank());
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
+
+    // corner case: if left or right are zero-volume no tasks were scheduled, so
+    // need to discard all of their tiles manually
+    if (left_.range().volume() == 0) {
+      for (auto&& tile_idx : right_.range()) {
+        auto tile_ord = right_.range().ordinal(tile_idx);
+        if (right_.is_local(tile_ord) && !right_.is_zero(tile_ord))
+          right_.discard(tile_ord);
+      }
+    }
+    if (right_.range().volume() == 0) {
+      for (auto&& tile_idx : left_.range()) {
+        auto tile_ord = left_.range().ordinal(tile_idx);
+        if (left_.is_local(tile_ord) && !left_.is_zero(tile_ord))
+          left_.discard(tile_ord);
+      }
+    }
 
     // Wait for child tensors to be evaluated, and process tasks while waiting.
     left_.wait();

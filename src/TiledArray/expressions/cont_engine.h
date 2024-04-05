@@ -344,16 +344,26 @@ class ContEngine : public BinaryEngine<Derived> {
       n *= right_element_size[i];
     }
 
-    // Construct the process grid.
-    proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
+    // corner case: zero-volume result ... easier to skip proc_grid_
+    // construction alltogether
+    if (M == 0 || N == 0) {
+      left_.init_distribution(world, {});
+      right_.init_distribution(world, {});
+      ExprEngine_::init_distribution(
+          world, (pmap ? pmap : policy::default_pmap(*world, M * N)));
+    } else {  // M!=0 && N!=0
 
-    // Initialize children
-    left_.init_distribution(world, proc_grid_.make_row_phase_pmap(K_));
-    right_.init_distribution(world, proc_grid_.make_col_phase_pmap(K_));
+      // Construct the process grid.
+      proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
 
-    // Initialize the process map in not already defined
-    if (!pmap) pmap = proc_grid_.make_pmap();
-    ExprEngine_::init_distribution(world, pmap);
+      // Initialize children
+      left_.init_distribution(world, proc_grid_.make_row_phase_pmap(K_));
+      right_.init_distribution(world, proc_grid_.make_col_phase_pmap(K_));
+
+      // Initialize the process map if not already defined
+      if (!pmap) pmap = proc_grid_.make_pmap();
+      ExprEngine_::init_distribution(world, pmap);
+    }
   }
 
   /// Tiled range factory function

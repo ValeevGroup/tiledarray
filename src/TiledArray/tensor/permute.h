@@ -127,6 +127,9 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
   const unsigned int ndim1 = ndim - 1;
   const auto volume = arg0.range().volume();
 
+  // handle the corner case of empty result/args
+  if (volume == 0) return;
+
   // Get pointer to arg extent
   const auto* MADNESS_RESTRICT const arg0_extent = arg0.range().extent_data();
 

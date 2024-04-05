@@ -288,12 +288,6 @@ class ProcGrid {
         local_rows_(0ul),
         local_cols_(0ul),
         local_size_(0ul) {
-    // Check for non-zero sizes
-    TA_ASSERT(rows_ >= 1u);
-    TA_ASSERT(cols_ >= 1u);
-    TA_ASSERT(row_size >= 1ul);
-    TA_ASSERT(col_size >= 1ul);
-
     init(world_->rank(), world_->size(), row_size, col_size);
   }
 

@@ -12,9 +12,9 @@ Applications usage:
 
   ta_band matrix_size block_size band_width [repetitions]
 
-  blas matrix_size [repetitions]
+  ta_blas matrix_size [repetitions]
 
-  eigen matrix_size [repetitions]
+  ta_eigen matrix_size [repetitions]
 
 Argument definitions:
 
