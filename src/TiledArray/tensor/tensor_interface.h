@@ -1066,7 +1066,7 @@ class TensorInterface {
   scalar_type squared_norm() const {
     auto square_op = [](scalar_type& MADNESS_RESTRICT res,
                         const numeric_type arg) {
-      res += TiledArray::detail::norm(arg);
+      res += TiledArray::detail::squared_norm(arg);
     };
     auto sum_op = [](scalar_type& MADNESS_RESTRICT res, const scalar_type arg) {
       res += arg;

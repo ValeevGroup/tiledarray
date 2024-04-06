@@ -25,6 +25,389 @@
 
 #include "TiledArray/expressions/contraction_helpers.h"
 
+BOOST_AUTO_TEST_SUITE(manual)
+
+namespace {
+using il_trange = std::initializer_list<std::initializer_list<size_t>>;
+using il_extent = std::initializer_list<size_t>;
+}  // namespace
+
+template <DeNest DeNestFlag = DeNest::False,
+          ShapeComp ShapeCompFlag = ShapeComp::False, typename ArrayA,
+          typename ArrayB,
+          typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
+bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
+  auto out = TA::einsum<DeNestFlag>(annot, A, B);
+  auto ref = manual_eval<DeNestFlag>(annot, A, B);
+  return ToTArrayFixture::are_equal<ShapeCompFlag>(ref, out);
+}
+
+template <ShapeComp ShapeCompFlag, DeNest DeNestFlag = DeNest::False,
+          typename ArrayA, typename ArrayB,
+          typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
+bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
+  return check_manual_eval<DeNestFlag, ShapeCompFlag>(annot, A, B);
+}
+
+template <typename Array, DeNest DeNestFlag = DeNest::False,
+          ShapeComp ShapeCompFlag = ShapeComp::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB) {
+  static_assert(detail::is_array_v<Array> &&
+                detail::is_tensor_v<typename Array::value_type>);
+  auto A = random_array<Array>(TA::TiledRange(trangeA));
+  auto B = random_array<Array>(TA::TiledRange(trangeB));
+  return check_manual_eval<DeNestFlag, ShapeCompFlag>(annot, A, B);
+}
+
+template <typename Array, ShapeComp ShapeCompFlag,
+          DeNest DeNestFlag = DeNest::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB) {
+  return check_manual_eval<Array, ShapeCompFlag, DeNestFlag>(annot, trangeA,
+                                                             trangeB);
+}
+
+template <typename ArrayA, typename ArrayB, DeNest DeNestFlag = DeNest::False,
+          ShapeComp ShapeCompFlag = ShapeComp::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB, il_extent inner_extents) {
+  static_assert(detail::is_array_v<ArrayA, ArrayB>);
+
+  if constexpr (detail::is_tensor_of_tensor_v<typename ArrayA::value_type>) {
+    static_assert(!detail::is_tensor_of_tensor_v<typename ArrayB::value_type>);
+    return check_manual_eval<DeNestFlag, ShapeCompFlag>(
+        annot, random_array<ArrayA>(trangeA, inner_extents),
+        random_array<ArrayB>(trangeB));
+  } else {
+    static_assert(detail::is_tensor_of_tensor_v<typename ArrayB::value_type>);
+    return check_manual_eval<DeNestFlag, ShapeCompFlag>(
+        annot, random_array<ArrayA>(trangeA),
+        random_array<ArrayB>(trangeB, inner_extents));
+  }
+}
+
+template <typename ArrayA, typename ArrayB, ShapeComp ShapeCompFlag,
+          DeNest DeNestFlag = DeNest::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB, il_extent inner_extents) {
+  return check_manual_eval<DeNestFlag, ShapeCompFlag, ArrayA, ArrayB>(
+      annot, trangeA, trangeB);
+}
+
+template <typename Array, DeNest DeNestFlag = DeNest::False,
+          ShapeComp ShapeCompFlag = ShapeComp::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB, il_extent inner_extentsA,
+                       il_extent inner_extentsB) {
+  static_assert(detail::is_array_v<Array> &&
+                detail::is_tensor_of_tensor_v<typename Array::value_type>);
+  return check_manual_eval<DeNestFlag, ShapeCompFlag>(
+      annot, random_array<Array>(trangeA, inner_extentsA),
+      random_array<Array>(trangeB, inner_extentsB));
+}
+
+template <typename Array, ShapeComp ShapeCompFlag,
+          DeNest DeNestFlag = DeNest::False>
+bool check_manual_eval(std::string const& annot, il_trange trangeA,
+                       il_trange trangeB, il_extent inner_extentsA,
+                       il_extent inner_extentsB) {
+  return check_manual_eval<Array, DeNestFlag, ShapeCompFlag>(
+      annot, trangeA, trangeB, inner_extentsA, inner_extentsB);
+}
+
+BOOST_AUTO_TEST_CASE(contract) {
+  using Array = TA::Array<int>;
+
+  BOOST_REQUIRE(check_manual_eval<Array>("ij,j->i",
+                                         {{0, 2, 4}, {0, 4, 8}},  // A's trange
+                                         {{0, 4, 8}}              // B's trange
+                                         ));
+  BOOST_REQUIRE(check_manual_eval<Array>("ik,jk->ji",
+                                         {{0, 2, 4}, {0, 4, 8}},  // A's trange
+                                         {{0, 3}, {0, 4, 8}}      // B's trange
+                                         ));
+
+  BOOST_REQUIRE(check_manual_eval<Array>(
+      "ijkl,jm->lkmi",                      //
+      {{0, 2}, {0, 4, 8}, {0, 3}, {0, 7}},  //
+      {{0, 4, 8}, {0, 5}}                   //
+      ));
+}
+
+BOOST_AUTO_TEST_CASE(hadamard) {
+  using Array = TA::Array<int>;
+  BOOST_REQUIRE(check_manual_eval<Array>("i,i->i",  //
+                                         {{0, 1}},  //
+                                         {{0, 1}}   //
+                                         ));
+  BOOST_REQUIRE(check_manual_eval<Array>("i,i->i",     //
+                                         {{0, 2, 4}},  //
+                                         {{0, 2, 4}}   //
+                                         ));
+
+  BOOST_REQUIRE(check_manual_eval<Array>("ijk,kij->ikj",                  //
+                                         {{0, 2, 4}, {0, 2, 3}, {0, 5}},  //
+                                         {{0, 5}, {0, 2, 4}, {0, 2, 3}}   //
+                                         ));
+}
+
+BOOST_AUTO_TEST_CASE(general) {
+  using Array = TA::Array<int>;
+  BOOST_REQUIRE(check_manual_eval<Array>("ijk,kil->ijl",                  //
+                                         {{0, 2}, {0, 3, 5}, {0, 2, 4}},  //
+                                         {{0, 2, 4}, {0, 2}, {0, 1}}      //
+                                         ));
+
+  using Array = TA::Array<int>;
+  using Tensor = typename Array::value_type;
+  using namespace std::string_literals;
+
+  Tensor A(TA::Range{2, 3}, {1, 2, 3, 4, 5, 6});
+  Tensor B(TA::Range{2}, {2, 10});
+  Tensor C(TA::Range{2, 3}, {2, 4, 6, 40, 50, 60});
+  BOOST_REQUIRE(
+      C == general_product<Tensor>(A, B, ProductSetup("ij"s, "i"s, "ij"s)));
+}
+
+BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
+  using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;
+
+  // H;H (Hadamard outer; Hadamard inner)
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mn,ji;nm->ij;mn",  //
+                                            {{0, 2, 4}, {0, 3}},   //
+                                            {{0, 3}, {0, 2, 4}},   //
+                                            {5, 7},                //
+                                            {7, 5}                 //
+                                            ));
+
+  // H;C (Hadamard outer; contraction inner)
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mo,ji;on->ij;mn",  //
+                                            {{0, 2, 4}, {0, 3}},   //
+                                            {{0, 3}, {0, 2, 4}},   //
+                                            {3, 7},                //
+                                            {7, 4}                 //
+                                            ));
+
+  // H;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ij;mo,ji;o->ij;m",   //
+                                            {{0, 2, 4}, {0, 3}},  //
+                                            {{0, 3}, {0, 2, 4}},  //
+                                            {3, 7},               //
+                                            {7}                   //
+                                            ));
+
+  // C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ik;mo,kj;on->ij;mn",    //
+                                            {{0, 3, 5}, {0, 2, 4}},  //
+                                            {{0, 2, 4}, {0, 2}},     //
+                                            {2, 2},                  //
+                                            {2, 2}));
+
+  // C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;dcb,ik;bc->ij;d",     //
+                                            {{0, 3}, {0, 4}, {0, 5}},  //
+                                            {{0, 3}, {0, 5}},          //
+                                            {2, 3, 4},                 //
+                                            {4, 3}));
+
+  // H+C;H
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;mn,ijk;nm->ij;mn",    //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {2, 2},                    //
+                                            {2, 2}));
+
+  // H+C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;mo,ijk;no->ij;nm",    //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {3, 2},                    //
+                                            {3, 2}));
+
+  // H+C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;m,ijk;n->ij;nm",      //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {3},                       //
+                                            {2}));
+  // H+C;H+C not supported
+}
+
+BOOST_AUTO_TEST_CASE(different_nested_ranks) {
+  using ArrayT = TA::DistArray<TA::Tensor<int>>;
+  using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;
+
+  {
+    // these tests do not involve permutation of inner tensors
+    // H
+    BOOST_REQUIRE(
+        (check_manual_eval<ArrayToT, ArrayT>("ij;mn,ji->ji;mn",          //
+                                             {{0, 2, 5}, {0, 3, 5, 9}},  //
+                                             {{0, 3, 5, 9}, {0, 2, 5}},  //
+                                             {2, 1})));
+
+    // H (reversed arguments)
+    BOOST_REQUIRE(
+        (check_manual_eval<ArrayT, ArrayToT>("ji,ij;mn->ji;mn",          //
+                                             {{0, 3, 5, 9}, {0, 2, 5}},  //
+                                             {{0, 2, 5}, {0, 3, 5, 9}},  //
+                                             {2, 4})));
+
+    // C (outer product)
+    BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("i;mn,j->ij;mn",  //
+                                                       {{0, 5}},         //
+                                                       {{0, 3, 8}},      //
+                                                       {3, 2})));
+
+    // C (outer product) (reversed arguments)
+    BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("j,i;mn->ij;mn",  //
+                                                       {{0, 3, 8}},      //
+                                                       {{0, 5}},         //
+                                                       {2, 2})));
+  }
+
+  // C (outer product)
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ik;mn,j->ijk;nm",    //
+                                                     {{0, 2, 4}, {0, 4}},  //
+                                                     {{0, 3, 5}},          //
+                                                     {3, 2})));
+
+  // C (outer product) (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("jl,ik;mn->ijkl;nm",  //
+                                                     {{0, 3, 5}, {0, 3}},  //
+                                                     {{0, 2, 4}, {0, 4}},  //
+                                                     {3, 2})));
+
+  // H+C (outer product)
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;mn,ik->ijk;nm",      //
+                                                     {{0, 2, 5}, {0, 3, 7}},  //
+                                                     {{0, 2, 5}, {0, 4, 7}},  //
+                                                     {2, 5})));
+
+  // H+C (outer product) (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("ik,ij;mn->ijk;nm",      //
+                                                     {{0, 2, 5}, {0, 4, 7}},  //
+                                                     {{0, 2, 5}, {0, 3, 7}},  //
+                                                     {2, 5})));
+
+  {
+    // these tests do not involve permutation of inner tensors
+    // H+C
+    BOOST_REQUIRE(
+        (check_manual_eval<ArrayToT, ArrayT>("ik;mn,ijk->ij;mn",        //
+                                             {{0, 2}, {0, 3}},          //
+                                             {{0, 2}, {0, 2}, {0, 3}},  //
+                                             {2, 2})));
+
+    // H+C (reversed arguments)
+    BOOST_REQUIRE(
+        (check_manual_eval<ArrayT, ArrayToT>("ijk,ik;mn->ij;mn",        //
+                                             {{0, 2}, {0, 2}, {0, 3}},  //
+                                             {{0, 2}, {0, 3}},          //
+                                             {2, 2})));
+  }
+
+  // H
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;mn,ji->ji;nm",       //
+                                                     {{0, 2, 4, 6}, {0, 3}},  //
+                                                     {{0, 3}, {0, 2, 4, 6}},  //
+                                                     {4, 2})));
+
+  // H (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("ji,ij;mn->ji;nm",       //
+                                                     {{0, 3, 5}, {0, 2, 4}},  //
+                                                     {{0, 2, 4}, {0, 3, 5}},  //
+                                                     {1, 2})));
+
+  // C
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("ij;m,j->i;m",        //
+                                                     {{0, 5}, {0, 2, 3}},  //
+                                                     {{0, 2, 3}},          //
+                                                     {3})));
+
+  // C (reversed arguments)
+  BOOST_REQUIRE((check_manual_eval<ArrayT, ArrayToT>("j,ij;m->i;m",     //
+                                                     {{0, 2}},          //
+                                                     {{0, 1}, {0, 2}},  //
+                                                     {3})));
+
+  // H+C
+  BOOST_REQUIRE((
+      check_manual_eval<ArrayToT, ArrayT>("ik;mn,ijk->ij;nm",                 //
+                                          {{0, 2}, {0, 3, 5}},                //
+                                          {{0, 2}, {0, 2, 4, 6}, {0, 3, 5}},  //
+                                          {2, 2})));
+
+  // H+C (reversed arguments)
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayT, ArrayToT>("ijk,ik;mn->ij;nm",        //
+                                           {{0, 2}, {0, 4}, {0, 3}},  //
+                                           {{0, 2}, {0, 3}},          //
+                                           {2, 4})));
+}
+
+BOOST_AUTO_TEST_CASE(nested_rank_reduction) {
+  using T = TA::Tensor<int>;
+  using ToT = TA::Tensor<T>;
+  using Array = TA::DistArray<T>;
+  using ArrayToT = TA::DistArray<ToT>;
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, DeNest::True>("ij;ab,ij;ab->ij",    //
+                                                 {{0, 2, 4}, {0, 4}},  //
+                                                 {{0, 2, 4}, {0, 4}},  //
+                                                 {3, 2},               //
+                                                 {3, 2})));
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, DeNest::True>("ij;ab,ij;ab->i",     //
+                                                 {{0, 2, 4}, {0, 4}},  //
+                                                 {{0, 2, 4}, {0, 4}},  //
+                                                 {3, 2},               //
+                                                 {3, 2})));
+}
+
+BOOST_AUTO_TEST_CASE(corner_cases) {
+  using T = TA::Tensor<int>;
+  using ToT = TA::Tensor<T>;
+  using ArrayT = TA::DistArray<T>;
+  using ArrayToT = TA::DistArray<ToT>;
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("ia,i->ia",                   //
+                                          {{0, 2, 5}, {0, 7, 11, 16}},  //
+                                          {{0, 2, 5}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("i,ai->ia",   //
+                                          {{0, 2, 5}},  //
+                                          {{0, 7, 11, 16}, {0, 2, 5}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("ijk,kj->kij",                      //
+                                          {{0, 2, 5}, {0, 3, 6}, {0, 2, 7}},  //
+                                          {{0, 2, 7}, {0, 3, 6}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("kj,ijk->kij",           //
+                                          {{0, 2, 7}, {0, 3, 6}},  //
+                                          {{0, 2, 5}, {0, 3, 6}, {0, 2, 7}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("kij;ab,kj;bc->kji;ac",          //
+                                            {{0, 2}, {0, 3, 5}, {0, 4, 7}},  //
+                                            {{0, 2}, {0, 4, 7}},             //
+                                            {3, 5}, {5, 2}));
+
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, ArrayT>("ijk;ab,kj->kij;ba",             //
+                                           {{0, 2}, {0, 4, 6}, {0, 3, 5}},  //
+                                           {{0, 3, 5}, {0, 4, 6}},          //
+                                           {7, 5})));
+
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayT, ArrayToT>("ij,jik;ab->kji;ab",             //
+                                           {{0, 3, 5}, {0, 3, 8}},          //
+                                           {{0, 3, 8}, {0, 3, 5}, {0, 2}},  //
+                                           {3, 9})));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
@@ -630,8 +1013,6 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_kj_mn) {
       auto i = res_ix[0];
       auto j = res_ix[1];
       auto k = res_ix[2];
-      using Ix2 = std::array<decltype(i), 2>;
-      using Ix3 = std::array<decltype(i), 3>;
 
       auto lhs_tile_ix = lhs.trange().element_to_tile({i, j});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
@@ -793,6 +1174,105 @@ BOOST_AUTO_TEST_CASE(xxx) {
   BOOST_CHECK(are_equal);
 }
 
+BOOST_AUTO_TEST_CASE(ij_mn_eq_ij_mo_times_ji_on) {
+  auto& world = TA::get_default_world();
+
+  using Array = TA::DistArray<TA::Tensor<TA::Tensor<int>>, TA::DensePolicy>;
+  using Perm = TA::Permutation;
+
+  TA::TiledRange lhs_trng{{0, 2, 3}, {0, 1}};
+  TA::TiledRange rhs_trng{{0, 1}, {0, 2, 3}};
+  TA::Range lhs_inner_rng{1, 1};
+  TA::Range rhs_inner_rng{1, 1};
+
+  auto lhs = random_array<Array>(lhs_trng, lhs_inner_rng);
+  auto rhs = random_array<Array>(rhs_trng, rhs_inner_rng);
+  Array out;
+  BOOST_REQUIRE_NO_THROW(out("i,j;m,n") = lhs("i,j;m,o") * rhs("j,i;o,n"));
+}
+
+BOOST_AUTO_TEST_CASE(ij_mn_eq_ijk_mo_times_ijk_no) {
+  using Array = TA::DistArray<TA::Tensor<TA::Tensor<int>>, TA::DensePolicy>;
+  using Ix = typename TA::Range::index1_type;
+  using namespace std::string_literals;
+  auto& world = TA::get_default_world();
+
+  Ix const K = 2;  // the extent of contracted outer mode
+
+  TA::Range const inner_rng{3, 7};
+  TA::TiledRange const lhs_trng{
+      std::initializer_list<std::initializer_list<Ix>>{
+          {0, 2, 4}, {0, 2}, {0, 2}}};
+  TA::TiledRange const rhs_trng(lhs_trng);
+  TA::TiledRange const ref_trng{lhs_trng.dim(0), lhs_trng.dim(1)};
+  TA::Range const ref_inner_rng{3, 3};  // contract(3x7,3x7) -> (3,3)
+  auto lhs = random_array<Array>(lhs_trng, inner_rng);
+  auto rhs = random_array<Array>(rhs_trng, inner_rng);
+
+  //
+  // manual evaluation: ij;mn = ijk;mo * ijk;no
+  //
+  Array ref{world, ref_trng};
+  {
+    lhs.make_replicated();
+    rhs.make_replicated();
+    world.gop.fence();
+
+    auto make_tile = [lhs, rhs, ref_inner_rng](TA::Range const& rng) {
+      using InnerT = typename Array::value_type::value_type;
+      typename Array::value_type result_tile{rng};
+
+      for (auto&& res_ix : result_tile.range()) {
+        auto i = res_ix[0];
+        auto j = res_ix[1];
+
+        InnerT mn;
+        for (Ix k = 0; k < K; ++k) {
+          auto lhs_tile =
+              lhs.find_local(lhs.trange().element_to_tile({i, j, k}))
+                  .get(/*dowork = */ false);
+          auto rhs_tile =
+              rhs.find_local(rhs.trange().element_to_tile({i, j, k}))
+                  .get(/*dowork = */ false);
+          mn.add_to(tensor_contract("mo,no->mn", lhs_tile({i, j, k}),
+                                    rhs_tile({i, j, k})));
+        }
+        result_tile({i, j}) = std::move(mn);
+      }
+      return result_tile;
+    };
+    using std::begin;
+    using std::end;
+
+    for (auto it = begin(ref); it != end(ref); ++it)
+      if (ref.is_local(it.index())) {
+        auto tile = world.taskq.add(make_tile, it.make_range());
+        *it = tile;
+      }
+  }
+
+  auto out = einsum(lhs("i,j,k;m,o"), rhs("i,j,k;n,o"), "i,j;m,n");
+  bool are_equal = ToTArrayFixture::are_equal<ShapeComp::False>(ref, out);
+
+  BOOST_CHECK(are_equal);
+}
+
+#ifdef TILEDARRAY_HAS_BTAS
+BOOST_AUTO_TEST_CASE(tensor_contract) {
+  using TensorT = TA::Tensor<int>;
+
+  TA::Range const rng_A{2, 3, 4};
+  TA::Range const rng_B{4, 3, 2};
+  auto const A = random_tensor<TensorT>(rng_A);
+  auto const B = random_tensor<TensorT>(rng_B);
+
+  BOOST_CHECK(tensor_contract_equal("ijk,klm->ijlm", A, B));
+  BOOST_CHECK(tensor_contract_equal("ijk,klm->milj", A, B));
+  BOOST_CHECK(tensor_contract_equal("ijk,kjm->im", A, B));
+  BOOST_CHECK(tensor_contract_equal("ijk,kli->lj", A, B));
+}
+#endif
+
 BOOST_AUTO_TEST_SUITE_END()  // einsum_tot
 
 BOOST_AUTO_TEST_SUITE(einsum_tot_t)
@@ -850,20 +1330,15 @@ BOOST_AUTO_TEST_CASE(ilkj_nm_eq_ij_mn_times_kl) {
       auto k = res_ix[2];
       auto j = res_ix[3];
 
-      using Ix2 = std::array<decltype(i), 2>;
-      using Ix4 = std::array<decltype(i), 4>;
-
-      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
+      auto lhs_tile_ix = lhs.trange().element_to_tile({i, j});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
 
-      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{k, l});
+      auto rhs_tile_ix = rhs.trange().element_to_tile({k, l});
       auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork = */ false);
 
-      auto& res_el =
-          result_tile.at_ordinal(result_tile.range().ordinal(Ix4{i, l, k, j}));
-      auto const& lhs_el =
-          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
-      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{k, l}));
+      auto& res_el = result_tile({i, l, k, j});
+      auto const& lhs_el = lhs_tile({i, j});
+      auto rhs_el = rhs_tile({k, l});
 
       res_el = tot_type::element_type(
           lhs_el.scale(rhs_el),            // scale
@@ -949,20 +1424,15 @@ BOOST_AUTO_TEST_CASE(ijk_mn_eq_ij_mn_times_jk) {
       auto j = res_ix[1];
       auto k = res_ix[2];
 
-      using Ix2 = std::array<decltype(i), 2>;
-      using Ix3 = std::array<decltype(i), 3>;
-
-      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{i, j});
+      auto lhs_tile_ix = lhs.trange().element_to_tile({i, j});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork = */ false);
 
-      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2{j, k});
+      auto rhs_tile_ix = rhs.trange().element_to_tile({j, k});
       auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork = */ false);
 
-      auto& res_el =
-          result_tile.at_ordinal(result_tile.range().ordinal(Ix3{i, j, k}));
-      auto const& lhs_el =
-          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{i, j}));
-      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{j, k}));
+      auto& res_el = result_tile({i, j, k});
+      auto const& lhs_el = lhs_tile({i, j});
+      auto rhs_el = rhs_tile({j, k});
 
       res_el = lhs_el.scale(rhs_el);
     }
@@ -1057,19 +1527,15 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ji_mn_times_ij) {
       auto i = res_ix[0];
       auto j = res_ix[1];
 
-      using Ix2 = std::array<decltype(i), 2>;
-
-      auto lhs_tile_ix = lhs.trange().element_to_tile(Ix2{j, i});
+      auto lhs_tile_ix = lhs.trange().element_to_tile({j, i});
       auto lhs_tile = lhs.find_local(lhs_tile_ix).get(/* dowork */ false);
 
-      auto rhs_tile_ix = rhs.trange().element_to_tile(Ix2({i, j}));
+      auto rhs_tile_ix = rhs.trange().element_to_tile({i, j});
       auto rhs_tile = rhs.find_local(rhs_tile_ix).get(/* dowork */ false);
 
-      auto& res_el =
-          result_tile.at_ordinal(result_tile.range().ordinal(Ix2{i, j}));
-      auto const& lhs_el =
-          lhs_tile.at_ordinal(lhs_tile.range().ordinal(Ix2{j, i}));
-      auto rhs_el = rhs_tile.at_ordinal(rhs_tile.range().ordinal(Ix2{i, j}));
+      auto& res_el = result_tile({i, j});
+      auto const& lhs_el = lhs_tile({j, i});
+      auto rhs_el = rhs_tile({i, j});
       res_el = tot_type::element_type(lhs_el.scale(rhs_el),          // scale
                                       TiledArray::Permutation{0, 1}  // permute
       );

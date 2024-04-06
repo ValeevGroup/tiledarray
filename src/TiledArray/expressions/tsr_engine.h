@@ -126,10 +126,11 @@ class TsrEngine : public LeafEngine<TsrEngine<Array, Result, Alias>> {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  static op_type make_tile_op(const Perm& perm) {
-    return op_type(op_base_type(), perm);
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  static op_type make_tile_op(Perm&& perm) {
+    return op_type(op_base_type(), std::forward<Perm>(perm));
   }
 
 };  // class TsrEngine

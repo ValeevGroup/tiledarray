@@ -140,10 +140,11 @@ class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar, Result>> {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  op_type make_tile_op(const Perm& perm) const {
-    return op_type(op_base_type(factor_), perm);
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  op_type make_tile_op(Perm&& perm) const {
+    return op_type(op_base_type(factor_), std::forward<Perm>(perm));
   }
 
   /// Expression identification tag

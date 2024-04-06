@@ -36,11 +36,6 @@
 
 namespace TiledArray {
 
-template <typename Alpha, typename... As, typename... Bs, typename Beta,
-          typename... Cs>
-void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
-          Beta beta, Tensor<Cs...>& C, const math::GemmHelper& gemm_helper);
-
 namespace detail {
 
 /// Signals that we can take the trace of a Tensor<T, A> (for numeric \c T)
@@ -402,7 +397,7 @@ class Tensor {
   /// \param perm The permutation that will be applied to the copy
   /// \warning if `T1` is a tensor of tensors its elements are _cloned_ rather
   ///          than copied to make the semantics of  this to be consistent
-  ///          between tensors of scalars and tensors of scalars; specifically,
+  ///          between tensors of scalars and tensors of tensors; specifically,
   ///          if `T1` is a tensor of scalars the constructed tensor is
   ///          is independent of \p other, thus should apply clone to inner
   ///          tensor nests to behave similarly for nested tensors
@@ -411,22 +406,32 @@ class Tensor {
       typename std::enable_if<detail::is_nested_tensor_v<T1> &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor(const T1& other, const Perm& perm)
-      : Tensor(outer(perm) * other.range(), 1, default_construct{false}) {
-    detail::tensor_init(value_converter<typename T1::value_type>, outer(perm),
-                        *this, other);
+      : Tensor(outer(perm) * other.range(), other.nbatch(),
+               default_construct{false}) {
+    const auto outer_perm = outer(perm);
+    if (outer_perm) {
+      detail::tensor_init(value_converter<typename T1::value_type>, outer_perm,
+                          *this, other);
+    } else {
+      detail::tensor_init(value_converter<typename T1::value_type>, *this,
+                          other);
+    }
 
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
     constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
     if constexpr (is_tot && is_bperm) {
       if (inner_size(perm) != 0) {
-        auto inner_perm = inner(perm);
+        const auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
-        for (auto& x : *this) x = p(x, inner_perm);
+
+        auto volume = total_size();
+        for (decltype(volume) i = 0; i < volume; ++i) {
+          auto& el = *(data() + i);
+          el = p(el, inner_perm);
+        }
       }
     }
   }
@@ -463,10 +468,8 @@ class Tensor {
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
-    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
+    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     if constexpr (is_tot && is_bperm) {
       if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
@@ -511,10 +514,8 @@ class Tensor {
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
-    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
+    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     if constexpr (is_tot && is_bperm) {
       if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
@@ -1296,33 +1297,7 @@ class Tensor {
   template <typename Perm,
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor permute(const Perm& perm) const {
-    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
-    [[maybe_unused]] constexpr bool is_bperm =
-        detail::is_bipartite_permutation_v<Perm>;
-    // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
-    if constexpr (!is_tot) {
-      if constexpr (is_bperm) {
-        TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
-        return Tensor(*this, outer(perm));
-      } else
-        return Tensor(*this, perm);
-    } else {
-      // If we have a ToT we need to apply the permutation in two steps. The
-      // first step is identical to the non-ToT case (permute the outer modes)
-      // the second step does the inner modes
-      Tensor rv(*this, outer(perm));
-      if constexpr (is_bperm) {
-        if (inner_size(perm) != 0) {
-          auto inner_perm = inner(perm);
-          Permute<value_type, value_type> p;
-          for (auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
-        }
-      }
-      return rv;
-    }
-    abort();  // unreachable
+    return Tensor(*this, perm);
   }
 
   /// Shift the lower and upper bound of this tensor
@@ -1393,7 +1368,8 @@ class Tensor {
         std::declval<const T&>(), std::declval<const value_t<Right>&>()));
     using result_allocator_type = typename std::allocator_traits<
         Allocator>::template rebind_alloc<result_value_type>;
-    return Tensor<result_value_type, result_allocator_type>(*this, right, op);
+    using ResultTensor = Tensor<result_value_type, result_allocator_type>;
+    return ResultTensor(*this, right, op);
   }
 
   /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -1406,34 +1382,36 @@ class Tensor {
   /// \param perm The permutation to be applied to this tensor
   /// \return A tensor where element \c i of the new tensor is equal to
   /// \c op(*this[i],other[i])
-  template <
-      typename Right, typename Op, typename Perm,
-      typename std::enable_if<is_tensor<Right>::value &&
-                              detail::is_permutation_v<Perm>>::type* = nullptr>
-  auto binary(const Right& right, Op&& op, const Perm& perm) const {
-    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
+  template <typename Right, typename Op, typename Perm,
+            typename std::enable_if<is_tensor<Right>::value &&
+                                    detail::is_permutation_v<
+                                        std::remove_reference_t<Perm>>>::type* =
+                nullptr>
+  auto binary(const Right& right, Op&& op, Perm&& perm) const {
+    using result_value_type = decltype(op(
+        std::declval<const T&>(), std::declval<const value_t<Right>&>()));
+    using result_allocator_type = typename std::allocator_traits<
+        Allocator>::template rebind_alloc<result_value_type>;
+    using ResultTensor = Tensor<result_value_type, result_allocator_type>;
+    // tile ops pass bipartite permutations here even if the result is a plain
+    // tensor
     [[maybe_unused]] constexpr bool is_bperm =
         detail::is_bipartite_permutation_v<Perm>;
-    // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
-    if constexpr (!is_tot) {
-      using result_value_type = decltype(op(
-          std::declval<const T&>(), std::declval<const value_t<Right>&>()));
-      using result_allocator_type = typename std::allocator_traits<
-          Allocator>::template rebind_alloc<result_value_type>;
-      using ResultTensor = Tensor<result_value_type, result_allocator_type>;
+    constexpr bool result_is_tot = detail::is_tensor_of_tensor_v<ResultTensor>;
+
+    if constexpr (!result_is_tot) {
       if constexpr (is_bperm) {
-        TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
-        return ResultTensor(*this, right, op, outer(perm));
+        TA_ASSERT(!inner(perm));  // ensure this is a plain permutation since
+                                  // ResultTensor is plain
+        return ResultTensor(*this, right, op, outer(std::forward<Perm>(perm)));
       } else
-        return ResultTensor(*this, right, op, perm);
+        return ResultTensor(*this, right, op, std::forward<Perm>(perm));
     } else {
       // AFAIK the other branch fundamentally relies on raw pointer arithmetic,
       // which won't work for ToTs.
       auto temp = binary(right, std::forward<Op>(op));
       Permute<decltype(temp), decltype(temp)> p;
-      return p(temp, perm);
+      return p(temp, std::forward<Perm>(perm));
     }
     abort();  // unreachable
   }
@@ -1481,24 +1459,23 @@ class Tensor {
   /// \throw TiledArray::Exception The dimension of \c perm does not match
   /// that of this tensor.
   template <typename Op, typename Perm,
-            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
-  Tensor unary(Op&& op, const Perm& perm) const {
+            typename = std::enable_if_t<
+                detail::is_permutation_v<std::remove_reference_t<Perm>>>>
+  Tensor unary(Op&& op, Perm&& perm) const {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
     [[maybe_unused]] constexpr bool is_bperm =
         detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
-    // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
-    // not match Tensor");
     if constexpr (!is_tot) {
       if constexpr (is_bperm) {
         TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
-        return Tensor(*this, op, outer(perm));
+        return Tensor(*this, op, outer(std::forward<Perm>(perm)));
       } else
-        return Tensor(*this, op, perm);
+        return Tensor(*this, op, std::forward<Perm>(perm));
     } else {
       auto temp = unary(std::forward<Op>(op));
       Permute<Tensor, Tensor> p;
-      return p(temp, perm);
+      return p(temp, std::forward<Perm>(perm));
     }
     abort();  // unreachable
   }
@@ -1692,6 +1669,9 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor& add_to(const Right& right) {
+    if (empty()) {
+      *this = Tensor{right.range(), value_type{}};
+    }
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right> r) { l += r; });
   }
@@ -2205,7 +2185,8 @@ class Tensor {
 #else   // TA_ENABLE_TILE_OPS_LOGGING
     for (size_t i = 0; i < this->nbatch(); ++i) {
       auto Ci = this->batch(i);
-      TiledArray::gemm(alpha, A.batch(i), B.batch(i), beta, Ci, gemm_helper);
+      TiledArray::detail::gemm(alpha, A.batch(i), B.batch(i), beta, Ci,
+                               gemm_helper);
     }
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
 
@@ -2394,7 +2375,7 @@ class Tensor {
   scalar_type squared_norm() const {
     auto square_op = [](scalar_type& MADNESS_RESTRICT res,
                         const numeric_type arg) {
-      res += TiledArray::detail::norm(arg);
+      res += TiledArray::detail::squared_norm(arg);
     };
     auto sum_op = [](scalar_type& MADNESS_RESTRICT res, const scalar_type arg) {
       res += arg;
@@ -2540,193 +2521,6 @@ std::size_t Tensor<T, A>::trace_if_larger_than_ =
 template <typename T, typename A>
 Tensor<T, A> operator*(const Permutation& p, const Tensor<T, A>& t) {
   return t.permute(p);
-}
-
-/// Contract two tensors and accumulate the scaled result to this tensor
-
-/// GEMM is limited to matrix like contractions. For example, the following
-/// contractions are supported:
-/// \code
-/// C[a,b] = A[a,i,j] * B[i,j,b]
-/// C[a,b] = A[a,i,j] * B[b,i,j]
-/// C[a,b] = A[i,j,a] * B[i,j,b]
-/// C[a,b] = A[i,j,a] * B[b,i,j]
-///
-/// C[a,b,c,d] = A[a,b,i,j] * B[i,j,c,d]
-/// C[a,b,c,d] = A[a,b,i,j] * B[c,d,i,j]
-/// C[a,b,c,d] = A[i,j,a,b] * B[i,j,c,d]
-/// C[a,b,c,d] = A[i,j,a,b] * B[c,d,i,j]
-/// \endcode
-/// Notice that in the above contractions, the inner and outer indices of
-/// the arguments for exactly two contiguous groups in each tensor and that
-/// each group is in the same order in all tensors. That is, the indices of
-/// the tensors must fit the one of the following patterns:
-/// \code
-/// C[M...,N...] = A[M...,K...] * B[K...,N...]
-/// C[M...,N...] = A[M...,K...] * B[N...,K...]
-/// C[M...,N...] = A[K...,M...] * B[K...,N...]
-/// C[M...,N...] = A[K...,M...] * B[N...,K...]
-/// \endcode
-/// This allows use of optimized BLAS functions to evaluate tensor
-/// contractions. Tensor contractions that do not fit this pattern require
-/// one or more tensor permutation so that the tensors fit the required
-/// pattern.
-/// \tparam U The left-hand tensor element type
-/// \tparam AU The left-hand tensor allocator type
-/// \tparam V The right-hand tensor element type
-/// \tparam AV The right-hand tensor allocator type
-/// \tparam W The type of the scaling factor
-/// \param left The left-hand tensor that will be contracted
-/// \param right The right-hand tensor that will be contracted
-/// \param factor The contraction result will be scaling by this value, then
-/// accumulated into \c this \param gemm_helper The *GEMM operation meta data
-/// \return A reference to \c this
-/// \note if this is uninitialized, i.e., if \c this->empty()==true will
-/// this is equivalent to
-/// \code
-///   return (*this = left.gemm(right, factor, gemm_helper));
-/// \endcode
-template <typename Alpha, typename... As, typename... Bs, typename Beta,
-          typename... Cs>
-void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
-          Beta beta, Tensor<Cs...>& C, const math::GemmHelper& gemm_helper) {
-  static_assert(!detail::is_tensor_of_tensor_v<Tensor<As...>, Tensor<Bs...>,
-                                               Tensor<Cs...>>,
-                "TA::Tensor<T,Allocator>::gemm without custom element op is "
-                "only applicable to "
-                "plain tensors");
-  {
-    // Check that tensor C is not empty and has the correct rank
-    TA_ASSERT(!C.empty());
-    TA_ASSERT(C.range().rank() == gemm_helper.result_rank());
-
-    // Check that the arguments are not empty and have the correct ranks
-    TA_ASSERT(!A.empty());
-    TA_ASSERT(A.range().rank() == gemm_helper.left_rank());
-    TA_ASSERT(!B.empty());
-    TA_ASSERT(B.range().rank() == gemm_helper.right_rank());
-
-    TA_ASSERT(A.nbatch() == 1);
-    TA_ASSERT(B.nbatch() == 1);
-    TA_ASSERT(C.nbatch() == 1);
-
-    // Check that the outer dimensions of left match the corresponding
-    // dimensions in result
-    TA_ASSERT(gemm_helper.left_result_congruent(A.range().extent_data(),
-                                                C.range().extent_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_result_congruent(A.range().lobound_data(),
-                                                C.range().lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_result_congruent(A.range().upbound_data(),
-                                                C.range().upbound_data()));
-
-    // Check that the outer dimensions of right match the corresponding
-    // dimensions in result
-    TA_ASSERT(gemm_helper.right_result_congruent(B.range().extent_data(),
-                                                 C.range().extent_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.right_result_congruent(B.range().lobound_data(),
-                                                 C.range().lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.right_result_congruent(B.range().upbound_data(),
-                                                 C.range().upbound_data()));
-
-    // Check that the inner dimensions of left and right match
-    TA_ASSERT(gemm_helper.left_right_congruent(A.range().extent_data(),
-                                               B.range().extent_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_right_congruent(A.range().lobound_data(),
-                                               B.range().lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_right_congruent(A.range().upbound_data(),
-                                               B.range().upbound_data()));
-
-    // Compute gemm dimensions
-    using integer = TiledArray::math::blas::integer;
-    integer m, n, k;
-    gemm_helper.compute_matrix_sizes(m, n, k, A.range(), B.range());
-
-    // Get the leading dimension for left and right matrices.
-    const integer lda = std::max(
-        integer{1},
-        (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose ? k : m));
-    const integer ldb = std::max(
-        integer{1},
-        (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n
-                                                                       : k));
-
-    // may need to split gemm into multiply + accumulate for tracing purposes
-#ifdef TA_ENABLE_TILE_OPS_LOGGING
-    {
-      using numeric_type = typename Tensor<Cs...>::numeric_type;
-      using T = numeric_type;
-      const bool twostep =
-          TiledArray::TileOpsLogger<T>::get_instance().gemm &&
-          TiledArray::TileOpsLogger<T>::get_instance().gemm_print_contributions;
-      std::unique_ptr<T[]> data_copy;
-      size_t tile_volume;
-      if (twostep) {
-        tile_volume = C.range().volume();
-        data_copy = std::make_unique<T[]>(tile_volume);
-        std::copy(C.data(), C.data() + tile_volume, data_copy.get());
-      }
-      non_distributed::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
-                            k, alpha, A.data(), lda, B.data(), ldb,
-                            twostep ? numeric_type(0) : beta, C.data(), n);
-
-      if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
-          TiledArray::TileOpsLogger<T>::get_instance().gemm) {
-        auto& logger = TiledArray::TileOpsLogger<T>::get_instance();
-        auto apply = [](auto& fnptr, const Range& arg) {
-          return fnptr ? fnptr(arg) : arg;
-        };
-        auto tformed_left_range =
-            apply(logger.gemm_left_range_transform, A.range());
-        auto tformed_right_range =
-            apply(logger.gemm_right_range_transform, B.range());
-        auto tformed_result_range =
-            apply(logger.gemm_result_range_transform, C.range());
-        if ((!logger.gemm_result_range_filter ||
-             logger.gemm_result_range_filter(tformed_result_range)) &&
-            (!logger.gemm_left_range_filter ||
-             logger.gemm_left_range_filter(tformed_left_range)) &&
-            (!logger.gemm_right_range_filter ||
-             logger.gemm_right_range_filter(tformed_right_range))) {
-          logger << "TA::Tensor::gemm+: left=" << tformed_left_range
-                 << " right=" << tformed_right_range
-                 << " result=" << tformed_result_range << std::endl;
-          if (TiledArray::TileOpsLogger<T>::get_instance()
-                  .gemm_print_contributions) {
-            if (!TiledArray::TileOpsLogger<T>::get_instance()
-                     .gemm_printer) {  // default printer
-              // must use custom printer if result's range transformed
-              if (!logger.gemm_result_range_transform)
-                logger << C << std::endl;
-              else
-                logger << make_map(C.data(), tformed_result_range) << std::endl;
-            } else {
-              TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
-                  *logger.log, tformed_left_range, A.data(),
-                  tformed_right_range, B.data(), tformed_right_range, C.data(),
-                  C.nbatch());
-            }
-          }
-        }
-      }
-
-      if (twostep) {
-        for (size_t v = 0; v != tile_volume; ++v) {
-          C.data()[v] += data_copy[v];
-        }
-      }
-    }
-#else   // TA_ENABLE_TILE_OPS_LOGGING
-    const integer ldc = std::max(integer{1}, n);
-    math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                     alpha, A.data(), lda, B.data(), ldb, beta, C.data(), ldc);
-#endif  // TA_ENABLE_TILE_OPS_LOGGING
-  }
 }
 
 // template <typename T, typename A>
