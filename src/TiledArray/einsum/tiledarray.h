@@ -9,6 +9,10 @@
 #include "TiledArray/tiled_range.h"
 #include "TiledArray/tiled_range1.h"
 
+namespace TiledArray {
+enum struct DeNest { True, False };
+}
+
 namespace TiledArray::Einsum {
 
 using ::Einsum::index::small_vector;
@@ -82,17 +86,109 @@ template <typename ArrayT1, typename ArrayT2>
 constexpr bool AreArraySame =
     AreArrayT<ArrayT1, ArrayT2> || AreArrayToT<ArrayT1, ArrayT2>;
 
+template <typename Array>
+using DeNestedArray = DistArray<typename Array::value_type::value_type,
+                                typename Array::policy_type>;
+
+template <typename Array1, typename Array2>
+using MaxNestedArray = std::conditional_t<(detail::nested_rank<Array2> >
+                                           detail::nested_rank<Array1>),
+                                          Array2, Array1>;
+
 }  // namespace
 
-template <typename ArrayA_, typename ArrayB_, typename... Indices>
+namespace {
+
+///
+/// \brief This function replicates a tensor B into a tensor A such that
+///        A(a_1,...a_k,i_1,...,i_l) = B(i_1,...,i_l). Evidently, the
+///        extents of i_n modes must match in both A and B.
+///
+/// \tparam Tensor TiledArray::Tensor type.
+/// \param to The target tensor.
+/// \param from The source tensor that will be replicated into \c to.
+///
+template <typename Tensor,
+          typename = std::enable_if_t<detail::is_nested_tensor_v<Tensor>>>
+void replicate_tensor(Tensor &to, Tensor const &from) {
+  // assert that corresponding modes have the same extents
+  TA_ASSERT(std::equal(from.range().extent().rbegin(),
+                       from.range().extent().rend(),
+                       to.range().extent().rbegin()));
+
+  // number of elements to be copied
+  // (same as the number of elements in @c from)
+  auto const N = from.range().volume();
+  for (auto i = 0; i < to.range().volume(); i += N)
+    std::copy(from.begin(), from.end(), to.data() + i);
+}
+
+///
+/// \brief This function is the @c DistArray counterpart of the function
+///        @c replicate_tensor(TA::Tensor&, TA::Tensor const&).
+///
+/// \tparam Array
+/// \param from The DistArray to be by-rank replicated.
+/// \parama prepend_trng TiledRange1's in this argument will be prepended to the
+///         `TiledRange` of the argument array.
+/// \return An array whose rank is increased by `prepend_trng.rank()`.
+/// \see `replicate_tensor`
+///
+template <typename Array,
+          typename = std::enable_if_t<detail::is_array_v<Array>>>
+auto replicate_array(Array from, TiledRange const &prepend_trng) {
+  auto const result_rank = prepend_trng.rank() + rank(from);
+  container::svector<TiledRange1> tr1s;
+  tr1s.reserve(result_rank);
+  for (auto const &r : prepend_trng) tr1s.emplace_back(r);
+  for (auto const &r : from.trange()) tr1s.emplace_back(r);
+  auto const result_trange = TiledRange(tr1s);
+
+  from.make_replicated();
+  auto &world = from.world();
+  world.gop.fence();
+
+  auto result = make_array<Array>(
+      world, result_trange,
+      [from, res_tr = result_trange, delta_rank = prepend_trng.rank()](
+          auto &tile, auto const &res_rng) {
+        using std::begin;
+        using std::end;
+        using std::next;
+
+        typename Array::value_type repped(res_rng);
+        auto res_coord_ix = res_tr.element_to_tile(res_rng.lobound());
+        auto from_coord_ix = decltype(res_coord_ix)(
+            next(begin(res_coord_ix), delta_rank), end(res_coord_ix));
+        replicate_tensor(repped, from.find_local(from_coord_ix).get(false));
+        tile = repped;
+        return tile.norm();
+      });
+  return result;
+}
+
+template <typename Ixs>
+TiledRange make_trange(RangeMap const &map, Ixs const &ixs) {
+  container::svector<TiledRange1> tr1s;
+  tr1s.reserve(ixs.size());
+  for (auto &&i : ixs) tr1s.emplace_back(map[i]);
+  return TiledRange(tr1s);
+}
+
+}  // namespace
+
+template <DeNest DeNestFlag = DeNest::False, typename ArrayA_, typename ArrayB_,
+          typename... Indices>
 auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             std::tuple<Einsum::Index<std::string>, Indices...> cs,
             World &world) {
   using ArrayA = std::remove_cv_t<ArrayA_>;
   using ArrayB = std::remove_cv_t<ArrayB_>;
-  using ArrayC = std::conditional_t<
-      AreArraySame<ArrayA, ArrayB>, ArrayA,
-      std::conditional_t<IsArrayToT<ArrayA>, ArrayA, ArrayB>>;
+
+  using ArrayC =
+      std::conditional_t<DeNestFlag == DeNest::True, DeNestedArray<ArrayA>,
+                         MaxNestedArray<ArrayA, ArrayB>>;
+
   using ResultTensor = typename ArrayC::value_type;
   using ResultShape = typename ArrayC::shape_type;
 
@@ -102,229 +198,346 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
   struct {
     std::string a, b, c;
+    // Hadamard, external, internal indices for inner tensor
+    Einsum::Index<std::string> A, B, C, h, e, i;
   } inner;
+
+  if constexpr (IsArrayToT<ArrayA>) {
+    inner.a = ";" + (std::string)std::get<1>(Einsum::idx(A));
+    inner.A = std::get<1>(Einsum::idx(A));
+  }
+
+  if constexpr (IsArrayToT<ArrayB>) {
+    inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
+    inner.B = std::get<1>(Einsum::idx(B));
+  }
+
   if constexpr (std::tuple_size<decltype(cs)>::value == 2) {
-    if constexpr (IsArrayToT<ArrayA>)
-      inner.a = ";" + (std::string)std::get<1>(Einsum::idx(A));
-
-    if constexpr (IsArrayToT<ArrayB>)
-      inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
-
-    static_assert(IsArrayToT<ArrayA> || IsArrayToT<ArrayB>);
+    static_assert(IsArrayToT<ArrayC>);
     inner.c = ";" + (std::string)std::get<1>(cs);
+    inner.C = std::get<1>(cs);
   }
 
-  // these are "Hadamard" (fused) indices
-  auto h = a & b & c;
-
-  // no Hadamard indices => standard contraction (or even outer product)
-  // same a, b, and c => pure Hadamard
-  if (!h || (!(a ^ b) && !(b ^ c))) {
-    ArrayC C;
-    C(std::string(c) + inner.c) = A * B;
-    return C;
+  {
+    inner.h = inner.A & inner.B & inner.C;
+    inner.e = (inner.A ^ inner.B);
+    inner.i = (inner.A & inner.B) - inner.h;
+    if constexpr (IsArrayToT<ArrayC>)
+      TA_ASSERT(!(inner.h && (inner.i || inner.e)) &&
+                "General product between inner tensors not supported");
   }
 
-  auto e = (a ^ b);
-  // contracted indices
-  auto i = (a & b) - h;
+  if constexpr (DeNestFlag == DeNest::True) {
+    static_assert(detail::nested_rank<ArrayA> == detail::nested_rank<ArrayB> &&
+                  detail::nested_rank<ArrayA> == 2);
 
-  TA_ASSERT(e || h);
+    TA_ASSERT(!inner.C &&
+              "Denested result cannot have inner-tensor annotation");
 
-  auto range_map =
-      (RangeMap(a, A.array().trange()) | RangeMap(b, B.array().trange()));
+    TA_ASSERT(inner.i.size() == inner.A.size() &&
+              inner.i.size() == inner.B.size() &&
+              "Nested-rank-reduction only supported when the inner tensor "
+              "ranks match on the arguments");
 
-  using ::Einsum::index::permutation;
-  using TiledArray::Permutation;
+    // Step  I:  A * B -> C'
+    // Step II:  C'    -> C
+    //
+    // At "Step I", a general product (without reduction) in outer indices,
+    // and pure Hadamard product in inner indices is carried out.
+    // Then at "Step II", the inner tensors are reduced with a unary function.
+    // The reducing function is determined by looking at the contracting and
+    // non-contracting outer indices.
+    //
+    // eg. A(i,j,k;a,b) * B(k,j;a,b) -> C(i,j) involves following two steps:
+    //   Step  I: A(i,j,k;a,b) * B(k,j;a,b) -> C'(i,j;a,b)
+    //   Step II: C'(i,j;a,b) -> C(i,j)
 
-  std::tuple<ArrayTerm<ArrayA>, ArrayTerm<ArrayB>> AB{{A.array(), a},
-                                                      {B.array(), b}};
+    auto Cp = einsum(A, B, std::string(c) + ";" + std::string(inner.i));
 
-  auto update_perm_and_indices = [&e = std::as_const(e), &i = std::as_const(i),
-                                  &h = std::as_const(h)](auto &term) {
-    auto ei = (e + i & term.idx);
-    if (term.idx != h + ei) {
-      term.permutation = permutation(term.idx, h + ei);
-    }
-    term.expr = ei;
-  };
-
-  std::invoke(update_perm_and_indices, std::get<0>(AB));
-  std::invoke(update_perm_and_indices, std::get<1>(AB));
-
-  ArrayTerm<ArrayC> C = {ArrayC(world, TiledRange(range_map[c])), c};
-  for (auto idx : e) {
-    C.tiles *= Range(range_map[idx].tiles_range());
-  }
-  if (C.idx != h + e) {
-    C.permutation = permutation(h + e, C.idx);
-  }
-  C.expr = e;
-
-  std::get<0>(AB).expr += inner.a;
-  std::get<1>(AB).expr += inner.b;
-
-  C.expr += inner.c;
-
-  struct {
-    RangeProduct tiles;
-    std::vector<std::vector<size_t>> batch;
-  } H;
-
-  for (auto idx : h) {
-    H.tiles *= Range(range_map[idx].tiles_range());
-    H.batch.push_back({});
-    for (auto r : range_map[idx]) {
-      H.batch.back().push_back(Range{r}.size());
-    }
-  }
-
-  using Index = Einsum::Index<size_t>;
-
-  if constexpr (AreArraySame<ArrayA, ArrayB>) {
-    if (!e) {  // hadamard reduction
-      auto &[A, B] = AB;
-      TiledRange trange(range_map[i]);
-      RangeProduct tiles;
-      for (auto idx : i) {
-        tiles *= Range(range_map[idx].tiles_range());
-      }
-      auto pa = A.permutation;
-      auto pb = B.permutation;
-      for (Index h : H.tiles) {
-        if (!C.array.is_local(h)) continue;
-        size_t batch = 1;
-        for (size_t i = 0; i < h.size(); ++i) {
-          batch *= H.batch[i].at(h[i]);
-        }
-        ResultTensor tile(TiledArray::Range{batch},
-                          typename ResultTensor::value_type{});
-        for (Index i : tiles) {
-          // skip this unless both input tiles exist
-          const auto pahi_inv = apply_inverse(pa, h + i);
-          const auto pbhi_inv = apply_inverse(pb, h + i);
-          if (A.array.is_zero(pahi_inv) || B.array.is_zero(pbhi_inv)) continue;
-
-          auto ai = A.array.find(pahi_inv).get();
-          auto bi = B.array.find(pbhi_inv).get();
-          if (pa) ai = ai.permute(pa);
-          if (pb) bi = bi.permute(pb);
-          auto shape = trange.tile(i);
-          ai = ai.reshape(shape, batch);
-          bi = bi.reshape(shape, batch);
-          for (size_t k = 0; k < batch; ++k) {
-            auto hk = ai.batch(k).dot(bi.batch(k));
-            tile({k}) += hk;
-          }
-        }
-        auto pc = C.permutation;
-        auto shape = apply_inverse(pc, C.array.trange().tile(h));
-        tile = tile.reshape(shape);
-        if (pc) tile = tile.permute(pc);
-        C.array.set(h, tile);
-      }
-      return C.array;
-    }
-  }
-
-  // generalized contraction
-
-  auto update_tr = [&e = std::as_const(e), &i = std::as_const(i),
-                    &range_map = std::as_const(range_map)](auto &term) {
-    auto ei = (e + i & term.idx);
-    term.ei_tiled_range = TiledRange(range_map[ei]);
-    for (auto idx : ei) {
-      term.tiles *= Range(range_map[idx].tiles_range());
-    }
-  };
-
-  std::invoke(update_tr, std::get<0>(AB));
-  std::invoke(update_tr, std::get<1>(AB));
-
-  std::vector<std::shared_ptr<World>> worlds;
-  std::vector<std::tuple<Index, ResultTensor>> local_tiles;
-
-  // iterates over tiles of hadamard indices
-  for (Index h : H.tiles) {
-    auto &[A, B] = AB;
-    auto own = A.own(h) || B.own(h);
-    auto comm = world.mpi.comm().Split(own, world.rank());
-    worlds.push_back(std::make_unique<World>(comm));
-    auto &owners = worlds.back();
-    if (!own) continue;
-    size_t batch = 1;
-    for (size_t i = 0; i < h.size(); ++i) {
-      batch *= H.batch[i].at(h[i]);
-    }
-
-    auto retile = [&owners, &h = std::as_const(h), batch](auto &term) {
-      term.local_tiles.clear();
-      const Permutation &P = term.permutation;
-
-      for (Index ei : term.tiles) {
-        auto idx = apply_inverse(P, h + ei);
-        if (!term.array.is_local(idx)) continue;
-        if (term.array.is_zero(idx)) continue;
-        // TODO no need for immediate evaluation
-        auto tile = term.array.find_local(idx).get();
-        if (P) tile = tile.permute(P);
-        auto shape = term.ei_tiled_range.tile(ei);
-        tile = tile.reshape(shape, batch);
-        term.local_tiles.push_back({ei, tile});
-      }
-      bool replicated = term.array.pmap()->is_replicated();
-      term.ei = TiledArray::make_array<decltype(term.array)>(
-          *owners, term.ei_tiled_range, term.local_tiles.begin(),
-          term.local_tiles.end(), replicated);
+    auto sum_tot_2_tos = [](auto const &tot) {
+      typename std::remove_reference_t<decltype(tot)>::value_type result(
+          tot.range(), [tot](auto &&ix) { return tot(ix).sum(); });
+      return result;
     };
-    std::invoke(retile, std::get<0>(AB));
-    std::invoke(retile, std::get<1>(AB));
 
-    C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
-    A.ei.defer_deleter_to_next_fence();
-    B.ei.defer_deleter_to_next_fence();
-    A.ei = ArrayA();
-    B.ei = ArrayB();
-    // why omitting this fence leads to deadlock?
-    owners->gop.fence();
-    for (Index e : C.tiles) {
-      if (!C.ei.is_local(e)) continue;
-      if (C.ei.is_zero(e)) continue;
-      // TODO no need for immediate evaluation
-      auto tile = C.ei.find_local(e).get();
-      assert(tile.nbatch() == batch);
-      const Permutation &P = C.permutation;
-      auto c = apply(P, h + e);
-      auto shape = C.array.trange().tile(c);
-      shape = apply_inverse(P, shape);
-      tile = tile.reshape(shape);
-      if (P) tile = tile.permute(P);
-      local_tiles.push_back({c, tile});
+    auto result = TA::foreach<typename ArrayC::value_type>(
+        Cp, [sum_tot_2_tos](auto &out_tile, auto const &in_tile) {
+          out_tile = sum_tot_2_tos(in_tile);
+        });
+
+    return result;
+  } else {
+    // these are "Hadamard" (fused) indices
+    auto h = a & b & c;
+
+    // external indices
+    auto e = (a ^ b);
+
+    // contracted indices
+    auto i = (a & b) - h;
+
+    // no Hadamard indices => standard contraction (or even outer product)
+    // same a, b, and c => pure Hadamard
+    if (!h || (h && !(i || e))) {
+      ArrayC C;
+      C(std::string(c) + inner.c) = A * B;
+      return C;
     }
-    // mark for lazy deletion
-    C.ei = ArrayC();
-  }
 
-  if constexpr (!ResultShape::is_dense()) {
-    TiledRange tiled_range = TiledRange(range_map[c]);
-    std::vector<std::pair<Index, float>> tile_norms;
+    TA_ASSERT(e || h);
+
+    auto range_map =
+        (RangeMap(a, A.array().trange()) | RangeMap(b, B.array().trange()));
+
+    auto perm_and_rank_replicate = [delta_trng = make_trange(range_map, e)](
+                                       auto pre,                      //
+                                       std::string const &pre_annot,  //
+                                       std::string const &permed_annot) {
+      decltype(pre) permed;
+      permed(permed_annot) = pre(pre_annot);
+      return replicate_array(permed, delta_trng);
+    };
+
+    // special Hadamard
+    if (h.size() == a.size() || h.size() == b.size()) {
+      TA_ASSERT(!i && e);
+      bool small_a = h.size() == a.size();
+      std::string const eh_annot = (e | h);
+      std::string const permed_annot =
+          std::string(h) + (small_a ? inner.a : inner.b);
+      std::string const C_annot = std::string(c) + inner.c;
+      std::string const temp_annot = std::string(e) + "," + permed_annot;
+      ArrayC C;
+      if (small_a) {
+        auto temp =
+            perm_and_rank_replicate(A.array(), A.annotation(), permed_annot);
+        C(C_annot) = temp(temp_annot) * B;
+      } else {
+        auto temp =
+            perm_and_rank_replicate(B.array(), B.annotation(), permed_annot);
+        C(C_annot) = A * temp(temp_annot);
+      }
+      return C;
+    }
+
+    using ::Einsum::index::permutation;
+    using TiledArray::Permutation;
+
+    std::tuple<ArrayTerm<ArrayA>, ArrayTerm<ArrayB>> AB{{A.array(), a},
+                                                        {B.array(), b}};
+
+    auto update_perm_and_indices = [&e = std::as_const(e),
+                                    &i = std::as_const(i),
+                                    &h = std::as_const(h)](auto &term) {
+      auto ei = (e + i & term.idx);
+      if (term.idx != h + ei) {
+        term.permutation = permutation(term.idx, h + ei);
+      }
+      term.expr = ei;
+    };
+
+    std::invoke(update_perm_and_indices, std::get<0>(AB));
+    std::invoke(update_perm_and_indices, std::get<1>(AB));
+
+    ArrayTerm<ArrayC> C = {ArrayC(world, TiledRange(range_map[c])), c};
+    for (auto idx : e) {
+      C.tiles *= Range(range_map[idx].tiles_range());
+    }
+    if (C.idx != h + e) {
+      C.permutation = permutation(h + e, C.idx);
+    }
+    C.expr = e;
+
+    std::get<0>(AB).expr += inner.a;
+    std::get<1>(AB).expr += inner.b;
+
+    C.expr += inner.c;
+
+    struct {
+      RangeProduct tiles;
+      std::vector<std::vector<size_t>> batch;
+    } H;
+
+    for (auto idx : h) {
+      H.tiles *= Range(range_map[idx].tiles_range());
+      H.batch.push_back({});
+      for (auto r : range_map[idx]) {
+        H.batch.back().push_back(Range{r}.size());
+      }
+    }
+
+    using Index = Einsum::Index<size_t>;
+
+    if constexpr (AreArraySame<ArrayA, ArrayB> &&
+                  AreArraySame<ArrayB, ArrayC>) {
+      if (!e) {  // hadamard reduction
+        auto &[A, B] = AB;
+        TiledRange trange(range_map[i]);
+        RangeProduct tiles;
+        for (auto idx : i) {
+          tiles *= Range(range_map[idx].tiles_range());
+        }
+        auto pa = A.permutation;
+        auto pb = B.permutation;
+        for (Index h : H.tiles) {
+          if (!C.array.is_local(h)) continue;
+          size_t batch = 1;
+          for (size_t i = 0; i < h.size(); ++i) {
+            batch *= H.batch[i].at(h[i]);
+          }
+          ResultTensor tile(TiledArray::Range{batch},
+                            typename ResultTensor::value_type{});
+          for (Index i : tiles) {
+            // skip this unless both input tiles exist
+            const auto pahi_inv = apply_inverse(pa, h + i);
+            const auto pbhi_inv = apply_inverse(pb, h + i);
+            if (A.array.is_zero(pahi_inv) || B.array.is_zero(pbhi_inv))
+              continue;
+
+            auto ai = A.array.find(pahi_inv).get();
+            auto bi = B.array.find(pbhi_inv).get();
+            if (pa) ai = ai.permute(pa);
+            if (pb) bi = bi.permute(pb);
+            auto shape = trange.tile(i);
+            ai = ai.reshape(shape, batch);
+            bi = bi.reshape(shape, batch);
+            for (size_t k = 0; k < batch; ++k) {
+              using Ix = ::Einsum::Index<std::string>;
+              if constexpr (AreArrayToT<ArrayA, ArrayB>) {
+                auto aik = ai.batch(k);
+                auto bik = bi.batch(k);
+                auto vol = aik.total_size();
+                TA_ASSERT(vol == bik.total_size());
+
+                auto &el = tile({k});
+                using TensorT = std::remove_reference_t<decltype(el)>;
+
+                auto mult_op = [&inner](auto const &l,
+                                        auto const &r) -> TensorT {
+                  return inner.h ? TA::detail::tensor_hadamard(l, inner.A, r,
+                                                               inner.B, inner.C)
+                                 : TA::detail::tensor_contract(
+                                       l, inner.A, r, inner.B, inner.C);
+                };
+
+                for (auto i = 0; i < vol; ++i)
+                  el.add_to(mult_op(aik.data()[i], bik.data()[i]));
+
+              } else {
+                auto hk = ai.batch(k).dot(bi.batch(k));
+                tile({k}) += hk;
+              }
+            }
+          }
+          auto pc = C.permutation;
+          auto shape = apply_inverse(pc, C.array.trange().tile(h));
+          tile = tile.reshape(shape);
+          if (pc) tile = tile.permute(pc);
+          C.array.set(h, tile);
+        }
+        return C.array;
+      }
+    }
+
+    // generalized contraction
+
+    auto update_tr = [&e = std::as_const(e), &i = std::as_const(i),
+                      &range_map = std::as_const(range_map)](auto &term) {
+      auto ei = (e + i & term.idx);
+      term.ei_tiled_range = TiledRange(range_map[ei]);
+      for (auto idx : ei) {
+        term.tiles *= Range(range_map[idx].tiles_range());
+      }
+    };
+
+    std::invoke(update_tr, std::get<0>(AB));
+    std::invoke(update_tr, std::get<1>(AB));
+
+    std::vector<std::shared_ptr<World>> worlds;
+    std::vector<std::tuple<Index, ResultTensor>> local_tiles;
+
+    // iterates over tiles of hadamard indices
+    for (Index h : H.tiles) {
+      auto &[A, B] = AB;
+      auto own = A.own(h) || B.own(h);
+      auto comm = world.mpi.comm().Split(own, world.rank());
+      worlds.push_back(std::make_unique<World>(comm));
+      auto &owners = worlds.back();
+      if (!own) continue;
+      size_t batch = 1;
+      for (size_t i = 0; i < h.size(); ++i) {
+        batch *= H.batch[i].at(h[i]);
+      }
+
+      auto retile = [&owners, &h = std::as_const(h), batch](auto &term) {
+        term.local_tiles.clear();
+        const Permutation &P = term.permutation;
+
+        for (Index ei : term.tiles) {
+          auto idx = apply_inverse(P, h + ei);
+          if (!term.array.is_local(idx)) continue;
+          if (term.array.is_zero(idx)) continue;
+          // TODO no need for immediate evaluation
+          auto tile = term.array.find_local(idx).get();
+          if (P) tile = tile.permute(P);
+          auto shape = term.ei_tiled_range.tile(ei);
+          tile = tile.reshape(shape, batch);
+          term.local_tiles.push_back({ei, tile});
+        }
+        bool replicated = term.array.pmap()->is_replicated();
+        term.ei = TiledArray::make_array<decltype(term.array)>(
+            *owners, term.ei_tiled_range, term.local_tiles.begin(),
+            term.local_tiles.end(), replicated);
+      };
+      std::invoke(retile, std::get<0>(AB));
+      std::invoke(retile, std::get<1>(AB));
+
+      C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
+      A.ei.defer_deleter_to_next_fence();
+      B.ei.defer_deleter_to_next_fence();
+      A.ei = ArrayA();
+      B.ei = ArrayB();
+      // why omitting this fence leads to deadlock?
+      owners->gop.fence();
+      for (Index e : C.tiles) {
+        if (!C.ei.is_local(e)) continue;
+        if (C.ei.is_zero(e)) continue;
+        // TODO no need for immediate evaluation
+        auto tile = C.ei.find_local(e).get();
+        assert(tile.nbatch() == batch);
+        const Permutation &P = C.permutation;
+        auto c = apply(P, h + e);
+        auto shape = C.array.trange().tile(c);
+        shape = apply_inverse(P, shape);
+        tile = tile.reshape(shape);
+        if (P) tile = tile.permute(P);
+        local_tiles.push_back({c, tile});
+      }
+      // mark for lazy deletion
+      C.ei = ArrayC();
+    }
+
+    if constexpr (!ResultShape::is_dense()) {
+      TiledRange tiled_range = TiledRange(range_map[c]);
+      std::vector<std::pair<Index, float>> tile_norms;
+      for (auto &[index, tile] : local_tiles) {
+        tile_norms.push_back({index, tile.norm()});
+      }
+      ResultShape shape(world, tile_norms, tiled_range);
+      C.array = ArrayC(world, TiledRange(range_map[c]), shape);
+    }
+
     for (auto &[index, tile] : local_tiles) {
-      tile_norms.push_back({index, tile.norm()});
+      if (C.array.is_zero(index)) continue;
+      C.array.set(index, tile);
     }
-    ResultShape shape(world, tile_norms, tiled_range);
-    C.array = ArrayC(world, TiledRange(range_map[c]), shape);
-  }
 
-  for (auto &[index, tile] : local_tiles) {
-    if (C.array.is_zero(index)) continue;
-    C.array.set(index, tile);
-  }
+    for (auto &w : worlds) {
+      w->gop.fence();
+    }
 
-  for (auto &w : worlds) {
-    w->gop.fence();
+    return C.array;
   }
-
-  return C.array;
 }
 
 /// Computes ternary tensor product whose result
@@ -463,13 +676,19 @@ auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B) {
 /// @param[in] r result indices
 /// @warning just as in the plain expression code, reductions are a special
 /// case; use Expr::reduce()
-template <typename T, typename U, typename... Indices>
+template <DeNest DeNestFlag = DeNest::False, typename T, typename U,
+          typename... Indices>
 auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
             const std::string &cs, World &world = get_default_world()) {
   using ECT = expressions::TsrExpr<const T>;
   using ECU = expressions::TsrExpr<const U>;
-  using ResultExprT = std::conditional_t<Einsum::IsArrayToT<T>, T, U>;
-  return Einsum::einsum(ECT(A), ECU(B), Einsum::idx<ResultExprT>(cs), world);
+
+  using ResultExprT =
+      std::conditional_t<DeNestFlag == DeNest::True, Einsum::DeNestedArray<T>,
+                         Einsum::MaxNestedArray<T, U>>;
+
+  return Einsum::einsum<DeNestFlag>(ECT(A), ECU(B),
+                                    Einsum::idx<ResultExprT>(cs), world);
 }
 
 template <typename T, typename U, typename V>
@@ -488,14 +707,44 @@ namespace TiledArray {
 using expressions::dot;
 using expressions::einsum;
 
-template <typename T, typename P>
-auto einsum(const std::string &expr, const DistArray<T, P> &A,
-            const DistArray<T, P> &B, World &world = get_default_world()) {
-  namespace string = ::Einsum::string;
-  auto [lhs, rhs] = string::split2(expr, "->");
-  auto [a, b] = string::split2(lhs, ",");
-  return einsum(A(string::join(a, ",")), B(string::join(b, ",")),
-                string::join(rhs, ","), world);
+template <DeNest DeNestFlag = DeNest::False, typename T1, typename T2,
+          typename P>
+auto einsum(const std::string &expr, const DistArray<T1, P> &A,
+            const DistArray<T2, P> &B, World &world = get_default_world()) {
+  using ::Einsum::string::join;
+  using ::Einsum::string::split2;
+
+  struct {
+    std::string A, B, C;
+  } annot;
+
+  {
+    struct {
+      std::string A, B, C;
+    } outer;
+
+    struct {
+      std::string A, B, C;
+    } inner;
+
+    auto [ab, aC] = split2(expr, "->");
+    std::tie(outer.C, inner.C) = split2(aC, ";");
+
+    auto [aA, aB] = split2(ab, ",");
+    std::tie(outer.A, inner.A) = split2(aA, ";");
+    std::tie(outer.B, inner.B) = split2(aB, ";");
+
+    auto combine = [](auto const &outer, auto const &inner) {
+      return inner.empty() ? join(outer, ",")
+                           : (join(outer, ",") + ";" + join(inner, ","));
+    };
+
+    annot.A = combine(outer.A, inner.A);
+    annot.B = combine(outer.B, inner.B);
+    annot.C = combine(outer.C, inner.C);
+  }
+
+  return einsum<DeNestFlag>(A(annot.A), B(annot.B), annot.C, world);
 }
 
 /// Computes ternary tensor product whose result

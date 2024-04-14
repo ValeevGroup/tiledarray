@@ -129,9 +129,11 @@ class BinaryWrapper {
   BinaryWrapper<Op>& operator=(const BinaryWrapper<Op>&) = default;
   BinaryWrapper<Op>& operator=(BinaryWrapper<Op>&&) = default;
 
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  BinaryWrapper(const Op& op, const Perm& perm) : op_(op), perm_(perm) {}
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  BinaryWrapper(const Op& op, Perm&& perm)
+      : op_(op), perm_(std::forward<Perm>(perm)) {}
 
   BinaryWrapper(const Op& op) : op_(op), perm_() {}
 

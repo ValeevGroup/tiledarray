@@ -146,10 +146,11 @@ class ScalEngine : public UnaryEngine<ScalEngine<Arg, Scalar, Result>> {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  op_type make_tile_op(const Perm& perm) const {
-    return op_type(perm, factor_);
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  op_type make_tile_op(Perm&& perm) const {
+    return op_type(std::forward<Perm>(perm), factor_);
   }
 
   /// Expression identification tag

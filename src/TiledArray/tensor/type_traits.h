@@ -30,6 +30,7 @@
 
 #include <TiledArray/fwd.h>
 #include <TiledArray/type_traits.h>
+#include <iterator>
 #include <type_traits>
 
 namespace Eigen {
@@ -209,6 +210,33 @@ template <typename T1, typename T2, typename... Ts>
 constexpr const bool tensors_have_equal_nested_rank_v =
     tensors_have_equal_nested_rank<T1, T2, Ts...>::value;
 
+template <typename>
+constexpr size_t nested_rank = 0;
+
+template <typename T, typename... Ts>
+constexpr size_t nested_rank<TA::Tensor<T, Ts...>> = 1 + nested_rank<T>;
+
+template <typename T, typename... Ts>
+constexpr size_t nested_rank<const TA::Tensor<T, Ts...>> =
+    nested_rank<TA::Tensor<T, Ts...>>;
+
+template <typename T, typename P>
+constexpr size_t nested_rank<TA::DistArray<T, P>> = nested_rank<T>;
+
+template <typename T, typename P>
+constexpr size_t nested_rank<const TA::DistArray<T, P>> =
+    nested_rank<TA::DistArray<T, P>>;
+
+template <typename...>
+constexpr size_t max_nested_rank = 0;
+
+template <typename T>
+constexpr size_t max_nested_rank<T> = nested_rank<T>;
+
+template <typename T, typename U, typename... Us>
+constexpr size_t max_nested_rank<T, U, Us...> =
+    std::max(nested_rank<T>, std::max(nested_rank<U>, max_nested_rank<Us...>));
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename Enabler = void>
@@ -350,6 +378,9 @@ using default_permutation_t = typename default_permutation<Tensor>::type;
 template <typename T, typename Enabler = void>
 struct is_permutation : public std::false_type {};
 
+template <typename T>
+struct is_permutation<const T> : public is_permutation<T> {};
+
 template <>
 struct is_permutation<TiledArray::Permutation> : public std::true_type {};
 
@@ -366,12 +397,113 @@ static constexpr const auto is_permutation_v = is_permutation<T>::value;
 
 template <typename T>
 static constexpr const auto is_bipartite_permutation_v =
-    std::is_same_v<T, TiledArray::BipartitePermutation>;
+    std::is_same_v<T, TiledArray::BipartitePermutation> ||
+    std::is_same_v<T, const TiledArray::BipartitePermutation>;
 
 template <typename T>
 static constexpr const auto is_bipartite_permutable_v =
     is_free_function_permute_anyreturn_v<
         const T&, const TiledArray::BipartitePermutation&>;
+
+//
+template <typename, typename = void, typename = void>
+constexpr bool is_random_access_container_v{};
+
+///
+/// - The container concept is weakly tested -- any type that has
+///   @c iterator typedef gets picked up.
+///
+/// - The iterator category must be std::random_access_iterator_tag --
+///   random-access-ness is strongly tested.
+///
+/// Following lines compile, for example:
+///
+///     @c static_assert(is_random_access_container<std::vector<int>>);
+///     @c static_assert(!is_random_access_container<std::list<int>>);
+///
+template <typename T>
+constexpr bool is_random_access_container_v<
+    T, std::void_t<typename T::iterator>,
+    std::enable_if_t<std::is_same_v<
+        typename std::iterator_traits<typename T::iterator>::iterator_category,
+        std::random_access_iterator_tag>>>{true};
+
+//
+template <typename, typename = void, typename = void>
+constexpr bool is_annotation_v{};
+
+///
+/// An annotation type (T) is a type that satisfies the following constraints:
+///   - is_random_access_container_v<T> is true.
+///   - The value type of the container T are strictly ordered. Note that T is a
+///     container from the first constraint.
+///
+template <typename T>
+constexpr bool is_annotation_v<
+    T, std::void_t<typename T::value_type>,
+    std::enable_if_t<is_random_access_container_v<T> &&
+                     is_strictly_ordered_v<typename T::value_type>>
+
+    >{true};
+
+namespace {
+
+template <typename Op, typename Lhs, typename Rhs>
+using binop_result_t = std::invoke_result_t<Op, Lhs, Rhs>;
+
+template <typename Op, typename Lhs, typename Rhs, typename = void>
+constexpr bool is_binop_v{};
+
+template <typename Op, typename Lhs, typename Rhs>
+constexpr bool
+    is_binop_v<Op, Lhs, Rhs, std::void_t<binop_result_t<Op, Lhs, Rhs>>>{true};
+
+template <typename Op, typename TensorA, typename TensorB,
+          typename Allocator = void,
+          typename = std::enable_if_t<is_nested_tensor_v<TensorA, TensorB>>>
+struct result_tensor_helper {
+ private:
+  using TensorA_ = std::remove_reference_t<TensorA>;
+  using TensorB_ = std::remove_reference_t<TensorB>;
+  using value_type_A = typename TensorA_::value_type;
+  using value_type_B = typename TensorB_::value_type;
+  using allocator_type_A = typename TensorA_::allocator_type;
+  using allocator_type_B = typename TensorB_::allocator_type;
+
+ public:
+  using numeric_type = binop_result_t<Op, value_type_A, value_type_B>;
+  using allocator_type =
+      std::conditional_t<std::is_same_v<void, Allocator> &&
+                             std::is_same_v<allocator_type_A, allocator_type_B>,
+                         allocator_type_A, Allocator>;
+  using result_type =
+      std::conditional_t<std::is_same_v<void, allocator_type>,
+                         TA::Tensor<numeric_type>,
+                         TA::Tensor<numeric_type, allocator_type>>;
+};
+
+}  // namespace
+
+///
+/// The typedef is a complete TA::Tensor<NumericT, AllocatorT> type where
+/// - NumericT is determined by Op:
+///   - effectively, it is:
+///     <tt> std::invoke_result_t<Op, typename TensorA::value_type, typename
+///     TensorB::value_type> </tt>
+///
+/// - AllocatorT is
+///   - the default TA::Tensor allocator if @tparam Allocator is void
+///   - TensorA::allocator_type if TensorA and TensorB have the same allocator
+///   type
+///   - the @tparam Allocator otherwise
+/// todo: constraint what @tparam Allocator
+///
+///
+template <typename Op, typename TensorA, typename TensorB,
+          typename Allocator = void,
+          typename = std::enable_if_t<is_nested_tensor_v<TensorA, TensorB>>>
+using result_tensor_t =
+    typename result_tensor_helper<Op, TensorA, TensorB, Allocator>::result_type;
 
 }  // namespace detail
 

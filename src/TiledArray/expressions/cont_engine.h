@@ -94,9 +94,10 @@ class ContEngine : public BinaryEngine<Derived> {
   using BinaryEngine_::right_indices_;
   using BinaryEngine_::right_inner_permtype_;
   using BinaryEngine_::right_outer_permtype_;
+  using ExprEngine_::implicit_permute_inner_;
+  using ExprEngine_::implicit_permute_outer_;
   using ExprEngine_::indices_;
   using ExprEngine_::perm_;
-  using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
@@ -125,7 +126,7 @@ class ContEngine : public BinaryEngine<Derived> {
                               ///< nested tensor expressions)
   std::function<result_tile_element_type(const left_tile_element_type&,
                                          const right_tile_element_type&)>
-      element_return_op_;  ///< Same as inner_tile_nonreturn_op_ but returns
+      element_return_op_;  ///< Same as element_nonreturn_op_ but returns
                            ///< the result
   TiledArray::detail::ProcGrid
       proc_grid_;    ///< Process grid for the contraction
@@ -202,7 +203,7 @@ class ContEngine : public BinaryEngine<Derived> {
   void perm_indices(const BipartiteIndexList& target_indices) {
     // assert that init_indices has been called
     TA_ASSERT(left_.indices() && right_.indices());
-    if (permute_tiles_) {
+    if (!this->implicit_permute()) {
       this->template init_indices_<TensorProduct::Contraction>(target_indices);
 
       // propagate the indices down the tree, if needed
@@ -262,31 +263,31 @@ class ContEngine : public BinaryEngine<Derived> {
     // Initialize the tile operation in this function because it is used to
     // evaluate the tiled range and shape.
 
-    const math::blas::Op left_op =
-        (left_outer_permtype_ == PermutationType::matrix_transpose
-             ? math::blas::Transpose
-             : math::blas::NoTranspose);
-    const math::blas::Op right_op =
-        (right_outer_permtype_ == PermutationType::matrix_transpose
-             ? math::blas::Transpose
-             : math::blas::NoTranspose);
+    const auto left_op = to_cblas_op(left_outer_permtype_);
+    const auto right_op = to_cblas_op(right_outer_permtype_);
 
+    // initialize perm_
+    this->init_perm(target_indices);
+
+    // initialize op_, trange_, and shape_ which only refer to the outer modes
     if (outer(target_indices) != outer(indices_)) {
+      const auto outer_perm = outer(perm_);
       // Initialize permuted structure
-      perm_ = ExprEngine_::make_perm(target_indices);
       if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-        op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
-                      outer_size(left_indices_), outer_size(right_indices_),
-                      (permute_tiles_ ? perm_ : BipartitePermutation{}));
+        op_ = op_type(
+            left_op, right_op, factor_, outer_size(indices_),
+            outer_size(left_indices_), outer_size(right_indices_),
+            (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}));
       } else {
         // factor_ is absorbed into inner_tile_nonreturn_op_
-        op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
-                      outer_size(left_indices_), outer_size(right_indices_),
-                      (permute_tiles_ ? perm_ : BipartitePermutation{}),
-                      this->element_nonreturn_op_);
+        op_ = op_type(
+            left_op, right_op, scalar_type(1), outer_size(indices_),
+            outer_size(left_indices_), outer_size(right_indices_),
+            (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}),
+            this->element_nonreturn_op_);
       }
-      trange_ = ContEngine_::make_trange(outer(perm_));
-      shape_ = ContEngine_::make_shape(outer(perm_));
+      trange_ = ContEngine_::make_trange(outer_perm);
+      shape_ = ContEngine_::make_shape(outer_perm);
     } else {
       // Initialize non-permuted structure
       if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
@@ -500,8 +501,8 @@ class ContEngine : public BinaryEngine<Derived> {
                             this->factor_, inner_size(this->indices_),
                             inner_size(this->left_indices_),
                             inner_size(this->right_indices_),
-                            (this->permute_tiles_ ? inner(this->perm_)
-                                                  : Permutation{}))
+                            (!this->implicit_permute_inner_ ? inner(this->perm_)
+                                                            : Permutation{}))
                   : op_type(to_cblas_op(this->left_inner_permtype_),
                             to_cblas_op(this->right_inner_permtype_),
                             this->factor_, inner_size(this->indices_),
@@ -531,7 +532,7 @@ class ContEngine : public BinaryEngine<Derived> {
                                 // multiple times, e.g. when outer op is gemm
             auto mult_op =
                 (inner_target_indices != inner(this->indices_))
-                    ? op_type(base_op_type(), this->permute_tiles_
+                    ? op_type(base_op_type(), !this->implicit_permute_inner_
                                                   ? inner(this->perm_)
                                                   : Permutation{})
                     : op_type(base_op_type());
@@ -562,12 +563,12 @@ class ContEngine : public BinaryEngine<Derived> {
             using op_type = TiledArray::detail::BinaryWrapper<
                 base_op_type>;  // can't consume inputs if they are used
                                 // multiple times, e.g. when outer op is gemm
-            auto mult_op =
-                (inner_target_indices != inner(this->indices_))
-                    ? op_type(base_op_type(this->factor_),
-                              this->permute_tiles_ ? inner(this->perm_)
-                                                   : Permutation{})
-                    : op_type(base_op_type(this->factor_));
+            auto mult_op = (inner_target_indices != inner(this->indices_))
+                               ? op_type(base_op_type(this->factor_),
+                                         !this->implicit_permute_inner_
+                                             ? inner(this->perm_)
+                                             : Permutation{})
+                               : op_type(base_op_type(this->factor_));
             this->element_nonreturn_op_ =
                 [mult_op, outer_prod](result_tile_element_type& result,
                                       const left_tile_element_type& left,
@@ -608,8 +609,9 @@ class ContEngine : public BinaryEngine<Derived> {
               std::conditional_t<tot_x_t, right_tile_element_type,
                                  left_tile_element_type>;
 
-          auto scal_op = [perm = this->permute_tiles_ ? inner(this->perm_)
-                                                      : Permutation{}](
+          auto scal_op = [perm = !this->implicit_permute_inner_
+                                     ? inner(this->perm_)
+                                     : Permutation{}](
                              const left_tile_element_type& left,
                              const right_tile_element_type& right)
               -> result_tile_element_type {
@@ -628,10 +630,21 @@ class ContEngine : public BinaryEngine<Derived> {
               abort();  // unreachable
           };
           this->element_nonreturn_op_ =
-              [scal_op](result_tile_element_type& result,
-                        const left_tile_element_type& left,
-                        const right_tile_element_type& right) {
-                result = scal_op(left, right);
+              [scal_op, outer_prod = (this->product_type())](
+                  result_tile_element_type& result,
+                  const left_tile_element_type& left,
+                  const right_tile_element_type& right) {
+                if (outer_prod == TensorProduct::Contraction) {
+                  if (empty(result))
+                    result = scal_op(left, right);
+                  else {
+                    auto result_increment = scal_op(left, right);
+                    add_to(result, result_increment);
+                  }
+                  // result += scal_op(left, right);
+                } else {
+                  result = scal_op(left, right);
+                }
               };
         }
       } else
