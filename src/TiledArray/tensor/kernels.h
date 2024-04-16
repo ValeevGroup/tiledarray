@@ -1280,7 +1280,6 @@ auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
   } else {
     auto pA = A.permute(perm.AC);
     return pA.mult_to(B.permute(perm.BC));
-    return pA;
   }
 }
 
