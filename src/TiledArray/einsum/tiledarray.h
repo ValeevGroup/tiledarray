@@ -167,6 +167,101 @@ auto replicate_array(Array from, TiledRange const &prepend_trng) {
   return result;
 }
 
+template <typename T, typename... Ts>
+auto reduce_modes(Tensor<T, Ts...> const &orig, size_t drank) {
+  TA_ASSERT(orig.nbatch() == 1);
+  auto const orig_rng = orig.range();
+  TA_ASSERT(orig_rng.rank() > drank);
+
+  auto const result_rng = [orig_rng, drank]() {
+    container::vector<Range1> r1s;
+    for (auto i = 0; i < orig_rng.rank() - drank; ++i)
+      r1s.emplace_back(orig_rng.dim(i));
+    return TA::Range(r1s);
+  }();
+
+  auto const delta_rng = [orig_rng, drank]() {
+    container::vector<Range1> r1s;
+    for (auto i = orig_rng.rank() - drank; i < orig_rng.rank(); ++i)
+      r1s.emplace_back(orig_rng.dim(i));
+    return TA::Range(r1s);
+  }();
+
+  auto const delta_vol = delta_rng.volume();
+
+  auto reducer = [orig, delta_vol, delta_rng](auto const &ix) {
+    auto orig_ix = ix;
+    std::copy(delta_rng.lobound().begin(),  //
+              delta_rng.lobound().end(),    //
+              std::back_inserter(orig_ix));
+
+    auto beg = orig.data() + orig.range().ordinal(orig_ix);
+    auto end = beg + delta_vol;
+
+    // cannot get it done this way: return std::reduce(beg, end);
+
+    typename std::iterator_traits<decltype(beg)>::value_type sum{};
+    for (; beg != end; ++beg) sum += *beg;
+    return sum;
+  };
+
+  return Tensor<T, Ts...>(result_rng, reducer);
+}
+
+///
+/// \param orig Input DistArray.
+/// \param dmodes Reduce this many modes from the end as implied in the
+///        tiled range of the input array.
+/// \return Array with reduced rank.
+///
+template <typename T, typename... Ts>
+auto reduce_modes(TA::DistArray<T, Ts...> orig, size_t drank) {
+  TA_ASSERT(orig.trange().rank() > drank);
+
+  auto const result_trange = [orig, drank]() {
+    container::svector<TiledRange1> tr1s;
+    for (auto i = 0; i < (orig.trange().rank() - drank); ++i)
+      tr1s.emplace_back(orig.trange().at(i));
+    return TiledRange(tr1s);
+  }();
+
+  auto const delta_trange = [orig, drank]() {
+    container::svector<TiledRange1> tr1s;
+    for (auto i = orig.trange().rank() - drank; i < orig.trange().rank(); ++i)
+      tr1s.emplace_back(orig.trange().at(i));
+    return TiledRange(tr1s);
+  }();
+
+  orig.make_replicated();
+  orig.world().gop.fence();
+
+  auto make_tile = [orig, delta_trange, drank](auto &tile, auto const &rng) {
+    using tile_type = std::remove_reference_t<decltype(tile)>;
+
+    tile_type res(rng, typename tile_type::value_type{});
+
+    for (auto &&r : delta_trange.tiles_range()) {
+      container::svector<TA::Range::index1_type> ix1s = rng.lobound();
+
+      {
+        auto dlo = delta_trange.make_tile_range(r).lobound();
+        std::copy(dlo.begin(), dlo.end(), std::back_inserter(ix1s));
+      }
+
+      auto tix = orig.trange().element_to_tile(ix1s);
+      auto got = orig.find_local(tix).get(false);
+
+      res += reduce_modes(got, drank);
+    }
+
+    tile = res;
+    return res.norm();
+  };
+
+  return make_array<DistArray<T, Ts...>>(orig.world(), result_trange,
+                                         make_tile);
+}
+
 template <typename Ixs>
 TiledRange make_trange(RangeMap const &map, Ixs const &ixs) {
   container::svector<TiledRange1> tr1s;
@@ -318,6 +413,28 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         C(C_annot) = A * temp(temp_annot);
       }
       return C;
+    }
+
+    //
+    // special Hadamard + contraction
+    // when ToT times T implied and T's indices are contraction AND Hadamard
+    // BUT not externals
+    //
+    if constexpr (!AreArraySame<ArrayA, ArrayB> &&
+                  DeNestFlag == DeNest::False) {
+      auto hi_size = h.size() + i.size();
+      if (hi_size != h.size() && hi_size != i.size() &&
+          ((hi_size == a.size() && IsArrayT<ArrayA>) ||
+           (hi_size == b.size() && IsArrayT<ArrayB>))) {
+        auto annot_c = std::string(h + e + i) + inner.c;
+        auto temp1 = einsum(A, B, idx<ArrayC>(annot_c), world);
+        auto temp2 = reduce_modes(temp1, i.size());
+
+        auto annot_c_ = std::string(h + e) + inner.c;
+        decltype(temp2) result;
+        result(std::string(c) + inner.c) = temp2(annot_c_);
+        return result;
+      }
     }
 
     using ::Einsum::index::permutation;

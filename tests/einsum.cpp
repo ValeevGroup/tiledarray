@@ -404,6 +404,26 @@ BOOST_AUTO_TEST_CASE(corner_cases) {
                                            {{0, 3, 5}, {0, 3, 8}},          //
                                            {{0, 3, 8}, {0, 3, 5}, {0, 2}},  //
                                            {3, 9})));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("bi,bi->i",        //
+                                          {{0, 2}, {0, 4}},  //
+                                          {{0, 2}, {0, 4}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("bi;a,bi;a->i;a",  //
+                                            {{0, 2}, {0, 4}},  //
+                                            {{0, 2}, {0, 4}},  //
+                                            {3}, {3}));
+
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, ArrayT>("jk;a,ijk->i;a",           //
+                                           {{0, 2}, {0, 4}},          //
+                                           {{0, 3}, {0, 2}, {0, 4}},  //
+                                           {5})));
+
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("bi;a,bi->i;a",       //
+                                                     {{0, 4, 8}, {0, 4}},  //
+                                                     {{0, 4, 8}, {0, 4}},  //
+                                                     {8})));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
