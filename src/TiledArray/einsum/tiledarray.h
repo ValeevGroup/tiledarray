@@ -265,6 +265,7 @@ auto replicate_array(Array from, TiledRange const &prepend_trng) {
 
 template <typename T, typename... Ts>
 auto reduce_modes(Tensor<T, Ts...> const &orig, size_t drank) {
+  if (drank == 0) return orig;
   TA_ASSERT(orig.nbatch() == 1);
   auto const orig_rng = orig.range();
   TA_ASSERT(orig_rng.rank() > drank);
@@ -313,6 +314,7 @@ auto reduce_modes(Tensor<T, Ts...> const &orig, size_t drank) {
 template <typename T, typename... Ts>
 auto reduce_modes(TA::DistArray<T, Ts...> orig, size_t drank) {
   TA_ASSERT(orig.trange().rank() > drank);
+  if (drank == 0) return orig;
 
   auto const result_trange = [orig, drank]() {
     container::svector<TiledRange1> tr1s;
