@@ -232,6 +232,10 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
                                             {3},                       //
                                             {2}));
   // H+C;H+C not supported
+
+  // H;C(op)
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>(
+      "ijk;bc,j;d->kji;dcb", {{0, 1}, {0, 1}, {0, 1}}, {{0, 1}}, {2, 3}, {4}));
 }
 
 BOOST_AUTO_TEST_CASE(different_nested_ranks) {
