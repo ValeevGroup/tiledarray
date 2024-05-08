@@ -513,6 +513,7 @@ class ContEngine : public BinaryEngine<Derived> {
                                const left_tile_element_type& left,
                                const right_tile_element_type& right) {
                 contrreduce_op(result, left, right);
+                result = contrreduce_op(result);  // permutations of result are applied as "postprocessing"
               };
         }  // ToT x ToT
       } else if (inner_prod == TensorProduct::Hadamard) {
