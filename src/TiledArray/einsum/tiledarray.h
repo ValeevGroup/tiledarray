@@ -525,25 +525,18 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     }
 
     //
-    // special Hadamard + contraction
-    // when ToT times T implied and T's indices are contraction AND Hadamard
-    // BUT not externals
+    // when contraction happens in the outer tensor
+    // need to evaluate specially..
     //
-    if constexpr (!AreArraySame<ArrayA, ArrayB> &&
-                  DeNestFlag == DeNest::False) {
-      auto hi_size = h.size() + i.size();
-      if (hi_size != h.size() && hi_size != i.size() &&
-          ((hi_size == a.size() && IsArrayT<ArrayA>) ||
-           (hi_size == b.size() && IsArrayT<ArrayB>))) {
-        auto annot_c = std::string(h + e + i) + inner.c;
-        auto temp1 = einsum(A, B, idx<ArrayC>(annot_c), world);
-        auto temp2 = reduce_modes(temp1, i.size());
+    if (IsArrayToT<ArrayC> && i.size() > 0) {
+      auto annot_c = std::string(h + e + i) + inner.c;
+      auto temp1 = einsum(A, B, idx<ArrayC>(annot_c), world);
+      auto temp2 = reduce_modes(temp1, i.size());
 
-        auto annot_c_ = std::string(h + e) + inner.c;
-        decltype(temp2) result;
-        result(std::string(c) + inner.c) = temp2(annot_c_);
-        return result;
-      }
+      auto annot_c_ = std::string(h + e) + inner.c;
+      decltype(temp2) result;
+      result(std::string(c) + inner.c) = temp2(annot_c_);
+      return result;
     }
 
     using ::Einsum::index::permutation;
