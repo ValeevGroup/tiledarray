@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         os : [ macos-latest ]
-        cxx : [ clang++, /usr/local/bin/g++-10 ]
+        cxx : [ clang++, /usr/local/bin/g++-11 ]
         build_type : [ Release, Debug ]
         task_backend: [ Pthreads, PaRSEC ]
         prerequisites : [ gcc@11 boost eigen open-mpi bison scalapack ]
