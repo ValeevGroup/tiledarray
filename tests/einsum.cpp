@@ -117,7 +117,7 @@ bool check_manual_eval(std::string const& annot, il_trange trangeA,
 }
 
 BOOST_AUTO_TEST_CASE(contract) {
-  using Array = TA::Array<int>;
+  using Array = TA::TArrayI;
 
   BOOST_REQUIRE(check_manual_eval<Array>("ij,j->i",
                                          {{0, 2, 4}, {0, 4, 8}},  // A's trange
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE(contract) {
 }
 
 BOOST_AUTO_TEST_CASE(hadamard) {
-  using Array = TA::Array<int>;
+  using Array = TA::TArrayI;
   BOOST_REQUIRE(check_manual_eval<Array>("i,i->i",  //
                                          {{0, 1}},  //
                                          {{0, 1}}   //
@@ -153,13 +153,11 @@ BOOST_AUTO_TEST_CASE(hadamard) {
 }
 
 BOOST_AUTO_TEST_CASE(general) {
-  using Array = TA::Array<int>;
+  using Array = TA::TArrayI;
   BOOST_REQUIRE(check_manual_eval<Array>("ijk,kil->ijl",                  //
                                          {{0, 2}, {0, 3, 5}, {0, 2, 4}},  //
                                          {{0, 2, 4}, {0, 2}, {0, 1}}      //
                                          ));
-
-  using Array = TA::Array<int>;
   using Tensor = typename Array::value_type;
   using namespace std::string_literals;
 
