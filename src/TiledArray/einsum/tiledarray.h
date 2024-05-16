@@ -338,6 +338,7 @@ auto reduce_modes(TA::DistArray<T, Ts...> orig, size_t drank) {
 
     tile_type res(rng, typename tile_type::value_type{});
 
+    bool all_summed_tiles_zeros{true};
     for (auto &&r : delta_trange.tiles_range()) {
       container::svector<TA::Range::index1_type> ix1s = rng.lobound();
 
@@ -347,10 +348,17 @@ auto reduce_modes(TA::DistArray<T, Ts...> orig, size_t drank) {
       }
 
       auto tix = orig.trange().element_to_tile(ix1s);
+      if constexpr (std::is_same_v<typename DistArray<T, Ts...>::policy_type,
+                                   SparsePolicy>)
+        if (orig.is_zero(tix)) continue;
       auto got = orig.find_local(tix).get(false);
 
       res += reduce_modes(got, drank);
+      all_summed_tiles_zeros = false;
     }
+
+    if (all_summed_tiles_zeros)
+      return typename std::remove_reference_t<decltype(tile)>::scalar_type{0};
 
     tile = res;
     return res.norm();
