@@ -229,50 +229,6 @@ void apply_partial_perm(T& to, T const& from, PartialPerm const& p) {
   }
 }
 
-///
-/// Example: To represent A("ik;ac") * B("kj;cb") -> C("ij;ab"),
-/// construct with std::string("ij;ac,kj;cb->ij;ab");
-/// outer_indices;inner_indices annotates a single object (DistArray, Tensor
-/// etc.) A_indices,B_indices annotates first(A) and second(B) object
-/// '->' separates argument objects' annotation from the result's annotation
-///
-class OuterInnerIndices {
-  // array[0] annotes A
-  // array[1] annotes B
-  // array[2] annotes C
-  std::array<std::string, 3> outer_, inner_;
-
- public:
-  OuterInnerIndices(std::string const& annot) {
-    using ::Einsum::string::split2;
-
-    constexpr size_t A = 0;
-    constexpr size_t B = 1;
-    constexpr size_t C = 2;
-
-    auto [ab, aC] = split2(annot, "->");
-    std::tie(outer_[C], inner_[C]) = split2(aC, ";");
-
-    auto [aA, aB] = split2(ab, ",");
-
-    std::tie(outer_[A], inner_[A]) = split2(aA, ";");
-    std::tie(outer_[B], inner_[B]) = split2(aB, ";");
-  }
-
-  template <int N>
-  OuterInnerIndices(const char (&s)[N]) : OuterInnerIndices{std::string(s)} {}
-
-  [[nodiscard]] auto const& outer() const noexcept { return outer_; }
-  [[nodiscard]] auto const& inner() const noexcept { return inner_; }
-
-  [[nodiscard]] auto const& outerA() const noexcept { return outer_[0]; }
-  [[nodiscard]] auto const& outerB() const noexcept { return outer_[1]; }
-  [[nodiscard]] auto const& outerC() const noexcept { return outer_[2]; }
-  [[nodiscard]] auto const& innerA() const noexcept { return inner_[0]; }
-  [[nodiscard]] auto const& innerB() const noexcept { return inner_[1]; }
-  [[nodiscard]] auto const& innerC() const noexcept { return inner_[2]; }
-};
-
 enum struct TensorProduct { General, Dot, Invalid };
 
 struct ProductSetup {
@@ -294,7 +250,7 @@ struct ProductSetup {
       rank_E,  //
       rank_I;
 
-  // ProductSetup() = default;
+  ProductSetup() = default;
 
   template <typename T,
             typename = std::enable_if_t<TA::detail::is_annotation_v<T>>>
@@ -340,6 +296,71 @@ struct ProductSetup {
   [[nodiscard]] bool valid() const noexcept {
     return product_type != TensorProduct::Invalid;
   }
+};
+
+///
+/// Example: To represent A("ik;ac") * B("kj;cb") -> C("ij;ab")
+///
+/// Method 1:
+/// ---
+/// construct with a single argument std::string("ij;ac,kj;cb->ij;ab");
+/// - the substring "<outer_indices>;<inner_indices>"
+///   annotates a single object (DistArray, Tensor etc.)
+/// - "<A_indices>,<B_indices>" implies two distinct annotations (for A and B)
+///   separated by a comma
+/// - the right hand side of '->' annotates the result.
+/// - Note: the only use of comma is to separate A's and B's annotations.
+///
+/// Method 2:
+/// ---
+/// construct with three arguments:
+///   std::string("i,k;a,c"), std::string("k,j;c,b"), std::string("i,j;a,b")
+///   - Note the use of comma.
+///
+class OuterInnerSetup {
+  ProductSetup outer_;
+  ProductSetup inner_;
+
+ public:
+  OuterInnerSetup(std::string const& annot) {
+    using ::Einsum::string::split2;
+    using Ix = ::Einsum::index::Index<char>;
+
+    enum { A, B, C };
+    std::array<std::string, 3> O;
+    std::array<std::string, 3> I;
+
+    auto [ab, aC] = split2(annot, "->");
+    std::tie(O[C], I[C]) = split2(aC, ";");
+
+    auto [aA, aB] = split2(ab, ",");
+    std::tie(O[A], I[A]) = split2(aA, ";");
+    std::tie(O[B], I[B]) = split2(aB, ";");
+    outer_ = ProductSetup(Ix(O[A]), Ix(O[B]), Ix(O[C]));
+    inner_ = ProductSetup(Ix(I[A]), Ix(I[B]), Ix(I[C]));
+  }
+
+  template <int N>
+  OuterInnerSetup(const char (&s)[N]) : OuterInnerSetup{std::string(s)} {}
+
+  OuterInnerSetup(std::string const& annotA, std::string const& annotB,
+                  std::string const& annotC) {
+    using ::Einsum::string::split2;
+    using Ix = ::Einsum::index::Index<std::string>;
+
+    enum { A, B, C };
+    std::array<std::string, 3> O;
+    std::array<std::string, 3> I;
+    std::tie(O[A], I[A]) = split2(annotA, ";");
+    std::tie(O[B], I[B]) = split2(annotB, ";");
+    std::tie(O[C], I[C]) = split2(annotC, ";");
+    outer_ = ProductSetup(Ix(O[A]), Ix(O[B]), Ix(O[C]));
+    inner_ = ProductSetup(Ix(I[A]), Ix(I[B]), Ix(I[C]));
+  }
+
+  [[nodiscard]] auto const& outer() const noexcept { return outer_; }
+
+  [[nodiscard]] auto const& inner() const noexcept { return inner_; }
 };
 
 namespace {
@@ -569,28 +590,28 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
 
 template <DeNest DeNestFlag = DeNest::False, typename ArrayA, typename ArrayB,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
-auto manual_eval(OuterInnerIndices const& oixs, ArrayA A, ArrayB B) {
+auto manual_eval(OuterInnerSetup const& setups, ArrayA A, ArrayB B) {
   constexpr auto mnr = TA::detail::max_nested_rank<ArrayA, ArrayB>;
   static_assert(mnr == 1 || mnr == 2);
 
-  auto const outer_setup = ProductSetup(oixs.outer());
+  auto const& outer = setups.outer();
+  auto const& inner = setups.inner();
 
-  TA_ASSERT(outer_setup.valid());
+  TA_ASSERT(outer.valid());
 
   if constexpr (mnr == 2) {
-    auto const inner_setup = ProductSetup(oixs.inner());
-    TA_ASSERT(inner_setup.valid());
+    TA_ASSERT(inner.valid());
     if constexpr (DeNestFlag == DeNest::True) {
       // reduced nested rank in result
       using TA::detail::nested_rank;
       static_assert(nested_rank<ArrayA> == nested_rank<ArrayB>);
-      TA_ASSERT(inner_setup.rank_C == 0);
+      TA_ASSERT(inner.rank_C == 0);
       using TileC = typename ArrayA::value_type::value_type;
-      return general_product<TileC>(A, B, outer_setup, inner_setup);
+      return general_product<TileC>(A, B, outer, inner);
     } else
-      return general_product(A, B, outer_setup, inner_setup);
+      return general_product(A, B, outer, inner);
   } else {
-    return general_product(A, B, outer_setup);
+    return general_product(A, B, outer);
   }
 }
 
