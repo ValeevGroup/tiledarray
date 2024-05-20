@@ -53,7 +53,7 @@ to_dense(DistArray<Tile, ArgPolicy> const& sparse_array) {
       dense_array.set(ord, tile);
     } else {
       // see DistArray::set(ordinal, element_type)
-      dense_array.set(ord, 0);
+      dense_array.set(ord, typename ArrayType::value_type{});
     }
   }
 
