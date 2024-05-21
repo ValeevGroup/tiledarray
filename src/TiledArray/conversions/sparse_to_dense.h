@@ -52,8 +52,13 @@ to_dense(DistArray<Tile, ArgPolicy> const& sparse_array) {
       Tile tile(sparse_array.find(ord).get().clone());
       dense_array.set(ord, tile);
     } else {
-      // see DistArray::set(ordinal, element_type)
-      dense_array.set(ord, typename ArrayType::value_type{});
+      if constexpr (detail::is_tensor_of_tensor_v<Tile>) {
+        // `zero' tiles that satisfy detail::is_tensor_of_tensor_v<Tile>
+        //  will be left uninitialized
+      } else {
+        // see DistArray::set(ordinal, element_type)
+        dense_array.set(ord, 0);
+      }
     }
   }
 
