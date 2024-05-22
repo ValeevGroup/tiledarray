@@ -64,7 +64,7 @@ template <typename Array, ShapeComp ShapeCompFlag,
           DeNest DeNestFlag = DeNest::False>
 bool check_manual_eval(std::string const& annot, il_trange trangeA,
                        il_trange trangeB) {
-  return check_manual_eval<Array, ShapeCompFlag, DeNestFlag>(annot, trangeA,
+  return check_manual_eval<Array, DeNestFlag, ShapeCompFlag>(annot, trangeA,
                                                              trangeB);
 }
 
