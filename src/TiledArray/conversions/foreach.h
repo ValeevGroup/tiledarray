@@ -495,7 +495,7 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
   if (fence) arg.world().gop.fence();
 }
 
-/// Modify each element of a dense Array
+/// Modify each element of an Array object
 
 /// This function modifies the elements of a \c DistArray object with a const reference to the
 /// index of the current element. This allows the user to modify specific elements of the array
@@ -504,7 +504,7 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
 /// representing the indices of the current element within the tile. For example,
 /// to copy the upper triangular elements of a nxnxn array to a c++ vector of size n^3:
 /// \code
-/// std::vector<double> vec(n*n);
+/// std::vector<double> vec(n*n*n);
 /// forall(array, [&vec] (auto& tile, const auto& index) {
 ///   size_t i = index[0], j = index[1], k = index[2];
 ///   if (i <= j && j <= k) {
@@ -540,8 +540,7 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
 template <typename Tile, typename Policy, typename Op,
           typename = typename std::enable_if<!TiledArray::detail::is_array<
               typename std::decay<Op>::type>::value>::type>
-inline void forall(
-    DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
+inline void forall(DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
   // Get the rank of the array
   const std::size_t rank = arg.trange().rank();
 
