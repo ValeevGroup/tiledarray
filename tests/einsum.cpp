@@ -33,12 +33,18 @@ using il_extent = std::initializer_list<size_t>;
 }  // namespace
 
 template <DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = ShapeComp::False, typename ArrayA,
+          ShapeComp ShapeCompFlag = ShapeComp::True, typename ArrayA,
           typename ArrayB,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
 bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
   auto out = TA::einsum<DeNestFlag>(annot, A, B);
   auto ref = manual_eval<DeNestFlag>(annot, A, B);
+
+  using Policy = typename decltype(out)::policy_type;
+  if constexpr (ShapeCompFlag == ShapeComp::True &&
+                std::is_same_v<Policy, TA::SparsePolicy>) {
+    out.truncate();
+  }
   return ToTArrayFixture::are_equal<ShapeCompFlag>(ref, out);
 }
 
@@ -50,7 +56,7 @@ bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
 }
 
 template <typename Array, DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = ShapeComp::False>
+          ShapeComp ShapeCompFlag = ShapeComp::True>
 bool check_manual_eval(std::string const& annot, il_trange trangeA,
                        il_trange trangeB) {
   static_assert(detail::is_array_v<Array> &&
@@ -69,7 +75,7 @@ bool check_manual_eval(std::string const& annot, il_trange trangeA,
 }
 
 template <typename ArrayA, typename ArrayB, DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = ShapeComp::False>
+          ShapeComp ShapeCompFlag = ShapeComp::True>
 bool check_manual_eval(std::string const& annot, il_trange trangeA,
                        il_trange trangeB, il_extent inner_extents) {
   static_assert(detail::is_array_v<ArrayA, ArrayB>);
@@ -96,7 +102,7 @@ bool check_manual_eval(std::string const& annot, il_trange trangeA,
 }
 
 template <typename Array, DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = ShapeComp::False>
+          ShapeComp ShapeCompFlag = ShapeComp::True>
 bool check_manual_eval(std::string const& annot, il_trange trangeA,
                        il_trange trangeB, il_extent inner_extentsA,
                        il_extent inner_extentsB) {
