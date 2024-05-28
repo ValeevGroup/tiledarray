@@ -495,6 +495,89 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
   if (fence) arg.world().gop.fence();
 }
 
+/// Modify each element of a dense Array
+
+/// This function modifies the elements of a \c DistArray object with a const reference to the
+/// index of the current element. This allows the user to modify specific elements of the array
+/// based on their indices. Users must provide a function/functor that modifies each element. The provided function
+/// should take a reference to a \c Tile object and a reference to a \c std::vector<std::size_t>
+/// representing the indices of the current element within the tile. For example,
+/// to copy the upper triangular elements of a nxnxn array to a c++ vector of size n^3:
+/// \code
+/// std::vector<double> vec(n*n);
+/// forall(array, [&vec] (auto& tile, const auto& index) {
+///   size_t i = index[0], j = index[1], k = index[2];
+///   if (i <= j && j <= k) {
+///     vec[i*n*n+j*n+k] = tile[index];
+///   } else {
+///     vec[i*n*n+j*n+k] = 0.0;
+///   }
+/// });
+/// \endcode
+/// Similarly, to set each upper triangular element of a nxnxn array to the square root of values in a c++ vector of size n^3:
+/// \code
+/// vector<double> vec(n*n*n);
+/// std::generate(v.begin(), v.end(), std::rand);
+/// forall(array, [&vec] (Tile& tile, index_type& index) {
+///   size_t i = index[0], j = index[1], k = index[2];
+///   if (i <= j && j <= k) {
+///     tile[index] = std::sqrt(vec[i*n*n+j*n+k]);
+///   } else {
+///     tile[index] = 0.0;
+///   }
+/// });
+/// \endcode
+/// The expected signature of the element operation is:
+/// \code
+/// void op(Tile& tile, Range::index_type& index);
+/// \endcode
+/// \tparam Tile The tile type of \c arg
+/// \tparam Policy The policy type of \c arg
+/// \tparam Op Mutating element operation
+/// \param arg The argument array to be modified
+/// \param op The mutating element function
+/// \param fence If \c true, this function will fence before and after the data is modified
+template <typename Tile, typename Policy, typename Op,
+          typename = typename std::enable_if<!TiledArray::detail::is_array<
+              typename std::decay<Op>::type>::value>::type>
+inline void forall(
+    DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
+  // Get the rank of the array
+  const std::size_t rank = arg.trange().rank();
+
+  // Use foreach_inplace to iterate over tiles and modify elements
+  foreach_inplace(
+    arg,
+    [op = std::forward<Op>(op), rank](Tile& tile) mutable {
+
+      // Get the lower and upper bounds of the current tile
+      const auto& lobound = tile.range().lobound();
+      const auto& upbound = tile.range().upbound();
+
+      // Create a vector to store the current element's coordinate indices
+      Range::index_type index(rank);
+
+      // Define a recursive function to iterate over the coordinate indices at each dimension
+      std::function<void(std::size_t)> loop_body = [&](std::size_t dim) {
+        // If all dimensions have been processed, apply the operation
+        if (dim == rank) {          
+          op(tile, index);
+          return;
+        } else {
+          // Iterate over the elements in the current dimension
+          for (index[dim] = lobound[dim]; index[dim] < upbound[dim]; ++index[dim]) {
+            // Recursively call loop_body for the next dimension of the array
+            loop_body(dim + 1);
+          }
+        }
+      };
+
+      // Start the iteration from the first dimension
+      loop_body(0);
+    },
+    fence); // Fence before and after the data is modified
+}
+
 /// Apply a function to each tile of a sparse Array
 
 /// This function uses an \c Array object to generate a new \c Array where the
