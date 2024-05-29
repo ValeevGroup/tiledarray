@@ -260,6 +260,10 @@ auto replicate_array(Array from, TiledRange const &prepend_trng) {
         tile = repped;
         return tile.norm();
       });
+
+  if constexpr (std::is_same_v<typename Array::policy_type, SparsePolicy>)
+    result.truncate();
+
   return result;
 }
 
@@ -311,8 +315,8 @@ auto reduce_modes(Tensor<T, Ts...> const &orig, size_t drank) {
 ///        tiled range of the input array.
 /// \return Array with reduced rank.
 ///
-template <typename T, typename... Ts>
-auto reduce_modes(TA::DistArray<T, Ts...> orig, size_t drank) {
+template <typename T, typename P>
+auto reduce_modes(TA::DistArray<T, P> orig, size_t drank) {
   TA_ASSERT(orig.trange().rank() > drank);
   if (drank == 0) return orig;
 
@@ -348,8 +352,7 @@ auto reduce_modes(TA::DistArray<T, Ts...> orig, size_t drank) {
       }
 
       auto tix = orig.trange().element_to_tile(ix1s);
-      if constexpr (std::is_same_v<typename DistArray<T, Ts...>::policy_type,
-                                   SparsePolicy>)
+      if constexpr (std::is_same_v<P, SparsePolicy>)
         if (orig.is_zero(tix)) continue;
       auto got = orig.find_local(tix).get(false);
 
@@ -364,8 +367,11 @@ auto reduce_modes(TA::DistArray<T, Ts...> orig, size_t drank) {
     return res.norm();
   };
 
-  return make_array<DistArray<T, Ts...>>(orig.world(), result_trange,
-                                         make_tile);
+  auto result =
+      make_array<DistArray<T, P>>(orig.world(), result_trange, make_tile);
+  if constexpr (std::is_same_v<P, SparsePolicy>) result.truncate();
+
+  return result;
 }
 
 template <typename Ixs>
