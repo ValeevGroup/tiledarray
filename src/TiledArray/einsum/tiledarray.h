@@ -256,6 +256,7 @@ auto replicate_array(Array from, TiledRange const &prepend_trng) {
         auto res_coord_ix = res_tr.element_to_tile(res_rng.lobound());
         auto from_coord_ix = decltype(res_coord_ix)(
             next(begin(res_coord_ix), delta_rank), end(res_coord_ix));
+        if (from.is_zero(from_coord_ix)) return typename Array::scalar_type{0};
         replicate_tensor(repped, from.find_local(from_coord_ix).get(false));
         tile = repped;
         return tile.norm();
