@@ -119,14 +119,12 @@ BOOST_AUTO_TEST_CASE(foreach_unary) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(forall_unary) {
+BOOST_AUTO_TEST_CASE(foreach_w_idx) {
 
   TArrayI result = a.clone();
-  forall (result, [](TensorI& tile, Range::index_type &coord_idx) {
-    if (coord_idx[0] < coord_idx[1]) 
-      tile[coord_idx] = coord_idx[0] * tile[coord_idx];
-    else
-      tile[coord_idx] = coord_idx[1] * tile[coord_idx];
+  foreach_inplace(result, [](TensorI& tile, const Range::index_type &coord_idx) {
+    long fac = (coord_idx[0] < coord_idx[1]) ? coord_idx[0] : coord_idx[1];
+    tile[coord_idx] = fac * tile[coord_idx];
   }, true);
 
   for (auto index : *result.pmap()) {
@@ -135,10 +133,8 @@ BOOST_AUTO_TEST_CASE(forall_unary) {
     const Range &range = tile0.range();
     for (std::size_t i = 0; i < tile.size(); ++i) {
       const Range::index_type &coord_idx = range.idx(i);
-      if (coord_idx[0] < coord_idx[1])
-        BOOST_CHECK_EQUAL(tile[i], coord_idx[0] * tile0[i]);
-      else
-        BOOST_CHECK_EQUAL(tile[i], coord_idx[1] * tile0[i]);
+      long fac = coord_idx[0] < coord_idx[1] ? coord_idx[0] : coord_idx[1];
+      BOOST_CHECK_EQUAL(tile[i], fac * tile0[i]);
     }
   }
 }

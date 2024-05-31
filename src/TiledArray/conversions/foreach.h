@@ -480,7 +480,8 @@ inline std::enable_if_t<is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// function will fence before AND after the data is modified
 template <typename Tile, typename Policy, typename Op,
           typename = typename std::enable_if<!TiledArray::detail::is_array<
-              typename std::decay<Op>::type>::value>::type>
+              typename std::decay<Op>::type>::value>::type,
+          typename = typename std::enable_if<detail::is_invocable<Op, Tile&>::value>::type>
 inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
     DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
   // The tile data is being modified in place, which means we may need to
@@ -539,43 +540,22 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
 /// \param fence If \c true, this function will fence before and after the data is modified
 template <typename Tile, typename Policy, typename Op,
           typename = typename std::enable_if<!TiledArray::detail::is_array<
-              typename std::decay<Op>::type>::value>::type>
-inline void forall(
+              typename std::decay<Op>::type>::value>::type,
+          typename = typename std::enable_if<detail::is_invocable<Op, Tile&,
+              const Range::index_type&>::value>::type>
+inline void foreach_inplace(
     DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
-  // Get the rank of the array
-  const std::size_t rank = arg.trange().rank();
+
+  // wrap Op into a shallow-copy copyable handle
+  auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
 
   // Use foreach_inplace to iterate over tiles and modify elements
   foreach_inplace(
     arg,
-    [op = std::forward<Op>(op), rank](Tile& tile) mutable {
-
-      // Get the lower and upper bounds of the current tile
-      const auto& lobound = tile.range().lobound();
-      const auto& upbound = tile.range().upbound();
-
-      // Create a vector to store the current element's coordinate indices
-      Range::index_type index(rank);
-
-      // Define a recursive function to iterate over the coordinate indices at each dimension
-      std::function<void(std::size_t)> loop_body = [&](std::size_t dim) {
-        // If all dimensions have been processed, apply the operation
-        if (dim == rank) {          
-          op(tile, index);
-          return;
-        } else {
-          // Iterate over the elements in the current dimension
-          for (index[dim] = lobound[dim]; index[dim] < upbound[dim]; ++index[dim]) {
-            // Recursively call loop_body for the next dimension of the array
-            loop_body(dim + 1);
-          }
-        }
-      };
-
-      // Start the iteration from the first dimension
-      loop_body(0);
-    },
-    fence); // Fence before and after the data is modified
+    [op = std::move(op_shared_handle)](Tile& tile) mutable {
+        for (const Range::index_type& index : tile.range())
+            op(tile, index);
+    }, fence); // Fence before and after the data is modified
 }
 
 /// Apply a function to each tile of a sparse Array
@@ -670,7 +650,8 @@ inline std::enable_if_t<!is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// function will fence before AND after the data is modified
 template <typename Tile, typename Policy, typename Op,
           typename = typename std::enable_if<!TiledArray::detail::is_array<
-              typename std::decay<Op>::type>::value>::type>
+              typename std::decay<Op>::type>::value>::type,
+          typename = typename std::enable_if<detail::is_invocable<Op, Tile&>::value>::type>
 inline std::enable_if_t<!is_dense_v<Policy>, void> foreach_inplace(
     DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
   // The tile data is being modified in place, which means we may need to
@@ -712,7 +693,8 @@ inline std::
 }
 
 /// This function takes two input tiles and put result into the left tile
-template <typename LeftTile, typename RightTile, typename Policy, typename Op>
+template <typename LeftTile, typename RightTile, typename Policy, typename Op,
+          typename = typename std::enable_if<detail::is_invocable<Op, LeftTile&, const RightTile>::value>::type>
 inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
     DistArray<LeftTile, Policy>& left,
     const DistArray<RightTile, Policy>& right, Op&& op, bool fence = true) {
@@ -758,7 +740,8 @@ inline std::
 }
 
 /// This function takes two input tiles and put result into the left tile
-template <typename LeftTile, typename RightTile, typename Policy, typename Op>
+template <typename LeftTile, typename RightTile, typename Policy, typename Op,
+          typename = typename std::enable_if<detail::is_invocable<Op, LeftTile&, const RightTile>::value>::type>
 inline std::enable_if_t<!is_dense_v<Policy>, void> foreach_inplace(
     DistArray<LeftTile, Policy>& left,
     const DistArray<RightTile, Policy>& right, Op&& op,
