@@ -268,6 +268,18 @@ auto replicate_array(Array from, TiledRange const &prepend_trng) {
   return result;
 }
 
+///
+/// Given a rank-N tensor and a ∂-rank such that ∂ in [0,N), returns a new
+/// rank-N' tensor (where N' = N - ∂) by summing over the ∂ ranks from the
+/// end of the input tensor's range. For example, reduce_modes(A, 2) where
+/// A.range().rank() == 5 will result into a new tensor (B) of rank-3 such that
+/// B(i,j,k) = Σ_l Σ_m A(i,j,k,l,m).
+///
+/// \param orig Input Tensor.
+/// \param dmodes Reduce this many modes from the end as implied in the
+///               range of the input tensor.
+/// \return Tensor with reduced rank.
+///
 template <typename T, typename... Ts>
 auto reduce_modes(Tensor<T, Ts...> const &orig, size_t drank) {
   if (drank == 0) return orig;
@@ -315,6 +327,7 @@ auto reduce_modes(Tensor<T, Ts...> const &orig, size_t drank) {
 /// \param dmodes Reduce this many modes from the end as implied in the
 ///        tiled range of the input array.
 /// \return Array with reduced rank.
+/// \see reduce_modes(Tensor<T, Ts...>, size_t)
 ///
 template <typename T, typename P>
 auto reduce_modes(TA::DistArray<T, P> orig, size_t drank) {
@@ -375,6 +388,12 @@ auto reduce_modes(TA::DistArray<T, P> orig, size_t drank) {
   return result;
 }
 
+///
+/// \tparam Ixs Iterable of indices.
+/// \param map A map from the index type of \c Ixs to TiledRange1.
+/// \param ixs Iterable of indices.
+/// \return TiledRange object.
+///
 template <typename Ixs>
 TiledRange make_trange(RangeMap const &map, Ixs const &ixs) {
   container::svector<TiledRange1> tr1s;
