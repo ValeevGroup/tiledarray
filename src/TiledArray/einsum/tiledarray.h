@@ -26,6 +26,102 @@ using ::Einsum::index::IndexMap;
 using ::Einsum::index::Permutation;
 using ::Einsum::index::permutation;
 
+///
+/// \tparam T A type that parameterizes ::Einsum::Index<T>.
+///
+/// This class makes it easier to work with indices involved in a binary
+/// tensor multiplication. Also defines a canonical order of the indices.
+///
+/// Consider an arbitrary binary tensor multiplication annotated as:
+///     A(a_1,...,a_m) * B(b_1,...,b_n) -> C(c_1,...,c_l)
+/// Note that {c_1,...,c_l} is subset of ({a_1,...,a_m} union {b_1,...,b_n}).
+///
+/// We define following index types.
+///     * Hadamard index: An index that annotates A, B, and C.
+///     * Contracted index: An index that annotates A and B but not C.
+///     * External index of A: An index that annotates A and C but not B.
+///     * External index of B: An index that annotates B and C but not A.
+///
+/// Defining canonical index ordering.
+///     * Hadamard indices are canonically ordered if they appear in the same
+///       order in A's annotation.
+///     * Contracted indices are canonically ordered if they appear in the same
+///       order in A's annotation.
+///     * External indices of A are canonically ordered if they appear in the
+///       same order in A's annotation.
+///     * External indices of B are canonically ordered if they appear in the
+///       same order in B's annotation.
+///     * Tensor A's indices are canonically ordered if Hadamard, external
+///       indices of A, and contracted indices appear in that order and all
+///       three index groups are themselves canonically ordered.
+///     * Tensor B's indices are canonically ordered if Hadamard, external
+///       indices of B, and contracted indices appear in that order and all
+///       three index groups are themselves canonically ordered.
+///     * Tensor C's indices are canonically ordered if Hadamard, external
+///       indices of A and external indices of B appear in that order and all
+///       three index groups are themselves canonically ordered.
+///
+/// Example: Consider the evaluation: A(i,j,p,a,b) * B(j,i,q,b,a) -> C(i,p,j,q).
+///          - Hadamard indices: {i,j}
+///          - External indices of A: {p}
+///          - External indices of B: {q}
+///          - Contracted indices: {a, b}
+///          All index groups above are canonically ordered.
+///          Writing C's indices in canonical order would give: {i,j,p,q}.
+///
+template <typename T>
+class TensorOpIndices {
+ public:
+  using index_t = ::Einsum::Index<T>;
+
+  TensorOpIndices(index_t const &ixA, index_t const &ixB, index_t const &ixC)
+      : orig_indices_({ixA, ixB, ixC}) {
+    hadamard_ = ixA & ixB & ixC;
+    contracted_ = (ixA & ixB) - ixC;
+    external_A_ = (ixA - ixB) & ixC;
+    external_B_ = (ixB - ixA) & ixC;
+  }
+
+  [[nodiscard]] index_t const &ix_A() const { return orig_indices_[A]; }
+  [[nodiscard]] index_t const &ix_B() const { return orig_indices_[B]; }
+  [[nodiscard]] index_t const &ix_C() const { return orig_indices_[C]; }
+
+  [[nodiscard]] index_t ix_A_canon() const {
+    return hadamard() + external_A() + contracted();
+  }
+
+  [[nodiscard]] index_t ix_B_canon() const {
+    return hadamard() + external_B() + contracted();
+  }
+
+  [[nodiscard]] index_t ix_C_canon() const {
+    return hadamard() + external_A() + external_B();
+  }
+
+  [[nodiscard]] index_t const &hadamard() const { return hadamard_; }
+  [[nodiscard]] index_t const &contracted() const { return contracted_; }
+  [[nodiscard]] index_t const &external_A() const { return external_A_; }
+  [[nodiscard]] index_t const &external_B() const { return external_B_; }
+
+  [[nodiscard]] Permutation to_canon_A() const {
+    return ::Einsum::index::permutation(ix_A(), ix_A_canon());
+  }
+
+  [[nodiscard]] Permutation to_canon_B() const {
+    return ::Einsum::index::permutation(ix_B(), ix_B_canon());
+  }
+
+  [[nodiscard]] Permutation to_canon_C() const {
+    return ::Einsum::index::permutation(ix_C(), ix_C_canon());
+  }
+
+ private:
+  enum { A, B, C, ABC };
+  std::array<index_t, ABC> orig_indices_;
+
+  index_t hadamard_, contracted_, external_A_, external_B_;
+};
+
 /// converts the annotation of an expression to an Index
 template <typename Array>
 auto idx(const std::string &s) {
@@ -160,13 +256,144 @@ auto replicate_array(Array from, TiledRange const &prepend_trng) {
         auto res_coord_ix = res_tr.element_to_tile(res_rng.lobound());
         auto from_coord_ix = decltype(res_coord_ix)(
             next(begin(res_coord_ix), delta_rank), end(res_coord_ix));
+        if (from.is_zero(from_coord_ix)) return typename Array::scalar_type{0};
         replicate_tensor(repped, from.find_local(from_coord_ix).get(false));
         tile = repped;
         return tile.norm();
       });
+
+  if constexpr (std::is_same_v<typename Array::policy_type, SparsePolicy>)
+    result.truncate();
+
   return result;
 }
 
+///
+/// Given a rank-N tensor and a ∂-rank such that ∂ in [0,N), returns a new
+/// rank-N' tensor (where N' = N - ∂) by summing over the ∂ ranks from the
+/// end of the input tensor's range. For example, reduce_modes(A, 2) where
+/// A.range().rank() == 5 will result into a new tensor (B) of rank-3 such that
+/// B(i,j,k) = Σ_l Σ_m A(i,j,k,l,m).
+///
+/// \param orig Input Tensor.
+/// \param dmodes Reduce this many modes from the end as implied in the
+///               range of the input tensor.
+/// \return Tensor with reduced rank.
+///
+template <typename T, typename... Ts>
+auto reduce_modes(Tensor<T, Ts...> const &orig, size_t drank) {
+  if (drank == 0) return orig;
+  TA_ASSERT(orig.nbatch() == 1);
+  auto const orig_rng = orig.range();
+  TA_ASSERT(orig_rng.rank() > drank);
+
+  auto const result_rng = [orig_rng, drank]() {
+    container::vector<Range1> r1s;
+    for (auto i = 0; i < orig_rng.rank() - drank; ++i)
+      r1s.emplace_back(orig_rng.dim(i));
+    return TA::Range(r1s);
+  }();
+
+  auto const delta_rng = [orig_rng, drank]() {
+    container::vector<Range1> r1s;
+    for (auto i = orig_rng.rank() - drank; i < orig_rng.rank(); ++i)
+      r1s.emplace_back(orig_rng.dim(i));
+    return TA::Range(r1s);
+  }();
+
+  auto const delta_vol = delta_rng.volume();
+
+  auto reducer = [orig, delta_vol, delta_rng](auto const &ix) {
+    auto orig_ix = ix;
+    std::copy(delta_rng.lobound().begin(),  //
+              delta_rng.lobound().end(),    //
+              std::back_inserter(orig_ix));
+
+    auto beg = orig.data() + orig.range().ordinal(orig_ix);
+    auto end = beg + delta_vol;
+
+    // cannot get it done this way: return std::reduce(beg, end);
+
+    typename std::iterator_traits<decltype(beg)>::value_type sum{};
+    for (; beg != end; ++beg) sum += *beg;
+    return sum;
+  };
+
+  return Tensor<T, Ts...>(result_rng, reducer);
+}
+
+///
+/// \param orig Input DistArray.
+/// \param dmodes Reduce this many modes from the end as implied in the
+///        tiled range of the input array.
+/// \return Array with reduced rank.
+/// \see reduce_modes(Tensor<T, Ts...>, size_t)
+///
+template <typename T, typename P>
+auto reduce_modes(TA::DistArray<T, P> orig, size_t drank) {
+  TA_ASSERT(orig.trange().rank() > drank);
+  if (drank == 0) return orig;
+
+  auto const result_trange = [orig, drank]() {
+    container::svector<TiledRange1> tr1s;
+    for (auto i = 0; i < (orig.trange().rank() - drank); ++i)
+      tr1s.emplace_back(orig.trange().at(i));
+    return TiledRange(tr1s);
+  }();
+
+  auto const delta_trange = [orig, drank]() {
+    container::svector<TiledRange1> tr1s;
+    for (auto i = orig.trange().rank() - drank; i < orig.trange().rank(); ++i)
+      tr1s.emplace_back(orig.trange().at(i));
+    return TiledRange(tr1s);
+  }();
+
+  orig.make_replicated();
+  orig.world().gop.fence();
+
+  auto make_tile = [orig, delta_trange, drank](auto &tile, auto const &rng) {
+    using tile_type = std::remove_reference_t<decltype(tile)>;
+
+    tile_type res(rng, typename tile_type::value_type{});
+
+    bool all_summed_tiles_zeros{true};
+    for (auto &&r : delta_trange.tiles_range()) {
+      container::svector<TA::Range::index1_type> ix1s = rng.lobound();
+
+      {
+        auto dlo = delta_trange.make_tile_range(r).lobound();
+        std::copy(dlo.begin(), dlo.end(), std::back_inserter(ix1s));
+      }
+
+      auto tix = orig.trange().element_to_tile(ix1s);
+      if constexpr (std::is_same_v<P, SparsePolicy>)
+        if (orig.is_zero(tix)) continue;
+      auto got = orig.find_local(tix).get(false);
+
+      res += reduce_modes(got, drank);
+      all_summed_tiles_zeros = false;
+    }
+
+    if (all_summed_tiles_zeros)
+      return typename std::remove_reference_t<decltype(tile)>::scalar_type{0};
+
+    tile = res;
+    return res.norm();
+  };
+
+  auto result =
+      make_array<DistArray<T, P>>(orig.world(), result_trange, make_tile);
+  if constexpr (std::is_same_v<P, SparsePolicy>) result.truncate();
+
+  return result;
+}
+
+///
+/// \tparam Ixs Iterable of indices.
+/// \param map A map from the index type of \c Ixs to TiledRange1.
+/// \param ixs Iterable of indices.
+/// \return TiledRange object.
+///
 template <typename Ixs>
 TiledRange make_trange(RangeMap const &map, Ixs const &ixs) {
   container::svector<TiledRange1> tr1s;
@@ -239,20 +466,22 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
               "Nested-rank-reduction only supported when the inner tensor "
               "ranks match on the arguments");
 
-    // Step  I:  A * B -> C'
-    // Step II:  C'    -> C
     //
-    // At "Step I", a general product (without reduction) in outer indices,
-    // and pure Hadamard product in inner indices is carried out.
-    // Then at "Step II", the inner tensors are reduced with a unary function.
-    // The reducing function is determined by looking at the contracting and
-    // non-contracting outer indices.
+    // Illustration of steps by an example.
     //
-    // eg. A(i,j,k;a,b) * B(k,j;a,b) -> C(i,j) involves following two steps:
-    //   Step  I: A(i,j,k;a,b) * B(k,j;a,b) -> C'(i,j;a,b)
-    //   Step II: C'(i,j;a,b) -> C(i,j)
-
-    auto Cp = einsum(A, B, std::string(c) + ";" + std::string(inner.i));
+    // Consider the evaluation: A(ijpab;xy) * B(jiqba;yx) -> C(ipjq).
+    //
+    // Note for the outer indices:
+    //      - Hadamard: 'ij'
+    //      - External A: 'p'
+    //      - External B: 'q'
+    //      - Contracted: 'ab'
+    //
+    // Now C is evaluated in the following steps.
+    //  Step I:   A(ijpab;xy) * B(jiqba;yx) -> C0(ijpqab;xy)
+    //  Step II:  C0(ijpqab;xy) -> C1(ijpqab)
+    //  Step III: C1(ijpqab) -> C2(ijpq)
+    //  Step IV:  C2(ijpq) -> C(ipjq)
 
     auto sum_tot_2_tos = [](auto const &tot) {
       typename std::remove_reference_t<decltype(tot)>::value_type result(
@@ -260,12 +489,32 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       return result;
     };
 
-    auto result = TA::foreach<typename ArrayC::value_type>(
-        Cp, [sum_tot_2_tos](auto &out_tile, auto const &in_tile) {
+    auto const oixs = TensorOpIndices(a, b, c);
+
+    struct {
+      std::string C0, C1, C2;
+    } const Cn_annot{
+        std::string(oixs.ix_C_canon() + oixs.contracted()) + inner.a,
+        {oixs.ix_C_canon() + oixs.contracted()},
+        {oixs.ix_C_canon()}};
+
+    //  Step I:   A(ijpab;xy) * B(jiqba;yx) -> C0(ijpqab;xy)
+    auto C0 = einsum(A, B, Cn_annot.C0);
+
+    //  Step II:  C0(ijpqab;xy) -> C1(ijpqab)
+    auto C1 = TA::foreach<typename ArrayC::value_type>(
+        C0, [sum_tot_2_tos](auto &out_tile, auto const &in_tile) {
           out_tile = sum_tot_2_tos(in_tile);
         });
 
-    return result;
+    //  Step III: C1(ijpqab) -> C2(ijpq)
+    auto C2 = reduce_modes(C1, oixs.contracted().size());
+
+    //  Step IV:  C2(ijpq) -> C(ipjq)
+    ArrayC C;
+    C(c) = C2(Cn_annot.C2);
+    return C;
+
   } else {
     // these are "Hadamard" (fused) indices
     auto h = a & b & c;
@@ -289,35 +538,39 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     auto range_map =
         (RangeMap(a, A.array().trange()) | RangeMap(b, B.array().trange()));
 
-    auto perm_and_rank_replicate = [delta_trng = make_trange(range_map, e)](
-                                       auto pre,                      //
-                                       std::string const &pre_annot,  //
-                                       std::string const &permed_annot) {
-      decltype(pre) permed;
-      permed(permed_annot) = pre(pre_annot);
-      return replicate_array(permed, delta_trng);
-    };
-
     // special Hadamard
     if (h.size() == a.size() || h.size() == b.size()) {
       TA_ASSERT(!i && e);
-      bool small_a = h.size() == a.size();
-      std::string const eh_annot = (e | h);
-      std::string const permed_annot =
-          std::string(h) + (small_a ? inner.a : inner.b);
-      std::string const C_annot = std::string(c) + inner.c;
-      std::string const temp_annot = std::string(e) + "," + permed_annot;
+      bool const small_a = h.size() == a.size();
+      auto const delta_trng = make_trange(range_map, e);
+      std::string target_layout = std::string(c) + inner.c;
       ArrayC C;
       if (small_a) {
-        auto temp =
-            perm_and_rank_replicate(A.array(), A.annotation(), permed_annot);
-        C(C_annot) = temp(temp_annot) * B;
+        auto temp = replicate_array(A.array(), delta_trng);
+        std::string temp_layout = std::string(e) + "," + A.annotation();
+        C(target_layout) = temp(temp_layout) * B;
       } else {
-        auto temp =
-            perm_and_rank_replicate(B.array(), B.annotation(), permed_annot);
-        C(C_annot) = A * temp(temp_annot);
+        auto temp = replicate_array(B.array(), delta_trng);
+        std::string temp_layout = std::string(e) + "," + B.annotation();
+        C(target_layout) = A * temp(temp_layout);
       }
+
       return C;
+    }
+
+    //
+    // when contraction happens in the outer tensor
+    // need to evaluate specially..
+    //
+    if (IsArrayToT<ArrayC> && i.size() > 0) {
+      auto annot_c = std::string(h + e + i) + inner.c;
+      auto temp1 = einsum(A, B, idx<ArrayC>(annot_c), world);
+      auto temp2 = reduce_modes(temp1, i.size());
+
+      auto annot_c_ = std::string(h + e) + inner.c;
+      decltype(temp2) result;
+      result(std::string(c) + inner.c) = temp2(annot_c_);
+      return result;
     }
 
     using ::Einsum::index::permutation;
