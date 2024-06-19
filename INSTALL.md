@@ -40,6 +40,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
+- [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20 and later.
 - [BTAS](http://github.com/ValeevGroup/BTAS), tag 4e8f5233aa7881dccdfcc37ce07128833926d3c2 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 8788aea9758bfe6479cc23d39e6c77b7528009db .
@@ -74,7 +75,6 @@ Optional prerequisites:
   - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 6397f52cf11c0dfd82a79698ee198a2fce515d81); pulls and builds the following additional prerequisite
     - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS
 - Python3 interpreter -- to test (optionally-built) Python bindings
-- [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20; only used for some unit testing of the functionality anticipated to be supported by future C++ standards.
 - [TTG](https://github.com/TESSEorg/ttg.git) -- C++ implementation of the Template Task Graph programming model for fine-grained flow-graph composition of distributed memory programs (tag 3fe4a06dbf4b05091269488aab38223da1f8cb8e).
 
 Many of these dependencies can be installed with a package manager,
@@ -416,7 +416,6 @@ support may be added.
 * `TA_ASSERT_POLICY` -- Set to `TA_ASSERT_IGNORE` to disable `TA_ASSERT` assertions, `TA_ASSERT_THROW` to cause `TA_ASSERT` assertions to throw, `TA_ASSERT_ABORT` to cause `TA_ASSERT` assertions to abort. The default is `TA_ASSERT_IGNORE` if CMake uses a single-configuration generator and`CMAKE_BUILD_TYPE` is set to `Release` or `MinSizeRel`, else the default is `TA_ASSERT_THROW`.
 * `BUILD_TESTING` -- Set of `OFF` to disable building unit tests. The default is `ON`.
 * `TA_TRACE_TASKS` -- Set to `ON` to enable tracing of MADNESS tasks using custom task tracer. Note that standard profilers/tracers are generally useless (except in the trivial cases) with MADWorld-based programs since the submission context of tasks is not captured by standard tracing tools; this makes it impossible in a nontrivial program to attribute tasks to source code. WARNING: task tracing his will greatly increase the memory requirements. [Default=OFF].
-* `TA_RANGEV3` -- Set to `ON` to find or fetch the Range-V3 library and enable additional tests of TA components with constructs anticipated to be supported in the future. [Default=OFF].
 * `TA_TTG` -- Set to `ON` to find or fetch the TTG library. [Default=OFF].
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.

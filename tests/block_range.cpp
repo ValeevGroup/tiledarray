@@ -25,9 +25,7 @@
 
 #include <TiledArray/util/eigen.h>
 #include <boost/range/combine.hpp>
-#ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
-#endif
 
 #include "TiledArray/block_range.h"
 #include "range_fixture.h"
@@ -229,14 +227,12 @@ BOOST_AUTO_TEST_CASE(block) {
           BlockRange br2(r, boost::combine(lobounds, upbounds));
           BOOST_CHECK_EQUAL(br2, bref);
 
-#ifdef TILEDARRAY_HAS_RANGEV3
           // using zipped ranges of bounds (using Ranges-V3)
           // need to #include <range/v3/view/zip.hpp>
           BOOST_CHECK_NO_THROW(
               BlockRange br3(r, ranges::views::zip(lobounds, upbounds)));
           BlockRange br3(r, ranges::views::zip(lobounds, upbounds));
           BOOST_CHECK_EQUAL(br3, bref);
-#endif
 
           // using nested initializer_list
           BOOST_CHECK_NO_THROW(BlockRange br4(r, {{0, 4}, {1, 6}, {2, 8}}));
