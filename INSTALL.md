@@ -43,7 +43,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20 and later.
 - [BTAS](http://github.com/ValeevGroup/BTAS), tag 4e8f5233aa7881dccdfcc37ce07128833926d3c2 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 8788aea9758bfe6479cc23d39e6c77b7528009db .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 3d0ae2fad1b97e347ca6dd98b9f1b9e74e629f52 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
