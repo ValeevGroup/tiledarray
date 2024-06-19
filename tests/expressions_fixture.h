@@ -28,9 +28,7 @@
 
 #include <TiledArray/util/eigen.h>
 #include <boost/range/combine.hpp>
-#ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
-#endif
 
 #include <TiledArray/config.h>
 

@@ -19,9 +19,7 @@
 
 #include <TiledArray/util/eigen.h>
 #include <boost/range/combine.hpp>
-#ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
-#endif
 
 #include <numeric>
 #include <sstream>
@@ -169,10 +167,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_REQUIRE_NO_THROW(Range r2(p2, f2));  // uses index containers
   BOOST_REQUIRE_NO_THROW(
       Range r(boost::combine(p2, f2)));  // uses zipped range of p2 and f2
-#ifdef TILEDARRAY_HAS_RANGEV3
   BOOST_REQUIRE_NO_THROW(
       Range r(ranges::views::zip(p2, f2)));  // uses zipped range of p2 and f2
-#endif
 
   BOOST_CHECK_THROW(Range r2(f2, p2), Exception);  // lobound > upbound
   Range r2(p2, f2);
@@ -190,11 +186,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
   Range should_be_copy_of_r2(
       boost::combine(p2, f2));  // uses zipped range of p2 and f2
   BOOST_CHECK_EQUAL(r2, should_be_copy_of_r2);
-#ifdef TILEDARRAY_HAS_RANGEV3
   Range should_be_another_copy_of_r2(
       ranges::views::zip(p2, f2));  // uses zipped range of p2 and f2
   BOOST_CHECK_EQUAL(r2, should_be_another_copy_of_r2);
-#endif
 
   // test the rest of bound-based ctors
   {
@@ -243,10 +237,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
     // uses zipped bounds
     Range r7(boost::combine(std::vector{0, 1, 2}, std::array{4, 6, 8}));
     BOOST_CHECK_EQUAL(ref, r7);
-#ifdef TILEDARRAY_HAS_RANGEV3
-//    Range r8(ranges::views::zip(std::array{0, 1, 2}, std::vector{4, 6, 8}));
-//    BOOST_CHECK_EQUAL(ref, r8);
-#endif
+    //    Range r8(ranges::views::zip(std::array{0, 1, 2}, std::vector{4, 6,
+    //    8})); BOOST_CHECK_EQUAL(ref, r8);
 
     // zipped bounds with Eigen vectors
     {
@@ -278,11 +270,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
       Range r14(boost::combine(iv({0, 1, 2}), iv(iv({0, 1, 2}) + iv(4, 5, 6))));
       BOOST_CHECK_EQUAL(ref, r14);
 
-#ifdef TILEDARRAY_HAS_RANGEV3
-// this requires Eigen ~3.4 (3.3.90 docs suggest it should be sufficient)
-//    Range r15(ranges::views::zip(iv(0, 1, 2), iv(4, 6, 8)));
-//    BOOST_CHECK_EQUAL(ref, r15);
-#endif
+      // this requires Eigen ~3.4 (3.3.90 docs suggest it should be sufficient)
+      //    Range r15(ranges::views::zip(iv(0, 1, 2), iv(4, 6, 8)));
+      //    BOOST_CHECK_EQUAL(ref, r15);
     }
 
     // container::svector as bounds

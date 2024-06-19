@@ -135,11 +135,20 @@ using TiledArray::math::linalg::set_linalg_crossover_to_distributed;
 
 namespace Eigen {
 
-// freestanding adaptors for Eigen::MatrixBase needed by solvers like DIIS
+// freestanding adaptors for Eigen::MatrixBase and Eigen::Block
+// needed by solvers like DIIS
 
 template <typename Derived>
 inline void vec_multiply(Eigen::MatrixBase<Derived>& a1,
                          const Eigen::MatrixBase<Derived>& a2) {
+  a1.array() *= a2.array();
+}
+
+template <typename XprType1, int BlockRows1, int BlockCols1, bool InnerPanel1,
+          typename XprType2, int BlockRows2, int BlockCols2, bool InnerPanel2>
+inline void vec_multiply(
+    Eigen::Block<XprType1, BlockRows1, BlockCols1, InnerPanel1>& a1,
+    const Eigen::Block<XprType2, BlockRows2, BlockCols2, InnerPanel2>& a2) {
   a1.array() *= a2.array();
 }
 
@@ -149,9 +158,25 @@ inline void scale(Eigen::MatrixBase<Derived>& a, S scaling_factor) {
   a.array() *= numeric_type(scaling_factor);
 }
 
+template <typename XprType1, int BlockRows1, int BlockCols1, bool InnerPanel1,
+          typename S>
+inline void scale(
+    Eigen::Block<XprType1, BlockRows1, BlockCols1, InnerPanel1>& a,
+    S scaling_factor) {
+  using numeric_type = typename Eigen::Block<XprType1, BlockRows1, BlockCols1,
+                                             InnerPanel1>::value_type;
+  a.array() *= numeric_type(scaling_factor);
+}
+
 template <typename Derived>
 inline void zero(Eigen::MatrixBase<Derived>& a) {
-  a = Derived::Zero(a.rows(), a.cols());
+  a.fill(0);
+}
+
+template <typename XprType1, int BlockRows1, int BlockCols1, bool InnerPanel1>
+inline void zero(
+    Eigen::Block<XprType1, BlockRows1, BlockCols1, InnerPanel1>& a) {
+  a.fill(0);
 }
 
 template <typename Derived, typename S>
@@ -161,9 +186,28 @@ inline void axpy(Eigen::MatrixBase<Derived>& y, S alpha,
   y.array() += numeric_type(alpha) * x.array();
 }
 
+template <typename XprType1, int BlockRows1, int BlockCols1, bool InnerPanel1,
+          typename XprType2, int BlockRows2, int BlockCols2, bool InnerPanel2,
+          typename S>
+inline void axpy(
+    Eigen::Block<XprType1, BlockRows1, BlockCols1, InnerPanel1>& y, S alpha,
+    const Eigen::Block<XprType2, BlockRows2, BlockCols2, InnerPanel2>& x) {
+  using numeric_type = typename Eigen::Block<XprType2, BlockRows2, BlockCols2,
+                                             InnerPanel2>::value_type;
+  y.array() += numeric_type(alpha) * x.array();
+}
+
 template <typename Derived>
 inline auto dot(const Eigen::MatrixBase<Derived>& l,
                 const Eigen::MatrixBase<Derived>& r) {
+  return l.adjoint().dot(r);
+}
+
+template <typename XprType1, int BlockRows1, int BlockCols1, bool InnerPanel1,
+          typename XprType2, int BlockRows2, int BlockCols2, bool InnerPanel2>
+inline auto dot(
+    const Eigen::Block<XprType1, BlockRows1, BlockCols1, InnerPanel1>& l,
+    const Eigen::Block<XprType2, BlockRows2, BlockCols2, InnerPanel2>& r) {
   return l.adjoint().dot(r);
 }
 
@@ -173,8 +217,22 @@ inline auto inner_product(const Eigen::MatrixBase<Derived>& l,
   return l.dot(r);
 }
 
+template <typename XprType1, int BlockRows1, int BlockCols1, bool InnerPanel1,
+          typename XprType2, int BlockRows2, int BlockCols2, bool InnerPanel2>
+inline auto inner_product(
+    const Eigen::Block<XprType1, BlockRows1, BlockCols1, InnerPanel1>& l,
+    const Eigen::Block<XprType2, BlockRows2, BlockCols2, InnerPanel2>& r) {
+  return l.dot(r);
+}
+
 template <typename Derived>
 inline auto norm2(const Eigen::MatrixBase<Derived>& m) {
+  return m.template lpNorm<2>();
+}
+
+template <typename XprType1, int BlockRows1, int BlockCols1, bool InnerPanel1>
+inline auto norm2(
+    const Eigen::Block<XprType1, BlockRows1, BlockCols1, InnerPanel1>& m) {
   return m.template lpNorm<2>();
 }
 

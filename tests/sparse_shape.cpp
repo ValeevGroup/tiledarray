@@ -24,9 +24,7 @@
  */
 
 #include <boost/range/combine.hpp>
-#ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
-#endif
 
 #include "TiledArray/sparse_shape.h"
 #include "sparse_shape_fixture.h"
@@ -350,12 +348,10 @@ BOOST_AUTO_TEST_CASE(block) {
             sparse_shape.block(boost::combine(lower, upper)));
         auto result3 = sparse_shape.block(boost::combine(lower, upper));
         BOOST_CHECK_EQUAL(result, result3);
-#ifdef TILEDARRAY_HAS_RANGEV3
         BOOST_REQUIRE_NO_THROW(
             sparse_shape.block(ranges::views::zip(lower, upper)));
         auto result4 = sparse_shape.block(ranges::views::zip(lower, upper));
         BOOST_CHECK_EQUAL(result, result4);
-#endif
       } else {
         // Check that block throws an exception with a bad block range
         BOOST_CHECK_TA_ASSERT(sparse_shape.block(lower, upper),
@@ -447,13 +443,11 @@ BOOST_AUTO_TEST_CASE(block_scale) {
             sparse_shape.block(boost::combine(lower, upper), factor));
         auto result3 = sparse_shape.block(boost::combine(lower, upper), factor);
         BOOST_CHECK_EQUAL(result, result3);
-#ifdef TILEDARRAY_HAS_RANGEV3
         BOOST_REQUIRE_NO_THROW(
             sparse_shape.block(ranges::views::zip(lower, upper), factor));
         auto result4 =
             sparse_shape.block(ranges::views::zip(lower, upper), factor);
         BOOST_CHECK_EQUAL(result, result4);
-#endif
 
       } else {
         // Check that block throws an exception with a bad block range
@@ -548,13 +542,11 @@ BOOST_AUTO_TEST_CASE(block_perm) {
             sparse_shape.block(boost::combine(lower, upper), perm));
         auto result3 = sparse_shape.block(boost::combine(lower, upper), perm);
         BOOST_CHECK_EQUAL(result, result3);
-#ifdef TILEDARRAY_HAS_RANGEV3
         BOOST_REQUIRE_NO_THROW(
             sparse_shape.block(ranges::views::zip(lower, upper), perm));
         auto result4 =
             sparse_shape.block(ranges::views::zip(lower, upper), perm);
         BOOST_CHECK_EQUAL(result, result4);
-#endif
 
       } else {
         // Check that block throws an exception with a bad block range
@@ -653,13 +645,11 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
         auto result3 =
             sparse_shape.block(boost::combine(lower, upper), factor, perm);
         BOOST_CHECK_EQUAL(result, result3);
-#ifdef TILEDARRAY_HAS_RANGEV3
         BOOST_REQUIRE_NO_THROW(
             sparse_shape.block(ranges::views::zip(lower, upper), factor, perm));
         auto result4 =
             sparse_shape.block(ranges::views::zip(lower, upper), factor, perm);
         BOOST_CHECK_EQUAL(result, result4);
-#endif
 
       } else {
         // Check that block throws an exception with a bad block range

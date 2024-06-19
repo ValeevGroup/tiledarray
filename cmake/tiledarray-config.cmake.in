@@ -18,6 +18,11 @@ include(CMakeFindDependencyMacro)
 
 @Boost_CONFIG_FILE_CONTENTS@
 
+if (NOT TARGET range-v3::range-v3)
+  get_filename_component(range-v3_DIR "@range-v3_CONFIG@" DIRECTORY)
+  find_dependency(range-v3 QUIET REQUIRED HINTS "${range-v3_DIR}")
+endif(NOT TARGET range-v3::range-v3)
+
 if (NOT TARGET BTAS::BTAS)
   get_filename_component(BTAS_DIR "@BTAS_CONFIG@" DIRECTORY)
   find_dependency(BTAS 1.0.0 QUIET CONFIG REQUIRED HINTS "${BTAS_DIR}")

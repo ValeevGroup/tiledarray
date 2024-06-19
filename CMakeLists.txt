@@ -169,9 +169,6 @@ option(TA_TRACE_GLOBAL_COMM_STATS "Enable tracing of communication stats of glob
 add_feature_info(TASK_TRACE_DEBUG TA_TRACE_GLOBAL_COMM_STATS "Debug communication stats of global objects (DistEval's and DIstributedStorage) TiledArray")
 set(TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE ${TA_TRACE_GLOBAL_COMM_STATS})
 
-option(TA_RANGEV3 "Enable Range-V3 library" OFF)
-add_feature_info(TA_RANGEV3 TA_RANGEV3 "Range-V3 ranges library")
-
 option(TA_TTG "Enable search/build of TTG library" OFF)
 add_feature_info(TA_TTG TA_TTG "TTG library")
 
@@ -310,6 +307,7 @@ endif()
 if(ENABLE_HIP)
   include(external/hip.cmake)
 endif()
+include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchRangeV3.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchMADWorld.cmake)
 if (TA_TTG)
   include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchTTG.cmake)
@@ -347,11 +345,7 @@ if(CCACHE)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C++")
     set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C")
 endif(CCACHE)
-# 2. range-v3
-if (TA_RANGEV3)
-  include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchRangeV3.cmake)
-endif(TA_RANGEV3)
-# 3. TTG
+# 2. TTG
 # N.B. make sure TA configures MADNESS correctly
 #if (TA_TTG)
 #  include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchTTG.cmake)
