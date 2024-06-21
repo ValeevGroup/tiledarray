@@ -29,7 +29,6 @@ before_script:
 ubuntu:
   stage: build
   tags:
-    - docker
     - ${RUNNER_TAGS}
   timeout: 3h
   image: valeevgroup/${IMAGE}
@@ -65,12 +64,12 @@ ubuntu:
         BLA_THREADS : [ "IntelMKL_THREAD_LAYER=tbb" ]
         # ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
         TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
-        RUNNER_TAGS: [ linux ]
+        RUNNER_TAGS: [ saas-linux-small-amd64 ]
       - IMAGE : [ "ubuntu:22.04", "ubuntu:20.04" ]
         CXX: [ g++, clang++-13 ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
-        RUNNER_TAGS: [ linux ]
+        RUNNER_TAGS: [ saas-linux-small-amd64 ]
       - IMAGE : [ "ubuntu:22.04", "ubuntu:20.04" ]
         CXX: [ g++ ]
         BUILD_TYPE : [ "Release", "Debug" ]
