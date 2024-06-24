@@ -634,7 +634,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Checks if this is a unique handle to the implementation object
 
   /// \return true if this is a unique handle to the implementation object
-  bool is_unique() const { return pimpl_.unique(); }
+  bool is_unique() const { return pimpl_.use_count() == 1; }
 
   /// Wait for lazy tile cleanup
 
@@ -1952,7 +1952,7 @@ DistArray<T, P> replicated(const DistArray<T, P>& a) {
 
   // Put the replicator pointer in the deferred cleanup object so it will
   // be deleted at the end of the next fence.
-  TA_ASSERT(replicator.unique());  // Required for deferred_cleanup
+  TA_ASSERT(replicator.use_count() == 1);  // Required for deferred_cleanup
   madness::detail::deferred_cleanup(world, replicator);
 
   return result;
