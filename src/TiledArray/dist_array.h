@@ -1875,7 +1875,7 @@ size_t volume(const DistArray<Tile, Policy>& array) {
 
   for (auto&& tix : array.tiles_range())
     if (!array.is_zero(tix) && array.is_local(tix))
-      array.world().taskq.add(std::move(local_vol), array.find_local(tix).get());
+      array.world().taskq.add(local_vol, array.find_local(tix).get());
 
   array.world().gop.fence();
 
