@@ -28,7 +28,7 @@ foreach (library cublas;nvToolsExt)
 endforeach()
 
 if (NOT DEFINED CUDAToolkit_ROOT)
-  get_filename_component(CUDAToolkit_ROOT "${CUDAToolkit_INCLUDE_DIR}/../" ABSOLUTE CACHE)
+  get_filename_component(CUDAToolkit_ROOT "${CUDAToolkit_LIBRARY_DIR}/../" ABSOLUTE CACHE)
 endif(NOT DEFINED CUDAToolkit_ROOT)
 
 # sanitize implicit dirs if CUDA host compiler != C++ compiler
