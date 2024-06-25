@@ -1859,8 +1859,8 @@ auto rank(const DistArray<Tile, Policy>& a) {
 
 ///
 /// \brief Get the total elements in the non-zero tiles of an array.
-///        For tensor-of-tensor tiles, the total is the sum of the elements
-///        of the inner tensors in non-zero tiles.
+///        For tensor-of-tensor tiles, the total is the sum of the number of
+///        elements in the inner tensors of non-zero tiles.
 ///
 template <typename Tile, typename Policy>
 size_t volume(const DistArray<Tile, Policy>& array) {
@@ -1868,16 +1868,19 @@ size_t volume(const DistArray<Tile, Policy>& array) {
 
   auto local_vol = [&vol](Tile const& in_tile) {
     if constexpr (detail::is_tensor_of_tensor_v<Tile>) {
-      vol += std::accumulate(
-          in_tile.data(), in_tile.data() + in_tile.total_size(), size_t{0},
-          [](auto t, auto const& inner) { return t + inner.total_size(); });
+      auto reduce_op = [](size_t& MADNESS_RESTRICT result, auto&& arg) {
+        result += arg->total_size();
+      };
+      auto join_op = [](auto& MADNESS_RESTRICT result, size_t count) {
+        result += count;
+      };
+      vol += in_tile.reduce(reduce_op, join_op, size_t{0});
     } else
       vol += in_tile.total_size();
   };
 
-  for (auto&& tix : array.tiles_range())
-    if (!array.is_zero(tix) && array.is_local(tix))
-      array.world().taskq.add(local_vol, array.find_local(tix).get());
+  for (auto&& local_tile_future : array)
+    array.world().taskq.add(local_vol, local_tile_future.get());
 
   array.world().gop.fence();
 
