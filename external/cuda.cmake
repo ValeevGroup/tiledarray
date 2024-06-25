@@ -12,6 +12,11 @@ if (DEFINED CMAKE_CUDA_FLAGS)
 else()
   set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
 endif()
+# if CMAKE_CUDA_HOST_COMPILER not set, set it to CMAKE_CXX_COMPILER, else NVCC will grab something from PATH
+if (NOT DEFINED CMAKE_CUDA_HOST_COMPILER)
+  set(CMAKE_CUDA_HOST_COMPILER "${CMAKE_CXX_COMPILER}" CACHE STRING "The host C++ compiler to be used by the CUDA compiler")
+endif()
+
 enable_language(CUDA)
 
 set(CUDA_FOUND TRUE)
