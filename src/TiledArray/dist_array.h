@@ -1868,7 +1868,9 @@ size_t volume(const DistArray<Tile, Policy>& array) {
 
   auto local_vol = [&vol](Tile const& in_tile) {
     if constexpr (detail::is_tensor_of_tensor_v<Tile>) {
-      in_tile.unary([&vol](auto const& el) { vol += el.total_size(); });
+      vol += std::accumulate(
+          in_tile.data(), in_tile.data() + in_tile.total_size(), size_t{0},
+          [](auto t, auto const& inner) { return t + inner.total_size(); });
     } else
       vol += in_tile.total_size();
   };
