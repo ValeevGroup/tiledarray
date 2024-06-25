@@ -869,9 +869,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                  first minimally contains the same number of elements as
   ///                  the tile.
   /// \throw TiledArray::Exception if the tile is already initialized.
-  template <typename Integer, typename InIter,
-            typename = std::enable_if_t<(std::is_integral_v<Integer>)&&detail::
-                                            is_input_iterator<InIter>::value>>
+  template <
+      typename Integer, typename InIter,
+      typename = std::enable_if_t<(std::is_integral_v<Integer>) &&
+                                  detail::is_input_iterator<InIter>::value>>
   typename std::enable_if<detail::is_input_iterator<InIter>::value>::type set(
       const std::initializer_list<Integer>& i, InIter first) {
     set<std::initializer_list<Integer>>(i, first);
@@ -964,10 +965,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if index \c i has the wrong rank. Strong
   ///                              throw guarantee.
   /// \throw TiledArray::Exception if tile \c i is already set.
-  template <
-      typename Index, typename Value,
-      typename = std::enable_if_t<
-          (std::is_integral_v<Index>)&&is_value_or_future_to_value_v<Value>>>
+  template <typename Index, typename Value,
+            typename = std::enable_if_t<(std::is_integral_v<Index>) &&
+                                        is_value_or_future_to_value_v<Value>>>
   void set(const std::initializer_list<Index>& i, Value&& v) {
     set<std::initializer_list<Index>>(i, std::forward<Value>(v));
   }
@@ -1459,7 +1459,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         shape() & typeid(pmap().get()).hash_code();
     int64_t count = 0;
     for (auto it = begin(); it != end(); ++it) ++count;
-    ar& count;
+    ar & count;
     for (auto it = begin(); it != end(); ++it) ar & it->get();
   }
 
@@ -1476,14 +1476,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     auto& world = TiledArray::get_default_world();
 
     std::size_t typeid_hash = 0l;
-    ar& typeid_hash;
+    ar & typeid_hash;
     if (typeid_hash != typeid(*this).hash_code())
       TA_EXCEPTION(
           "DistArray::serialize: source DistArray type != this DistArray type");
 
     ProcessID world_size = -1;
     ProcessID world_rank = -1;
-    ar& world_size& world_rank;
+    ar & world_size & world_rank;
     if (world_size != world.size() || world_rank != world.rank())
       TA_EXCEPTION(
           "DistArray::serialize: source DistArray world != this DistArray "
@@ -1491,13 +1491,13 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
     trange_type trange;
     shape_type shape;
-    ar& trange& shape;
+    ar & trange & shape;
 
     // use default pmap, ensure it's the same pmap used to serialize
     auto volume = trange.tiles_range().volume();
     auto pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
     size_t pmap_hash_code = 0;
-    ar& pmap_hash_code;
+    ar & pmap_hash_code;
     if (pmap_hash_code != typeid(pmap.get()).hash_code())
       TA_EXCEPTION(
           "DistArray::serialize: source DistArray pmap != this DistArray pmap");
@@ -1505,10 +1505,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         new impl_type(world, std::move(trange), std::move(shape), pmap));
 
     int64_t count = 0;
-    ar& count;
+    ar & count;
     for (auto it = begin(); it != end(); ++it, --count) {
       Tile tile;
-      ar& tile;
+      ar & tile;
       this->set(it.ordinal(), std::move(tile));
     }
     if (count != 0)
@@ -1541,27 +1541,27 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       // make sure source data matches the expected type
       // TODO would be nice to be able to convert the data upon reading
       std::size_t typeid_hash = 0l;
-      localar& typeid_hash;
+      localar & typeid_hash;
       if (typeid_hash != typeid(*this).hash_code())
         TA_EXCEPTION(
             "DistArray::load: source DistArray type != this DistArray type");
 
       // make sure same number of clients for every I/O node
       int num_io_clients = 0;
-      localar& num_io_clients;
+      localar & num_io_clients;
       if (num_io_clients != ar.num_io_clients())
         TA_EXCEPTION("DistArray::load: invalid parallel archive");
 
       trange_type trange;
       shape_type shape;
-      localar& trange& shape;
+      localar & trange & shape;
 
       // send trange and shape to every client
       for (ProcessID p = 0; p < world.size(); ++p) {
         if (p != me && ar.io_node(p) == me) {
           world.mpi.Send(int(1), p, tag);  // Tell client to expect the data
           madness::archive::MPIOutputArchive dest(world, p);
-          dest& trange& shape;
+          dest & trange & shape;
           dest.flush();
         }
       }
@@ -1573,13 +1573,13 @@ class DistArray : public madness::archive::ParallelSerializableObject {
           new impl_type(world, std::move(trange), std::move(shape), pmap));
 
       int64_t count = 0;
-      localar& count;
+      localar & count;
       for (size_t ord = 0; ord != volume; ++ord) {
         if (!is_zero(ord)) {
           auto owner_rank = pmap->owner(ord);
           if (ar.io_node(owner_rank) == me) {
             Tile tile;
-            localar& tile;
+            localar & tile;
             this->set(ord, std::move(tile));
             --count;
           }
@@ -1598,7 +1598,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       world.mpi.Recv(flag, p, tag);
       TA_ASSERT(flag == 1);
       madness::archive::MPIInputArchive source(world, p);
-      source& trange& shape;
+      source & trange & shape;
 
       // use default pmap
       auto volume = trange.tiles_range().volume();
@@ -1643,7 +1643,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
           }
         }
       }
-      localar& count;
+      localar & count;
       for (size_t ord = 0; ord != volume; ++ord) {
         if (!is_zero(ord)) {
           auto owner_rank = pmap()->owner(ord);
@@ -1857,12 +1857,37 @@ auto rank(const DistArray<Tile, Policy>& a) {
   return a.trange().tiles_range().rank();
 }
 
+///
+/// \brief Get the total elements in the non-zero tiles of an array.
+///        For tensor-of-tensor tiles, the total is the sum of the number of
+///        elements in the inner tensors of non-zero tiles.
+///
 template <typename Tile, typename Policy>
-size_t volume(const DistArray<Tile, Policy>& a) {
-  // this is the number of tiles
-  if (a.size() > 0)  // assuming dense shape
-    return a.trange().elements_range().volume();
-  return 0;
+size_t volume(const DistArray<Tile, Policy>& array) {
+  std::atomic<size_t> vol = 0;
+
+  auto local_vol = [&vol](Tile const& in_tile) {
+    if constexpr (detail::is_tensor_of_tensor_v<Tile>) {
+      auto reduce_op = [](size_t& MADNESS_RESTRICT result, auto&& arg) {
+        result += arg->total_size();
+      };
+      auto join_op = [](auto& MADNESS_RESTRICT result, size_t count) {
+        result += count;
+      };
+      vol += in_tile.reduce(reduce_op, join_op, size_t{0});
+    } else
+      vol += in_tile.total_size();
+  };
+
+  for (auto&& local_tile_future : array)
+    array.world().taskq.add(local_vol, local_tile_future.get());
+
+  array.world().gop.fence();
+
+  size_t vol_ = vol;
+  array.world().gop.sum(&vol_, 1);
+
+  return vol_;
 }
 
 template <typename Tile, typename Policy>
@@ -2002,13 +2027,13 @@ template <class Tile, class Policy>
 void save(const TiledArray::DistArray<Tile, Policy>& x,
           const std::string name) {
   archive::ParallelOutputArchive<> ar2(x.world(), name.c_str(), 1);
-  ar2& x;
+  ar2 & x;
 }
 
 template <class Tile, class Policy>
 void load(TiledArray::DistArray<Tile, Policy>& x, const std::string name) {
   archive::ParallelInputArchive<> ar2(x.world(), name.c_str(), 1);
-  ar2& x;
+  ar2 & x;
 }
 
 }  // namespace madness
