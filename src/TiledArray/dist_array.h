@@ -1918,27 +1918,27 @@ size_t volume(const DistArray<Tile, Policy>& array) {
 
 template <typename Tile, typename Policy>
 auto abs_min(const DistArray<Tile, Policy>& a) {
-  return a(detail::dummy_annotation(rank(a))).abs_min();
+  return a.make_tsrexpr(detail::dummy_annotation(rank(a))).abs_min();
 }
 
 template <typename Tile, typename Policy>
 auto abs_max(const DistArray<Tile, Policy>& a) {
-  return a(detail::dummy_annotation(rank(a))).abs_max();
+  return a.make_tsrexpr(detail::dummy_annotation(rank(a))).abs_max();
 }
 
 template <typename Tile, typename Policy>
 auto dot(const DistArray<Tile, Policy>& a, const DistArray<Tile, Policy>& b) {
-  return (a(detail::dummy_annotation(rank(a)))
-              .dot(b(detail::dummy_annotation(rank(b)))))
-      .get();
+  auto&& expr_a = a.make_tsrexpr(detail::dummy_annotation(rank(a)));
+  auto&& expr_b = b.make_tsrexpr(detail::dummy_annotation(rank(b)));
+  return expr_a.dot(expr_b).get();
 }
 
 template <typename Tile, typename Policy>
 auto inner_product(const DistArray<Tile, Policy>& a,
                    const DistArray<Tile, Policy>& b) {
-  return (a(detail::dummy_annotation(rank(a)))
-              .inner_product(b(detail::dummy_annotation(rank(b)))))
-      .get();
+  auto&& expr_a = a.make_tsrexpr(detail::dummy_annotation(rank(a)));
+  auto&& expr_b = b.make_tsrexpr(detail::dummy_annotation(rank(b)));
+  return expr_a.inner_product(expr_b).get();
 }
 
 template <typename Tile, typename Policy>
