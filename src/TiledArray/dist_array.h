@@ -1213,17 +1213,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     return TiledArray::expressions::TsrExpr<const DistArray>(*this, vars);
   }
 
-  ///
-  /// \brief This method creates a tensor expression but does not insist the
-  ///        annotation to be bipartite (outer and inner tensor annotations).
-  /// \param vars Annotation for the tensor expression.
-  /// \note Only use for unary evaluations when the indexing of the inner
-  ///       tensors is not significant, eg. norm computation.
-  ///
-  auto index_unchecked_tensor_expression(const std::string& vars) const {
-    return TiledArray::expressions::TsrExpr<const DistArray>(*this, vars);
-  }
-
   /// Create a tensor expression
 
   /// \param vars A string with a comma-separated list of variables
@@ -1233,6 +1222,32 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   auto operator()(const std::string& vars) {
     check_str_index(vars);
     return TiledArray::expressions::TsrExpr<DistArray>(*this, vars);
+  }
+
+  /// Create a tensor expression from an annotation (possibly free of
+  /// inner-tensor sub-annotation).
+
+  /// \brief This method creates a tensor expression but does not insist the
+  ///        annotation to be bipartite (outer and inner tensor annotations).
+  /// \param vars A string with a comma-separated list of variables.
+  /// \note Only use for unary evaluations when the indexing of the inner
+  ///       tensors is not significant, eg. norm computation.
+  ///
+  auto make_tsrexpr(const std::string& vars) {
+    return TiledArray::expressions::TsrExpr<DistArray>(*this, vars);
+  }
+
+  /// Create a tensor expression from an annotation (possibly free of
+  /// inner-tensor sub-annotation).
+
+  /// \brief This method creates a tensor expression but does not insist the
+  ///        annotation to be bipartite (outer and inner tensor annotations).
+  /// \param vars A string with a comma-separated list of variables.
+  /// \note Only use for unary evaluations when the indexing of the inner
+  ///       tensors is not significant, eg. norm computation.
+  ///
+  auto make_tsrexpr(const std::string& vars) const {
+    return TiledArray::expressions::TsrExpr<const DistArray>(*this, vars);
   }
 
   /// \deprecated use DistArray::world()
@@ -1928,8 +1943,7 @@ auto inner_product(const DistArray<Tile, Policy>& a,
 
 template <typename Tile, typename Policy>
 auto squared_norm(const DistArray<Tile, Policy>& a) {
-  return a.index_unchecked_tensor_expression(detail::dummy_annotation(rank(a)))
-      .squared_norm();
+  return a.make_tsrexpr(detail::dummy_annotation(rank(a))).squared_norm();
 }
 
 template <typename Tile, typename Policy>
