@@ -883,7 +883,7 @@ BOOST_AUTO_TEST_CASE(volume) {
   BOOST_REQUIRE(vol == TA::volume(array));
 }
 
-BOOST_AUTO_TEST_CASE(unary_reduction_tot) {
+BOOST_AUTO_TEST_CASE(reduction) {
   using Numeric = double;
   using T = Tensor<Numeric>;
   using ToT = Tensor<T>;
