@@ -1224,6 +1224,32 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     return TiledArray::expressions::TsrExpr<DistArray>(*this, vars);
   }
 
+  /// Create a tensor expression from an annotation (possibly free of
+  /// inner-tensor sub-annotation).
+
+  /// \brief This method creates a tensor expression but does not insist the
+  ///        annotation to be bipartite (outer and inner tensor annotations).
+  /// \param vars A string with a comma-separated list of variables.
+  /// \note Only use for unary evaluations when the indexing of the inner
+  ///       tensors is not significant, eg. norm computation.
+  ///
+  auto make_tsrexpr(const std::string& vars) {
+    return TiledArray::expressions::TsrExpr<DistArray>(*this, vars);
+  }
+
+  /// Create a tensor expression from an annotation (possibly free of
+  /// inner-tensor sub-annotation).
+
+  /// \brief This method creates a tensor expression but does not insist the
+  ///        annotation to be bipartite (outer and inner tensor annotations).
+  /// \param vars A string with a comma-separated list of variables.
+  /// \note Only use for unary evaluations when the indexing of the inner
+  ///       tensors is not significant, eg. norm computation.
+  ///
+  auto make_tsrexpr(const std::string& vars) const {
+    return TiledArray::expressions::TsrExpr<const DistArray>(*this, vars);
+  }
+
   /// \deprecated use DistArray::world()
   [[deprecated]] World& get_world() const { return world(); }
 
@@ -1892,32 +1918,32 @@ size_t volume(const DistArray<Tile, Policy>& array) {
 
 template <typename Tile, typename Policy>
 auto abs_min(const DistArray<Tile, Policy>& a) {
-  return a(detail::dummy_annotation(rank(a))).abs_min();
+  return a.make_tsrexpr(detail::dummy_annotation(rank(a))).abs_min();
 }
 
 template <typename Tile, typename Policy>
 auto abs_max(const DistArray<Tile, Policy>& a) {
-  return a(detail::dummy_annotation(rank(a))).abs_max();
+  return a.make_tsrexpr(detail::dummy_annotation(rank(a))).abs_max();
 }
 
 template <typename Tile, typename Policy>
 auto dot(const DistArray<Tile, Policy>& a, const DistArray<Tile, Policy>& b) {
-  return (a(detail::dummy_annotation(rank(a)))
-              .dot(b(detail::dummy_annotation(rank(b)))))
-      .get();
+  auto&& expr_a = a.make_tsrexpr(detail::dummy_annotation(rank(a)));
+  auto&& expr_b = b.make_tsrexpr(detail::dummy_annotation(rank(b)));
+  return expr_a.dot(expr_b).get();
 }
 
 template <typename Tile, typename Policy>
 auto inner_product(const DistArray<Tile, Policy>& a,
                    const DistArray<Tile, Policy>& b) {
-  return (a(detail::dummy_annotation(rank(a)))
-              .inner_product(b(detail::dummy_annotation(rank(b)))))
-      .get();
+  auto&& expr_a = a.make_tsrexpr(detail::dummy_annotation(rank(a)));
+  auto&& expr_b = b.make_tsrexpr(detail::dummy_annotation(rank(b)));
+  return expr_a.inner_product(expr_b).get();
 }
 
 template <typename Tile, typename Policy>
 auto squared_norm(const DistArray<Tile, Policy>& a) {
-  return a(detail::dummy_annotation(rank(a))).squared_norm();
+  return a.make_tsrexpr(detail::dummy_annotation(rank(a))).squared_norm();
 }
 
 template <typename Tile, typename Policy>
