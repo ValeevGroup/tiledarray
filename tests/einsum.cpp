@@ -33,12 +33,18 @@ using il_extent = std::initializer_list<size_t>;
 }  // namespace
 
 template <DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = ShapeComp::False, typename ArrayA,
+          ShapeComp ShapeCompFlag = ShapeComp::True, typename ArrayA,
           typename ArrayB,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
 bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
   auto out = TA::einsum<DeNestFlag>(annot, A, B);
   auto ref = manual_eval<DeNestFlag>(annot, A, B);
+
+  using Policy = typename decltype(out)::policy_type;
+  if constexpr (ShapeCompFlag == ShapeComp::True &&
+                std::is_same_v<Policy, TA::SparsePolicy>) {
+    out.truncate();
+  }
   return ToTArrayFixture::are_equal<ShapeCompFlag>(ref, out);
 }
 
@@ -50,7 +56,7 @@ bool check_manual_eval(std::string const& annot, ArrayA A, ArrayB B) {
 }
 
 template <typename Array, DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = ShapeComp::False>
+          ShapeComp ShapeCompFlag = ShapeComp::True>
 bool check_manual_eval(std::string const& annot, il_trange trangeA,
                        il_trange trangeB) {
   static_assert(detail::is_array_v<Array> &&
@@ -64,12 +70,12 @@ template <typename Array, ShapeComp ShapeCompFlag,
           DeNest DeNestFlag = DeNest::False>
 bool check_manual_eval(std::string const& annot, il_trange trangeA,
                        il_trange trangeB) {
-  return check_manual_eval<Array, ShapeCompFlag, DeNestFlag>(annot, trangeA,
+  return check_manual_eval<Array, DeNestFlag, ShapeCompFlag>(annot, trangeA,
                                                              trangeB);
 }
 
 template <typename ArrayA, typename ArrayB, DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = ShapeComp::False>
+          ShapeComp ShapeCompFlag = ShapeComp::True>
 bool check_manual_eval(std::string const& annot, il_trange trangeA,
                        il_trange trangeB, il_extent inner_extents) {
   static_assert(detail::is_array_v<ArrayA, ArrayB>);
@@ -96,7 +102,7 @@ bool check_manual_eval(std::string const& annot, il_trange trangeA,
 }
 
 template <typename Array, DeNest DeNestFlag = DeNest::False,
-          ShapeComp ShapeCompFlag = ShapeComp::False>
+          ShapeComp ShapeCompFlag = ShapeComp::True>
 bool check_manual_eval(std::string const& annot, il_trange trangeA,
                        il_trange trangeB, il_extent inner_extentsA,
                        il_extent inner_extentsB) {
@@ -117,7 +123,7 @@ bool check_manual_eval(std::string const& annot, il_trange trangeA,
 }
 
 BOOST_AUTO_TEST_CASE(contract) {
-  using Array = TA::Array<int>;
+  using Array = TA::DistArray<TA::Tensor<int>>;
 
   BOOST_REQUIRE(check_manual_eval<Array>("ij,j->i",
                                          {{0, 2, 4}, {0, 4, 8}},  // A's trange
@@ -136,7 +142,7 @@ BOOST_AUTO_TEST_CASE(contract) {
 }
 
 BOOST_AUTO_TEST_CASE(hadamard) {
-  using Array = TA::Array<int>;
+  using Array = TA::DistArray<TA::Tensor<int>>;
   BOOST_REQUIRE(check_manual_eval<Array>("i,i->i",  //
                                          {{0, 1}},  //
                                          {{0, 1}}   //
@@ -153,13 +159,11 @@ BOOST_AUTO_TEST_CASE(hadamard) {
 }
 
 BOOST_AUTO_TEST_CASE(general) {
-  using Array = TA::Array<int>;
+  using Array = TA::DistArray<TA::Tensor<int>>;
   BOOST_REQUIRE(check_manual_eval<Array>("ijk,kil->ijl",                  //
                                          {{0, 2}, {0, 3, 5}, {0, 2, 4}},  //
                                          {{0, 2, 4}, {0, 2}, {0, 1}}      //
                                          ));
-
-  using Array = TA::Array<int>;
   using Tensor = typename Array::value_type;
   using namespace std::string_literals;
 
@@ -232,6 +236,10 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
                                             {3},                       //
                                             {2}));
   // H+C;H+C not supported
+
+  // H;C(op)
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>(
+      "ijk;bc,j;d->kji;dcb", {{0, 1}, {0, 1}, {0, 1}}, {{0, 1}}, {2, 3}, {4}));
 }
 
 BOOST_AUTO_TEST_CASE(different_nested_ranks) {
@@ -404,6 +412,26 @@ BOOST_AUTO_TEST_CASE(corner_cases) {
                                            {{0, 3, 5}, {0, 3, 8}},          //
                                            {{0, 3, 8}, {0, 3, 5}, {0, 2}},  //
                                            {3, 9})));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayT>("bi,bi->i",        //
+                                          {{0, 2}, {0, 4}},  //
+                                          {{0, 2}, {0, 4}}));
+
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("bi;a,bi;a->i;a",  //
+                                            {{0, 2}, {0, 4}},  //
+                                            {{0, 2}, {0, 4}},  //
+                                            {3}, {3}));
+
+  BOOST_REQUIRE(
+      (check_manual_eval<ArrayToT, ArrayT>("jk;a,ijk->i;a",           //
+                                           {{0, 2}, {0, 4}},          //
+                                           {{0, 3}, {0, 2}, {0, 4}},  //
+                                           {5})));
+
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, ArrayT>("bi;a,bi->i;a",       //
+                                                     {{0, 4, 8}, {0, 4}},  //
+                                                     {{0, 4, 8}, {0, 4}},  //
+                                                     {8})));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

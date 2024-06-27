@@ -2373,6 +2373,18 @@ class Tensor {
 
   /// \return The vector norm of this tensor
   scalar_type squared_norm() const {
+
+    if constexpr (detail::is_tensor_v<T>) {
+      // If uninitialized tensor of tensor return zero.
+      // All elements of this->data() are empty tensors in this case,
+      // however, we only look at the first element.
+      // Because
+      //          - It is expensive to look at all elements.
+      //          - The state of the array having only some empty elements
+      //            is ill-defined and should never happen.
+      if (detail::empty(*data())) return 0;
+    }
+
     auto square_op = [](scalar_type& MADNESS_RESTRICT res,
                         const numeric_type arg) {
       res += TiledArray::detail::squared_norm(arg);

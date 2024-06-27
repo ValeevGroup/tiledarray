@@ -93,101 +93,202 @@ using output_archive_type = madness::archive::BinaryFstreamOutputArchive;
 
 enum class ShapeComp { True, False };
 
-template <typename TensorT,
-          std::enable_if_t<TA::detail::is_tensor_v<TensorT>, bool> = true>
-auto random_tensor(TA::Range const& rng) {
-  using NumericT = typename TensorT::numeric_type;
-  TensorT result{rng};
+namespace fixture {
+namespace {
 
-  std::generate(/*std::execution::par, */
-                result.begin(), result.end(),
-                TA::detail::MakeRandom<NumericT>::generate_value);
-  return result;
-}
+template <typename, typename = void>
+constexpr bool maps_index_to_range_v{};
 
-template <typename TensorT>
-auto random_tensor(std::initializer_list<size_t> const& extents) {
-  auto lobounds = TA::container::svector<size_t>(extents.size(), 0);
-  return random_tensor<TensorT>(TA::Range{lobounds, extents});
-}
+template <typename Invocable>
+constexpr bool maps_index_to_range_v<
+    Invocable,
+    std::enable_if_t<std::is_constructible_v<
+        TA::Range, std::invoke_result_t<Invocable, TA::Range::index_type>>>>{
+    true};
 
-//
-// note: all the inner tensors (elements of the outer tensor)
-//       have the same @c inner_rng
-//
-template <
-    typename TensorT,
-    std::enable_if_t<TA::detail::is_tensor_of_tensor_v<TensorT>, bool> = true>
-auto random_tensor(TA::Range const& outer_rng, TA::Range const& inner_rng) {
-  using InnerTensorT = typename TensorT::value_type;
-  TensorT result{outer_rng};
+using il_range = std::initializer_list<size_t>;
+using il_trange = std::initializer_list<il_range>;
 
-  std::generate(/*std::execution::par,*/
-                result.begin(), result.end(), [inner_rng]() {
-                  return random_tensor<InnerTensorT>(inner_rng);
-                });
-
-  return result;
-}
-
-template <typename TensorT>
-auto random_tensor(TA::Range const& outer_rng,
-                   std::initializer_list<size_t> const& inner_extents) {
-  TA::container::svector<size_t> lobounds(inner_extents.size(), 0);
-  return random_tensor<TensorT>(outer_rng, TA::Range(lobounds, inner_extents));
-}
+}  // namespace
 
 ///
-/// \tparam Array The type of DistArray to be generated. Cannot be cv-qualified
-/// or reference type.
-/// \tparam Args TA::Range type for inner tensor if the tile type of the result
-/// is a tensor-of-tensor.
-/// \param trange The TiledRange of the result DistArray.
-/// \param args Either exactly one TA::Range type when the tile type of Array is
-/// tensor-of-tensor or nothing.
-/// \return Returns a DistArray of type Array whose elements are randomly
-/// generated.
-/// @note:
-/// - Although DistArrays with Sparse policy can be generated all of their
-///   tiles are initialized with random values -- technically the returned value
-///   is dense.
-/// - In case of arrays with tensor-of-tensor tiles, all the inner tensors have
-///   the same rank and the same extent of corresponding modes.
+/// \tparam T Non cv-qualified TA::Tensor<numeric_type,...> type.
+/// \tparam Rng TA::Range should be constructible from Rng type.
+///             Eg. TA::Range, std::initializer_list<size_t>.
+/// \param rng The range of the result tensor.
+///            TA::Range(rng) will be called explicitly.
+/// \return A TA::Tensor of a numeric type with random elements.
 ///
-template <
-    typename Array, typename... Args,
-    typename =
-        std::void_t<typename Array::value_type, typename Array::policy_type>,
-    std::enable_if_t<TA::detail::is_nested_tensor_v<typename Array::value_type>,
-                     bool> = true>
-auto random_array(TA::TiledRange const& trange, Args const&... args) {
-  static_assert(
-      (sizeof...(Args) == 0 &&
-       TA::detail::is_tensor_v<typename Array::value_type>) ||
-      (sizeof...(Args) == 1) &&
-          (TA::detail::is_tensor_of_tensor_v<typename Array::value_type>));
+template <typename T, typename Rng,
+          typename = std::enable_if_t<detail::is_tensor_v<T>>,
+          typename = std::enable_if_t<std::is_constructible_v<TA::Range, Rng>>>
+auto random_tensor(Rng rng) {
+  using numeric_type = typename T::numeric_type;
 
-  using TensorT = typename Array::value_type;
-  using PolicyT = typename Array::policy_type;
-
-  auto make_tile_meta = [](auto&&... args) {
-    return [=](TensorT& tile, TA::Range const& rng) {
-      tile = random_tensor<TensorT>(rng, args...);
-      if constexpr (std::is_same_v<TA::SparsePolicy, PolicyT>)
-        return tile.norm();
-    };
+  auto gen = [](auto&&) {
+    return detail::MakeRandom<numeric_type>::generate_value();
   };
 
-  return TA::make_array<Array>(TA::get_default_world(), trange,
-                               make_tile_meta(args...));
+  return T(TA::Range(rng), gen);
 }
 
-template <typename Array, typename... Args>
-auto random_array(std::initializer_list<std::initializer_list<size_t>> trange,
-                  Args&&... args) {
-  return random_array<Array>(TA::TiledRange(trange),
-                             std::forward<Args>(args)...);
+///
+/// \tparam T Non cv-qualified
+///           TA::Tensor<TA::Tensor<numeric_type,...>,...> type.
+/// \tparam RngO TA::Range should be constructible from RngO type.
+///             Eg. TA::Range, std::initializer_list<size_t>.
+/// \tparam RngI TA::Range should be constructible from RngI type.
+///             Eg. TA::Range, std::initializer_list<size_t>.
+/// \param rngo The range of the result tensor (ie the outer tensor).
+///             TA::Range(rngo) will be called explicitly.
+/// \param rngi The range of the inner tensors. Note that ALL inner tensors
+///             will have an EQUAL range. TA::Range(rngi) will be
+///             called explicitly.
+/// \return A TA::Tensor of TA::Tensor<numeric_type,...> with random
+///         numeric_type elements.
+///
+template <
+    typename T, typename RngO, typename RngI,                               //
+    typename = std::enable_if_t<detail::is_tensor_of_tensor_v<T>>,          //
+    typename = std::enable_if_t<std::is_constructible_v<TA::Range, RngO>>,  //
+    typename = std::enable_if_t<std::is_constructible_v<TA::Range, RngI>>>
+auto random_tensor(RngO rngo, RngI rngi) {
+  using numeric_type = typename T::numeric_type;
+  using Inner = typename T::value_type;
+
+  auto gen_inner = [](auto&&) {
+    return detail::MakeRandom<numeric_type>::generate_value();
+  };
+
+  auto gen_outer = [gen_inner, rngi](auto&&) {
+    return Inner(TA::Range(rngi), gen_inner);
+  };
+
+  return T(TA::Range(rngo), gen_outer);
 }
+
+///
+/// \tparam T Non cv-qualified
+///           TA::Tensor<TA::Tensor<numeric_type,...>,...> type.
+/// \tparam RngO TA::Range should be constructible from RngO type.
+///             Eg. TA::Range, std::initializer_list<size_t>.
+/// \tparam IxMap An invocable type that maps the index of an element in the
+///               outer tensor to a value, allowing the construction of
+///               TA::Range from that value.
+/// \param rngo The range of the result tensor (ie the outer tensor).
+///             TA::Range(rngo) will be called explicitly.
+/// \param ixmap An invocable that maps the index of an element in the
+///              outer tensor to a value, allowing the construction of
+///              TA::Range from that value.
+/// \return A TA::Tensor of TA::Tensor<numeric_type,...> with random
+///         numeric_type elements.
+///
+template <
+    typename T, typename RngO, typename IxMap,                              //
+    typename = std::enable_if_t<detail::is_tensor_of_tensor_v<T>>,          //
+    typename = std::enable_if_t<std::is_constructible_v<TA::Range, RngO>>,  //
+    std::enable_if_t<maps_index_to_range_v<IxMap>, bool> = true>
+auto random_tensor(RngO rngo, IxMap ixmap) {
+  using numeric_type = typename T::numeric_type;
+
+  auto gen_inner = [](auto&&) {
+    return TA::detail::MakeRandom<numeric_type>::generate_value();
+  };
+
+  auto gen_outer = [gen_inner, ixmap](auto const& oix) {
+    auto inner_rng = TA::Range(ixmap(oix));
+    return typename T::value_type(inner_rng, gen_inner);
+  };
+
+  return T(TA::Range(rngo), gen_outer);
+}
+
+///
+/// \tparam Array Non cv-qualified TA::DistArray type that has non-nested
+///               tile type. Eg. TA::DistArray<TA::Tensor<double>>
+/// \tparam Rng TA::TiledRange should be constructible from Rng type.
+/// \param rng The TA::TiledRange of the result TA::DistArray.
+/// \return A TA::DistArray of non-nested tile type with random elements.
+///
+template <
+    typename Array, typename Rng = il_trange,
+    typename = std::enable_if_t<detail::nested_rank<Array> == 1>,
+    typename = std::enable_if_t<std::is_constructible_v<TA::TiledRange, Rng>>>
+auto random_array(Rng rng) {
+  using T = typename Array::value_type;
+
+  auto make_tile = [](auto& tile, auto const& rng) {
+    tile = random_tensor<T>(rng);
+    return tile.norm();
+  };
+
+  return TA::make_array<Array>(TA::get_default_world(), TA::TiledRange(rng),
+                               make_tile);
+}
+
+///
+/// \tparam Array Non cv-qualified TA::DistArray type that has a nested
+///               tile type.
+///         Eg. TA::DistArray<TA::Tensor<TA::Tensor<double>>>
+/// \tparam RngO TA::TiledRange should be constructible form RngO type.
+/// \tparam RngI TA::Range should be constructible from RngI type.
+/// \param rngo The TA::TiledRange of the result TA::DistArray.
+/// \param rngi The range of the inner tensors. Note that ALL inner tensors
+///             will have an EQUAL range. TA::Range(rngi) will be
+///             called explicitly.
+/// \return A TA::DistArray of nested tile type with random elements.
+///
+template <
+    typename Array, typename RngO = il_trange, typename RngI = il_range,
+    typename = std::enable_if_t<detail::nested_rank<Array> == 2>,
+    typename = std::enable_if_t<std::is_constructible_v<TA::TiledRange, RngO>>,
+    typename = std::enable_if_t<std::is_constructible_v<TA::Range, RngI>>>
+auto random_array(RngO rngo, RngI rngi) {
+  using T = typename Array::value_type;
+
+  auto make_tile = [rngi](auto& tile, auto const& rng) {
+    tile = random_tensor<T>(rng, rngi);
+    return tile.norm();
+  };
+
+  return TA::make_array<Array>(TA::get_default_world(), TA::TiledRange(rngo),
+                               make_tile);
+}
+
+///
+/// \tparam Array Non cv-qualified TA::DistArray type that has a nested
+///               tile type.
+///         Eg. TA::DistArray<TA::Tensor<TA::Tensor<double>>>
+/// \tparam RngO TA::TiledRange should be constructible form RngO type.
+/// \tparam IxMap An invocable type that maps the index of an element in the
+///               outer tensor to a value, allowing the construction of
+///               TA::Range from that value.
+/// \param rngo The TA::TiledRange of the result TA::DistArray.
+/// \param ixmap An invocable that maps the index of an element in the
+///              outer tensor to a value, allowing the construction of
+///              TA::Range from that value.
+/// \return A TA::DistArray of nested tile type with random elements.
+template <
+    typename Array, typename RngO, typename IxMap,
+    typename = std::enable_if_t<detail::nested_rank<Array> == 2>,
+    typename = std::enable_if_t<std::is_constructible_v<TA::TiledRange, RngO>>,
+    std::enable_if_t<maps_index_to_range_v<IxMap>, bool> = true>
+auto random_array(RngO rngo, IxMap ixmap) {
+  using T = typename Array::value_type;
+
+  auto make_tile = [ixmap](auto& tile, auto const& rng) {
+    tile = random_tensor<T>(rng, ixmap);
+    return tile.norm();
+  };
+
+  return TA::make_array<Array>(TA::get_default_world(), TA::TiledRange(rngo),
+                               make_tile);
+}
+
+}  // namespace fixture
+
+using fixture::random_array;
+using fixture::random_tensor;
 
 ///
 /// Succinctly call TA::detail::tensor_contract
@@ -229,50 +330,6 @@ void apply_partial_perm(T& to, T const& from, PartialPerm const& p) {
   }
 }
 
-///
-/// Example: To represent A("ik;ac") * B("kj;cb") -> C("ij;ab"),
-/// construct with std::string("ij;ac,kj;cb->ij;ab");
-/// outer_indices;inner_indices annotates a single object (DistArray, Tensor
-/// etc.) A_indices,B_indices annotates first(A) and second(B) object
-/// '->' separates argument objects' annotation from the result's annotation
-///
-class OuterInnerIndices {
-  // array[0] annotes A
-  // array[1] annotes B
-  // array[2] annotes C
-  std::array<std::string, 3> outer_, inner_;
-
- public:
-  OuterInnerIndices(std::string const& annot) {
-    using ::Einsum::string::split2;
-
-    constexpr size_t A = 0;
-    constexpr size_t B = 1;
-    constexpr size_t C = 2;
-
-    auto [ab, aC] = split2(annot, "->");
-    std::tie(outer_[C], inner_[C]) = split2(aC, ";");
-
-    auto [aA, aB] = split2(ab, ",");
-
-    std::tie(outer_[A], inner_[A]) = split2(aA, ";");
-    std::tie(outer_[B], inner_[B]) = split2(aB, ";");
-  }
-
-  template <int N>
-  OuterInnerIndices(const char (&s)[N]) : OuterInnerIndices{std::string(s)} {}
-
-  [[nodiscard]] auto const& outer() const noexcept { return outer_; }
-  [[nodiscard]] auto const& inner() const noexcept { return inner_; }
-
-  [[nodiscard]] auto const& outerA() const noexcept { return outer_[0]; }
-  [[nodiscard]] auto const& outerB() const noexcept { return outer_[1]; }
-  [[nodiscard]] auto const& outerC() const noexcept { return outer_[2]; }
-  [[nodiscard]] auto const& innerA() const noexcept { return inner_[0]; }
-  [[nodiscard]] auto const& innerB() const noexcept { return inner_[1]; }
-  [[nodiscard]] auto const& innerC() const noexcept { return inner_[2]; }
-};
-
 enum struct TensorProduct { General, Dot, Invalid };
 
 struct ProductSetup {
@@ -294,7 +351,7 @@ struct ProductSetup {
       rank_E,  //
       rank_I;
 
-  // ProductSetup() = default;
+  ProductSetup() = default;
 
   template <typename T,
             typename = std::enable_if_t<TA::detail::is_annotation_v<T>>>
@@ -342,6 +399,71 @@ struct ProductSetup {
   }
 };
 
+///
+/// Example: To represent A("ik;ac") * B("kj;cb") -> C("ij;ab")
+///
+/// Method 1:
+/// ---
+/// construct with a single argument std::string("ij;ac,kj;cb->ij;ab");
+/// - the substring "<outer_indices>;<inner_indices>"
+///   annotates a single object (DistArray, Tensor etc.)
+/// - "<A_indices>,<B_indices>" implies two distinct annotations (for A and B)
+///   separated by a comma
+/// - the right hand side of '->' annotates the result.
+/// - Note: the only use of comma is to separate A's and B's annotations.
+///
+/// Method 2:
+/// ---
+/// construct with three arguments:
+///   std::string("i,k;a,c"), std::string("k,j;c,b"), std::string("i,j;a,b")
+///   - Note the use of comma.
+///
+class OuterInnerSetup {
+  ProductSetup outer_;
+  ProductSetup inner_;
+
+ public:
+  OuterInnerSetup(std::string const& annot) {
+    using ::Einsum::string::split2;
+    using Ix = ::Einsum::index::Index<char>;
+
+    enum { A, B, C };
+    std::array<std::string, 3> O;
+    std::array<std::string, 3> I;
+
+    auto [ab, aC] = split2(annot, "->");
+    std::tie(O[C], I[C]) = split2(aC, ";");
+
+    auto [aA, aB] = split2(ab, ",");
+    std::tie(O[A], I[A]) = split2(aA, ";");
+    std::tie(O[B], I[B]) = split2(aB, ";");
+    outer_ = ProductSetup(Ix(O[A]), Ix(O[B]), Ix(O[C]));
+    inner_ = ProductSetup(Ix(I[A]), Ix(I[B]), Ix(I[C]));
+  }
+
+  template <int N>
+  OuterInnerSetup(const char (&s)[N]) : OuterInnerSetup{std::string(s)} {}
+
+  OuterInnerSetup(std::string const& annotA, std::string const& annotB,
+                  std::string const& annotC) {
+    using ::Einsum::string::split2;
+    using Ix = ::Einsum::index::Index<std::string>;
+
+    enum { A, B, C };
+    std::array<std::string, 3> O;
+    std::array<std::string, 3> I;
+    std::tie(O[A], I[A]) = split2(annotA, ";");
+    std::tie(O[B], I[B]) = split2(annotB, ";");
+    std::tie(O[C], I[C]) = split2(annotC, ";");
+    outer_ = ProductSetup(Ix(O[A]), Ix(O[B]), Ix(O[C]));
+    inner_ = ProductSetup(Ix(I[A]), Ix(I[B]), Ix(I[C]));
+  }
+
+  [[nodiscard]] auto const& outer() const noexcept { return outer_; }
+
+  [[nodiscard]] auto const& inner() const noexcept { return inner_; }
+};
+
 namespace {
 
 auto make_perm(PartialPerm const& pp) {
@@ -382,6 +504,9 @@ Result general_product(TensorA const& A, TensorB const& B,
                        ProductSetup const& setup, Setups const&... args) {
   using TA::detail::max_nested_rank;
   using TA::detail::nested_rank;
+
+  // empty tensors
+  if (A.empty() || B.empty()) return Result{};
 
   static_assert(std::is_same_v<typename TensorA::numeric_type,
                                typename TensorB::numeric_type>);
@@ -481,12 +606,22 @@ Result general_product(TensorA const& A, TensorB const& B,
         }
       } else {
         typename Result::value_type temp{};
-        for (auto ix_I : rng_I) {
+        for (auto const& ix_I : rng_I) {
           apply_partial_perm(ix_A, ix_I, setup.I_to_A);
           apply_partial_perm(ix_B, ix_I, setup.I_to_B);
-          if constexpr (is_tot)
-            temp += general_product<typename Result::value_type>(
+          if constexpr (is_tot) {
+            auto temp_ = general_product<typename Result::value_type>(
                 A(ix_A), B(ix_B), args...);
+            if constexpr (TA::detail::is_nested_tensor_v<
+                              typename Result::value_type>) {
+              if (temp.empty())
+                temp = std::move(temp_);
+              else
+                temp += temp_;
+            } else {
+              temp += temp_;
+            }
+          }
           else {
             TA_ASSERT(!(ix_A.empty() || ix_B.empty()));
             temp += A(ix_A) * B(ix_B);
@@ -527,26 +662,14 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
 
   TA::TiledRange result_trange;
   {
-    auto const rank = result_tensor.range().rank();
-    auto const result_range = result_tensor.range();
-
-    TA::container::svector<TA::container::svector<size_t>> tr1s(rank, {0});
-
-    TA::container::svector<size_t> const ix_hi(result_range.upbound());
-    for (auto d = 0; d < rank; ++d) {
-      TA::container::svector<size_t> ix(result_range.lobound());
-      for (auto& i = ix[d]; i < ix_hi[d]; ++i) {
-        auto const& elem_tensor = result_tensor(ix);
-        auto& tr1 = tr1s[d];
-        tr1.emplace_back(tr1.back() + elem_tensor.range().extent(d));
-      }
+    TA::container::svector<TA::TiledRange1> tr1s(setup.rank_C);
+    for (auto [t, f] : setup.C_to_A) {
+      tr1s.at(t) = A.trange().at(f);
     }
-
-    TA::container::svector<TA::TiledRange1> tr1s_explicit;
-    tr1s_explicit.reserve(tr1s.size());
-    for (auto const& v : tr1s) tr1s_explicit.emplace_back(v.begin(), v.end());
-
-    result_trange = TA::TiledRange(tr1s_explicit);
+    for (auto [t, f] : setup.C_to_B) {
+      tr1s.at(t) = B.trange().at(f);
+    }
+    result_trange = TiledRange(tr1s);
   }
 
   TA::DistArray<TileC, TA::DensePolicy> C(world, result_trange);
@@ -567,30 +690,39 @@ auto general_product(TA::DistArray<TileA, TA::DensePolicy> A,
   return general_product<TileC>(A, B, args...);
 }
 
+template <typename TileA, typename TileB, typename... Setups>
+auto general_product(TA::DistArray<TileA, TA::SparsePolicy> A,
+                     TA::DistArray<TileB, TA::SparsePolicy> B,
+                     Setups const&... args) {
+  auto A_dense = to_dense(A);
+  auto B_dense = to_dense(B);
+  return TA::to_sparse(general_product(A_dense, B_dense, args...));
+}
+
 template <DeNest DeNestFlag = DeNest::False, typename ArrayA, typename ArrayB,
           typename = std::enable_if_t<TA::detail::is_array_v<ArrayA, ArrayB>>>
-auto manual_eval(OuterInnerIndices const& oixs, ArrayA A, ArrayB B) {
+auto manual_eval(OuterInnerSetup const& setups, ArrayA A, ArrayB B) {
   constexpr auto mnr = TA::detail::max_nested_rank<ArrayA, ArrayB>;
   static_assert(mnr == 1 || mnr == 2);
 
-  auto const outer_setup = ProductSetup(oixs.outer());
+  auto const& outer = setups.outer();
+  auto const& inner = setups.inner();
 
-  TA_ASSERT(outer_setup.valid());
+  TA_ASSERT(outer.valid());
 
   if constexpr (mnr == 2) {
-    auto const inner_setup = ProductSetup(oixs.inner());
-    TA_ASSERT(inner_setup.valid());
+    TA_ASSERT(inner.valid());
     if constexpr (DeNestFlag == DeNest::True) {
       // reduced nested rank in result
       using TA::detail::nested_rank;
       static_assert(nested_rank<ArrayA> == nested_rank<ArrayB>);
-      TA_ASSERT(inner_setup.rank_C == 0);
+      TA_ASSERT(inner.rank_C == 0);
       using TileC = typename ArrayA::value_type::value_type;
-      return general_product<TileC>(A, B, outer_setup, inner_setup);
+      return general_product<TileC>(A, B, outer, inner);
     } else
-      return general_product(A, B, outer_setup, inner_setup);
+      return general_product(A, B, outer, inner);
   } else {
-    return general_product(A, B, outer_setup);
+    return general_product(A, B, outer);
   }
 }
 
