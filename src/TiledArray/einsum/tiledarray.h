@@ -525,9 +525,13 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     // contracted indices
     auto i = (a & b) - h;
 
-    // no Hadamard indices => standard contraction (or even outer product)
-    // same a, b, and c => pure Hadamard
-    if (!h || (h && !(i || e))) {
+    //
+    //  - no Hadamard indices for non-nested DistArray imply evaluation can be
+    //    delegated to expression layer.
+    //  - only Hadamard indices for nested and non-nested DistArray imply
+    //    evaluation can be delegated to expression layer.
+    //
+    if ((!IsArrayToT<ArrayC> && !h) || (h && !(i || e))) {
       ArrayC C;
       C(std::string(c) + inner.c) = A * B;
       return C;
