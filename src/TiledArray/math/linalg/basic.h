@@ -79,14 +79,14 @@ template <typename Tile, typename Policy>
 inline void vec_multiply(DistArray<Tile, Policy>& a1,
                          const DistArray<Tile, Policy>& a2) {
   auto vars = TiledArray::detail::dummy_annotation(rank(a1));
-  a1(vars) = a1(vars) * a2(vars);
+  a1.make_tsrexpr(vars) = a1.make_tsrexpr(vars) * a2.make_tsrexpr(vars);
 }
 
 template <typename Tile, typename Policy, typename S>
 inline void scale(DistArray<Tile, Policy>& a, S scaling_factor) {
   using numeric_type = typename DistArray<Tile, Policy>::numeric_type;
   auto vars = TiledArray::detail::dummy_annotation(rank(a));
-  a(vars) = numeric_type(scaling_factor) * a(vars);
+  a.make_tsrexpr(vars) = numeric_type(scaling_factor) * a.make_tsrexpr(vars);
 }
 
 template <typename Tile, typename Policy>
@@ -99,7 +99,8 @@ inline void axpy(DistArray<Tile, Policy>& y, S alpha,
                  const DistArray<Tile, Policy>& x) {
   using numeric_type = typename DistArray<Tile, Policy>::numeric_type;
   auto vars = TiledArray::detail::dummy_annotation(rank(y));
-  y(vars) = y(vars) + numeric_type(alpha) * x(vars);
+  y.make_tsrexpr(vars) =
+      y.make_tsrexpr(vars) + numeric_type(alpha) * x.make_tsrexpr(vars);
 }
 
 /// selector for concat
