@@ -92,8 +92,9 @@ DistArray<Tile, Policy> concat(
   DistArray<Tile, Policy> result(*target_world, tr);
   const auto annot = detail::dummy_annotation(r);
   for (auto i = 0ul; i != arrays.size(); ++i) {
-    result(annot).block(tile_begin_end[i].first, tile_begin_end[i].second) =
-        arrays[i](annot);
+    result.make_tsrexpr(annot).block(tile_begin_end[i].first,
+                                     tile_begin_end[i].second) =
+        arrays[i].make_tsrexpr(annot);
   }
   result.world().gop.fence();
 
