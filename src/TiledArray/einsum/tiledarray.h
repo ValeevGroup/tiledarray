@@ -539,8 +539,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     //
     if ((h && !(i || e))                      // pure Hadamard
         || (IsArrayToT<ArrayC> && !(i || h))  // ToT result from outer-product
-        || (IsArrayT<ArrayC> && !h)  // T from general product without Hadamard
-    ) {
+        || (IsArrayT<ArrayC> && !h))  // T from general product without Hadamard
+    {
       ArrayC C;
       C(std::string(c) + inner.c) = A * B;
       return C;
