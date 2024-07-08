@@ -526,12 +526,21 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     auto i = (a & b) - h;
 
     //
-    //  - no Hadamard indices for non-nested DistArray imply evaluation can be
-    //    delegated to expression layer.
-    //  - only Hadamard indices for nested and non-nested DistArray imply
-    //    evaluation can be delegated to expression layer.
+    // *) Pure Hadamard indices: (h && !(i || e)) is true implies
+    //   the evaluation can be delegated to the expression layer
+    //   for distarrays of both nested and non-nested tensor tiles.
+    // *) If no Hadamard indices are present (!h) the evaluation
+    //    can be delegated to the expression _only_ for distarrays with
+    //    non-nested tensor tiles.
+    //    This is because even if Hadamard indices are not present, a contracted
+    //    index might be present pertinent to the outer tensor in case of a
+    //    nested-tile distarray, which is especially handled within this
+    //    function because expression layer cannot handle that yet.
     //
-    if ((!IsArrayToT<ArrayC> && !h) || (h && !(i || e))) {
+    if ((h && !(i || e))                      // pure Hadamard
+        || (IsArrayToT<ArrayC> && !(i || h))  // ToT result from outer-product
+        || (IsArrayT<ArrayC> && !h)  // T from general product without Hadamard
+    ) {
       ArrayC C;
       C(std::string(c) + inner.c) = A * B;
       return C;

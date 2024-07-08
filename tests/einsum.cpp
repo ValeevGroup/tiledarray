@@ -433,6 +433,12 @@ BOOST_AUTO_TEST_CASE(corner_cases) {
                                                      {{0, 4, 8}, {0, 4}},  //
                                                      {8})));
 
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("il;bae,il;e->li;ab",  //
+                                            {{0, 2}, {0, 4}},      //
+                                            {{0, 2}, {0, 4}},      //
+                                            {4, 2, 3},             //
+                                            {3}));
+
   BOOST_REQUIRE(
       check_manual_eval<ArrayToT>("ijkl;abecdf,k;e->ijl;bafdc",      //
                                   {{0, 2}, {0, 3}, {0, 4}, {0, 5}},  //
