@@ -34,17 +34,30 @@ bool to_bool(const char* str) {
 // if n = average tile size
 // this will produce tiles of these sizes: n+1, n-1, n+2, n-2, etc.
 // the last tile absorbs the remainder
-std::vector<unsigned int> make_tiling(unsigned int range_size,
-                                      unsigned int ntiles) {
-  const int average_tile_size = range_size / ntiles;
-  std::vector<unsigned int> result(ntiles + 1);
-  result[0] = 0;
-  for (long t = 0; t != ntiles - 1; ++t) {
-    result[t + 1] = result[t] + average_tile_size +
-                    std::max(static_cast<int>((t % 2 == 0) ? (t + 1) : (-t)),
-                             1 - average_tile_size);
+std::vector<unsigned int> make_nonuniform_tiling(unsigned int range_size,
+                                                 int tile_size) {
+  std::vector<unsigned int> result;
+  result.push_back(0);
+  for (long t = 0; true; ++t) {
+    unsigned int next_tile_boundary =
+        result.back() + tile_size +
+        std::max(static_cast<int>((t % 2 == 0) ? (t + 1) : (-t)),
+                 1 - tile_size);
+    if (next_tile_boundary >= range_size) break;
+    result.push_back(next_tile_boundary);
   }
-  result[ntiles] = range_size;
+  if (result.back() != range_size) result.push_back(range_size);
+  return result;
+}
+
+// makes tiles as uniform as possible
+std::vector<unsigned int> make_uniform_tiling(unsigned int range_size,
+                                              int tile_size) {
+  std::vector<unsigned int> result;
+  for (unsigned int t = 0; t <= range_size; t += tile_size) {
+    result.push_back(t);
+  }
+  if (result.back() != range_size) result.push_back(range_size);
   return result;
 }
 
@@ -72,40 +85,33 @@ int main(int argc, char** argv) {
 
     // Get command line arguments
     if (argc < 5) {
-      std::cout << "Mocks t2(i,j,a,b) * v(a,b,c,d) term in CC amplitude eqs"
-                << std::endl
-                << "Usage: " << argv[0]
-                << " occ_size occ_nblocks uocc_size "
-                   "uocc_nblocks [repetitions] [use_complex]"
-                << std::endl;
+      std::cout
+          << "Mocks t2(i,j,a,b) * v(a,b,c,d) term in CC amplitude eqs"
+          << std::endl
+          << "Usage: " << argv[0]
+          << " occ_size occ_tilesize uocc_size "
+             "uocc_tilesize [repetitions] [scalar=double] [uniform_tiling=1]"
+          << std::endl;
       return 0;
     }
     const long n_occ = atol(argv[1]);
-    const long nblk_occ = atol(argv[2]);
+    const long b_occ = atol(argv[2]);
     const long n_uocc = atol(argv[3]);
-    const long nblk_uocc = atol(argv[4]);
+    const long b_uocc = atol(argv[4]);
     if (n_occ <= 0) {
       std::cerr << "Error: occ_size must be greater than zero.\n";
       return 1;
     }
-    if (nblk_occ <= 0) {
-      std::cerr << "Error: occ_nblocks must be greater than zero.\n";
+    if (b_occ <= 0) {
+      std::cerr << "Error: occ_tilesize must be greater than zero.\n";
       return 1;
     }
     if (n_uocc <= 0) {
       std::cerr << "Error: uocc_size must be greater than zero.\n";
       return 1;
     }
-    if (nblk_uocc <= 0) {
-      std::cerr << "Error: uocc_nblocks must be greater than zero.\n";
-      return 1;
-    }
-    if ((n_occ < nblk_occ) != 0ul) {
-      std::cerr << "Error: occ_size must be greater than occ_nblocks.\n";
-      return 1;
-    }
-    if ((n_uocc < nblk_uocc) != 0ul) {
-      std::cerr << "Error: uocc_size must be greater than uocc_nblocks.\n";
+    if (b_uocc <= 0) {
+      std::cerr << "Error: uocc_tilesize must be greater than zero.\n";
       return 1;
     }
     const long repeat = (argc >= 6 ? atol(argv[5]) : 5);
@@ -113,29 +119,59 @@ int main(int argc, char** argv) {
       std::cerr << "Error: number of repetitions must be greater than zero.\n";
       return 1;
     }
-    const bool use_complex = (argc >= 7 ? to_bool(argv[6]) : false);
+
+    const std::string scalar_type_str = (argc >= 7 ? argv[6] : "double");
+    if (scalar_type_str != "double" && scalar_type_str != "float" &&
+        scalar_type_str != "zdouble" && scalar_type_str != "zfloat") {
+      std::cerr << "Error: invalid real type " << scalar_type_str << ".\n";
+      std::cerr << "       valid real types are \"double\", \"float\", "
+                   "\"zdouble\", and \"zfloat\".\n";
+      return 1;
+    }
+
+    const bool uniform_tiling = (argc >= 8 ? std::atol(argv[7]) : true);
 
     if (world.rank() == 0)
       std::cout << "TiledArray: CC T2.V term test..."
                 << "\nGit description: " << TiledArray::git_description()
                 << "\nNumber of nodes     = " << world.size()
                 << "\nocc size            = " << n_occ
-                << "\nocc nblocks         = " << nblk_occ
+                << "\nocc tilesize        = " << b_occ
                 << "\nuocc size           = " << n_uocc
-                << "\nuocc nblocks        = " << nblk_uocc
-                << "\nComplex             = "
-                << (use_complex ? "true" : "false") << "\n";
+                << "\nuocc tilesize       = " << b_uocc
+                << "\nscalar type         = " << scalar_type_str
+                << "\nuniform tiling      = "
+                << (uniform_tiling ? "true" : "false") << std::endl;
 
     // Construct TiledRange1's
-    std::vector<unsigned int> tiling_occ = make_tiling(n_occ, nblk_occ);
-    std::vector<unsigned int> tiling_uocc = make_tiling(n_uocc, nblk_uocc);
+    std::vector<unsigned int> tiling_occ =
+        uniform_tiling ? make_uniform_tiling(n_occ, b_occ)
+                       : make_nonuniform_tiling(n_occ, b_occ);
+    std::vector<unsigned int> tiling_uocc =
+        uniform_tiling ? make_uniform_tiling(n_uocc, b_uocc)
+                       : make_nonuniform_tiling(n_uocc, b_uocc);
     auto trange_occ = TA::TiledRange1(tiling_occ.begin(), tiling_occ.end());
     auto trange_uocc = TA::TiledRange1(tiling_uocc.begin(), tiling_uocc.end());
+    auto print_tile_sizes = [](const auto& tiling) {
+      auto b = tiling.begin();
+      for (auto current = b + 1; current != tiling.end(); ++current) {
+        std::cout << *current - *(current - 1) << " ";
+      }
+      std::cout << std::endl;
+    };
+    std::cout << " occ tile sizes: ";
+    print_tile_sizes(tiling_occ);
+    std::cout << "uocc tile sizes: ";
+    print_tile_sizes(tiling_uocc);
 
-    if (use_complex)
-      cc_abcd<std::complex<double>>(world, trange_occ, trange_uocc, repeat);
-    else
+    if (scalar_type_str == "double")
       cc_abcd<double>(world, trange_occ, trange_uocc, repeat);
+    else if (scalar_type_str == "zdouble")
+      cc_abcd<std::complex<double>>(world, trange_occ, trange_uocc, repeat);
+    else if (scalar_type_str == "float")
+      cc_abcd<float>(world, trange_occ, trange_uocc, repeat);
+    else if (scalar_type_str == "zfloat")
+      cc_abcd<std::complex<float>>(world, trange_occ, trange_uocc, repeat);
 
     TA::finalize();
 
@@ -201,11 +237,11 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   for (int i = 0; i < repeat; ++i) {
     auto tp_start = TiledArray::now();
     // this is how the user would express this contraction
-    if (false) t2_v("i,j,a,b") = t2("i,j,c,d") * v("a,b,c,d");
+    if (true) t2_v("i,j,a,b") = t2("i,j,c,d") * v("a,b,c,d");
 
     // this demonstrates to the PaRSEC team what happens under the hood of the
     // expression above
-    if (true) {
+    if (false) {
       tensor_contract_444(t2_v, t2, v);
 
       // to validate replace: false -> true
