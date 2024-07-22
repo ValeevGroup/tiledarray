@@ -148,10 +148,11 @@ int main(int argc, char** argv) {
       if (do_memtrace) {
         world.gop.fence();
         madness::print_meminfo(world.rank(), str);
+      } else {
+        world.gop.fence();
       }
 #ifdef TA_TENSOR_MEM_PROFILE
       {
-        world.gop.fence();
         std::cout
             << str << ": TA::Tensor allocated "
             << TA::hostEnv::instance()->host_allocator_getActualHighWatermark()

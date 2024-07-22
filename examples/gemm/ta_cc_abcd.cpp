@@ -211,8 +211,8 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   const double flops_per_fma =
       (complex_T ? 8 : 2);  // 1 multiply takes 6/1 flops for complex/real
                             // 1 add takes 2/1 flops for complex/real
-  const double gflops_per_call = flops_per_fma * std::pow(n_occ, 2) *
-                                 std::pow(n_uocc, 4) / std::pow(1024., 3);
+  const double gflops_per_call =
+      flops_per_fma * std::pow(n_occ, 2) * std::pow(n_uocc, 4) / 1e9;
 
   // Construct tensors
   TA::TArrayD t2(world, trange_oovv);
