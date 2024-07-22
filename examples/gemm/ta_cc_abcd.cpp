@@ -256,6 +256,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
                   << error("i,j,a,b").squared_norm().get() << std::endl;
       }
     }
+    t2_v.world().gop.fence();
     TiledArray::record_duration_since(tp_start);
 
     const double time = TiledArray::durations().back();
