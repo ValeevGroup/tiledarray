@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
 
     // Get command line arguments
     if (argc < 5) {
-      std::cout << "Mocks t2(i,a,j,b) * v(a,b,c,d) term in CC amplitude eqs"
+      std::cout << "Mocks t2(i,j,a,b) * v(a,b,c,d) term in CC amplitude eqs"
                 << std::endl
                 << "Usage: " << argv[0]
                 << " occ_size occ_nblocks uocc_size "
