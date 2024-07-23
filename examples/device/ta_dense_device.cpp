@@ -36,10 +36,6 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   using RT = TiledArray::detail::scalar_t<Storage>;
   constexpr auto complex_T = TiledArray::detail::is_complex_v<T>;
 
-  const std::size_t Tm = Nm / Bm;
-  const std::size_t Tn = Nn / Bn;
-  const std::size_t Tk = Nk / Bk;
-
   const std::int64_t nflops =
       (complex_T ? 8 : 2)  // 1 multiply takes 6/1 flops for complex/real
                            // 1 add takes 2/1 flops for complex/real
@@ -64,16 +60,16 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
   // Construct TiledRange
   std::vector<unsigned int> blocking_m;
-  blocking_m.reserve(Tm + 1);
   for (long i = 0l; i <= Nm; i += Bm) blocking_m.push_back(i);
+  const std::size_t Tm = blocking_m.size() - 1;
 
   std::vector<unsigned int> blocking_n;
-  blocking_n.reserve(Tn + 1);
   for (long i = 0l; i <= Nn; i += Bn) blocking_n.push_back(i);
+  const std::size_t Tn = blocking_n.size() - 1;
 
   std::vector<unsigned int> blocking_k;
-  blocking_k.reserve(Tk + 1);
   for (long i = 0l; i <= Nk; i += Bk) blocking_k.push_back(i);
+  const std::size_t Tk = blocking_k.size();
 
   // Structure of c
   std::vector<TiledArray::TiledRange1> blocking_C;
@@ -253,11 +249,6 @@ int try_main(int argc, char **argv) {
   }
   if (Bm <= 0 || Bn <= 0 || Bk <= 0) {
     std::cerr << "Error: block sizes must be greater than zero.\n";
-    return 1;
-  }
-  if ((Nm % Bm) != 0ul || Nn % Bn != 0ul || Nk % Bk != 0ul) {
-    std::cerr
-        << "Error: dimension size must be evenly divisible by block size.\n";
     return 1;
   }
   const long nrepeat = (argc >= 8 ? atol(argv[7]) : 5);

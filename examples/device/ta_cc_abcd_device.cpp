@@ -182,8 +182,8 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   const double flops_per_fma =
       (complex_T ? 8 : 2);  // 1 multiply takes 6/1 flops for complex/real
                             // 1 add takes 2/1 flops for complex/real
-  const double n_gflop = flops_per_fma * std::pow(n_occ, 2) *
-                         std::pow(n_uocc, 4) / std::pow(1024., 3);
+  const double n_gflop =
+      flops_per_fma * std::pow(n_occ, 2) * std::pow(n_uocc, 4) / 1e9;
 
   using deviceTile =
       btas::Tensor<T, TA::Range, TiledArray::device_um_btas_varray<T>>;
