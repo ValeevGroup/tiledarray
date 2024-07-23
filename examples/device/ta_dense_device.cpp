@@ -42,22 +42,6 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
       * static_cast<std::int64_t>(Nn) * static_cast<std::int64_t>(Nm) *
       static_cast<std::int64_t>(Nk);
 
-  if (world.rank() == 0)
-    std::cout << "TiledArray: dense matrix multiply test...\n"
-              << "Number of nodes     = " << world.size()
-              << "\nSize of A         = " << Nm << "x" << Nk << " ("
-              << double(Nm * Nk * sizeof(T)) / 1.0e9 << " GB)"
-              << "\nSize of A block   = " << Bm << "x" << Bk
-              << "\nSize of B         = " << Nk << "x" << Nn << " ("
-              << double(Nk * Nn * sizeof(T)) / 1.0e9 << " GB)"
-              << "\nSize of B block   = " << Bk << "x" << Bn
-              << "\nSize of C         = " << Nm << "x" << Nn << " ("
-              << double(Nm * Nn * sizeof(T)) / 1.0e9 << " GB)"
-              << "\nSize of C block   = " << Bm << "x" << Bn
-              << "\n# of blocks of C  = " << Tm * Tn
-              << "\nAverage # of blocks of C/node = "
-              << double(Tm * Tn) / double(world.size()) << "\n";
-
   // Construct TiledRange
   std::vector<unsigned int> blocking_m;
   for (long i = 0l; i <= Nm; i += Bm) blocking_m.push_back(i);
@@ -70,6 +54,22 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   std::vector<unsigned int> blocking_k;
   for (long i = 0l; i <= Nk; i += Bk) blocking_k.push_back(i);
   const std::size_t Tk = blocking_k.size();
+
+  if (world.rank() == 0)
+    std::cout << "TiledArray: dense matrix multiply test...\n"
+              << "Number of nodes     = " << world.size()
+              << "\nSize of A         = " << Nm << "x" << Nk << " ("
+              << double(Nm * Nk * sizeof(T)) / 1.0e9 << " GB)"
+              << "\nSize of (largest) A block   = " << Bm << "x" << Bk
+              << "\nSize of B         = " << Nk << "x" << Nn << " ("
+              << double(Nk * Nn * sizeof(T)) / 1.0e9 << " GB)"
+              << "\nSize of (largest) B block   = " << Bk << "x" << Bn
+              << "\nSize of C         = " << Nm << "x" << Nn << " ("
+              << double(Nm * Nn * sizeof(T)) / 1.0e9 << " GB)"
+              << "\nSize of (largest) C block   = " << Bm << "x" << Bn
+              << "\n# of blocks of C  = " << Tm * Tn
+              << "\nAverage # of blocks of C/node = "
+              << double(Tm * Tn) / double(world.size()) << "\n";
 
   // Structure of c
   std::vector<TiledArray::TiledRange1> blocking_C;
