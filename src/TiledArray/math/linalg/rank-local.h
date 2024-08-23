@@ -56,8 +56,7 @@ void svd(Job jobu, Job jobvt, Matrix<T> &A,
 template <typename T>
 void svd(Matrix<T> &A, std::vector<TiledArray::detail::real_t<T>> &S,
          Matrix<T> *U, Matrix<T> *VT) {
-  svd(U ? Job::SomeVec : Job::NoVec, VT ? Job::SomeVec : Job::NoVec, A, S, U,
-      VT);
+  svd(U ? Job::AllVec : Job::NoVec, VT ? Job::AllVec : Job::NoVec, A, S, U, VT);
 }
 
 template <typename T>
@@ -82,10 +81,10 @@ struct ArchiveSerializeImpl<Archive, lapack::Error> {
     MAD_ARCHIVE_DEBUG(std::cout << "(de)serialize lapack::Error" << std::endl);
     if constexpr (is_output_archive_v<Archive>) {  // serialize
       const std::string msg = e.what();
-      ar &msg;
+      ar & msg;
     } else {
       std::string msg;
-      ar &msg;
+      ar & msg;
       e = lapack::Error(msg);
     }
   }
