@@ -37,8 +37,7 @@ struct tag {};
 struct MixedExpressionsFixture : public TiledRangeFixture {
   typedef DistArray<EigenSparseTile<double, tag<0>>, DensePolicy> TArrayDS1;
   typedef DistArray<EigenSparseTile<double, tag<1>>, DensePolicy> TArrayDS2;
-  typedef DistArray<KroneckerDeltaTile<1>, DensePolicy>
-      ArrayKronDelta1;  // will be turned into SparsePolicy next
+  typedef DistArray<KroneckerDeltaTile, DensePolicy> ArrayKronDelta1;
 
   MixedExpressionsFixture()
       : u(*GlobalFixture::world, trange2),
