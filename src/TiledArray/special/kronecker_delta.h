@@ -37,6 +37,8 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/policies/sparse_policy.h>
 
+namespace TiledArray {
+
 /// *generalized* (asymmetric) Kronecker delta
 
 /// *generalized* (asymmetric) Kronecker delta is a product of `N` ordinary
@@ -47,8 +49,8 @@
 class KroneckerDeltaTile {
  public:
   // Concept typedefs
-  typedef TiledArray::Range range_type;  // range type
-  typedef int value_type;                // Element type
+  typedef Range range_type;  // range type
+  typedef int value_type;    // Element type
   typedef value_type
       numeric_type;  // The scalar type that is compatible with value_type
   typedef size_t size_type;  // Size type
@@ -140,49 +142,43 @@ typename KroneckerDeltaTile::numeric_type abs_max(
 // Permutation operation
 
 // returns a tile for which result[perm ^ i] = tile[i]
-template <typename Perm, typename = std::enable_if_t<
-                             TiledArray::detail::is_permutation_v<Perm>>>
+template <typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
 KroneckerDeltaTile permute(const KroneckerDeltaTile& tile, const Perm& perm) {
   abort();
 }
 
 // dense_result[i] = dense_arg1[i] * sparse_arg2[i]
 template <typename T>
-TiledArray::Tensor<T> mult(const KroneckerDeltaTile& arg1,
-                           const TiledArray::Tensor<T>& arg2) {
+Tensor<T> mult(const KroneckerDeltaTile& arg1, const Tensor<T>& arg2) {
   abort();
 }
 // dense_result[perm ^ i] = dense_arg1[i] * sparse_arg2[i]
-template <
-    typename T, typename Perm,
-    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
-TiledArray::Tensor<T> mult(const KroneckerDeltaTile& arg1,
-                           const TiledArray::Tensor<T>& arg2,
-                           const Perm& perm) {
+template <typename T, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+Tensor<T> mult(const KroneckerDeltaTile& arg1, const Tensor<T>& arg2,
+               const Perm& perm) {
   abort();
 }
 
 // dense_result[i] *= sparse_arg1[i]
 template <typename T>
-TiledArray::Tensor<T>& mult_to(TiledArray::Tensor<T>& result,
-                               const KroneckerDeltaTile& arg1) {
+Tensor<T>& mult_to(Tensor<T>& result, const KroneckerDeltaTile& arg1) {
   abort();
   return result;
 }
 
 // dense_result[i] = binary(dense_arg1[i], sparse_arg2[i], op)
 template <typename T, typename Op>
-TiledArray::Tensor<T> binary(const KroneckerDeltaTile& arg1,
-                             const TiledArray::Tensor<T>& arg2, Op&& op) {
+Tensor<T> binary(const KroneckerDeltaTile& arg1, const Tensor<T>& arg2,
+                 Op&& op) {
   abort();
 }
 // dense_result[perm ^ i] = binary(dense_arg1[i], sparse_arg2[i], op)
-template <
-    typename T, typename Op, typename Perm,
-    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
-TiledArray::Tensor<T> binary(const KroneckerDeltaTile& arg1,
-                             const TiledArray::Tensor<T>& arg2, Op&& op,
-                             const Perm& perm) {
+template <typename T, typename Op, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+Tensor<T> binary(const KroneckerDeltaTile& arg1, const Tensor<T>& arg2, Op&& op,
+                 const Perm& perm) {
   abort();
 }
 
@@ -191,10 +187,9 @@ TiledArray::Tensor<T> binary(const KroneckerDeltaTile& arg1,
 // GEMM operation with fused indices as defined by gemm_config:
 // dense_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
 template <typename T>
-TiledArray::Tensor<T> gemm(
-    const KroneckerDeltaTile& arg1, const TiledArray::Tensor<T>& arg2,
-    const typename TiledArray::Tensor<T>::numeric_type factor,
-    const TiledArray::math::GemmHelper& gemm_config) {
+Tensor<T> gemm(const KroneckerDeltaTile& arg1, const Tensor<T>& arg2,
+               const typename Tensor<T>::numeric_type factor,
+               const math::GemmHelper& gemm_config) {
   // preconditions:
   // 1. implemented only outer product
   assert(gemm_config.result_rank() ==
@@ -203,8 +198,8 @@ TiledArray::Tensor<T> gemm(
   auto arg1_range = arg1.range();
   auto arg2_range = arg2.range();
   auto result_range =
-      gemm_config.make_result_range<TiledArray::Range>(arg1_range, arg2_range);
-  TiledArray::Tensor<T> result(result_range, 0);
+      gemm_config.make_result_range<Range>(arg1_range, arg2_range);
+  Tensor<T> result(result_range, 0);
 
   auto result_data = result.data();
   auto arg1_extents = arg1_range.extent_data();
@@ -248,11 +243,12 @@ TiledArray::Tensor<T> gemm(
 // GEMM operation with fused indices as defined by gemm_config:
 // dense_result[i,j] += dense_arg1[i,k] * sparse_arg2[k,j]
 template <typename T>
-void gemm(TiledArray::Tensor<T>& result, const KroneckerDeltaTile& arg1,
-          const TiledArray::Tensor<T>& arg2,
-          const typename TiledArray::Tensor<T>::numeric_type factor,
-          const TiledArray::math::GemmHelper& gemm_config) {
+void gemm(Tensor<T>& result, const KroneckerDeltaTile& arg1,
+          const Tensor<T>& arg2, const typename Tensor<T>::numeric_type factor,
+          const math::GemmHelper& gemm_config) {
   abort();
 }
+
+}  // namespace TiledArray
 
 #endif  // TILEDARRAY_TEST_SPARSE_TILE_H__INCLUDED
