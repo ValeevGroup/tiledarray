@@ -152,8 +152,9 @@ class UnaryWrapper {
   /// `arg`.
   template <typename A, std::enable_if_t<is_nonarray_lazy_tile_v<A>>* = nullptr>
   auto operator()(A&& arg) const {
-    return (perm_ ? meta::invoke(op_, invoke_cast(std::forward<A>(arg)), perm_)
-                  : meta::invoke(op_, invoke_cast(std::forward<A>(arg))));
+    return (perm_
+                ? detail::invoke(op_, invoke_cast(std::forward<A>(arg)), perm_)
+                : detail::invoke(op_, invoke_cast(std::forward<A>(arg))));
   }
 
   /// Evaluate a lazy array tile
@@ -176,10 +177,10 @@ class UnaryWrapper {
     //          return op_.consume(std::forward<decltype(arg)>(arg));
     //        };
     auto op_consume = [this](eval_t<A>& arg) { return op_.consume(arg); };
-    return (perm_ ? meta::invoke(op_, std::move(cast_arg), perm_)
+    return (perm_ ? detail::invoke(op_, std::move(cast_arg), perm_)
                   : (arg.is_consumable()
-                         ? meta::invoke(op_consume, cast_arg)
-                         : meta::invoke(op_, std::move(cast_arg))));
+                         ? detail::invoke(op_consume, cast_arg)
+                         : detail::invoke(op_, std::move(cast_arg))));
   }
 
   /// Consume a lazy tile
@@ -196,8 +197,8 @@ class UnaryWrapper {
     //          return op_.consume(std::forward<decltype(arg)>(arg));
     //        };
     auto op_consume = [this](eval_t<A>& arg) { return op_.consume(arg); };
-    return (perm_ ? meta::invoke(op_, std::move(cast_arg), perm_)
-                  : meta::invoke(op_consume, cast_arg));
+    return (perm_ ? detail::invoke(op_, std::move(cast_arg), perm_)
+                  : detail::invoke(op_consume, cast_arg));
   }
 
   template <typename A, std::enable_if_t<!is_lazy_tile_v<A>>* = nullptr>

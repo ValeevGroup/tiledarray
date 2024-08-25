@@ -193,6 +193,7 @@ TiledArray/util/backtrace.h
 TiledArray/util/bug.h
 TiledArray/util/function.h
 TiledArray/util/initializer_list.h
+TiledArray/util/invoke.h
 TiledArray/util/logger.h
 TiledArray/util/ptr_registry.h
 TiledArray/util/random.h

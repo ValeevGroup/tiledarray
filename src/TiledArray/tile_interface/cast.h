@@ -26,8 +26,8 @@
 #ifndef TILEDARRAY_TILE_INTERFACE_CAST_H__INCLUDED
 #define TILEDARRAY_TILE_INTERFACE_CAST_H__INCLUDED
 
-#include "../meta.h"
-#include "../type_traits.h"
+#include "TiledArray/type_traits.h"
+#include "TiledArray/util/invoke.h"
 
 namespace TiledArray {
 
@@ -80,7 +80,7 @@ class Cast<Result, Arg,
     auto exec = [](Arg_&& arg) {
       return static_cast<Result_>(std::forward<Arg_>(arg));
     };
-    return TiledArray::meta::invoke(exec, arg);
+    return TiledArray::detail::invoke(exec, arg);
   }
   template <typename Result_, typename Arg_>
   static auto invoker(
@@ -93,7 +93,7 @@ class Cast<Result, Arg,
     auto exec = [](Arg_&& arg) {
       return static_cast<madness::Future<Result_>>(std::forward<Arg_>(arg));
     };
-    return TiledArray::meta::invoke(exec, std::forward<Arg_>(arg));
+    return TiledArray::detail::invoke(exec, std::forward<Arg_>(arg));
   }
 
  public:
@@ -151,7 +151,7 @@ class Cast<Result, Arg,
   auto operator()(Arg_&& arg) const {
     arg_to_eval_caster_type cast_to_eval;
     eval_to_result_caster_type cast_to_result;
-    return meta::invoke(cast_to_result, meta::invoke(cast_to_eval, arg));
+    return detail::invoke(cast_to_result, detail::invoke(cast_to_eval, arg));
   }
 
 };  // class Cast
@@ -175,7 +175,7 @@ template <typename Arg, typename Result = typename TiledArray::eval_trait<
                             madness::remove_fcvr_t<Arg>>::type>
 auto invoke_cast(Arg&& arg) {
   Cast<Result, std::decay_t<Arg>> cast;
-  return TiledArray::meta::invoke(cast, std::forward<Arg>(arg));
+  return TiledArray::detail::invoke(cast, std::forward<Arg>(arg));
 }
 
 }  // namespace TiledArray
