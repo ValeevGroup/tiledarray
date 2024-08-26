@@ -164,7 +164,7 @@ auto retile_v2(const DistArray<Tile, Policy>& source_array,
 template <typename Tile, typename Policy>
 auto retile(const DistArray<Tile, Policy>& array,
             const TiledRange& target_trange) {
-  return detail::retile_v0(array, target_trange);
+  return detail::retile_v2(array, target_trange);
 }
 
 }  // namespace TiledArray
