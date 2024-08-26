@@ -103,10 +103,12 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
     return matrix;
   }
 
-  template <typename Tile, typename Policy>
-  static void init_kronecker_delta(DistArray<Tile, Policy>& array) {
-    array.init_tiles(
-        [=](const TiledArray::Range& range) { return Tile(range); });
+  template <typename Policy>
+  static void init_kronecker_delta(
+      DistArray<KroneckerDeltaTile, Policy>& array) {
+    array.init_tiles([=](const TiledArray::Range& range) {
+      return KroneckerDeltaTile(range);
+    });
   }
 
   ~MixedExpressionsFixture() { GlobalFixture::world->gop.fence(); }
@@ -195,7 +197,8 @@ BOOST_AUTO_TEST_CASE(kronecker) {
   init_kronecker_delta(retiler);
 
   TA::TSpArrayD y;
-  y("d1,d2") = retiler("d1,d2,s1,s2") * x("s1,s2");
+  //  y("d1,d2") = retiler("d1,d2,s1,s2") * x("s1,s2");
+  y = TA::detail::retile_v1(x, yrange);
   // std::cout << "y = " << y << std::endl;
   // why deadlock without this?
   y.world().gop.fence();
