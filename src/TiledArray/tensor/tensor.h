@@ -1242,7 +1242,8 @@ class Tensor {
   // clang-format on
   /// @{
   template <typename PairRange,
-            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange> &&
+                                        !std::is_same_v<PairRange, Range>>>
   detail::TensorInterface<const T, BlockRange> block(
       const PairRange& bounds) const {
     return detail::TensorInterface<const T, BlockRange>(
@@ -1250,7 +1251,8 @@ class Tensor {
   }
 
   template <typename PairRange,
-            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange> &&
+                                        !std::is_same_v<PairRange, Range>>>
   detail::TensorInterface<T, BlockRange> block(const PairRange& bounds) {
     return detail::TensorInterface<T, BlockRange>(
         BlockRange(this->range_, bounds), this->data());
@@ -1286,6 +1288,38 @@ class Tensor {
       const std::initializer_list<std::initializer_list<Index>>& bounds) {
     return detail::TensorInterface<T, BlockRange>(
         BlockRange(this->range_, bounds), this->data());
+  }
+  /// @}
+
+  // clang-format off
+  /// Constructs a view of the block defined by a TiledArray::Range .
+
+  /// Examples of using this:
+  /// \code
+  ///   std::vector<size_t> lobounds = {0, 1, 2};
+  ///   std::vector<size_t> upbounds = {4, 6, 8};
+  ///
+  ///   auto tview = t.block(TiledArray::Range(lobounds, upbounds));
+  /// \endcode
+  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
+  /// \param bounds The block bounds
+  /// \return a {const,mutable} view of the block defined by its \p bounds
+  /// \throw TiledArray::Exception When the size of \p lower_bound is not
+  /// equal to that of \p upper_bound.
+  /// \throw TiledArray::Exception When `get<0>(bounds[i]) >= get<1>(bounds[i])`
+  // clang-format on
+  /// @{
+  detail::TensorInterface<const T, BlockRange> block(
+      const Range& bounds) const {
+    return detail::TensorInterface<const T, BlockRange>(
+        BlockRange(this->range_, bounds.lobound(), bounds.upbound()),
+        this->data());
+  }
+
+  detail::TensorInterface<T, BlockRange> block(const Range& bounds) {
+    return detail::TensorInterface<T, BlockRange>(
+        BlockRange(this->range_, bounds.lobound(), bounds.upbound()),
+        this->data());
   }
   /// @}
 
@@ -2373,7 +2407,6 @@ class Tensor {
 
   /// \return The vector norm of this tensor
   scalar_type squared_norm() const {
-
     if constexpr (detail::is_tensor_v<T>) {
       // If uninitialized tensor of tensor return zero.
       // All elements of this->data() are empty tensors in this case,
