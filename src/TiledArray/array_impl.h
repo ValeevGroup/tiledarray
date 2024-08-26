@@ -30,6 +30,7 @@
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/util/function.h>
 
 namespace TiledArray {
 namespace detail {
@@ -407,7 +408,8 @@ class ArrayIterator {
 /// \note It is the users responsibility to ensure the process maps on all
 /// nodes are identical.
 template <typename Tile, typename Policy>
-class ArrayImpl : public TensorImpl<Policy> {
+class ArrayImpl : public TensorImpl<Policy>,
+                  public std::enable_shared_from_this<ArrayImpl<Tile, Policy>> {
  public:
   typedef ArrayImpl<Tile, Policy> ArrayImpl_;  ///< This object type
   typedef TensorImpl<Policy> TensorImpl_;  ///< The base class of this object
@@ -441,6 +443,68 @@ class ArrayImpl : public TensorImpl<Policy> {
   storage_type data_;  ///< Tile container
 
  public:
+  static madness::AtomicInt cleanup_counter_;
+
+  /// Array deleter function
+
+  /// This function schedules a task for lazy cleanup. Array objects are
+  /// deleted only after the object has been deleted in all processes.
+  /// \param pimpl The implementation pointer to be deleted.
+  static void lazy_deleter(const ArrayImpl_* const pimpl) {
+    if (pimpl) {
+      if (madness::initialized()) {
+        World& world = pimpl->world();
+        const madness::uniqueidT id = pimpl->id();
+        cleanup_counter_++;
+
+        // wait for all DelayedSet's to vanish
+        world.await([&]() { return (pimpl->num_live_ds() == 0); }, true);
+
+        try {
+          world.gop.lazy_sync(id, [pimpl]() {
+            delete pimpl;
+            ArrayImpl_::cleanup_counter_--;
+          });
+        } catch (madness::MadnessException& e) {
+          fprintf(stderr,
+                  "!! ERROR TiledArray: madness::MadnessException thrown in "
+                  "DistArray::lazy_deleter().\n"
+                  "%s\n"
+                  "!! ERROR TiledArray: The exception has been absorbed.\n"
+                  "!! ERROR TiledArray: rank=%i\n",
+                  e.what(), world.rank());
+
+          cleanup_counter_--;
+          delete pimpl;
+        } catch (std::exception& e) {
+          fprintf(stderr,
+                  "!! ERROR TiledArray: std::exception thrown in "
+                  "DistArray::lazy_deleter().\n"
+                  "%s\n"
+                  "!! ERROR TiledArray: The exception has been absorbed.\n"
+                  "!! ERROR TiledArray: rank=%i\n",
+                  e.what(), world.rank());
+
+          cleanup_counter_--;
+          delete pimpl;
+        } catch (...) {
+          fprintf(stderr,
+                  "!! ERROR TiledArray: An unknown exception was thrown in "
+                  "DistArray::lazy_deleter().\n"
+                  "!! ERROR TiledArray: The exception has been absorbed.\n"
+                  "!! ERROR TiledArray: rank=%i\n",
+                  world.rank());
+
+          cleanup_counter_--;
+          delete pimpl;
+        }
+      } else {
+        delete pimpl;
+      }
+    }
+  }
+
+ public:
   /// Constructor
 
   /// The size of shape must be equal to the volume of the tiled range tiles.
@@ -453,7 +517,32 @@ class ArrayImpl : public TensorImpl<Policy> {
   ArrayImpl(World& world, const trange_type& trange, const shape_type& shape,
             const std::shared_ptr<const pmap_interface>& pmap)
       : TensorImpl_(world, trange, shape, pmap),
-        data_(world, trange.tiles_range().volume(), pmap) {}
+        data_(world, trange.tiles_range().volume(), pmap) {
+    // Validate the process map
+    TA_ASSERT(pmap->size() == trange.tiles_range().volume() &&
+              "TiledArray::DistArray::DistArray() -- The size of the process "
+              "map is not "
+              "equal to the number of tiles in the TiledRange object.");
+    TA_ASSERT(pmap->rank() ==
+                  typename pmap_interface::size_type(world.rank()) &&
+              "TiledArray::DistArray::DistArray() -- The rank of the process "
+              "map is not equal to that "
+              "of the world object.");
+    TA_ASSERT(pmap->procs() ==
+                  typename pmap_interface::size_type(world.size()) &&
+              "TiledArray::DistArray::DistArray() -- The number of processes "
+              "in the process map is not "
+              "equal to that of the world object.");
+
+    // Validate the shape
+    TA_ASSERT(
+        !shape.empty() &&
+        "TiledArray::DistArray::DistArray() -- The shape is not initialized.");
+    TA_ASSERT(shape.validate(trange.tiles_range()) &&
+              "TiledArray::DistArray::DistArray() -- The range of the shape is "
+              "not equal to "
+              "the tiles range.");
+  }
 
   /// Virtual destructor
   virtual ~ArrayImpl() {}
@@ -649,7 +738,79 @@ class ArrayImpl : public TensorImpl<Policy> {
     return data_.num_live_df();
   }
 
+  /// Initialize (local) tiles with a user provided functor
+
+  /// This function is used to initialize the local, non-zero tiles of the array
+  /// via a function (or functor). The work is done in parallel, therefore \c op
+  /// must be a thread safe function/functor. The signature of the functor
+  /// should be:
+  /// \code
+  /// value_type op(const range_type&)
+  /// \endcode
+  /// For example, in the following code, the array tiles are initialized with
+  /// random numbers from 0 to 1:
+  /// \code
+  /// array.init_tiles([] (const TiledArray::Range& range) ->
+  /// TiledArray::Tensor<double>
+  ///     {
+  ///        // Initialize the tile with the given range object
+  ///        TiledArray::Tensor<double> tile(range);
+  ///
+  ///        // Initialize the random number generator
+  ///        std::default_random_engine generator;
+  ///        std::uniform_real_distribution<double> distribution(0.0,1.0);
+  ///
+  ///        // Fill the tile with random numbers
+  ///        for(auto& value : tile)
+  ///           value = distribution(generator);
+  ///
+  ///        return tile;
+  ///     });
+  /// \endcode
+  /// \tparam Op The type of the functor/function
+  /// \param[in] op The operation used to generate tiles
+  /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \throw TiledArray::Exception if the PIMPL is not set. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if a tile is already set and skip_set is
+  ///                              false. Weak throw guarantee.
+  template <HostExecutor Exec = HostExecutor::Default, typename Op>
+  void init_tiles(Op&& op, bool skip_set = false) {
+    // lifetime management of op depends on whether it is a lvalue ref (i.e. has
+    // an external owner) or an rvalue ref
+    // - if op is an lvalue ref: pass op to tasks
+    // - if op is an rvalue ref pass make_shared_function(op) to tasks
+    auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
+
+    auto it = this->pmap()->begin();
+    const auto end = this->pmap()->end();
+    for (; it != end; ++it) {
+      const auto& index = *it;
+      if (!this->is_zero(index)) {
+        if (skip_set) {
+          auto& fut = this->get_local(index);
+          if (fut.probe()) continue;
+        }
+        if constexpr (Exec == HostExecutor::MADWorld) {
+          Future<value_type> tile = this->world().taskq.add(
+              [this_sptr = this->shared_from_this(),
+               index = ordinal_type(index), op_shared_handle]() -> value_type {
+                return op_shared_handle(
+                    this_sptr->trange().make_tile_range(index));
+              });
+          set(index, std::move(tile));
+        } else {
+          static_assert(Exec == HostExecutor::Thread);
+          set(index, op_shared_handle(this->trange().make_tile_range(index)));
+        }
+      }
+    }
+  }
+
 };  // class ArrayImpl
+
+template <typename Tile, typename Policy>
+madness::AtomicInt ArrayImpl<Tile, Policy>::cleanup_counter_;
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
