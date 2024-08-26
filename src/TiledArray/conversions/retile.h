@@ -148,10 +148,17 @@ auto retile_v1(const DistArray<Tile, Policy>& tensor,
 
 }  // namespace detail
 
+/// Creates a new DistArray with the same data as the input tensor, but with a
+/// different trange. The primary use-case is to change tiling while keeping the
+/// element range the same, but it can be used to select blocks of the data as
+/// well as increasing the element range (with the new elements initialized to
+/// zero)
+/// \param array The DistArray whose data is to be retiled
+/// \param new_trange The desired TiledRange of the output tensor
 template <typename Tile, typename Policy>
-auto retile(const DistArray<Tile, Policy>& tensor,
+auto retile(const DistArray<Tile, Policy>& array,
             const TiledRange& new_trange) {
-  return detail::retile_v0(tensor, new_trange);
+  return detail::retile_v0(array, new_trange);
 }
 
 }  // namespace TiledArray
