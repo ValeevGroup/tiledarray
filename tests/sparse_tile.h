@@ -24,8 +24,6 @@
 #include <memory>
 #include <tuple>
 
-#include <tiledarray.h>
-
 #include <TiledArray/external/madness.h>
 
 // Array class
@@ -36,6 +34,8 @@
 // Array policy classes
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/policies/sparse_policy.h>
+
+#include <TiledArray/tile_interface/add.h>
 
 // sparse 2-dimensional matrix type, with tag type thrown in to make expression
 // engine work harder
@@ -192,7 +192,7 @@ class EigenSparseTile {
         for (typename matrix_type::InnerIterator it(mat, k); it; ++it) {
           datavec.push_back(Eigen::Triplet<T>(it.row(), it.col(), it.value()));
         }
-      ar& datavec& this->range();
+      ar & datavec& this->range();
     } else {
       ar & false;
     }
@@ -204,11 +204,11 @@ class EigenSparseTile {
                 madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     bool have_impl = false;
-    ar& have_impl;
+    ar & have_impl;
     if (have_impl) {
       std::vector<Eigen::Triplet<T>> datavec;
       range_type range;
-      ar& datavec& range;
+      ar & datavec & range;
       auto extents = range.extent();
       matrix_type mat(extents[0], extents[1]);
       mat.setFromTriplets(datavec.begin(), datavec.end());
@@ -700,7 +700,7 @@ struct ArchiveLoadImpl<Archive, Eigen::Triplet<T>> {
   static inline void load(const Archive& ar, Eigen::Triplet<T>& obj) {
     int row, col;
     T value;
-    ar& row& col& value;
+    ar & row & col & value;
     obj = Eigen::Triplet<T>(row, col, value);
   }
 };
@@ -708,7 +708,7 @@ struct ArchiveLoadImpl<Archive, Eigen::Triplet<T>> {
 template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, Eigen::Triplet<T>> {
   static inline void store(const Archive& ar, const Eigen::Triplet<T>& obj) {
-    ar& obj.row() & obj.col() & obj.value();
+    ar & obj.row() & obj.col() & obj.value();
   }
 };
 }  // namespace archive

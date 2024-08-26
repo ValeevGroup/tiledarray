@@ -19,8 +19,10 @@
 
 #ifndef TILEDARRAY_TEST_TOT_ARRAY_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_TOT_ARRAY_FIXTURE_H__INCLUDED
+#include <TiledArray/conversions/dense_to_sparse.h>
+#include <TiledArray/conversions/make_array.h>
 #include <TiledArray/einsum/tiledarray.h>
-#include <tiledarray.h>
+#include <TiledArray/expressions/tsr_expr.h>
 #include "unit_test_config.h"
 #ifdef TILEDARRAY_HAS_BTAS
 #include <TiledArray/conversions/btas.h>
@@ -621,8 +623,7 @@ Result general_product(TensorA const& A, TensorB const& B,
             } else {
               temp += temp_;
             }
-          }
-          else {
+          } else {
             TA_ASSERT(!(ix_A.empty() || ix_B.empty()));
             temp += A(ix_A) * B(ix_B);
           }
