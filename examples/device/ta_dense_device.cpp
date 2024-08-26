@@ -315,9 +315,7 @@ int try_main(int argc, char **argv) {
           std::cout << "error(GetDeviceProperties) = " << error << std::endl;
         }
         std::cout << "Device #" << device_id << ": " << prop.name << std::endl
-                  << "  managedMemory = " << prop.managedMemory << std::endl
-                  << "  singleToDoublePrecisionPerfRatio = "
-                  << prop.singleToDoublePrecisionPerfRatio << std::endl;
+                  << "  managedMemory = " << prop.managedMemory << std::endl;
         int result;
         error = TiledArray::device::deviceGetAttribute(
             &result, TiledArray::device::DevAttrUnifiedAddressing, device_id);
