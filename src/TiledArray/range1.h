@@ -74,6 +74,9 @@ struct Range1 {
   /// @return the extent of this range, i.e. second - first
   auto extent() const noexcept { return second - first; }
 
+  /// @return the volume of this range, i.e. second - first
+  auto volume() const noexcept { return second - first; }
+
   /// swaps `*this` with @p other
   /// @p other a Range1 object
   void swap(Range1& other) noexcept {
@@ -150,14 +153,14 @@ struct Range1 {
             typename std::enable_if<madness::is_input_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) {
-    ar& first& second;
+    ar & first & second;
   }
 
   template <typename Archive,
             typename std::enable_if<madness::is_output_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) const {
-    ar& first& second;
+    ar & first & second;
   }
 };
 
