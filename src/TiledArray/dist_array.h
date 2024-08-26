@@ -456,6 +456,17 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       : DistArray(array_from_il<DistArray>(get_default_world(), trange, il)) {}
   /// @}
 
+  /// "copy" constructor that replaces the TiledRange
+
+  /// This constructor remaps the data of \p other according to \p new_trange ,
+  /// with \p new_value_fill used to fill the new elements, if any
+  DistArray(const DistArray& other, const trange_type& new_trange,
+            numeric_type new_value_fill = numeric_type{0})
+      : pimpl_(
+            make_with_new_trange(other.pimpl(), new_trange, new_value_fill)) {
+    this->truncate();
+  }
+
   /// converting copy constructor
 
   /// This constructor uses the meta data of `other` to initialize the meta

@@ -834,6 +834,167 @@ extern template class ArrayImpl<Tensor<std::complex<float>>, SparsePolicy>;
 
 #endif  // TILEDARRAY_HEADER_ONLY
 
+template <typename Tile, typename Policy>
+void write_tile_block(madness::uniqueidT target_array_id,
+                      std::size_t target_tile_ord,
+                      const Tile& target_tile_contribution) {
+  auto* world_ptr = World::world_from_id(target_array_id.get_world_id());
+  auto target_array_ptr_opt =
+      world_ptr->ptr_from_id<typename ArrayImpl<Tile, Policy>::storage_type>(
+          target_array_id);
+  TA_ASSERT(target_array_ptr_opt);
+  TA_ASSERT((*target_array_ptr_opt)->is_local(target_tile_ord));
+  (*target_array_ptr_opt)
+      ->get_local(target_tile_ord)
+      .get()
+      .block(target_tile_contribution.range()) = target_tile_contribution;
+}
+
+template <typename Tile, typename Policy>
+std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
+    const std::shared_ptr<const ArrayImpl<Tile, Policy>>& source_array_sptr,
+    const TiledRange& target_trange,
+    typename ArrayImpl<Tile, Policy>::numeric_type new_value_fill =
+        typename ArrayImpl<Tile, Policy>::numeric_type{0}) {
+  TA_ASSERT(source_array_sptr);
+  auto& source_array = *source_array_sptr;
+  auto& world = source_array.world();
+  const auto rank = source_array.trange().rank();
+  TA_ASSERT(rank == target_trange.rank());
+
+  // compute metadata
+  // - list of target tile indices and the corresponding Range1 for each 1-d
+  // source tile
+  using target_tiles_t = std::vector<std::pair<TA_1INDEX_TYPE, Range1>>;
+  using mode_target_tiles_t = std::vector<target_tiles_t>;
+  using all_target_tiles_t = std::vector<mode_target_tiles_t>;
+
+  all_target_tiles_t all_target_tiles(target_trange.rank());
+  // for each mode ...
+  for (auto d = 0; d != target_trange.rank(); ++d) {
+    mode_target_tiles_t& mode_target_tiles = all_target_tiles[d];
+    auto& target_tr1 = target_trange.dim(d);
+    auto& target_element_range = target_tr1.elements_range();
+    // ... and each tile in that mode ...
+    for (auto&& source_tile : source_array.trange().dim(d)) {
+      mode_target_tiles.emplace_back();
+      auto& target_tiles = mode_target_tiles.back();
+      auto source_tile_lo = source_tile.lobound();
+      auto source_tile_up = source_tile.upbound();
+      auto source_element_idx = source_tile_lo;
+      // ... find all target tiles what overlap with it
+      if (target_element_range.overlaps_with(source_tile)) {
+        while (source_element_idx < source_tile_up) {
+          if (target_element_range.includes(source_element_idx)) {
+            auto target_tile_idx =
+                target_tr1.element_to_tile(source_element_idx);
+            auto target_tile = target_tr1.tile(target_tile_idx);
+            auto target_lo =
+                std::max(source_element_idx, target_tile.lobound());
+            auto target_up = std::min(source_tile_up, target_tile.upbound());
+            target_tiles.emplace_back(target_tile_idx,
+                                      Range1(target_lo, target_up));
+            source_element_idx = target_up;
+          } else if (source_element_idx < target_element_range.lobound()) {
+            source_element_idx = target_element_range.lobound();
+          } else if (source_element_idx >= target_element_range.upbound())
+            break;
+        }
+      }
+    }
+  }
+
+  // estimate the shape, if sparse
+  // use max value for each nonzero tile, then will recompute after tiles are
+  // assigned
+  using shape_type = typename Policy::shape_type;
+  shape_type target_shape;
+  const auto& target_tiles_range = target_trange.tiles_range();
+  if constexpr (!is_dense_v<Policy>) {
+    // each rank computes contributions to the shape norms from its local tiles
+    Tensor<float> target_shape_norms(target_tiles_range, 0);
+    auto& source_trange = source_array.trange();
+    const auto e = source_array.cend();
+    for (auto it = source_array.cbegin(); it != e; ++it) {
+      auto source_tile_idx = it.index();
+
+      // make range for iterating over all possible target tile idx combinations
+      TA::Index target_tile_ord_extent_range(rank);
+      for (auto d = 0; d != rank; ++d) {
+        target_tile_ord_extent_range[d] =
+            all_target_tiles[d][source_tile_idx[d]].size();
+      }
+
+      // loop over every target tile combination
+      TA::Range target_tile_ord_extent(target_tile_ord_extent_range);
+      for (auto& target_tile_ord : target_tile_ord_extent) {
+        TA::Index target_tile_idx(rank);
+        for (auto d = 0; d != rank; ++d) {
+          target_tile_idx[d] =
+              all_target_tiles[d][source_tile_idx[d]][target_tile_ord[d]].first;
+        }
+        target_shape_norms(target_tile_idx) = std::numeric_limits<float>::max();
+      }
+    }
+    world.gop.max(target_shape_norms.data(), target_shape_norms.size());
+    target_shape = SparseShape(target_shape_norms, target_trange);
+  }
+
+  using Array = ArrayImpl<Tile, Policy>;
+  auto target_array_sptr = std::shared_ptr<Array>(
+      new Array(
+          source_array.world(), target_trange, target_shape,
+          Policy::default_pmap(world, target_trange.tiles_range().volume())),
+      Array::lazy_deleter);
+  auto& target_array = *target_array_sptr;
+  target_array.init_tiles([value = new_value_fill](const Range& range) {
+    return typename Array::value_type(range, value);
+  });
+  target_array.world().gop.fence();
+
+  // loop over local tile and sends its contributions to the targets
+  {
+    auto& source_trange = source_array.trange();
+    const auto e = source_array.cend();
+    auto& target_tiles_range = target_trange.tiles_range();
+    for (auto it = source_array.cbegin(); it != e; ++it) {
+      const auto& source_tile = *it;
+      auto source_tile_idx = it.index();
+
+      // make range for iterating over all possible target tile idx combinations
+      TA::Index target_tile_ord_extent_range(rank);
+      for (auto d = 0; d != rank; ++d) {
+        target_tile_ord_extent_range[d] =
+            all_target_tiles[d][source_tile_idx[d]].size();
+      }
+
+      // loop over every target tile combination
+      TA::Range target_tile_ord_extent(target_tile_ord_extent_range);
+      for (auto& target_tile_ord : target_tile_ord_extent) {
+        TA::Index target_tile_idx(rank);
+        container::svector<TA::Range1> target_tile_rngs1(rank);
+        for (auto d = 0; d != rank; ++d) {
+          std::tie(target_tile_idx[d], target_tile_rngs1[d]) =
+              all_target_tiles[d][source_tile_idx[d]][target_tile_ord[d]];
+        }
+        TA_ASSERT(source_tile.future().probe());
+        Tile target_tile_contribution(
+            source_tile.get().block(target_tile_rngs1));
+        auto target_tile_idx_ord = target_tiles_range.ordinal(target_tile_idx);
+        auto target_proc = target_array.pmap()->owner(target_tile_idx_ord);
+        world.taskq.add(target_proc, &write_tile_block<Tile, Policy>,
+                        target_array.id(), target_tile_idx_ord,
+                        target_tile_contribution);
+      }
+    }
+  }
+  // data is mutated in place, so must wait for all tasks to complete
+  target_array.world().gop.fence();
+  // WARNING!! need to truncate in DistArray ctor
+
+  return target_array_sptr;
+}
+
 }  // namespace detail
 }  // namespace TiledArray
 
