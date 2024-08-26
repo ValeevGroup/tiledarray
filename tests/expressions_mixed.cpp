@@ -186,27 +186,33 @@ BOOST_AUTO_TEST_CASE(kronecker) {
   TSpArrayD x(*GlobalFixture::world, trange2);
   random_fill(x);
 
-  TA::TiledRange yrange{{5, 18}, {7, 20}};
-  TA::TiledRange retiler_range{yrange.dim(0), yrange.dim(1), trange2.dim(0),
-                               trange2.dim(1)};
-  SpArrayKronDelta retiler(
-      *GlobalFixture::world, retiler_range,
-      SparseShape(detail::kronecker_shape(retiler_range), retiler_range),
-      std::make_shared<detail::ReplicatedPmap>(
-          *GlobalFixture::world, retiler_range.tiles_range().volume()));
-  init_kronecker_delta(retiler);
-
-  TA::TSpArrayD y;
+  // includes target tiles that receive contributions from multiple source
+  // tiles, tiny target tiles with single contribution, and tiles partially and
+  // completely outside the source range N.B. retile_v0 seems to struggle with
+  // completely empty tiles (e.g. add 47 to each 1-d range)
+  TA::TiledRange yrange{{5, 18, 20, 45}, {7, 20, 22, 45}};
+  TA::TSpArrayD y1;
+  //  TA::TiledRange retiler_range{yrange.dim(0), yrange.dim(1), trange2.dim(0),
+  //                               trange2.dim(1)};
+  //  SpArrayKronDelta retiler(
+  //      *GlobalFixture::world, retiler_range,
+  //      SparseShape(detail::kronecker_shape(retiler_range), retiler_range),
+  //      std::make_shared<detail::ReplicatedPmap>(
+  //          *GlobalFixture::world, retiler_range.tiles_range().volume()));
+  //  init_kronecker_delta(retiler);
   //  y("d1,d2") = retiler("d1,d2,s1,s2") * x("s1,s2");
-  y = TA::detail::retile_v1(x, yrange);
-  // std::cout << "y = " << y << std::endl;
-  // why deadlock without this?
-  y.world().gop.fence();
+  y1 = TA::detail::retile_v1(x, yrange);
+  // std::cout << "y1 = " << y1 << std::endl;
+  //  why deadlock without this?
+  y1.world().gop.fence();
 
-  TA::TSpArrayD y_ref = TA::retile(x, yrange);
+  TA::TSpArrayD y_ref = TA::detail::retile_v0(x, yrange);
   // std::cout << "y_ref = " << y_ref << std::endl;
+  BOOST_CHECK((y1("d1,d2") - y_ref("d1,d2")).norm().get() == 0.);
 
-  BOOST_CHECK((y("d1,d2") - y_ref("d1,d2")).norm().get() == 0.);
+  auto y2 = TA::detail::retile_v2(x, yrange);
+  // std::cout << "y2 = " << y2 << std::endl;
+  BOOST_CHECK((y2("d1,d2") - y_ref("d1,d2")).norm().get() == 0.);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
