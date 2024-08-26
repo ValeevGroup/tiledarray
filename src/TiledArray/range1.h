@@ -90,6 +90,21 @@ struct Range1 {
     return std::make_pair(first, second);
   }
 
+  /// Checks if a given index is within this range
+  /// @return true if \p i is within this range
+  template <typename I>
+  typename std::enable_if<std::is_integral<I>::value, bool>::type includes(
+      const I& i) const {
+    return first <= i && i < second;
+  }
+
+  /// Checks if a given range overlaps with this range
+
+  /// @return true if \p r overlaps with this range
+  bool overlaps_with(const Range1& rng) const {
+    return lobound() < rng.upbound() && upbound() > rng.lobound();
+  }
+
   /// \brief Range1 iterator type
   ///
   /// Iterates over Range1
