@@ -23,6 +23,7 @@
  *
  */
 
+#include "TiledArray/special/diagonal_array.h"
 #include "TiledArray/special/kronecker_delta.h"
 #include "range_fixture.h"
 #include "sparse_tile.h"
@@ -37,8 +38,8 @@ struct tag {};
 struct MixedExpressionsFixture : public TiledRangeFixture {
   typedef DistArray<EigenSparseTile<double, tag<0>>, DensePolicy> TArrayDS1;
   typedef DistArray<EigenSparseTile<double, tag<1>>, DensePolicy> TArrayDS2;
-  typedef DistArray<KroneckerDeltaTile<1>, DensePolicy>
-      ArrayKronDelta1;  // will be turned into SparsePolicy next
+  typedef DistArray<KroneckerDeltaTile, DensePolicy> ArrayKronDelta;
+  typedef DistArray<KroneckerDeltaTile, SparsePolicy> SpArrayKronDelta;
 
   MixedExpressionsFixture()
       : u(*GlobalFixture::world, trange2),
@@ -46,25 +47,17 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
         e2(*GlobalFixture::world, trange2e),
         e4(*GlobalFixture::world, trange4e),
         v(*GlobalFixture::world, trange2),
-        w(*GlobalFixture::world, trange2),
-        delta1(*GlobalFixture::world, trange2, DenseShape(),
-               std::make_shared<detail::ReplicatedPmap>(
-                   *GlobalFixture::world, trange2.tiles_range().volume())),
-        delta1e(*GlobalFixture::world, trange2e, DenseShape(),
-                std::make_shared<detail::ReplicatedPmap>(
-                    *GlobalFixture::world, trange2e.tiles_range().volume())) {
+        w(*GlobalFixture::world, trange2) {
     random_fill(u);
     random_fill(v);
     u2.fill(0);
     random_fill(e2);
     e4.fill(0);
-    init_kronecker_delta(delta1);
-    init_kronecker_delta(delta1e);
     GlobalFixture::world->gop.fence();
   }
 
-  template <typename Tile>
-  static void random_fill(DistArray<Tile>& array) {
+  template <typename Tile, typename Policy>
+  static void random_fill(DistArray<Tile, Policy>& array) {
     array.fill_random();
   }
 
@@ -110,10 +103,12 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
     return matrix;
   }
 
-  template <typename Tile, typename Policy>
-  static void init_kronecker_delta(DistArray<Tile, Policy>& array) {
-    array.init_tiles(
-        [=](const TiledArray::Range& range) { return Tile(range); });
+  template <typename Policy>
+  static void init_kronecker_delta(
+      DistArray<KroneckerDeltaTile, Policy>& array) {
+    array.init_tiles([=](const TiledArray::Range& range) {
+      return KroneckerDeltaTile(range);
+    });
   }
 
   ~MixedExpressionsFixture() { GlobalFixture::world->gop.fence(); }
@@ -132,8 +127,6 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
   TArrayDS1 v;
   TArrayDS1 v1;
   TArrayDS2 w;
-  ArrayKronDelta1 delta1;
-  ArrayKronDelta1 delta1e;
 };  // MixedExpressionsFixture
 
 // Instantiate static variables for fixture
@@ -183,21 +176,40 @@ BOOST_AUTO_TEST_CASE(mult_factories) {
   // BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") * v("a,b"));
 }
 
-BOOST_AUTO_TEST_CASE(outer_product_factories) {
+BOOST_AUTO_TEST_CASE(kronecker) {
 #if !MULT_DENSE_SPARSE_TO_SPARSE
   // ok
   BOOST_CHECK_NO_THROW(u2("a,b,c,d") += u("a,b") * v("c,d"));
 #endif
 
-  // these can only work if nproc == 1 since KroneckerDelta does not travel, and
-  // SUMMA does not support replicated args
-  if (GlobalFixture::world->nproc() == 1) {
-    // ok
-    BOOST_CHECK_NO_THROW(u2("a,b,c,d") += delta1("a,b") * u("c,d"));
+  // retile test
+  TSpArrayD x(*GlobalFixture::world, trange2);
+  random_fill(x);
 
-    // ok
-    BOOST_CHECK_NO_THROW(e4("a,c,b,d") += delta1e("a,b") * e2("c,d"));
-  }
+  // includes target tiles that receive contributions from multiple source
+  // tiles, tiny target tiles with single contribution, and tiles partially and
+  // completely outside the source range
+#ifdef TA_SIGNED_1INDEX_TYPE
+  TA::TiledRange yrange{{-1, 18, 20, 45, 47}, {-1, 20, 22, 45, 47}};
+#else
+  TA::TiledRange yrange{{5, 18, 20, 45, 47}, {7, 20, 22, 45, 47}};
+#endif
+  TA::TSpArrayD y1;
+  // identical to y1 = TA::detail::retile_v1(x, yrange);
+  TA::TiledRange retiler_range{yrange.dim(0), yrange.dim(1), trange2.dim(0),
+                               trange2.dim(1)};
+  SpArrayKronDelta retiler(
+      *GlobalFixture::world, retiler_range,
+      SparseShape(detail::kronecker_shape(retiler_range), retiler_range),
+      std::make_shared<detail::ReplicatedPmap>(
+          *GlobalFixture::world, retiler_range.tiles_range().volume()));
+  init_kronecker_delta(retiler);
+  y1("d1,d2") = retiler("d1,d2,s1,s2") * x("s1,s2");
+  // std::cout << "y1 = " << y1 << std::endl;
+
+  auto y_ref = TA::retile(x, yrange);
+  // std::cout << "y_ref = " << y_ref << std::endl;
+  BOOST_CHECK((y1("d1,d2") - y_ref("d1,d2")).norm().get() == 0.);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

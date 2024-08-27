@@ -361,7 +361,8 @@ auto reduce_modes(TA::DistArray<T, P> orig, size_t drank) {
       container::svector<TA::Range::index1_type> ix1s = rng.lobound();
 
       {
-        auto dlo = delta_trange.make_tile_range(r).lobound();
+        auto d = delta_trange.make_tile_range(r);
+        auto dlo = d.lobound();
         std::copy(dlo.begin(), dlo.end(), std::back_inserter(ix1s));
       }
 

@@ -22,8 +22,9 @@
 #ifndef TILEDARRAY_RETILE_H
 #define TILEDARRAY_RETILE_H
 
-#include "TiledArray/util/annotation.h"
 #include "TiledArray/special/diagonal_array.h"
+#include "TiledArray/special/kronecker_delta.h"
+#include "TiledArray/util/annotation.h"
 
 /// \name Retile function
 /// \brief Retiles a tensor with a provided TiledRange
@@ -38,9 +39,11 @@
 
 namespace TiledArray {
 
-template <typename TileType, typename PolicyType>
-auto retile(const DistArray<TileType, PolicyType>& tensor,
-            const TiledRange& new_trange) {
+namespace detail {
+
+template <typename Tile, typename Policy>
+auto retile_v0(const DistArray<Tile, Policy>& tensor,
+               const TiledRange& new_trange) {
   // Make sure ranks match
   auto rank = new_trange.rank();
   auto tensor_rank = tensor.trange().rank();
@@ -67,11 +70,13 @@ auto retile(const DistArray<TileType, PolicyType>& tensor,
   };
 
   // Check the different dimensions and contract when needed
-  using tensor_type = DistArray<TileType, PolicyType>;
+  using tensor_type = DistArray<Tile, Policy>;
   auto start = detail::dummy_annotation(rank);
   tensor_type output_tensor;
   for (auto i = 0; i < rank; ++i) {
-    if (i == 0) { output_tensor(start) = tensor(start); }
+    if (i == 0) {
+      output_tensor(start) = tensor(start);
+    }
     if (new_trange.dim(i) != tensor.trange().dim(i)) {
       // Make identity for contraction
       TiledRange retiler{tensor.trange().dim(i), new_trange.dim(i)};
@@ -88,7 +93,80 @@ auto retile(const DistArray<TileType, PolicyType>& tensor,
   return output_tensor;
 }
 
-} // namespace TiledArray
+template <typename Tile, typename Policy>
+auto retile_v1(const DistArray<Tile, Policy>& tensor,
+               const TiledRange& new_trange) {
+  // Make sure ranks match
+  auto rank = new_trange.rank();
+  auto tensor_rank = tensor.trange().rank();
+  assert((rank == tensor_rank) && "TiledRanges are of different ranks");
 
+  // Makes the annotations for the contraction step
+  auto annotations = [&]() -> std::tuple<std::string, std::string> {
+    std::ostringstream final, switcher;
+    final << "j0";
+    switcher << "j0";
+    for (unsigned int d = 1; d < rank; ++d) {
+      final << ",j" << d;
+      switcher << ",j" << d;
+    }
+    for (unsigned int d = 0; d < rank; ++d) {
+      switcher << ",i" << d;
+    }
+    return {final.str(), switcher.str()};
+  };
+
+  // Check the different dimensions and contract when needed
+  using Array = DistArray<Tile, Policy>;
+  container::svector<TiledRange1> retiler_ranges;
+  for (auto i = 0; i < rank; ++i) {
+    retiler_ranges.emplace_back(new_trange.dim(i));
+  }
+  for (auto i = 0; i < rank; ++i) {
+    retiler_ranges.emplace_back(tensor.trange().dim(i));
+  }
+  TA::TiledRange retiler_range(retiler_ranges);
+  TA::DistArray<KroneckerDeltaTile, Policy> retiler(
+      tensor.world(), retiler_range,
+      SparseShape(kronecker_shape(retiler_range), retiler_range),
+      std::make_shared<detail::ReplicatedPmap>(
+          tensor.world(), retiler_range.tiles_range().volume()));
+  retiler.init_tiles([=](const TiledArray::Range& range) {
+    return KroneckerDeltaTile(range);
+  });
+
+  // Make indices for contraction
+
+  // Retile
+  Array output;
+  auto start = detail::dummy_annotation(rank);
+  auto [finish, change] = annotations();
+  output(finish) = retiler(change) * tensor(start);
+
+  return output;
+}
+
+template <typename Tile, typename Policy>
+auto retile_v2(const DistArray<Tile, Policy>& source_array,
+               const TiledRange& target_trange) {
+  return DistArray<Tile, Policy>(source_array, target_trange);
+}
+
+}  // namespace detail
+
+/// Creates a new DistArray with the same data as the input tensor, but with a
+/// different trange. The primary use-case is to change tiling while keeping the
+/// element range the same, but it can be used to select blocks of the data as
+/// well as increasing the element range (with the new elements initialized to
+/// zero)
+/// \param array The DistArray whose data is to be retiled
+/// \param target_trange The desired TiledRange of the output tensor
+template <typename Tile, typename Policy>
+auto retile(const DistArray<Tile, Policy>& array,
+            const TiledRange& target_trange) {
+  return detail::retile_v2(array, target_trange);
+}
+
+}  // namespace TiledArray
 
 #endif  // TILEDARRAY_RETILE_H

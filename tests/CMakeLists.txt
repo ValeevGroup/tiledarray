@@ -148,8 +148,6 @@ target_include_directories(${executable} PRIVATE
 #      is too late to do this here; must set TA_ERROR=throw if want to run unit tests
 target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
     MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
-# always test range-v3
-target_link_libraries(${executable} PRIVATE range-v3::range-v3)
 
 # Add targets
 add_test(tiledarray/unit/build "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})

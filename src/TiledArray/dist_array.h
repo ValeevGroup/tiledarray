@@ -163,67 +163,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       false;  ///< if true, the impl object is scheduled to be destroyed in the
               ///< next fence
 
-  static madness::AtomicInt cleanup_counter_;
-
-  /// Array deleter function
-
-  /// This function schedules a task for lazy cleanup. Array objects are
-  /// deleted only after the object has been deleted in all processes.
-  /// \param pimpl The implementation pointer to be deleted.
-  static void lazy_deleter(const impl_type* const pimpl) {
-    if (pimpl) {
-      if (madness::initialized()) {
-        World& world = pimpl->world();
-        const madness::uniqueidT id = pimpl->id();
-        cleanup_counter_++;
-
-        // wait for all DelayedSet's to vanish
-        world.await([&]() { return (pimpl->num_live_ds() == 0); }, true);
-
-        try {
-          world.gop.lazy_sync(id, [pimpl]() {
-            delete pimpl;
-            DistArray::cleanup_counter_--;
-          });
-        } catch (madness::MadnessException& e) {
-          fprintf(stderr,
-                  "!! ERROR TiledArray: madness::MadnessException thrown in "
-                  "Array::lazy_deleter().\n"
-                  "%s\n"
-                  "!! ERROR TiledArray: The exception has been absorbed.\n"
-                  "!! ERROR TiledArray: rank=%i\n",
-                  e.what(), world.rank());
-
-          cleanup_counter_--;
-          delete pimpl;
-        } catch (std::exception& e) {
-          fprintf(stderr,
-                  "!! ERROR TiledArray: std::exception thrown in "
-                  "Array::lazy_deleter().\n"
-                  "%s\n"
-                  "!! ERROR TiledArray: The exception has been absorbed.\n"
-                  "!! ERROR TiledArray: rank=%i\n",
-                  e.what(), world.rank());
-
-          cleanup_counter_--;
-          delete pimpl;
-        } catch (...) {
-          fprintf(stderr,
-                  "!! ERROR TiledArray: An unknown exception was thrown in "
-                  "Array::lazy_deleter().\n"
-                  "!! ERROR TiledArray: The exception has been absorbed.\n"
-                  "!! ERROR TiledArray: rank=%i\n",
-                  world.rank());
-
-          cleanup_counter_--;
-          delete pimpl;
-        }
-      } else {
-        delete pimpl;
-      }
-    }
-  }
-
   /// Sparse array initialization
 
   /// \param world The world where the array will live.
@@ -239,34 +178,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     if (!pmap) {
       // Construct a default process map
       pmap = Policy::default_pmap(world, trange.tiles_range().volume());
-    } else {
-      // Validate the process map
-      TA_ASSERT(pmap->size() == trange.tiles_range().volume() &&
-                "TiledArray::DistArray::DistArray() -- The size of the process "
-                "map is not "
-                "equal to the number of tiles in the TiledRange object.");
-      TA_ASSERT(pmap->rank() ==
-                    typename pmap_interface::size_type(world.rank()) &&
-                "TiledArray::DistArray::DistArray() -- The rank of the process "
-                "map is not equal to that "
-                "of the world object.");
-      TA_ASSERT(pmap->procs() ==
-                    typename pmap_interface::size_type(world.size()) &&
-                "TiledArray::DistArray::DistArray() -- The number of processes "
-                "in the process map is not "
-                "equal to that of the world object.");
     }
 
-    // Validate the shape
-    TA_ASSERT(
-        !shape.empty() &&
-        "TiledArray::DistArray::DistArray() -- The shape is not initialized.");
-    TA_ASSERT(shape.validate(trange.tiles_range()) &&
-              "TiledArray::DistArray::DistArray() -- The range of the shape is "
-              "not equal to "
-              "the tiles range.");
-
-    return pimpl_type(new impl_type(world, trange, shape, pmap), lazy_deleter);
+    return pimpl_type(new impl_type(world, trange, shape, pmap),
+                      impl_type::lazy_deleter);
   }
 
  public:
@@ -541,6 +456,17 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       : DistArray(array_from_il<DistArray>(get_default_world(), trange, il)) {}
   /// @}
 
+  /// "copy" constructor that replaces the TiledRange
+
+  /// This constructor remaps the data of \p other according to \p new_trange ,
+  /// with \p new_value_fill used to fill the new elements, if any
+  DistArray(const DistArray& other, const trange_type& new_trange,
+            numeric_type new_value_fill = numeric_type{0})
+      : pimpl_(
+            make_with_new_trange(other.pimpl(), new_trange, new_value_fill)) {
+    this->truncate();
+  }
+
   /// converting copy constructor
 
   /// This constructor uses the meta data of `other` to initialize the meta
@@ -647,10 +573,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw madness::MadnessException When timeout has been exceeded.
   static void wait_for_lazy_cleanup(World& world, const double = 60.0) {
     try {
-      world.await([&]() { return (cleanup_counter_ == 0); }, true);
+      world.await([&]() { return (impl_type::cleanup_counter_ == 0); }, true);
     } catch (...) {
       printf("%i: Array lazy cleanup timeout with %i pending cleanup(s)\n",
-             world.rank(), int(cleanup_counter_));
+             world.rank(), int(impl_type::cleanup_counter_));
       throw;
     }
   }
@@ -869,10 +795,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                  first minimally contains the same number of elements as
   ///                  the tile.
   /// \throw TiledArray::Exception if the tile is already initialized.
-  template <
-      typename Integer, typename InIter,
-      typename = std::enable_if_t<(std::is_integral_v<Integer>) &&
-                                  detail::is_input_iterator<InIter>::value>>
+  template <typename Integer, typename InIter,
+            typename = std::enable_if_t<(std::is_integral_v<Integer>)&&detail::
+                                            is_input_iterator<InIter>::value>>
   typename std::enable_if<detail::is_input_iterator<InIter>::value>::type set(
       const std::initializer_list<Integer>& i, InIter first) {
     set<std::initializer_list<Integer>>(i, first);
@@ -965,9 +890,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if index \c i has the wrong rank. Strong
   ///                              throw guarantee.
   /// \throw TiledArray::Exception if tile \c i is already set.
-  template <typename Index, typename Value,
-            typename = std::enable_if_t<(std::is_integral_v<Index>) &&
-                                        is_value_or_future_to_value_v<Value>>>
+  template <
+      typename Index, typename Value,
+      typename = std::enable_if_t<
+          (std::is_integral_v<Index>)&&is_value_or_future_to_value_v<Value>>>
   void set(const std::initializer_list<Index>& i, Value&& v) {
     set<std::initializer_list<Index>>(i, std::forward<Value>(v));
   }
@@ -1061,34 +987,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              false. Weak throw guarantee.
   template <HostExecutor Exec = HostExecutor::Default, typename Op>
   void init_tiles(Op&& op, bool skip_set = false) {
-    // lifetime management of op depends on whether it is a lvalue ref (i.e. has
-    // an external owner) or an rvalue ref
-    // - if op is an lvalue ref: pass op to tasks
-    // - if op is an rvalue ref pass make_shared_function(op) to tasks
-    auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
-
-    auto it = impl_ref().pmap()->begin();
-    const auto end = pimpl_->pmap()->end();
-    for (; it != end; ++it) {
-      const auto& index = *it;
-      if (!pimpl_->is_zero(index)) {
-        if (skip_set) {
-          auto fut = find_local(index);
-          if (fut.probe()) continue;
-        }
-        if constexpr (Exec == HostExecutor::MADWorld) {
-          Future<value_type> tile = pimpl_->world().taskq.add(
-              [pimpl = pimpl_, index = ordinal_type(index),
-               op_shared_handle]() -> value_type {
-                return op_shared_handle(pimpl->trange().make_tile_range(index));
-              });
-          set(index, std::move(tile));
-        } else {
-          static_assert(Exec == HostExecutor::Thread);
-          set(index, op_shared_handle(trange().make_tile_range(index)));
-        }
-      }
-    }
+    impl_ref().template init_tiles<Exec>(std::forward<Op>(op), skip_set);
   }
 
   /// Initialize elements of local, non-zero tiles with a user provided functor
@@ -1826,9 +1725,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
 };  // class DistArray
-
-template <typename Tile, typename Policy>
-madness::AtomicInt DistArray<Tile, Policy>::cleanup_counter_;
 
 #ifndef TILEDARRAY_HEADER_ONLY
 

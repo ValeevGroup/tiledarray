@@ -74,6 +74,9 @@ struct Range1 {
   /// @return the extent of this range, i.e. second - first
   auto extent() const noexcept { return second - first; }
 
+  /// @return the volume of this range, i.e. second - first
+  auto volume() const noexcept { return second - first; }
+
   /// swaps `*this` with @p other
   /// @p other a Range1 object
   void swap(Range1& other) noexcept {
@@ -85,6 +88,21 @@ struct Range1 {
   /// @return std::pair<index1_type,index1_type> representation of this
   explicit operator std::pair<index1_type, index1_type>() const {
     return std::make_pair(first, second);
+  }
+
+  /// Checks if a given index is within this range
+  /// @return true if \p i is within this range
+  template <typename I>
+  typename std::enable_if<std::is_integral<I>::value, bool>::type includes(
+      const I& i) const {
+    return first <= i && i < second;
+  }
+
+  /// Checks if a given range overlaps with this range
+
+  /// @return true if \p r overlaps with this range
+  bool overlaps_with(const Range1& rng) const {
+    return lobound() < rng.upbound() && upbound() > rng.lobound();
   }
 
   /// \brief Range1 iterator type
@@ -150,14 +168,14 @@ struct Range1 {
             typename std::enable_if<madness::is_input_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) {
-    ar& first& second;
+    ar & first & second;
   }
 
   template <typename Archive,
             typename std::enable_if<madness::is_output_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) const {
-    ar& first& second;
+    ar & first & second;
   }
 };
 
