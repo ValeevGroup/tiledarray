@@ -244,26 +244,27 @@ class TiledRange1 {
   // clang-format off
   /// @brief makes a uniform (or, as uniform as possible) TiledRange1
 
-  /// @param[in] range_size the range size
+  /// @param[in] range the Range to be tiled
   /// @param[in] target_tile_size the desired tile size
-  /// @return TiledRange1 obtained by tiling range `[0,range_size)` into
-  /// `ntiles = (range_size + target_tile_size - 1)/target_tile_size`
-  ///         tiles; if `x = range_size % ntiles` is not zero, first `x` tiles
+  /// @return TiledRange1 obtained by tiling \p range into
+  /// `ntiles = (range.extent() + target_tile_size - 1)/target_tile_size`
+  ///         tiles; if `x = range.extent() % ntiles` is not zero, first `x` tiles
   /// have size `target_tile_size` and last
   /// `ntiles - x` tiles have size `target_tile_size - 1`, else
   /// all tiles have size `target_tile_size` .
   // clang-format on
-  static TiledRange1 make_uniform(std::size_t range_size,
+  static TiledRange1 make_uniform(const Range1& range,
                                   std::size_t target_tile_size) {
-    if (range_size > 0) {
+    const auto range_extent = range.extent();
+    if (range_extent > 0) {
       TA_ASSERT(target_tile_size > 0);
       std::size_t ntiles =
-          (range_size + target_tile_size - 1) / target_tile_size;
-      auto dv = std::div((long)(range_size + ntiles - 1), (long)ntiles);
+          (range_extent + target_tile_size - 1) / target_tile_size;
+      auto dv = std::div((long)(range_extent + ntiles - 1), (long)ntiles);
       auto avg_tile_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
       std::vector<std::size_t> hashmarks;
       hashmarks.reserve(ntiles + 1);
-      std::size_t element = 0;
+      std::size_t element = range.lobound();
       for (auto i = 0; i < num_avg_plus_one;
            ++i, element += avg_tile_size + 1) {
         hashmarks.push_back(element);
@@ -272,10 +273,17 @@ class TiledRange1 {
            ++i, element += avg_tile_size) {
         hashmarks.push_back(element);
       }
-      hashmarks.push_back(range_size);
+      hashmarks.push_back(range.upbound());
       return TiledRange1(hashmarks.begin(), hashmarks.end());
     } else
       return TiledRange1{};
+  }
+
+  /// same as make_uniform(const Range1&, std::size_t) for a 0-based range
+  /// specified by its extent
+  static TiledRange1 make_uniform(std::size_t range_extent,
+                                  std::size_t target_tile_size) {
+    return make_uniform(Range1(0, range_extent), target_tile_size);
   }
 
   /// swapper

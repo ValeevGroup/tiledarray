@@ -294,6 +294,21 @@ BOOST_AUTO_TEST_CASE(concatenation) {
 }
 
 BOOST_AUTO_TEST_CASE(make_uniform) {
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{1, 1}, 0));
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{1, 1}, 0) == TiledRange1{});
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{3, 6}, 10));
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{3, 6}, 10) ==
+              (TiledRange1{3, 6}));
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{10, 60}, 10));
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{10, 60}, 10) ==
+              (TiledRange1{10, 20, 30, 40, 50, 60}));
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{10, 65}, 10));
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{10, 65}, 10) ==
+              (TiledRange1{10, 20, 29, 38, 47, 56, 65}));
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{10, 69}, 10));
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{10, 69}, 10) ==
+              (TiledRange1{10, 20, 30, 40, 50, 60, 69}));
+
   BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(0, 0));
   BOOST_CHECK(TiledRange1::make_uniform(0, 0) == TiledRange1{});
   BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(0, 1));
