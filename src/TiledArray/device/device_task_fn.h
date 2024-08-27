@@ -121,7 +121,8 @@ struct deviceTaskFn : public TaskInterface {
       } else {
         // TODO should we use device callback or device events??
         // insert device callback
-        TiledArray::device::launchHostFunc(*stream_, device_callback, task_);
+        DeviceSafeCall(TiledArray::device::launchHostFunc(
+            *stream_, device_callback, task_));
         // processed sync, clear state
         stream_ = {};
       }
