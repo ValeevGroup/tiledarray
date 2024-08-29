@@ -180,6 +180,11 @@ void Debugger::default_cmd() {
   }
 }
 
+const std::string Debugger::gdb_cmd_ =
+    "gdb -ex \"set variable debugger_ready_=1\" --pid=$(PID) $(EXEC)";
+const std::string Debugger::lldb_cmd_ =
+    "lldb -p $(PID) -o \"expr debugger_ready_=1\"";
+
 void Debugger::resolve_cmd_alias() {
   if (cmd_ == "gdb_xterm") {
     cmd_ =
@@ -190,6 +195,28 @@ void Debugger::resolve_cmd_alias() {
         "xterm -title \"$(PREFIX)$(EXEC)\" -e lldb -p $(PID) -o \"expr "
         "debugger_ready_=1\" &";
   }
+}
+
+std::string Debugger::replace_macros(std::string str) {
+  if (!str.empty()) {
+    int pid = getpid();
+    std::string::size_type pos;
+    std::string pidvar("$(PID)");
+    while ((pos = str.find(pidvar)) != std::string::npos) {
+      std::string pidstr;
+      pidstr += std::to_string(pid);
+      str.replace(pos, pidvar.size(), pidstr);
+    }
+    std::string execvar("$(EXEC)");
+    while ((pos = str.find(execvar)) != std::string::npos) {
+      str.replace(pos, execvar.size(), exec_);
+    }
+    std::string prefixvar("$(PREFIX)");
+    while ((pos = str.find(prefixvar)) != std::string::npos) {
+      str.replace(pos, prefixvar.size(), prefix_);
+    }
+  }
+  return str;
 }
 
 void Debugger::set_cmd(const char *cmd) {
@@ -262,6 +289,27 @@ void Debugger::debug(const char *reason) {
           ;
       }
     }
+  } // Here, need handling of cmd_ empty
+  if (sleep_) {
+    std::cout << prefix_ << "Debugger: sleeping " << sleep_
+                  << " seconds to wait for debugger ..." << std::endl;
+    sleep(sleep_);
+  }
+  if (wait_for_debugger_) {
+    std::cout << prefix_ << "Debugger: waiting for the user ...";
+    if (cmd_.empty()) {
+      std::cout << " attach debugger to process "
+                    << std::to_string(getpid())
+                    << " as follows:" << std::endl
+                    << prefix_ << "Debugger: - if using  gdb: "
+                    << replace_macros(gdb_cmd_) << std::endl
+                    << prefix_ << "Debugger: - if using lldb: "
+                    << replace_macros(lldb_cmd_);
+    }
+
+    std::cout << prefix_ << ": waiting for the user ..." << std::endl;
+    while (!debugger_ready_)
+      ;
   }
 }
 

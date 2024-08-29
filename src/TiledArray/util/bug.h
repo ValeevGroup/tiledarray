@@ -384,6 +384,9 @@ class Debugger {
  private:
   /// Replaces alias in cmd_ with its full form
   void resolve_cmd_alias();
+  std::string replace_macros(std::string cmd);
+  static const std::string gdb_cmd_;
+  static const std::string lldb_cmd_;
 };
 
 /// Use this to create a Debugger object and make it the default
