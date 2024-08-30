@@ -215,10 +215,22 @@ class Tile {
 
   // Dimension information accessors -----------------------------------------
 
-  /// Size accessors
+  /// Size accessor
 
   /// \return The number of elements in the tensor
   decltype(auto) size() const { return tensor().size(); }
+
+  /// Total size accessor
+
+  /// \return The number of elements in the tensor, tallied across batches (if
+  /// any)
+  decltype(auto) total_size() const {
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<
+                      tensor_type>) {
+      return tensor().total_size();
+    } else
+      return size();
+  }
 
   /// Range accessor
 
