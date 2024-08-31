@@ -65,37 +65,46 @@ struct RangeFixture {
 };
 
 struct Range1Fixture {
+  using index1_type = Range1::index1_type;
   static const size_t ntiles = 5;
 
   Range1Fixture()
-      : a(init_tiling<ntiles + 1>()),
-        tiles(0, a.size() - 1),
-        elements(a.front(), a.back()),
-        tr1(a.begin(), a.end()) {}
+      : tr1_hashmarks(make_hashmarks<ntiles + 1>()),
+        a(tr1_hashmarks),
+        tiles(0, tr1_hashmarks.size() - 1),
+        elements(tr1_hashmarks.front(), tr1_hashmarks.back()),
+        tr1(tr1_hashmarks),
+        tr1_base1(make_hashmarks<ntiles + 1>(1)) {}
   ~Range1Fixture() {}
 
   template <std::size_t D>
-  static std::array<std::size_t, D> init_tiling() {
-    std::array<std::size_t, D> result;
-    result[0] = 0u;
+  static std::array<index1_type, D> make_hashmarks(index1_type offset = 0) {
+    std::array<index1_type, D> result;
+    result[0] = offset;
     for (std::size_t i = 1; i < D; ++i)
       result[i] = result[i - 1] + GlobalFixture::primes[i - 1];
     return result;
   }
 
-  const std::array<std::size_t, ntiles + 1> a;
-  const TiledRange1::range_type tiles;
-  const TiledRange1::range_type elements;
-  TiledRange1 tr1;
+  const std::array<index1_type, ntiles + 1> tr1_hashmarks;
+  const std::array<index1_type, ntiles + 1>
+      a;  // copy of tr1_hashmarks, to make legacy tests build
+  const TiledRange1::range_type tiles;     // = tr1.tiles_range()
+  const TiledRange1::range_type elements;  // = tr1.elements_range()
+  TiledRange1 tr1;                         // base-0 TiledRange1
   std::array<TiledRange1::range_type, ntiles> tile;
+  TiledRange1 tr1_base1;  // base-1 TiledRange1
 };
 
 struct TiledRangeFixtureBase : public Range1Fixture {
   TiledRangeFixtureBase() {
     std::fill(dims.begin(), dims.end(), tr1);
     std::fill(extents.begin(), extents.end(), tr1.extent());
+    std::fill(dims_base1.begin(), dims_base1.end(), tr1_base1);
   }
-  std::array<TiledRange1, GlobalFixture::dim> dims;
+  std::array<TiledRange1, GlobalFixture::dim> dims;  // base-0 TiledRange1's
+  std::array<TiledRange1, GlobalFixture::dim>
+      dims_base1;  // base-1 version of dims
   std::array<long, GlobalFixture::dim> extents;
 };  // struct TiledRangeFixtureBase
 
@@ -106,17 +115,21 @@ struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
   TiledRangeFixture()
       : tiles_range(TiledRangeFixture::index(GlobalFixture::dim, 0),
                     TiledRangeFixture::index(GlobalFixture::dim, 5)),
-        elements_range(TiledRangeFixture::tile_index(GlobalFixture::dim, 0),
-                       TiledRangeFixture::tile_index(GlobalFixture::dim, a[5])),
-        tr(dims.begin(), dims.end()) {}
+        elements_range(TiledRangeFixture::tile_index(GlobalFixture::dim,
+                                                     tr1_hashmarks.front()),
+                       TiledRangeFixture::tile_index(GlobalFixture::dim,
+                                                     tr1_hashmarks.back())),
+        tr(dims.begin(), dims.end()),
+        tr_base1(dims_base1.begin(), dims_base1.end()) {}
 
   ~TiledRangeFixture() {}
 
   static tile_index fill_tile_index(TRangeN::range_type::index::value_type);
 
   const TRangeN::range_type tiles_range;
-  const TRangeN::range_type elements_range;
-  TRangeN tr;
+  const TRangeN::range_type elements_range;  // elements range of tr
+  TRangeN tr;                                // base-0 TiledRangeN
+  TRangeN tr_base1;                          // base-1 version of tr
 };
 
 #endif  // TILEDARRAY_RANGE_FIXTURE_H__INCLUDED
