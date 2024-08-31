@@ -196,20 +196,26 @@ eigen_map(T& tensor) {
 
 /// Copy a block of an Eigen matrix into a tensor
 
-/// A block of \c matrix will be copied into \c tensor. The block
-/// dimensions will be determined by the dimensions of the tensor's range.
+// clang-format off
+/// A block of \c matrix will be copied into \c tensor. If `tensor.rank()==2`
+/// the block is `[tensor.range().lobound()[0] - base_offsets[0], tensor.range().upbound()[0] - base_offsets[0]) x `[tensor.range().lobound()[1] - base_offsets[1], tensor.range().upbound()[1] - base_offsets[1])`,
+/// else it is `[tensor.range().lobound()[0] - base_offsets[0], tensor.range().upbound()[0] - base_offsets[0])`.
+///
 /// \tparam T A tensor type, e.g. TiledArray::Tensor
 /// \tparam Derived The derived type of an Eigen matrix
 /// \param[in] matrix The object that will be assigned the content of \c tensor
-/// \param[out] tensor The object that will be assigned the content of \c matrix
+/// \param[out] tensor The object that will contain the block of \c matrix
+/// \param[in] base_offsets The base offsets for the tensor range (should be lobound of the array that will contain tensor as a tile)
 /// \throw TiledArray::Exception When the dimensions of \c tensor are not equal
 /// to 1 or 2.
 /// \throw TiledArray::Exception When the range of \c tensor is outside the
 /// range of \c matrix .
+// clang-format on
 template <typename T, typename Derived,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
-inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
-                                      T& tensor) {
+inline void eigen_submatrix_to_tensor(
+    const Eigen::MatrixBase<Derived>& matrix, T& tensor,
+    std::array<Range1::index1_type, 2> base_offsets = {0, 0}) {
   [[maybe_unused]] typedef typename T::index1_type size_type;
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
@@ -223,60 +229,71 @@ inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
 
   if (tensor.range().rank() == 2u) {
     // Get tensor range data
-    const std::size_t tensor_lower_0 = tensor_lower[0];
-    const std::size_t tensor_lower_1 = tensor_lower[1];
-    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
-    [[maybe_unused]] const std::size_t tensor_upper_1 = tensor_upper[1];
-    const std::size_t tensor_extent_0 = tensor_extent[0];
-    const std::size_t tensor_extent_1 = tensor_extent[1];
+    const size_type tensor_lower_0 = tensor_lower[0];
+    const size_type tensor_lower_1 = tensor_lower[1];
+    [[maybe_unused]] const size_type tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const size_type tensor_upper_1 = tensor_upper[1];
+    const size_type tensor_extent_0 = tensor_extent[0];
+    const size_type tensor_extent_1 = tensor_extent[1];
 
-    TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.rows()));
-    TA_ASSERT(tensor_upper_1 <= std::size_t(matrix.cols()));
+    TA_ASSERT(tensor_extent_0 <= size_type(matrix.rows()));
+    TA_ASSERT(tensor_extent_1 <= size_type(matrix.cols()));
+    TA_ASSERT(tensor_lower_0 >= base_offsets[0]);
+    TA_ASSERT(tensor_lower_1 >= base_offsets[1]);
 
     // Copy matrix
     eigen_map(tensor, tensor_extent_0, tensor_extent_1) = matrix.block(
-        tensor_lower_0, tensor_lower_1, tensor_extent_0, tensor_extent_1);
+        tensor_lower_0 - base_offsets[0], tensor_lower_1 - base_offsets[1],
+        tensor_extent_0, tensor_extent_1);
   } else {
     // Get tensor range data
-    const std::size_t tensor_lower_0 = tensor_lower[0];
-    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
-    const std::size_t tensor_extent_0 = tensor_extent[0];
+    const size_type tensor_lower_0 = tensor_lower[0];
+    [[maybe_unused]] const size_type tensor_upper_0 = tensor_upper[0];
+    const size_type tensor_extent_0 = tensor_extent[0];
 
     // Check that matrix is a vector.
     TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
 
     if (matrix.rows() == 1) {
-      TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.cols()));
+      TA_ASSERT(tensor_extent_0 <= size_type(matrix.cols()));
+      TA_ASSERT(tensor_lower_0 >= base_offsets[0]);
 
       // Copy the row vector to tensor
       eigen_map(tensor, 1, tensor_extent_0) =
-          matrix.block(0, tensor_lower_0, 1, tensor_extent_0);
+          matrix.block(0, tensor_lower_0 - base_offsets[0], 1, tensor_extent_0);
     } else {
-      TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.rows()));
+      TA_ASSERT(tensor_extent_0 <= size_type(matrix.rows()));
+      TA_ASSERT(tensor_lower_0 >= base_offsets[0]);
 
       // Copy the column vector to tensor
       eigen_map(tensor, tensor_extent_0, 1) =
-          matrix.block(tensor_lower_0, 0, tensor_extent_0, 1);
+          matrix.block(tensor_lower_0 - base_offsets[0], 0, tensor_extent_0, 1);
     }
   }
 }
 
 /// Copy the content of a tensor into an Eigen matrix block
 
-/// The content of tensor will be copied into a block of matrix. The block
-/// dimensions will be determined by the dimensions of the tensor's range.
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \tparam Derived The derived type of an Eigen matrix
-/// \param[in] tensor The object that will be copied to \c matrix
-/// \param[out] matrix The object that will be assigned the content of \c tensor
-/// \throw TiledArray::Exception When the dimensions of \c tensor are not equal
-/// to 1 or 2.
-/// \throw TiledArray::Exception When the range of \c tensor is outside the
-/// range of \c matrix .
+/// The content of tensor will be copied into a block of matrix.
+/// If `tensor.rank()==2`
+/// the block is `[tensor.range().lobound()[0] - base_offsets[0],
+/// tensor.range().upbound()[0] - base_offsets[0]) x
+/// `[tensor.range().lobound()[1] - base_offsets[1], tensor.range().upbound()[1]
+/// - base_offsets[1])`, else it is `[tensor.range().lobound()[0] -
+/// base_offsets[0], tensor.range().upbound()[0] - base_offsets[0])`. \tparam T
+/// A tensor type, e.g. TiledArray::Tensor \tparam Derived The derived type of
+/// an Eigen matrix \param[in] tensor The object that will be copied to \c
+/// matrix \param[out] matrix The object that will be assigned the content of \c
+/// tensor \param[in] base_offsets The base offsets for the tensor range (should
+/// be lobound of the array that will contain tensor as a tile) \throw
+/// TiledArray::Exception When the dimensions of \c tensor are not equal to 1
+/// or 2. \throw TiledArray::Exception When the range of \c tensor is outside
+/// the range of \c matrix .
 template <typename T, typename Derived,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
-inline void tensor_to_eigen_submatrix(const T& tensor,
-                                      Eigen::MatrixBase<Derived>& matrix) {
+inline void tensor_to_eigen_submatrix(
+    const T& tensor, Eigen::MatrixBase<Derived>& matrix,
+    std::array<Range1::index1_type, 2> base_offsets = {0, 0}) {
   [[maybe_unused]] typedef typename T::index1_type size_type;
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
@@ -290,39 +307,44 @@ inline void tensor_to_eigen_submatrix(const T& tensor,
 
   if (tensor.range().rank() == 2) {
     // Get tensor range data
-    const std::size_t tensor_lower_0 = tensor_lower[0];
-    const std::size_t tensor_lower_1 = tensor_lower[1];
-    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
-    [[maybe_unused]] const std::size_t tensor_upper_1 = tensor_upper[1];
-    const std::size_t tensor_extent_0 = tensor_extent[0];
-    const std::size_t tensor_extent_1 = tensor_extent[1];
+    const size_type tensor_lower_0 = tensor_lower[0];
+    const size_type tensor_lower_1 = tensor_lower[1];
+    [[maybe_unused]] const size_type tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const size_type tensor_upper_1 = tensor_upper[1];
+    const size_type tensor_extent_0 = tensor_extent[0];
+    const size_type tensor_extent_1 = tensor_extent[1];
 
-    TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.rows()));
-    TA_ASSERT(tensor_upper_1 <= std::size_t(matrix.cols()));
+    TA_ASSERT(tensor_extent_0 <= size_type(matrix.rows()));
+    TA_ASSERT(tensor_extent_1 <= size_type(matrix.cols()));
+    TA_ASSERT(tensor_lower_0 >= base_offsets[0]);
+    TA_ASSERT(tensor_lower_1 >= base_offsets[1]);
 
     // Copy tensor into matrix
-    matrix.block(tensor_lower_0, tensor_lower_1, tensor_extent_0,
+    matrix.block(tensor_lower_0 - base_offsets[0],
+                 tensor_lower_1 - base_offsets[1], tensor_extent_0,
                  tensor_extent_1) =
         eigen_map(tensor, tensor_extent_0, tensor_extent_1);
   } else {
     // Get tensor range data
-    const std::size_t tensor_lower_0 = tensor_lower[0];
-    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
-    const std::size_t tensor_extent_0 = tensor_extent[0];
+    const size_type tensor_lower_0 = tensor_lower[0];
+    [[maybe_unused]] const size_type tensor_upper_0 = tensor_upper[0];
+    const size_type tensor_extent_0 = tensor_extent[0];
 
     TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
 
     if (matrix.rows() == 1) {
-      TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.cols()));
+      TA_ASSERT(tensor_extent_0 <= size_type(matrix.cols()));
+      TA_ASSERT(tensor_lower_0 >= base_offsets[0]);
 
       // Copy tensor into row vector
-      matrix.block(0, tensor_lower_0, 1, tensor_extent_0) =
+      matrix.block(0, tensor_lower_0 - base_offsets[0], 1, tensor_extent_0) =
           eigen_map(tensor, 1, tensor_extent_0);
     } else {
-      TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.rows()));
+      TA_ASSERT(tensor_extent_0 <= size_type(matrix.rows()));
+      TA_ASSERT(tensor_lower_0 >= base_offsets[0]);
 
       // Copy tensor into column vector
-      matrix.block(tensor_lower_0, 0, tensor_extent_0, 1) =
+      matrix.block(tensor_lower_0 - base_offsets[0], 0, tensor_extent_0, 1) =
           eigen_map(tensor, tensor_extent_0, 1);
     }
   }
@@ -344,7 +366,12 @@ void counted_eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>* matrix,
                                        const typename A::ordinal_type i,
                                        madness::AtomicInt* counter) {
   typename A::value_type tensor(array->trange().make_tile_range(i));
-  eigen_submatrix_to_tensor(*matrix, tensor);
+  // array lobound, in case not base-0
+  const auto* range_lobound_data =
+      array->trange().elements_range().lobound_data();
+  std::array<Range1::index1_type, 2> array_lobound{
+      {range_lobound_data[0], range_lobound_data[1]}};
+  eigen_submatrix_to_tensor(*matrix, tensor, array_lobound);
   array->set(i, tensor);
   (*counter)++;
 }
@@ -357,10 +384,11 @@ void counted_eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>* matrix,
 /// \param tensor The tensor to be copied
 /// \param counter The task counter
 template <typename Derived, typename T>
-void counted_tensor_to_eigen_submatrix(const T& tensor,
-                                       Eigen::MatrixBase<Derived>* matrix,
-                                       madness::AtomicInt* counter) {
-  tensor_to_eigen_submatrix(tensor, *matrix);
+void counted_tensor_to_eigen_submatrix(
+    const T& tensor, Eigen::MatrixBase<Derived>* matrix,
+    std::array<Range1::index1_type, 2> base_offsets,
+    madness::AtomicInt* counter) {
+  tensor_to_eigen_submatrix(tensor, *matrix, base_offsets);
   (*counter)++;
 }
 
@@ -524,6 +552,12 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
   EigenMatrix matrix =
       EigenMatrix::Zero(array_extent[0], (rank == 2 ? array_extent[1] : 1));
 
+  // array lobound, in case not base-0
+  const auto* range_lobound_data =
+      array.trange().elements_range().lobound_data();
+  std::array<Range1::index1_type, 2> array_lobound{
+      {range_lobound_data[0], range_lobound_data[1]}};
+
   // Spawn tasks to copy array tiles to the Eigen matrix
   madness::AtomicInt counter;
   counter = 0;
@@ -533,7 +567,7 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
       array.world().taskq.add(
           &detail::counted_tensor_to_eigen_submatrix<
               EigenMatrix, typename DistArray<Tile, Policy>::value_type>,
-          array.find(i), &matrix, &counter);
+          array.find(i), &matrix, array_lobound, &counter);
       ++n;
     }
   }
@@ -565,6 +599,7 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
 /// // Create a range for the new array object
 /// std::vector<std::size_t> blocks;
 /// for(std::size_t i = 0ul; i <= 100ul; i += 10ul)
+///   // N.B. can create non-0-base range, replace i -> i + base_offse
 ///   blocks.push_back(i);
 /// std::array<TiledArray::TiledRange1, 2> blocks2 =
 ///     {{ TiledArray::TiledRange1(blocks.begin(), blocks.end()),
@@ -634,6 +669,7 @@ inline A row_major_buffer_to_array(
 /// // Create a range for the new array object
 /// std::vector<std::size_t> blocks;
 /// for(std::size_t i = 0ul; i <= 100ul; i += 10ul)
+///   // N.B. can create non-0-base range, replace i -> i + base_offse
 ///   blocks.push_back(i);
 /// std::array<TiledArray::TiledRange1, 2> blocks2 =
 ///     {{ TiledArray::TiledRange1(blocks.begin(), blocks.end()),
@@ -705,16 +741,25 @@ inline A column_major_buffer_to_array(
 ///        match.
 // clang-format on
 template <typename T, int NumIndices_, int Options_, typename IndexType_,
-          typename Tensor_>
+          typename Tensor_, std::size_t NumIndices_Sz = NumIndices_>
 inline void eigen_subtensor_to_tensor(
     const Eigen::Tensor<T, NumIndices_, Options_, IndexType_>& src,
-    Tensor_& dst) {
+    Tensor_& dst,
+    std::array<Range1::index1_type, NumIndices_Sz> base_offsets = {}) {
   TA_ASSERT(dst.range().rank() == NumIndices_);
+  static_assert(NumIndices_Sz == NumIndices_);
 
   auto to_array = [](const auto& seq) {
     TA_ASSERT(seq.size() == NumIndices_);
     std::array<IndexType_, NumIndices_> result;
     std::copy(seq.begin(), seq.end(), result.begin());
+    return result;
+  };
+
+  auto to_base0 = [&](const auto& arr) {
+    TA_ASSERT(arr.size() == NumIndices_);
+    std::array<IndexType_, NumIndices_> result;
+    for (int i = 0; i < NumIndices_; ++i) result[i] = arr[i] - base_offsets[i];
     return result;
   };
 
@@ -725,8 +770,8 @@ inline void eigen_subtensor_to_tensor(
   };
 
   const auto& dst_range = dst.range();
-  auto src_block =
-      src.slice(to_array(dst_range.lobound()), to_array(dst_range.extent()));
+  auto src_block = src.slice(to_base0(to_array(dst_range.lobound())),
+                             to_array(dst_range.extent()));
   auto dst_eigen_map = Eigen::TensorMap<
       Eigen::Tensor<T, NumIndices_, Eigen::RowMajor, IndexType_>>(
       dst.data(), to_array(dst_range.extent()));
@@ -758,16 +803,25 @@ inline void eigen_subtensor_to_tensor(
 ///        of \c src and \c dst do not match.
 // clang-format on
 template <typename Tensor_, typename T, int NumIndices_, int Options_,
-          typename IndexType_>
+          typename IndexType_, std::size_t NumIndices_Sz = NumIndices_>
 inline void tensor_to_eigen_subtensor(
     const Tensor_& src,
-    Eigen::Tensor<T, NumIndices_, Options_, IndexType_>& dst) {
+    Eigen::Tensor<T, NumIndices_, Options_, IndexType_>& dst,
+    std::array<Range1::index1_type, NumIndices_Sz> base_offsets = {}) {
   TA_ASSERT(src.range().rank() == NumIndices_);
+  static_assert(NumIndices_Sz == NumIndices_);
 
   auto to_array = [](const auto& seq) {
     TA_ASSERT(seq.size() == NumIndices_);
     std::array<IndexType_, NumIndices_> result;
     std::copy(seq.begin(), seq.end(), result.begin());
+    return result;
+  };
+
+  auto to_base0 = [&](const auto& arr) {
+    TA_ASSERT(arr.size() == NumIndices_);
+    std::array<IndexType_, NumIndices_> result;
+    for (int i = 0; i < NumIndices_; ++i) result[i] = arr[i] - base_offsets[i];
     return result;
   };
 
@@ -778,8 +832,8 @@ inline void tensor_to_eigen_subtensor(
   };
 
   const auto& src_range = src.range();
-  auto dst_block =
-      dst.slice(to_array(src_range.lobound()), to_array(src_range.extent()));
+  auto dst_block = dst.slice(to_base0(to_array(src_range.lobound())),
+                             to_array(src_range.extent()));
   auto src_eigen_map = Eigen::TensorMap<
       Eigen::Tensor<const T, NumIndices_, Eigen::RowMajor, IndexType_>>(
       src.data(), to_array(src_range.extent()));
@@ -809,7 +863,13 @@ void counted_eigen_subtensor_to_tensor(const Eigen_Tensor_* src,
                                        const typename Range::index_type i,
                                        madness::AtomicInt* counter) {
   typename DistArray_::value_type tensor(dst->trange().make_tile_range(i));
-  eigen_subtensor_to_tensor(*src, tensor);
+  // array lobound, in case not base-0
+  const auto* range_lobound_data =
+      dst->trange().elements_range().lobound_data();
+  std::array<Range1::index1_type, Eigen_Tensor_::NumIndices> array_lobound;
+  std::copy(range_lobound_data, range_lobound_data + dst->trange().rank(),
+            array_lobound.begin());
+  eigen_subtensor_to_tensor(*src, tensor, array_lobound);
   dst->set(i, tensor);
   (*counter)++;
 }
@@ -822,10 +882,11 @@ void counted_eigen_subtensor_to_tensor(const Eigen_Tensor_* src,
 /// \param dst The destination tensor
 /// \param counter The task counter
 template <typename TA_Tensor_, typename Eigen_Tensor_>
-void counted_tensor_to_eigen_subtensor(const TA_Tensor_& src,
-                                       Eigen_Tensor_* dst,
-                                       madness::AtomicInt* counter) {
-  tensor_to_eigen_subtensor(src, *dst);
+void counted_tensor_to_eigen_subtensor(
+    const TA_Tensor_& src, Eigen_Tensor_* dst,
+    std::array<Range1::index1_type, Eigen_Tensor_::NumIndices> base_offsets,
+    madness::AtomicInt* counter) {
+  tensor_to_eigen_subtensor(src, *dst, base_offsets);
   (*counter)++;
 }
 
@@ -1004,6 +1065,12 @@ Tensor array_to_eigen_tensor(const TiledArray::DistArray<Tile, Policy>& src,
     result_type result(src.trange().elements_range().extent());
     result.setZero();
 
+    const auto* range_lobound_data =
+        src.trange().elements_range().lobound_data();
+    std::array<Range1::index1_type, Tensor::NumIndices> array_lobound;
+    std::copy(range_lobound_data, range_lobound_data + src.trange().rank(),
+              array_lobound.begin());
+
     // Spawn tasks to copy array tiles to btas::Tensor
     madness::AtomicInt counter;
     counter = 0;
@@ -1012,7 +1079,7 @@ Tensor array_to_eigen_tensor(const TiledArray::DistArray<Tile, Policy>& src,
       if (!src.is_zero(i)) {
         src.world().taskq.add(
             &detail::counted_tensor_to_eigen_subtensor<Tile, result_type>,
-            src.find(i), &result, &counter);
+            src.find(i), &result, array_lobound, &counter);
         ++n;
       }
     }
