@@ -98,19 +98,38 @@ class TiledRange1 {
 
   /// Construct a 1D tiled range.
 
-  /// This will construct a 1D tiled range with tile boundaries ("hashmarks")
-  /// {\p t0 , \p t_rest... }
+  /// This will construct a 1D tiled range from range {t0, t1, t2, ... tn}
+  /// specifying the tile boundaries (hashmarks).
   /// The number of tile boundaries is n + 1, where n is the number of tiles.
   /// Tiles are defined as [\p t0 , t1), [t1, t2), [t2, t3), ...
   /// Tiles are indexed starting with 0.
   /// \tparam Integer An integral type
-  /// \param list The list of tile boundaries in order from smallest to largest
+  /// \param tile_boundaries The list of tile boundaries in order from smallest
+  /// to largest
+  /// \note validity of the {\p t0 , \p t_rest... } range is checked using
+  ///   #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
+  template <typename Range,
+            typename = std::enable_if_t<detail::is_integral_range_v<Range>>>
+  explicit TiledRange1(Range&& tile_boundaries) {
+    init_tiles_(tile_boundaries.begin(), tile_boundaries.end(), 0);
+  }
+
+  /// Construct a 1D tiled range.
+
+  /// This will construct a 1D tiled range from range {t0, t1, t2, ... tn}
+  /// specifying the tile boundaries (hashmarks).
+  /// The number of tile boundaries is n + 1, where n is the number of tiles.
+  /// Tiles are defined as [\p t0 , t1), [t1, t2), [t2, t3), ...
+  /// Tiles are indexed starting with 0.
+  /// \tparam Integer An integral type
+  /// \param tile_boundaries The list of tile boundaries in order from smallest
+  /// to largest
   /// \note validity of the {\p t0 , \p t_rest... } range is checked using
   /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
   template <typename Integer,
             typename = std::enable_if_t<std::is_integral_v<Integer>>>
-  explicit TiledRange1(const std::initializer_list<Integer>& list) {
-    init_tiles_(list.begin(), list.end(), 0);
+  explicit TiledRange1(const std::initializer_list<Integer>& tile_boundaries) {
+    init_tiles_(tile_boundaries.begin(), tile_boundaries.end(), 0);
   }
 
   /// Copy assignment operator

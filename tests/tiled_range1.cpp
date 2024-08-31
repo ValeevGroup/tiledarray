@@ -110,6 +110,21 @@ BOOST_AUTO_TEST_CASE(constructor) {
     }
   }
 
+  // check constructor using range of tile boundaries.
+  {
+    if (Range1Fixture::ntiles == 5) {
+      TiledRange1 r(a);
+      BOOST_CHECK_EQUAL(r.tiles_range().first, tiles.first);
+      BOOST_CHECK_EQUAL(r.tiles_range().second, tiles.second);
+      BOOST_CHECK_EQUAL(r.elements_range().first, elements.first);
+      BOOST_CHECK_EQUAL(r.elements_range().second, elements.second);
+      for (std::size_t i = 0; i < a.size() - 1; ++i) {
+        BOOST_CHECK_EQUAL(r.tile(i).first, a[i]);
+        BOOST_CHECK_EQUAL(r.tile(i).second, a[i + 1]);
+      }
+    }
+  }
+
   // check construction with negative index values
 #ifdef TA_SIGNED_1INDEX_TYPE
   {
