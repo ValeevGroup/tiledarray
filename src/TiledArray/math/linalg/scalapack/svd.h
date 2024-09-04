@@ -42,10 +42,10 @@ namespace TiledArray::math::linalg::scalapack {
  *
  *  Example Usage:
  *
- *  auto S          = svd<SVDValuesOnly>  (A, ...)
- *  auto [S, U]     = svd<SVDLeftVectors> (A, ...)
- *  auto [S, VT]    = svd<SVDRightVectors>(A, ...)
- *  auto [S, U, VT] = svd<SVDAllVectors>  (A, ...)
+ *  auto S          = svd<SVD::Vectors::ValuesOnly>  (A, ...)
+ *  auto [S, U]     = svd<SVD::Vectors::LeftVectors> (A, ...)
+ *  auto [S, VT]    = svd<SVD::Vectors::RightVectors>(A, ...)
+ *  auto [S, U, VT] = svd<SVD::Vectors::AllVectors>  (A, ...)
  *
  *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
  *

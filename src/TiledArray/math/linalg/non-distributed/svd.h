@@ -34,16 +34,16 @@
 namespace TiledArray::math::linalg::non_distributed {
 
 /**
- *  @brief Compute the singular value decomposition (SVD) via ScaLAPACK
+ *  @brief Compute the singular value decomposition (SVD) via LAPACK
  *
  *  A(i,j) = S(k) U(i,k) conj(V(j,k))
  *
  *  Example Usage:
  *
- *  auto S          = svd<SVDValuesOnly>  (A, ...)
- *  auto [S, U]     = svd<SVDLeftstd::vectors> (A, ...)
- *  auto [S, VT]    = svd<SVDRightstd::vectors>(A, ...)
- *  auto [S, U, VT] = svd<SVDAllstd::vectors>  (A, ...)
+ *  auto S          = svd<SVD::Vectors::ValuesOnly>  (A, ...)
+ *  auto [S, U]     = svd<SVD::Vectors::LeftVectors> (A, ...)
+ *  auto [S, VT]    = svd<SVD::Vectors::RightVectors>(A, ...)
+ *  auto [S, U, VT] = svd<SVD::Vectors::AllVectors>  (A, ...)
  *
  *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
  *
