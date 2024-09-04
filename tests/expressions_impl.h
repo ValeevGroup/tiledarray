@@ -32,6 +32,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(tensor_factories, F, Fixtures, F) {
   auto& a = F::a;
   auto& c = F::c;
   auto& aC = F::aC;
+  auto& a_base1 = F::a_base1;
 
   const auto& ca = a;
   const std::array<int, 3> lobound{{3, 3, 3}};
@@ -65,6 +66,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(tensor_factories, F, Fixtures, F) {
                            ca("a,b,c").block(boost::combine(lobound, upbound)));
   BOOST_CHECK_NO_THROW(c("a,b,c") =
                            ca("a,b,c").block(iv(3, 3, 3), iv(5, 5, 5)));
+
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a_base1("a,b,c").block(lobound, upbound));
 
   // make sure that c("abc") = a("abc") does a deep copy
   {
@@ -291,6 +294,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block, F, Fixtures, F) {
   auto& a = F::a;
   auto& b = F::b;
   auto& c = F::c;
+  auto& a_base1 = F::a_base1;
 
   BlockRange block_range(a.trange().tiles_range(), {3, 3, 3}, {5, 5, 5});
 
@@ -681,6 +685,31 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block, F, Fixtures, F) {
       BOOST_CHECK(c.is_zero(block_range.ordinal(index)));
     }
   }
+}
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_base1, F, Fixtures, F) {
+  auto& a = F::a;
+  auto& b = F::b;
+  auto& c = F::c;
+  auto& a_base1 = F::a_base1;
+  auto& c_base1 = F::c_base1;
+  auto& ntiles = F::ntiles;
+
+  c.fill_local(0.0);
+  c_base1.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             a_base1("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE(tile_ranges_match_trange(c));
+  BOOST_REQUIRE_NO_THROW(c_base1("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE(tile_ranges_match_trange(c_base1));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({0, 0, 0}, {ntiles, ntiles, ntiles}) =
+                             a_base1("a,b,c"));
+  BOOST_REQUIRE(tile_ranges_match_trange(c));
+  BOOST_REQUIRE_NO_THROW(
+      c_base1("a,b,c").block({0, 0, 0}, {ntiles, ntiles, ntiles}) = a("a,b,c"));
+  BOOST_REQUIRE(tile_ranges_match_trange(c_base1));
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_permute_block, F, Fixtures,
