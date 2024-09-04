@@ -97,9 +97,6 @@ DistArray<Tile, Policy> concat(
       result.make_tsrexpr(annot).block(tile_begin_end[i].first,
                                        tile_begin_end[i].second) =
           arrays[i].make_tsrexpr(annot);
-      result.make_tsrexpr(annot).block(tile_begin_end[i].first,
-                                       tile_begin_end[i].second) =
-          arrays[i].make_tsrexpr(annot);
     }
   }
   result.world().gop.fence();
