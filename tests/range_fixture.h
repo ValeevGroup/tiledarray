@@ -66,7 +66,7 @@ struct RangeFixture {
 
 struct Range1Fixture {
   using index1_type = Range1::index1_type;
-  static const size_t ntiles = 5;
+  static const inline size_t ntiles = 5;
 
   Range1Fixture()
       : tr1_hashmarks(make_hashmarks<ntiles + 1>()),

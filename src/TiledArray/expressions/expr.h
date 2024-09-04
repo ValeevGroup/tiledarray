@@ -47,6 +47,9 @@
 
 #include <TiledArray/tensor/type_traits.h>
 
+#include <range/v3/to_container.hpp>
+#include <range/v3/view/zip_with.hpp>
+
 namespace TiledArray::expressions {
 
 template <typename Engine>
@@ -509,8 +512,14 @@ class Expr {
     if (tsr.array().trange().tiles_range().volume() != 0) {
       // N.B. must deep copy
       TA_ASSERT(tsr.array().trange().tiles_range().includes(tsr.lower_bound()));
-      const container::svector<long> shift =
-          tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound();
+      // N.B. this expression's range,
+      // dist_eval.trange().elements_range().lobound(), may not be zero!
+      const auto shift =
+          ranges::views::zip_with(
+              [](auto a, auto b) { return a - b; },
+              tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound(),
+              dist_eval.trange().elements_range().lobound()) |
+          ranges::to<container::svector<long>>();
 
       std::shared_ptr<op_type> shift_op =
           std::make_shared<op_type>(shift_op_type(shift));
