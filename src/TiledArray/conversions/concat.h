@@ -64,7 +64,7 @@ DistArray<Tile, Policy> concat(
   using std::begin;
   using std::end;
 
-  index b(r), e(r);  // updated for concatted modes only
+  index b(r), e(r);  // updated for concatenated modes only
   std::fill(begin(b), end(b), 0);
   for (auto i = 0ul; i != arrays.size(); ++i) {
     auto& tr = arrays[i].trange();
