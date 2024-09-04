@@ -1779,6 +1779,22 @@ auto rank(const DistArray<Tile, Policy>& a) {
   return a.trange().tiles_range().rank();
 }
 
+/// Checks if for every tile `i` its range matches the tile range produced by
+/// `a.trange()`
+
+/// @return `a.get(i)->range() == a.trange().make_tile_range(i)` for every tile
+/// `i`
+template <typename Tile, typename Policy>
+bool tile_ranges_match_trange(const DistArray<Tile, Policy>& a) {
+  auto end = a.end();
+  for (auto it = a.begin(); it != end; ++it) {
+    if (it->is_local() && !a.is_zero(it.index()))
+      if ((*it).get().range() != a.trange().make_tile_range(it.index()))
+        return false;
+  }
+  return true;
+}
+
 ///
 /// \brief Get the total elements in the non-zero tiles of an array.
 ///        For tensor-of-tensor tiles, the total is the sum of the number of
