@@ -50,6 +50,7 @@ class TiledRange1 {
  public:
   using range_type = Range1;
   using index1_type = range_type::index1_type;
+  using signed_index1_type = range_type::signed_index1_type;
   using const_iterator = std::vector<range_type>::const_iterator;
 
   /// Default constructor creates an empty range (tile and element ranges are
@@ -303,6 +304,53 @@ class TiledRange1 {
   static TiledRange1 make_uniform(std::size_t range_extent,
                                   std::size_t target_tile_size) {
     return make_uniform(Range1(0, range_extent), target_tile_size);
+  }
+
+  /// shifts this TiledRange1
+
+  /// @param[in] shift the shift to apply
+  /// @return reference to this
+  TiledRange1& inplace_shift(signed_index1_type shift) {
+    if (shift == 0) return *this;
+    // ensure that it's safe to shift
+    TA_ASSERT(shift <= 0 || elements_range().upbound() <= 0 ||
+              (shift <= (std::numeric_limits<index1_type>::max() -
+                         elements_range().upbound())));
+    TA_ASSERT(shift >= 0 || elements_range().lobound() >= 0 ||
+              (std::abs(shift) <= (elements_range().lobound() -
+                                   std::numeric_limits<index1_type>::min())));
+    elements_range_.inplace_shift(shift);
+    for (auto& tile : tiles_ranges_) {
+      tile.inplace_shift(shift);
+    }
+    elem2tile_.reset();
+    return *this;
+  }
+
+  /// creates a shifted TiledRange1
+
+  /// equivalent to (but more efficient than) `TiledRange1(*this).shift(shift)`
+  /// @param[in] shift the shift value
+  [[nodiscard]] TiledRange1 shift(signed_index1_type shift) const {
+    if (shift == 0) return *this;
+    // ensure that it's safe to shift
+    TA_ASSERT(shift <= 0 || elements_range().upbound() <= 0 ||
+              (shift <= (std::numeric_limits<index1_type>::max() -
+                         elements_range().upbound())));
+    TA_ASSERT(shift >= 0 || elements_range().lobound() >= 0 ||
+              (std::abs(shift) <= (elements_range().lobound() -
+                                   std::numeric_limits<index1_type>::min())));
+    std::vector<index1_type> hashmarks;
+    hashmarks.reserve(tile_extent() + 1);
+    if (tiles_ranges_.empty())
+      hashmarks.emplace_back(elements_range_.lobound() + shift);
+    else {
+      for (auto& t : tiles_ranges_) {
+        hashmarks.push_back(t.first + shift);
+      }
+      hashmarks.push_back(elements_range_.upbound() + shift);
+    }
+    return TiledRange1(hashmarks.begin(), hashmarks.end());
   }
 
   /// swapper

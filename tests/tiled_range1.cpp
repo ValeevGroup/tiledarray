@@ -360,4 +360,34 @@ BOOST_AUTO_TEST_CASE(make_uniform) {
               (TiledRange1{0, 10, 20, 30, 40, 50, 59}));
 }
 
+BOOST_AUTO_TEST_CASE(shift) {
+  TiledRange1 r0;
+  TiledRange1 r0_plus_1;
+  BOOST_REQUIRE_NO_THROW(r0_plus_1 = r0.shift(1));
+  BOOST_CHECK_EQUAL(r0_plus_1, TiledRange1(1));
+  BOOST_REQUIRE_NO_THROW(r0_plus_1.inplace_shift(-1));
+  BOOST_CHECK_EQUAL(r0_plus_1, r0);
+
+  BOOST_CHECK_TA_ASSERT(
+      TiledRange1{std::numeric_limits<index1_type>::max()}.inplace_shift(1),
+      Exception);
+  BOOST_CHECK_TA_ASSERT(
+      TiledRange1{std::numeric_limits<index1_type>::min()}.inplace_shift(-1),
+      Exception);
+  TiledRange1 tmp;
+  BOOST_CHECK_TA_ASSERT(
+      tmp = TiledRange1{std::numeric_limits<index1_type>::max()}.shift(1),
+      Exception);
+  BOOST_CHECK_TA_ASSERT(
+      tmp = TiledRange1{std::numeric_limits<index1_type>::min()}.shift(-1),
+      Exception);
+
+  TiledRange1 r1{1, 3, 7, 9};
+  TiledRange1 r1_minus_1;
+  BOOST_REQUIRE_NO_THROW(r1_minus_1 = r1.shift(-1));
+  BOOST_CHECK_EQUAL(r1_minus_1, TiledRange1(0, 2, 6, 8));
+  BOOST_REQUIRE_NO_THROW(r1_minus_1.inplace_shift(1));
+  BOOST_CHECK_EQUAL(r1_minus_1, r1);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
