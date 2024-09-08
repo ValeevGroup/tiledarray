@@ -338,10 +338,11 @@ class TiledRange1 {
   /// Validates tile_boundaries
   template <typename RandIter>
   static void valid_(RandIter first, RandIter last) {
-    // Verify at least 2 elements are present if the vector is not empty.
-    TA_ASSERT((std::distance(first, last) >= 2) &&
-              "TiledRange1 construction failed: You need at least 2 "
-              "elements in the tile boundary list.");
+    // Need at least 1 tile hashmark to position the element range
+    // (zero hashmarks is handled by the default ctor)
+    TA_ASSERT((std::distance(first, last) >= 1) &&
+              "TiledRange1 construction failed: You need at least 1 "
+              "element in the tile boundary list.");
     // Verify the requirement that a0 <= a1 <= a2 <= ...
     for (; first != (last - 1); ++first) {
       TA_ASSERT(
@@ -364,7 +365,9 @@ class TiledRange1 {
     valid_(first, last);
 #endif  // NDEBUG
     range_.first = start_tile_index;
-    range_.second = start_tile_index + last - first - 1;
+    using std::distance;
+    range_.second =
+        start_tile_index + static_cast<index1_type>(distance(first, last)) - 1;
     elements_range_.first = *first;
     elements_range_.second = *(last - 1);
     for (; first != (last - 1); ++first)

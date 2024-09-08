@@ -63,6 +63,25 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_TA_ASSERT(r.tile(0), Exception);
   }
 
+  // check construction with single tile boundary (hence zero tiles)
+  {
+    {
+      BOOST_REQUIRE_NO_THROW(TiledRange1 r(0));
+      TiledRange1 r(0);
+      BOOST_CHECK_EQUAL(r, TiledRange1{});
+    }
+    {
+      BOOST_REQUIRE_NO_THROW(TiledRange1 r(1));
+      TiledRange1 r(1);
+      BOOST_CHECK_NE(r, TiledRange1{});
+      BOOST_CHECK_EQUAL(r.tiles_range().first, 0);
+      BOOST_CHECK_EQUAL(r.tiles_range().second, 0);
+      BOOST_CHECK_EQUAL(r.elements_range().first, 1);
+      BOOST_CHECK_EQUAL(r.elements_range().second, 1);
+      BOOST_CHECK_TA_ASSERT(r.tile(0), Exception);
+    }
+  }
+
   // check construction with a iterators and the range info.
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r(a.begin(), a.end()));
@@ -200,7 +219,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_TA_ASSERT(TiledRange1 r(boundaries.begin(), boundaries.end()),
                           Exception);
     BOOST_CHECK_TA_ASSERT(TiledRange1 r(a.begin(), a.begin()), Exception);
-    BOOST_CHECK_TA_ASSERT(TiledRange1 r(a.begin(), a.begin() + 1), Exception);
+    BOOST_CHECK_NO_THROW(TiledRange1 r(a.begin(), a.begin() + 1));
     boundaries.push_back(2);
     boundaries.push_back(0);
     BOOST_CHECK_TA_ASSERT(TiledRange1 r(boundaries.begin(), boundaries.end()),
