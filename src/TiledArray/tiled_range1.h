@@ -485,10 +485,8 @@ inline bool operator!=(const TiledRange1& r1, const TiledRange1& r2) {
 
 /// TiledRange1 ostream operator
 inline std::ostream& operator<<(std::ostream& out, const TiledRange1& rng) {
-  out << "( tiles = [ " << rng.tiles_range().first << ", "
-      << rng.tiles_range().second << " ), elements = [ "
-      << rng.elements_range().first << ", " << rng.elements_range().second
-      << " ) )";
+  out << "( tiles = " << rng.tiles_range()
+      << ", elements = " << rng.elements_range() << " )";
   return out;
 }
 
