@@ -324,6 +324,61 @@ class TiledRange {
     std::swap(ranges_, other.ranges_);
   }
 
+  /// Shifts the lower and upper bounds of this range
+
+  /// \tparam Index An integral range type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A reference to this range
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
+  TiledRange_& inplace_shift(const Index& bound_shift) {
+    elements_range_.inplace_shift(bound_shift);
+    using std::begin;
+    auto bound_shift_it = begin(bound_shift);
+    for (std::size_t d = 0; d != rank(); ++d, ++bound_shift_it) {
+      ranges_[d].inplace_shift(*bound_shift_it);
+    }
+    return *this;
+  }
+
+  /// Shifts the lower and upper bound of this range
+
+  /// \tparam Index An integral type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A reference to this range
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  TiledRange_& inplace_shift(const std::initializer_list<Index>& bound_shift) {
+    return inplace_shift<std::initializer_list<Index>>(bound_shift);
+  }
+
+  /// Create a TiledRange with shifted lower and upper bounds
+
+  /// \tparam Index An integral range type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A shifted copy of this range
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
+  [[nodiscard]] TiledRange_ shift(const Index& bound_shift) const {
+    TiledRange_ result(*this);
+    result.inplace_shift(bound_shift);
+    return result;
+  }
+
+  /// Create a TiledRange with shifted lower and upper bounds
+
+  /// \tparam Index An integral type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A shifted copy of this range
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  [[nodiscard]] TiledRange_ shift(
+      const std::initializer_list<Index>& bound_shift) const {
+    TiledRange_ result(*this);
+    result.inplace_shift(bound_shift);
+    return result;
+  }
+
   template <typename Archive,
             typename std::enable_if<madness::is_input_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>

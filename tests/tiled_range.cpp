@@ -155,6 +155,17 @@ BOOST_AUTO_TEST_CASE(permutation) {
                     r1);  // check that the permutation was assigned correctly.
 }
 
+BOOST_AUTO_TEST_CASE(shift) {
+  TiledRange tr1 = tr;
+  const auto shift = std::vector<int>(GlobalFixture::dim, 1);
+  BOOST_CHECK_NO_THROW(tr1.inplace_shift(shift));
+  BOOST_CHECK_EQUAL(tr1.tiles_range(), tr.tiles_range());
+  BOOST_CHECK_EQUAL(tr1.elements_range(), tr.elements_range().shift(shift));
+  TiledRange tr1_copy;
+  BOOST_CHECK_NO_THROW(tr1_copy = tr.shift(shift));
+  BOOST_CHECK_EQUAL(tr1, tr1_copy);
+}
+
 BOOST_AUTO_TEST_CASE(make_tiles_range) {
   tile_index start(GlobalFixture::dim);
   tile_index finish(GlobalFixture::dim);
