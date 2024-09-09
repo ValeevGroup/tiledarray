@@ -39,19 +39,19 @@ namespace TiledArray {
 /// object to be used in TiledArray expressions, users must also define the
 /// following functions:
 /// \li \c add
-/// \li \c add_to
+/// \li \c add_to (in-place add)
 /// \li \c subt
-/// \li \c subt_to
+/// \li \c subt_to  (in-place subt)
 /// \li \c mult
-/// \li \c mult_to
+/// \li \c mult_to (in-place mult)
 /// \li \c scale
-/// \li \c scale_to
+/// \li \c scale_to  (in-place scale)
 /// \li \c gemm
 /// \li \c neg
 /// \li \c permute
 /// \li \c empty
 /// \li \c shift
-/// \li \c shift_to
+/// \li \c shift_to  (in-place shift)
 /// \li \c trace
 /// \li \c sum
 /// \li \c product
