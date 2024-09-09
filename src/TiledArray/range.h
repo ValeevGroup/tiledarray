@@ -1005,7 +1005,7 @@ class Range {
   /// \return A shifted copy of this range
   template <typename Index,
             typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-  Range_ shift(const Index& bound_shift) {
+  Range_ shift(const Index& bound_shift) const {
     Range_ result(*this);
     result.inplace_shift(bound_shift);
     return result;
@@ -1018,7 +1018,7 @@ class Range {
   /// \return A shifted copy of this range
   template <typename Index,
             typename = std::enable_if_t<std::is_integral_v<Index>>>
-  Range_ shift(const std::initializer_list<Index>& bound_shift) {
+  Range_ shift(const std::initializer_list<Index>& bound_shift) const {
     Range_ result(*this);
     result.inplace_shift(bound_shift);
     return result;
