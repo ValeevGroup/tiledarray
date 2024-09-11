@@ -28,7 +28,6 @@
 
 #include <type_traits>
 
-
 namespace TiledArray::expressions {
 
 template <typename>
@@ -42,6 +41,10 @@ class BlkTsrExpr;
 
 template <typename, typename>
 class ScalBlkTsrExpr;
+
+/// used to indicate that block tensor expression should preserve the underlying
+/// tensor's trange lobound
+struct preserve_lobound_t {};
 
 template <typename>
 struct is_aliased : std::true_type {};
@@ -67,6 +70,14 @@ class ScalTsrExpr;
 
 template <typename, typename, typename>
 class ScalTsrEngine;
+
+}  // namespace TiledArray::expressions
+
+namespace TiledArray {
+
+/// used to tag block tensor expression methods that preserve the underlying
+/// tensor's trange lobound
+inline constexpr expressions::preserve_lobound_t preserve_lobound;
 
 }  // namespace TiledArray
 

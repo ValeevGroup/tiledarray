@@ -47,6 +47,7 @@
 
 #include <TiledArray/tensor/type_traits.h>
 
+#include <range/v3/algorithm/equal.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/zip_with.hpp>
 
@@ -463,6 +464,16 @@ class Expr {
     // Note: Unfortunately we cannot check that the array tiles have been
     // set even though this is a requirement.
 #endif  // NDEBUG
+
+    // Assignment to block expression uses trange of the array it is bounded to
+    // Assert that the user did not try to override the trange by accident using
+    // set_trange_lobound or at least that it matches tsr.array's trange
+    TA_ASSERT(!tsr.trange_lobound().has_value() ||
+              (ranges::equal(tsr.trange_lobound().value(),
+                             tsr.array()
+                                 .trange()
+                                 .make_tile_range(tsr.lower_bound())
+                                 .lobound())));
 
     // Get the target world.
     World& world = tsr.array().world();
