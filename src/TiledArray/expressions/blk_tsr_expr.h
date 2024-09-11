@@ -32,6 +32,8 @@
 #include <TiledArray/expressions/unary_expr.h>
 #include "blk_tsr_engine.h"
 
+#include <optional>
+
 namespace TiledArray {
 namespace expressions {
 
@@ -118,6 +120,10 @@ class BlkTsrExprBase : public Expr<Derived> {
       lower_bound_;  ///< Lower bound of the tile block
   container::svector<std::size_t>
       upper_bound_;  ///< Upper bound of the tile block
+  /// If non-null, element lobound of the expression trange (else zeros will be
+  /// used) Fusing permutation does not affect this (i.e. this refers to the
+  /// modes of the host array).
+  std::optional<Range::index_type> trange_lobound_;
 
   void check_valid() const {
     TA_ASSERT(array_);
@@ -284,6 +290,36 @@ class BlkTsrExprBase : public Expr<Derived> {
 
   /// \return The block upper bound
   const auto& upper_bound() const { return upper_bound_; }
+
+  /// Sets result trange lobound
+  /// @param[in] trange_lobound The result trange lobound
+  template <typename Index1,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<Index1>>>
+  Derived& set_trange_lobound(const Index1& trange_lobound) {
+    trange_lobound_.emplace(std::begin(trange_lobound),
+                            std::end(trange_lobound));
+    return static_cast<Derived&>(*this);
+  }
+
+  /// Sets result trange lobound
+  /// @param[in] trange_lobound The result trange lobound
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  Derived& set_trange_lobound(std::initializer_list<Integer> trange_lobound) {
+    return this->set_trange_lobound<std::initializer_list<Integer>>(
+        trange_lobound);
+  }
+
+  /// Sets result trange lobound such that the tile lobounds are not changed
+  Derived& preserve_lobound() {
+    return set_trange_lobound(
+        array_.trange().make_tile_range(lower_bound()).lobound());
+  }
+
+  /// @return optional to result trange lobound; if null, the result trange
+  /// lobound is zero
+  const auto& trange_lobound() const { return trange_lobound_; }
 
 };  // class BlkTsrExprBase
 

@@ -158,22 +158,29 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
   using LeafEngine_::array_;
 
   container::svector<std::size_t>
-      lower_bound_;  ///< Lower bound of the tile block
+      lower_bound_;  ///< Tile coordinates of the lower bound of the tile block
+                     ///< in the host array
   container::svector<std::size_t>
-      upper_bound_;  ///< Upper bound of the tile block
+      upper_bound_;  ///< Tile coordinates of the upper bound of the tile block
+                     ///< in the host array
+  std::optional<Range::index_type>
+      trange_lobound_;  ///< Lobound of the result trange, modulo permutation
+                        ///< (i.e. referring to the modes of the host array)
 
  public:
   template <typename Array, bool Alias>
   BlkTsrEngineBase(const BlkTsrExpr<Array, Alias>& expr)
       : LeafEngine_(expr),
         lower_bound_(expr.lower_bound()),
-        upper_bound_(expr.upper_bound()) {}
+        upper_bound_(expr.upper_bound()),
+        trange_lobound_(expr.trange_lobound()) {}
 
   template <typename Array, typename Scalar>
   BlkTsrEngineBase(const ScalBlkTsrExpr<Array, Scalar>& expr)
       : LeafEngine_(expr),
         lower_bound_(expr.lower_bound()),
-        upper_bound_(expr.upper_bound()) {}
+        upper_bound_(expr.upper_bound()),
+        trange_lobound_(expr.trange_lobound()) {}
 
   /// Non-permuting tiled range factory function
 
@@ -199,9 +206,12 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
       if (lower_d != upper_d) {
         auto i = lower_d;
         const auto base_d = trange[d].tile(i).first;
-        trange1_data.emplace_back(0ul);
+        const auto trange1_lobound =
+            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
+        trange1_data.emplace_back(trange1_lobound);
         for (; i < upper_d; ++i)
-          trange1_data.emplace_back(trange[d].tile(i).second - base_d);
+          trange1_data.emplace_back(trange[d].tile(i).extent() +
+                                    trange1_data.back());
         // Add the trange1 to the tiled range data
         trange_data.emplace_back(trange1_data.begin(), trange1_data.end());
         trange1_data.resize(0ul);
@@ -241,9 +251,12 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
         // Copy, shift, and permute the tiling of the block
         auto i = lower_i;
         const auto base_d = trange[inv_perm_d].tile(i).first;
-        trange1_data.emplace_back(0ul);
+        const auto trange1_lobound =
+            trange_lobound_ ? (*trange_lobound_)[inv_perm_d] : 0ul;
+        trange1_data.emplace_back(trange1_lobound);
         for (; i < upper_i; ++i)
-          trange1_data.emplace_back(trange[inv_perm_d].tile(i).second - base_d);
+          trange1_data.emplace_back(trange[inv_perm_d].tile(i).extent() +
+                                    trange1_data.back());
 
         // Add the trange1 to the tiled range data
         trange_data.emplace_back(trange1_data.begin(), trange1_data.end());
@@ -341,6 +354,7 @@ class BlkTsrEngine
  protected:
   // Import base class variables to this scope
   using BlkTsrEngineBase_::lower_bound_;
+  using BlkTsrEngineBase_::trange_lobound_;
   using BlkTsrEngineBase_::upper_bound_;
   using ExprEngine_::implicit_permute_inner_;
   using ExprEngine_::implicit_permute_outer_;
@@ -391,8 +405,12 @@ class BlkTsrEngine
       const auto lower_d = lower[d];
       const auto upper_d = upper[d];
       if (lower_d != upper_d) {
+        // element lobound of the block in the host
         const auto base_d = trange[d].tile(lower_d).first;
-        range_shift.emplace_back(-base_d);
+        // element lobound of the target of this expression
+        const auto target_base_d =
+            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
+        range_shift.emplace_back(target_base_d - base_d);
       } else {
         range_shift.emplace_back(0l);
       }
@@ -427,8 +445,11 @@ class BlkTsrEngine
       const auto lower_d = lower[d];
       const auto upper_d = upper[d];
       if (lower_d != upper_d) {
+        // element lobound of the block in the host
         const auto base_d = trange[d].tile(lower_d).first;
-        range_shift[perm_d] = -base_d;
+        // element lobound of the target of this expression
+        const auto target_base_d = trange_lobound_ ? (*trange_lobound_)[d] : 0;
+        range_shift[perm_d] = target_base_d - base_d;
       }
     }
 
@@ -496,6 +517,7 @@ class ScalBlkTsrEngine
  protected:
   // Import base class variables to this scope
   using BlkTsrEngineBase_::lower_bound_;
+  using BlkTsrEngineBase_::trange_lobound_;
   using BlkTsrEngineBase_::upper_bound_;
   using ExprEngine_::implicit_permute_inner_;
   using ExprEngine_::implicit_permute_outer_;
@@ -549,8 +571,12 @@ class ScalBlkTsrEngine
       const auto lower_d = lower[d];
       const auto upper_d = upper[d];
       if (lower_d != upper_d) {
+        // element lobound of the block in the host
         const auto base_d = trange[d].tile(lower_d).first;
-        range_shift.emplace_back(-base_d);
+        // element lobound of the target of this expression
+        const auto target_base_d =
+            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
+        range_shift.emplace_back(target_base_d - base_d);
       } else
         range_shift.emplace_back(0);
     }
@@ -584,8 +610,12 @@ class ScalBlkTsrEngine
       const auto lower_d = lower[d];
       const auto upper_d = upper[d];
       if (lower_d != upper_d) {
+        // element lobound of the block in the host
         const auto base_d = trange[d].tile(lower_d).first;
-        range_shift[perm_d] = -base_d;
+        // element lobound of the target of this expression
+        const auto target_base_d =
+            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
+        range_shift[perm_d] = target_base_d - base_d;
       }
     }
 

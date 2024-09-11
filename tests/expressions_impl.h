@@ -619,6 +619,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block, F, Fixtures, F) {
   for (int repeat = 0; repeat != nrepeats; ++repeat)
     BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
                                2 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE(tile_ranges_match_trange(c));
 
   BlockRange block_range(a.trange().tiles_range(), {3, 3, 3}, {5, 5, 5});
 
@@ -698,11 +699,17 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_base1, F, Fixtures, F) {
   c.fill_local(0.0);
   c_base1.fill_local(0.0);
 
+  // block expressions by default have trange lobound (=base) set to 0 ...
+  // this is done to allow block expressions involving multiple arrays with
+  // different lobounds all work correctly
   BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
                              a_base1("a,b,c").block({3, 3, 3}, {5, 5, 5}));
   BOOST_REQUIRE(tile_ranges_match_trange(c));
   BOOST_REQUIRE_NO_THROW(c_base1("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
                              a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE(tile_ranges_match_trange(c_base1));
+  BOOST_REQUIRE_NO_THROW(c_base1("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             a_base1("a,b,c").block({3, 3, 3}, {5, 5, 5}));
   BOOST_REQUIRE(tile_ranges_match_trange(c_base1));
   BOOST_REQUIRE_NO_THROW(c("a,b,c").block({0, 0, 0}, {ntiles, ntiles, ntiles}) =
                              a_base1("a,b,c"));
@@ -710,6 +717,51 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_base1, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(
       c_base1("a,b,c").block({0, 0, 0}, {ntiles, ntiles, ntiles}) = a("a,b,c"));
   BOOST_REQUIRE(tile_ranges_match_trange(c_base1));
+
+  // however user can override the trange lobound using set_trange_lobound
+  {
+    decltype(F::c) a_block;
+    // default trange lobound is 0
+    BOOST_REQUIRE_NO_THROW(a_block("a,b,c") =
+                               a_base1("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+    BOOST_REQUIRE_EQUAL(a_block.trange().elements_range().lobound(),
+                        (Range::index_type{0, 0, 0}));
+
+    // this preserves tile's lobounds, so that tile {0,0,0} in a_block has
+    // identical range to that of tile {3, 3, 3} in a_base1
+    BOOST_REQUIRE_NO_THROW(a_block("a,b,c") = a_base1("a,b,c").block(
+                               {3, 3, 3}, {5, 5, 5}, preserve_lobound));
+    BOOST_REQUIRE_EQUAL(a_block.trange().elements_range().lobound(),
+                        a_base1.trange().make_tile_range({3, 3, 3}).lobound());
+    // this explicitly makes the trange lobound of a_block to be {1,1,1}
+    BOOST_REQUIRE_NO_THROW(a_block("a,b,c") =
+                               a("a,b,c")
+                                   .block({3, 3, 3}, {5, 5, 5})
+                                   .set_trange_lobound({1, 1, 1}));
+    BOOST_REQUIRE_EQUAL(a_block.trange().elements_range().lobound(),
+                        Range::index_type({1, 1, 1}));
+    // trange of source block is ignored when it is assigned to a block of an
+    // existing array
+    BOOST_REQUIRE_NO_THROW(a_block("a,b,c").block({0, 0, 0}, {2, 2, 2}) =
+                               a_base1("a,b,c")
+                                   .block({3, 3, 3}, {5, 5, 5})
+                                   .set_trange_lobound({0, 0, 0}));
+    // overriding trange of result block is not allowed ...
+    BOOST_REQUIRE_THROW(
+        a_block("a,b,c")
+            .block({0, 0, 0}, {2, 2, 2})
+            .set_trange_lobound({0, 0, 0}) = a_base1("a,b,c")
+                                                 .block({3, 3, 3}, {5, 5, 5})
+                                                 .set_trange_lobound({0, 0, 0}),
+        Exception);
+    // ... unless makes it same as trange lobound of the underlying array
+    BOOST_REQUIRE_NO_THROW(a_block("a,b,c")
+                               .block({0, 0, 0}, {2, 2, 2})
+                               .set_trange_lobound({1, 1, 1}) =
+                               a_base1("a,b,c")
+                                   .block({3, 3, 3}, {5, 5, 5})
+                                   .set_trange_lobound({0, 0, 0}));
+  }
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_permute_block, F, Fixtures,
