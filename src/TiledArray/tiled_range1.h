@@ -523,9 +523,8 @@ inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
 /// Test that two TiledRange1 objects are congruent
 
 /// This function tests that the tile sizes of the two ranges coincide.
-/// \tparam Range The range type
-/// \param r1 an TiledRange1 object
-/// \param r2 an TiledRange1 object
+/// \param r1 a TiledRange1 object
+/// \param r2 a TiledRange1 object
 inline bool is_congruent(const TiledRange1& r1, const TiledRange1& r2) {
   return r1.tile_extent() == r2.tile_extent() &&
          std::equal(r1.begin(), r1.end(), r2.begin(),
