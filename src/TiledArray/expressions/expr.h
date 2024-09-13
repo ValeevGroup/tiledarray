@@ -664,7 +664,20 @@ class Expr {
     right_dist_eval.eval();
 
 #ifndef NDEBUG
-    if (left_dist_eval.trange() != right_dist_eval.trange()) {
+    if (ignore_tile_position()) {
+      if (!is_congruent(left_dist_eval.trange(), right_dist_eval.trange())) {
+        if (TiledArray::get_default_world().rank() == 0) {
+          TA_USER_ERROR_MESSAGE(
+              "The TiledRanges of the left- and right-hand arguments the "
+              "binary "
+              "reduction are not congruent:"
+              << "\n    left  = " << left_dist_eval.trange()
+              << "\n    right = " << right_dist_eval.trange());
+        }
+        TA_EXCEPTION(
+            "The TiledRange objects of a binary reduction are not congruent.");
+      }
+    } else if (left_dist_eval.trange() != right_dist_eval.trange()) {
       if (TiledArray::get_default_world().rank() == 0) {
         TA_USER_ERROR_MESSAGE(
             "The TiledRanges of the left- and right-hand arguments the binary "
@@ -674,7 +687,7 @@ class Expr {
       }
 
       TA_EXCEPTION(
-          "The TiledRange objects of a binary expression are not equal.");
+          "The TiledRange objects of a binary reduction are not equal.");
     }
 #endif  // NDEBUG
 
