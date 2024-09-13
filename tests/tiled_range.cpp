@@ -119,11 +119,24 @@ BOOST_AUTO_TEST_CASE(comparison) {
   TiledRange r1{{0, 2, 4, 6, 8, 10}, {0, 2, 4, 6, 8, 10}};
   TiledRange r2{{0, 2, 4, 6, 8, 10}, {0, 2, 4, 6, 8, 10}};
   TiledRange r3{{0, 3, 6, 9, 12, 15}, {0, 3, 6, 9, 12, 15}};
+  BOOST_CHECK(r1 == r1);     // self-comparison
   BOOST_CHECK(r1 == r2);     // check equality operator
   BOOST_CHECK(!(r1 != r2));  // check not-equal operator
   BOOST_CHECK(
       !(r1 == r3));  // check for inequality with different number of tiles.
   BOOST_CHECK(r1 != r3);
+}
+
+BOOST_AUTO_TEST_CASE(congruency) {
+  TiledRange r1{{0, 2, 4, 6, 8, 10}, {0, 2, 4, 6, 8, 10}};
+  TiledRange r2{{1, 3, 5, 7, 9, 11}, {2, 4, 6, 8, 10, 12}};
+  TiledRange r3{{0, 3, 6, 9, 12, 15}, {0, 3, 6, 9, 12, 15}};
+  BOOST_CHECK(r1 == r1 && is_congruent(r1, r1));  // congruent with self
+  BOOST_CHECK(r1 != r2 &&
+              is_congruent(r1, r2));  // r1 and r2 are not equal but congruent
+  BOOST_CHECK(
+      r1 != r3 &&
+      !is_congruent(r1, r3));  // r1 and r3 are not equal and not congruent
 }
 
 BOOST_AUTO_TEST_CASE(assignment) {

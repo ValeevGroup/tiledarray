@@ -423,6 +423,19 @@ inline bool operator==(const TiledRange& r1, const TiledRange& r2) {
          std::equal(r1.data().begin(), r1.data().end(), r2.data().begin());
 }
 
+/// Test that two TiledRange objects are congruent
+
+/// Two tranges are congruent if one is a translation of another (i.e. their
+/// ranks and extents of all tiles) agree \param r1 a TiledRange object \param
+/// r2 a TiledRange object
+inline bool is_congruent(const TiledRange& r1, const TiledRange& r2) {
+  return r1.rank() == r2.rank() &&
+         std::equal(r1.begin(), r1.end(), r2.begin(),
+                    [](const auto& tr1_1, const auto& tr1_2) {
+                      return is_congruent(tr1_1, tr1_2);
+                    });
+}
+
 inline bool operator!=(const TiledRange& r1, const TiledRange& r2) {
   return !operator==(r1, r2);
 }
