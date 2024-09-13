@@ -235,18 +235,30 @@ class BinaryEngine : public ExprEngine<Derived> {
     left_.init_struct(left_indices_);
     right_.init_struct(right_indices_);
 #ifndef NDEBUG
-    if (left_.trange() != right_.trange()) {
+    if (ignore_tile_position()) {
+      if (!is_congruent(left_.trange(), right_.trange())) {
+        if (TiledArray::get_default_world().rank() == 0) {
+          TA_USER_ERROR_MESSAGE(
+              "The TiledRanges of the left- and right-hand arguments the "
+              "binary "
+              "expression are not congruent:"
+              << "\n    left  = " << left_.trange()
+              << "\n    right = " << right_.trange());
+        }
+        TA_EXCEPTION(
+            "The TiledRange objects of a binary expression are not congruent.");
+      }
+    } else if (left_.trange() != right_.trange()) {
       if (TiledArray::get_default_world().rank() == 0) {
         TA_USER_ERROR_MESSAGE(
-            "The TiledRanges of the left- and right-hand arguments of the "
-            "binary operation are not equal:"
+            "The TiledRanges of the left- and right-hand arguments the binary "
+            "expression are not equal:"
             << "\n    left  = " << left_.trange()
             << "\n    right = " << right_.trange());
       }
 
       TA_EXCEPTION(
-          "The TiledRanges of the left- and right-hand arguments "
-          "of the binary operation are not equal.");
+          "The TiledRange objects of a binary expression are not equal.");
     }
 #endif  // NDEBUG
     ExprEngine_::init_struct(target_indices);
