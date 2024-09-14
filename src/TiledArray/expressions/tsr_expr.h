@@ -523,6 +523,24 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
 
   /// Block expression
 
+  /// \tparam Index1 An integral range type
+  /// \tparam Index2 An integral range type
+  /// \param lower_bound The lower_bound of the block
+  /// \param upper_bound The upper_bound of the block
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<Index1> &&
+                TiledArray::detail::is_integral_range_v<Index2>>>
+  BlkTsrExpr<const Array, true> block(const Index1& lower_bound,
+                                      const Index2& upper_bound,
+                                      preserve_lobound_t) const {
+    return BlkTsrExpr<const Array, true>(array_, annotation_, lower_bound,
+                                         upper_bound)
+        .preserve_lobound();
+  }
+
+  /// Block expression
+
   /// \tparam Index1 An integral type
   /// \tparam Index2 An integral type
   /// \param lower_bound The lower_bound of the block
@@ -539,14 +557,48 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
 
   /// Block expression
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
+  /// \param lower_bound The lower_bound of the block
+  /// \param upper_bound The upper_bound of the block
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  BlkTsrExpr<const Array, true> block(
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound,
+      preserve_lobound_t) const {
+    return BlkTsrExpr<const Array, true>(array_, annotation_, lower_bound,
+                                         upper_bound)
+        .preserve_lobound();
+  }
+
+  /// Block expression
+
   /// \tparam PairRange Type representing a range of generalized pairs (see
-  /// TiledArray::detail::is_gpair_v ) \param bounds The {lower,upper} bounds of
+  /// TiledArray::detail::is_gpair_v )
+  /// \param bounds The {lower,upper} bounds of
   /// the block
   template <typename PairRange,
             typename = std::enable_if_t<
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
   BlkTsrExpr<const Array, true> block(const PairRange& bounds) const {
     return BlkTsrExpr<const Array, true>(array_, annotation_, bounds);
+  }
+
+  /// Block expression
+
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v )
+  /// \param bounds The {lower,upper} bounds of
+  /// the block
+  template <typename PairRange,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_gpair_range_v<PairRange>>>
+  BlkTsrExpr<const Array, true> block(const PairRange& bounds,
+                                      preserve_lobound_t) const {
+    return BlkTsrExpr<const Array, true>(array_, annotation_, bounds)
+        .preserve_lobound();
   }
 
   /// Block expression
@@ -558,6 +610,19 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
   BlkTsrExpr<const Array, true> block(
       const std::initializer_list<std::initializer_list<Index>>& bounds) const {
     return BlkTsrExpr<const Array, true>(array_, annotation_, bounds);
+  }
+
+  /// Block expression
+
+  /// \tparam Index An integral type
+  /// \param bounds The {lower,upper} bounds of the block
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  BlkTsrExpr<const Array, true> block(
+      const std::initializer_list<std::initializer_list<Index>>& bounds,
+      preserve_lobound_t) const {
+    return BlkTsrExpr<const Array, true>(array_, annotation_, bounds)
+        .preserve_lobound();
   }
 
   /// Conjugated-tensor expression factor
