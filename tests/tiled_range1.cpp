@@ -32,6 +32,10 @@ BOOST_AUTO_TEST_CASE(range_accessor) {
   BOOST_CHECK_EQUAL(tr1.tiles_range().second, tiles.second);
   BOOST_CHECK_EQUAL(tr1.elements_range().first, elements.first);
   BOOST_CHECK_EQUAL(tr1.elements_range().second, elements.second);
+  BOOST_CHECK_EQUAL(tr1.tile_extent(), tiles.second - tiles.first);
+  BOOST_CHECK_EQUAL(tr1.extent(), elements.second - elements.first);
+  BOOST_CHECK_EQUAL(tr1.lobound(), elements.first);
+  BOOST_CHECK_EQUAL(tr1.upbound(), elements.second);
 
   // Check individual tiles
   for (std::size_t i = 0; i < a.size() - 1; ++i) {
@@ -43,11 +47,29 @@ BOOST_AUTO_TEST_CASE(range_accessor) {
 BOOST_AUTO_TEST_CASE(range_info) {
   BOOST_CHECK_EQUAL(tr1.tiles_range().first, 0ul);
   BOOST_CHECK_EQUAL(tr1.tiles_range().second, a.size() - 1);
-  BOOST_CHECK_EQUAL(tr1.elements_range().first, 0ul);
+  BOOST_CHECK_EQUAL(tr1.elements_range().first, a.front());
   BOOST_CHECK_EQUAL(tr1.elements_range().second, a.back());
+  BOOST_CHECK_EQUAL(tr1.tile_extent(), a.size() - 1);
+  BOOST_CHECK_EQUAL(tr1.extent(), a.back() - a.front());
+  BOOST_CHECK_EQUAL(tr1.lobound(), a.front());
+  BOOST_CHECK_EQUAL(tr1.upbound(), a.back());
   for (std::size_t i = 0; i < a.size() - 1; ++i) {
     BOOST_CHECK_EQUAL(tr1.tile(i).first, a[i]);
     BOOST_CHECK_EQUAL(tr1.tile(i).second, a[i + 1]);
+  }
+
+  auto a_base1 = make_hashmarks<ntiles + 1>(1);
+  BOOST_CHECK_EQUAL(tr1_base1.tiles_range().first, 0ul);
+  BOOST_CHECK_EQUAL(tr1_base1.tiles_range().second, a_base1.size() - 1);
+  BOOST_CHECK_EQUAL(tr1_base1.elements_range().first, a_base1.front());
+  BOOST_CHECK_EQUAL(tr1_base1.elements_range().second, a_base1.back());
+  BOOST_CHECK_EQUAL(tr1_base1.tile_extent(), a_base1.size() - 1);
+  BOOST_CHECK_EQUAL(tr1_base1.extent(), a_base1.back() - a_base1.front());
+  BOOST_CHECK_EQUAL(tr1_base1.lobound(), a_base1.front());
+  BOOST_CHECK_EQUAL(tr1_base1.upbound(), a_base1.back());
+  for (std::size_t i = 0; i < a.size() - 1; ++i) {
+    BOOST_CHECK_EQUAL(tr1_base1.tile(i).first, a_base1[i]);
+    BOOST_CHECK_EQUAL(tr1_base1.tile(i).second, a_base1[i + 1]);
   }
 }
 
