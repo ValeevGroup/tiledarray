@@ -180,6 +180,18 @@ class TiledRange1 {
   /// \return the number of elements in the range
   index1_type extent() const { return TiledArray::extent(elements_range_); }
 
+  // clang-format off
+  /// Elements range lobound accessor
+  /// \return lower bound of the elements range (i.e., the smallest index in the elements range, `a` in `[a,b)`)
+  // clang-format on
+  index1_type lobound() const { return elements_range_.lobound(); }
+
+  // clang-format off
+  /// Elements range upbound accessor
+  /// \return upper bound of the elements range (i.e., the smallest index greater than any in the elements range, `b` in `[a,b)`)
+  // clang-format on
+  index1_type upbound() const { return elements_range_.upbound(); }
+
   /// Computes hashmarks
   /// \return the hashmarks of the tiled range, consisting of the following
   /// values:
