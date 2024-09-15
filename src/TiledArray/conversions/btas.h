@@ -36,6 +36,9 @@
 #include <TiledArray/tensor.h>
 #include <TiledArray/tensor/tensor_map.h>
 
+#include <range/v3/view/transform.hpp>
+#include <range/v3/view/zip.hpp>
+
 namespace TiledArray {
 
 // clang-format off
@@ -49,11 +52,12 @@ namespace TiledArray {
 /// \tparam Storage_ The storage type of the source btas::Tensor object
 /// \tparam Tensor_ A tensor type (e.g., TiledArray::Tensor or btas::Tensor,
 ///         optionally wrapped into TiledArray::Tile)
-/// \param[in] src The source object; its subblock defined by the {lower,upper}
-///            bounds \c {dst.lobound(),dst.upbound()} will be copied to \c dst
+/// \param[in] src The source object; its subblock
+///            `{dst.lobound(),dst.upbound()}`
+///            will be copied to \c dst
 /// \param[out] dst The object that will contain the contents of the
 ///             corresponding subblock of src
-/// \throw TiledArray::Exception When the dimensions of \c src and \c dst do not
+/// \throw TiledArray::Exception When the dimensions of \p src and \p dst do not
 ///        match.
 // clang-format on
 template <typename T, typename Range_, typename Storage_, typename Tensor_>
@@ -74,6 +78,57 @@ inline void btas_subtensor_to_tensor(
 }
 
 // clang-format off
+/// Copy a block of a btas::Tensor into a TiledArray::Tensor
+
+/// A block of btas::Tensor \c src will be copied into TiledArray::Tensor \c
+/// dst. The block dimensions will be determined by the dimensions of the range
+/// of \c dst .
+/// \tparam T The tensor element type
+/// \tparam Range_ The range type of the source btas::Tensor object
+/// \tparam Storage_ The storage type of the source btas::Tensor object
+/// \tparam Tensor_ A tensor type (e.g., TiledArray::Tensor or btas::Tensor,
+///         optionally wrapped into TiledArray::Tile)
+/// \param[in] src The source object; its subblock
+///            `{dst.lobound() + offset,dst.upbound() + offset}`
+///            will be copied to \c dst
+/// \param[out] dst The object that will contain the contents of the
+///             corresponding subblock of src
+/// \param[out] offset the offset to be applied to the coordinates of `dst.range()` to determine the block in \p src to be copied; this is needed if the DistArray that will contain \p dst will have a range whose lobound is different from `src.lobound()`
+/// \throw TiledArray::Exception When the dimensions of \p src and \p dst do not
+///        match.
+// clang-format on
+template <
+    typename T, typename Range_, typename Storage_, typename Tensor_,
+    typename IntegerRange,
+    typename = std::enable_if_t<detail::is_integral_range_v<IntegerRange>>>
+inline void btas_subtensor_to_tensor(
+    const btas::Tensor<T, Range_, Storage_>& src, Tensor_& dst,
+    IntegerRange&& offset) {
+  TA_ASSERT(dst.range().rank() == src.range().rank());
+  TA_ASSERT(ranges::size(offset) == src.range().rank());
+
+  const auto& src_range = src.range();
+  const auto& dst_range = dst.range();
+  auto src_blk_range =
+      TiledArray::BlockRange(detail::make_ta_range(src_range),
+                             ranges::views::zip(dst_range.lobound(), offset) |
+                                 ranges::views::transform([](auto&& i_j) {
+                                   auto&& [i, j] = i_j;
+                                   return i + j;
+                                 }),
+                             ranges::views::zip(dst_range.upbound(), offset) |
+                                 ranges::views::transform([](auto&& i_j) {
+                                   auto&& [i, j] = i_j;
+                                   return i + j;
+                                 }));
+  using std::data;
+  auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
+  auto dst_view = TiledArray::make_map(data(dst), dst_range);
+
+  dst_view = src_view;
+}
+
+// clang-format off
 /// Copy a TiledArray::Tensor into a block of a btas::Tensor
 
 /// TiledArray::Tensor \c src will be copied into a block of btas::Tensor
@@ -86,8 +141,8 @@ inline void btas_subtensor_to_tensor(
 /// \tparam Storage_ The storage type of the destination btas::Tensor object
 /// \param[in] src The source object whose contents will be copied into
 ///            a subblock of \c dst
-/// \param[out] dst The destination object; its subblock defined by the
-///             {lower,upper} bounds \c {src.lobound(),src.upbound()} will be
+/// \param[out] dst The destination object; its subblock
+///             `{src.lobound(),src.upbound()}` will be
 ///             overwritten with the content of \c src
 /// \throw TiledArray::Exception When the dimensions
 ///        of \c src and \c dst do not match.
@@ -102,6 +157,57 @@ inline void tensor_to_btas_subtensor(const Tensor_& src,
   auto dst_blk_range =
       TiledArray::BlockRange(detail::make_ta_range(dst_range),
                              src_range.lobound(), src_range.upbound());
+  using std::data;
+  auto src_view = TiledArray::make_const_map(data(src), src_range);
+  auto dst_view = TiledArray::make_map(data(dst), dst_blk_range);
+
+  dst_view = src_view;
+}
+
+// clang-format off
+/// Copy a TiledArray::Tensor into a block of a btas::Tensor
+
+/// TiledArray::Tensor \c src will be copied into a block of btas::Tensor
+/// \c dst. The block dimensions will be determined by the dimensions of the range
+/// of \c src .
+/// \tparam Tensor_ A tensor type (e.g., TiledArray::Tensor or btas::Tensor,
+///         optionally wrapped into TiledArray::Tile)
+/// \tparam T The tensor element type
+/// \tparam Range_ The range type of the destination btas::Tensor object
+/// \tparam Storage_ The storage type of the destination btas::Tensor object
+/// \param[in] src The source object whose contents will be copied into
+///            a subblock of \c dst
+/// \param[out] dst The destination object; its subblock
+///             `{src.lobound()+offset,src.upbound()+offset}` will be
+///             overwritten with the content of \c src
+/// \param[out] offset the offset to be applied to the coordinates of `src.range()` to determine the block in \p dst to be copied; this is needed if the DistArray that contains \p src has a range whose lobound is different from `dst.lobound()`
+/// \throw TiledArray::Exception When the dimensions
+///        of \c src and \c dst do not match.
+// clang-format on
+template <
+    typename Tensor_, typename T, typename Range_, typename Storage_,
+    typename IntegerRange,
+    typename = std::enable_if_t<detail::is_integral_range_v<IntegerRange>>>
+inline void tensor_to_btas_subtensor(const Tensor_& src,
+                                     btas::Tensor<T, Range_, Storage_>& dst,
+                                     IntegerRange&& offset) {
+  TA_ASSERT(dst.range().rank() == src.range().rank());
+  TA_ASSERT(ranges::size(offset) == src.range().rank());
+
+  const auto& src_range = src.range();
+  const auto& dst_range = dst.range();
+  auto dst_blk_range =
+      TiledArray::BlockRange(detail::make_ta_range(dst_range),
+                             ranges::views::zip(src_range.lobound(), offset) |
+                                 ranges::views::transform([](auto&& i_j) {
+                                   auto&& [i, j] = i_j;
+                                   return i + j;
+                                 }),
+                             ranges::views::zip(src_range.upbound(), offset) |
+                                 ranges::views::transform([](auto&& i_j) {
+                                   auto&& [i, j] = i_j;
+                                   return i + j;
+                                 }));
   using std::data;
   auto src_view = TiledArray::make_const_map(data(src), src_range);
   auto dst_view = TiledArray::make_map(data(dst), dst_blk_range);
@@ -127,7 +233,13 @@ void counted_btas_subtensor_to_tensor(const BTAS_Tensor_* src, DistArray_* dst,
                                       const typename Range::index_type i,
                                       madness::AtomicInt* counter) {
   typename DistArray_::value_type tensor(dst->trange().make_tile_range(i));
-  btas_subtensor_to_tensor(*src, tensor);
+  auto offset = ranges::views::zip(ranges::views::all(src->range().lobound()),
+                                   dst->trange().elements_range().lobound()) |
+                ranges::views::transform([](const auto& s_d) {
+                  auto&& [s, d] = s_d;
+                  return s - d;
+                });
+  btas_subtensor_to_tensor(*src, tensor, offset);
   dst->set(i, tensor);
   (*counter)++;
 }
@@ -137,12 +249,24 @@ void counted_btas_subtensor_to_tensor(const BTAS_Tensor_* src, DistArray_* dst,
 /// \tparam TA_Tensor_ a TiledArray::Tensor type
 /// \tparam BTAS_Tensor_ a btas::Tensor type
 /// \param src The source tensor
-/// \param dst The destination tensor
-/// \param counter The task counter
-template <typename TA_Tensor_, typename BTAS_Tensor_>
-void counted_tensor_to_btas_subtensor(const TA_Tensor_& src, BTAS_Tensor_* dst,
+/// \param src_array_lobound the lobound of the DistArrany that contains src,
+/// used to compute the offset to be applied to the coordinates of `src.range()`
+/// to determine the block in \p dst to be copied into \param dst The
+/// destination tensor \param counter The task counter
+template <
+    typename TA_Tensor_, typename BTAS_Tensor_, typename IntegerRange,
+    typename = std::enable_if_t<detail::is_integral_range_v<IntegerRange>>>
+void counted_tensor_to_btas_subtensor(const TA_Tensor_& src,
+                                      IntegerRange src_array_lobound,
+                                      BTAS_Tensor_* dst,
                                       madness::AtomicInt* counter) {
-  tensor_to_btas_subtensor(src, *dst);
+  auto offset = ranges::views::zip(ranges::views::all(dst->range().lobound()),
+                                   src_array_lobound) |
+                ranges::views::transform([](const auto& d_s) {
+                  auto&& [d, s] = d_s;
+                  return d - s;
+                });
+  tensor_to_btas_subtensor(src, *dst, offset);
   (*counter)++;
 }
 
@@ -267,6 +391,59 @@ DistArray_ btas_tensor_to_array(
   return array;
 }
 
+namespace detail {
+
+/// \sa TiledArray::array_to_btas_tensor()
+template <typename Tile, typename Policy, typename Range_ = TiledArray::Range,
+          typename Storage_ = btas::DEFAULT::storage<typename Tile::value_type>>
+btas::Tensor<typename Tile::value_type, Range_, Storage_>
+array_to_btas_tensor_impl(const TiledArray::DistArray<Tile, Policy>& src,
+                          const Range_& result_range, int target_rank) {
+  // Test preconditions
+  if (target_rank == -1 && src.world().size() > 1 &&
+      !src.pmap()->is_replicated())
+    TA_ASSERT(
+        src.world().size() == 1 &&
+        "TiledArray::array_to_btas_tensor(): a non-replicated array can only "
+        "be converted to a btas::Tensor on every rank if the number of World "
+        "ranks is 1.");
+
+  using result_type =
+      btas::Tensor<typename TiledArray::DistArray<Tile, Policy>::element_type,
+                   Range_, Storage_>;
+
+  // Construct the result
+  if (target_rank == -1 || src.world().rank() == target_rank) {
+    // if array is sparse must initialize to zero
+    result_type result(result_range, 0.0);
+
+    // Spawn tasks to copy array tiles to btas::Tensor
+    madness::AtomicInt counter;
+    counter = 0;
+    int n = 0;
+    for (std::size_t i = 0; i < src.size(); ++i) {
+      if (!src.is_zero(i)) {
+        src.world().taskq.add(
+            &detail::counted_tensor_to_btas_subtensor<
+                Tile, result_type,
+                std::decay_t<
+                    decltype(src.trange().elements_range().lobound())>>,
+            src.find(i), src.trange().elements_range().lobound(), &result,
+            &counter);
+        ++n;
+      }
+    }
+
+    // Wait until the write tasks are complete
+    src.world().await([&counter, n]() { return counter == n; });
+
+    return result;
+  } else  // else
+    return result_type{};
+}
+
+}  // namespace detail
+
 /// Convert a TiledArray::DistArray object into a btas::Tensor object
 
 /// This function will copy the contents of \c src into a \c btas::Tensor
@@ -288,9 +465,6 @@ DistArray_ btas_tensor_to_array(
 /// \tparam Storage_ the storage type of the result
 /// \param[in] src The TiledArray::DistArray<Tile,Policy> object whose contents
 /// will be copied to the result.
-/// \return A \c btas::Tensor object that is a copy of \c src
-/// \throw TiledArray::Exception When world size is greater than
-///        1 and \c src is not replicated
 /// \param[in] target_rank the rank on which to create the BTAS tensor
 ///            containing the data of \c src ; if \c target_rank=-1 then
 ///            create the BTAS tensor on every rank (this requires
@@ -298,49 +472,27 @@ DistArray_ btas_tensor_to_array(
 /// \return BTAS tensor object containing the data of \c src , if my rank equals
 ///         \c target_rank or \c target_rank==-1 ,
 ///         default-initialized BTAS tensor otherwise.
+/// \warning The range of \c src is
+///         not preserved, i.e. the lobound of the result is zero. Use the
+///         variant of this function tagged with preserve_lobound_t to
+///          preserve the range.
+/// \throw TiledArray::Exception When world size is greater than
+///        1 and \c src is not replicated
 template <typename Tile, typename Policy, typename Range_ = TiledArray::Range,
           typename Storage_ = btas::DEFAULT::storage<typename Tile::value_type>>
 btas::Tensor<typename Tile::value_type, Range_, Storage_> array_to_btas_tensor(
     const TiledArray::DistArray<Tile, Policy>& src, int target_rank = -1) {
-  // Test preconditions
-  if (target_rank == -1 && src.world().size() > 1 &&
-      !src.pmap()->is_replicated())
-    TA_ASSERT(
-        src.world().size() == 1 &&
-        "TiledArray::array_to_btas_tensor(): a non-replicated array can only "
-        "be converted to a btas::Tensor on every rank if the number of World "
-        "ranks is 1.");
+  return detail::array_to_btas_tensor_impl(
+      src, Range_(src.trange().elements_range().extent()), target_rank);
+}
 
-  using result_type =
-      btas::Tensor<typename TiledArray::DistArray<Tile, Policy>::element_type,
-                   Range_, Storage_>;
-  using result_range_type = typename result_type::range_type;
-
-  // Construct the result
-  if (target_rank == -1 || src.world().rank() == target_rank) {
-    // if array is sparse must initialize to zero
-    result_type result(
-        result_range_type(src.trange().elements_range().extent()), 0.0);
-
-    // Spawn tasks to copy array tiles to btas::Tensor
-    madness::AtomicInt counter;
-    counter = 0;
-    int n = 0;
-    for (std::size_t i = 0; i < src.size(); ++i) {
-      if (!src.is_zero(i)) {
-        src.world().taskq.add(
-            &detail::counted_tensor_to_btas_subtensor<Tile, result_type>,
-            src.find(i), &result, &counter);
-        ++n;
-      }
-    }
-
-    // Wait until the write tasks are complete
-    src.world().await([&counter, n]() { return counter == n; });
-
-    return result;
-  } else  // else
-    return result_type{};
+template <typename Tile, typename Policy, typename Range_ = TiledArray::Range,
+          typename Storage_ = btas::DEFAULT::storage<typename Tile::value_type>>
+btas::Tensor<typename Tile::value_type, Range_, Storage_> array_to_btas_tensor(
+    const TiledArray::DistArray<Tile, Policy>& src, preserve_lobound_t,
+    int target_rank = -1) {
+  return detail::array_to_btas_tensor_impl(src, src.trange().elements_range(),
+                                           target_rank);
 }
 
 }  // namespace TiledArray
