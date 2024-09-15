@@ -101,6 +101,7 @@ set(ta_test_src_files  ta_test.cpp
     einsum.cpp
     linalg.cpp
     cp.cpp
+    btas.cpp
 )
 
 if(CUDA_FOUND OR HIP_FOUND)
