@@ -32,6 +32,15 @@
 #include <cuda_runtime_api.h>
 #endif
 
+// rocthrust headers rely on THRUST_DEVICE_SYSTEM being defined, which is only
+// defined by the HIP-specific compilers to be usable with host compiler define
+// it here explicitly
+#ifdef TILEDARRAY_HAS_HIP
+#ifndef THRUST_DEVICE_SYSTEM
+#define THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP
+#endif
+#endif
+
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 

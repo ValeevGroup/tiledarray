@@ -23,12 +23,20 @@
  *
  */
 
-#include "range_fixture.h"
-#include "tiledarray.h"
 #include "unit_test_config.h"
 
-#include "TiledArray/conversions/concat.h"
 #include "TiledArray/conversions/vector_of_arrays.h"
+
+#include "TiledArray/conversions/concat.h"
+
+#include "TiledArray/conversions/dense_to_sparse.h"
+#include "TiledArray/conversions/make_array.h"
+#include "TiledArray/conversions/sparse_to_dense.h"
+#include "TiledArray/conversions/to_new_tile_type.h"
+
+#include "TiledArray/expressions/tsr_expr.h"
+
+#include "range_fixture.h"
 
 using namespace TiledArray;
 
