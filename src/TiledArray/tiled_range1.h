@@ -318,6 +318,21 @@ class TiledRange1 {
     return make_uniform(Range1(0, range_extent), target_tile_size);
   }
 
+  /// same as make_uniform(const Range1&, std::size_t), using the element_range
+  /// of this TiledRange1
+  TiledRange1 make_uniform(std::size_t target_tile_size) const {
+    return make_uniform(this->elements_range(), target_tile_size);
+  }
+
+  /// make as uniformly-tiled range as possible out of this TiledRange1, with
+  /// the same number of tiles as this
+  TiledRange1 make_uniform() const {
+    return make_uniform(
+        this->elements_range(),
+        (this->elements_range().extent() + this->tile_extent() - 1) /
+            this->tile_extent());
+  }
+
   /// shifts this TiledRange1
 
   /// @param[in] shift the shift to apply

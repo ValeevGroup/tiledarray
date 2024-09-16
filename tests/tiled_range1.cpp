@@ -380,6 +380,14 @@ BOOST_AUTO_TEST_CASE(make_uniform) {
   BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(59, 10));
   BOOST_CHECK(TiledRange1::make_uniform(59, 10) ==
               (TiledRange1{0, 10, 20, 30, 40, 50, 59}));
+
+  // member versions
+  BOOST_REQUIRE_NO_THROW((TiledRange1{0, 10, 20, 30, 40, 50}.make_uniform(30)));
+  BOOST_CHECK((TiledRange1{0, 10, 20, 30, 40, 50}.make_uniform(30) ==
+               TiledRange1{0, 25, 50}));
+  BOOST_REQUIRE_NO_THROW((TiledRange1{0, 40, 50}.make_uniform()));
+  BOOST_CHECK(
+      (TiledRange1{0, 40, 50}.make_uniform() == TiledRange1{0, 25, 50}));
 }
 
 BOOST_AUTO_TEST_CASE(shift) {
