@@ -291,7 +291,7 @@ class Debugger {
   bool sleep_;
   bool wait_for_debugger_;
   bool handle_sigint_;
-  int *mysigs_;
+  std::unique_ptr<int[]> mysigs_;
 
   void init();
 
@@ -325,11 +325,11 @@ class Debugger {
    @param reason optional string specifying the reason for traceback
    */
   virtual void traceback(const char *reason);
-  /// Turn on or off debugging on a signel.  The default is on.
+  /// Turn on or off debugging on a signal.  The default is on.
   virtual void set_debug_on_signal(int);
-  /// Turn on or off traceback on a signel.  The default is on.
+  /// Turn on or off traceback on a signal.  The default is on.
   virtual void set_traceback_on_signal(int);
-  /// Turn on or off exit after a signel.  The default is on.
+  /// Turn on or off exit after a signal.  The default is on.
   virtual void set_exit_on_signal(int);
   /** Turn on or off running an infinite loop after the debugger is started.
       This loop gives the debugger a chance to attack to the process.
@@ -370,7 +370,7 @@ class Debugger {
   virtual void default_cmd();
   /** Set the name of the executable for the current process.
       It is up to the programmer to set this, even if the Debugger
-      is initialized with the KeyVal constructor. */
+      is initialized with the constructor. */
   virtual void set_exec(const char *);
 
   /// Called when signal sig is received.  This is mainly for internal use.
@@ -381,12 +381,22 @@ class Debugger {
   /// Return the global default debugger.
   static std::shared_ptr<Debugger> default_debugger();
 
+  /// Register a (one-time) action to be executed when debugger is launched
+  /// @param action an action to be executed
+  /// @note multiple actions registered via this will be executed in order of
+  ///       their registration
+  void register_prelaunch_action(std::function<void()> action);
+
  private:
   /// Replaces alias in cmd_ with its full form
   void resolve_cmd_alias();
+  /// Replace macros (\c PID , \c EXEC , \c PREFIX ) in \p cmd by their values
+  /// \param cmd a string
+  /// \return processed str
   std::string replace_macros(std::string cmd);
   static const std::string gdb_cmd_;
   static const std::string lldb_cmd_;
+  std::vector<std::function<void()>> actions_; // prelaunch actions
 };
 
 /// Use this to create a Debugger object and make it the default
