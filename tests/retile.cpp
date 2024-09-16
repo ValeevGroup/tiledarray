@@ -28,4 +28,65 @@ BOOST_AUTO_TEST_CASE(retile_tensor) {
     BOOST_CHECK_EQUAL(result_sparse.trange(), trange);
 }
 
+BOOST_AUTO_TEST_CASE(retile_more) {
+  using Numeric = int;
+  using T = TA::Tensor<Numeric>;
+  using ToT = TA::Tensor<T>;
+  using ArrayT = TA::DistArray<T, TA::SparsePolicy>;
+  using ArrayToT = TA::DistArray<ToT, TA::SparsePolicy>;
+
+  auto& world = TA::get_default_world();
+
+  auto const tr_source = TA::TiledRange({{0, 2, 4, 8}, {0, 3, 5}});
+  auto const tr_target = TA::TiledRange({{0, 4, 6, 8}, {0, 2, 4, 5}});
+
+  auto rand_num = [](auto&&) {
+    return TA::detail::MakeRandom<Numeric>::generate_value();
+  };
+
+  auto rand_tensor = [rand_num](auto const& rng) -> T {
+    return T(rng, rand_num);
+  };
+
+  auto rand_tensor_of_tensor = [rand_tensor](auto const& inner_rng) {
+    return [rand_tensor, inner_rng](auto const& rng) -> ToT {
+      return ToT(rng, rand_tensor(inner_rng));
+    };
+  };
+
+  auto set_random_tensor_of_tensor_tile = [rand_tensor_of_tensor](
+                                              auto const& inner_rng) {
+    return
+        [gen = rand_tensor_of_tensor(inner_rng)](auto& tile, auto const& rng) {
+          tile = gen(rng);
+          return tile.norm();
+        };
+  };
+
+  auto const inner_rng = TA::Range({3, 3});
+  auto arr_source = TA::make_array<ArrayToT>(
+      world, tr_source, set_random_tensor_of_tensor_tile(inner_rng));
+  arr_source.truncate();
+
+  auto arr_target = TA::retile(arr_source, tr_target);
+
+  arr_source.make_replicated();
+  world.gop.fence();
+  arr_target.make_replicated();
+  world.gop.fence();
+
+  auto const& elem_rng = tr_source.elements_range();
+  BOOST_REQUIRE(elem_rng.volume() == tr_target.elements_range().volume());
+
+  auto get_elem = [](ArrayToT const& arr, auto const& eix) {
+    auto tix = arr.trange().element_to_tile(eix);
+    auto&& tile = arr.find(tix).get(false);
+    return tile(eix);
+  };
+
+  for (auto&& eix : elem_rng) {
+    BOOST_REQUIRE(get_elem(arr_source, eix) == get_elem(arr_target, eix));
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

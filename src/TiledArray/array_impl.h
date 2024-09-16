@@ -425,6 +425,9 @@ class ArrayImpl : public TensorImpl<Policy>,
   typedef typename TensorImpl_::pmap_interface
       pmap_interface;       ///< process map interface type
   typedef Tile value_type;  ///< Tile or data type
+  typedef typename Tile::value_type
+      element_type;  ///< The value type of a tile. It is the numeric_type for
+                     ///< tensor-of-scalars tiles.
   typedef
       typename eval_trait<Tile>::type eval_type;  ///< The tile evaluation type
   typedef typename numeric_type<value_type>::type
@@ -854,8 +857,8 @@ template <typename Tile, typename Policy>
 std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
     const std::shared_ptr<const ArrayImpl<Tile, Policy>>& source_array_sptr,
     const TiledRange& target_trange,
-    typename ArrayImpl<Tile, Policy>::numeric_type new_value_fill =
-        typename ArrayImpl<Tile, Policy>::numeric_type{0}) {
+    typename ArrayImpl<Tile, Policy>::element_type new_value_fill =
+        typename ArrayImpl<Tile, Policy>::element_type{}) {
   TA_ASSERT(source_array_sptr);
   auto& source_array = *source_array_sptr;
   auto& world = source_array.world();
