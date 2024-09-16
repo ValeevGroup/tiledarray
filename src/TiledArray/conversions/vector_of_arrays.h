@@ -5,6 +5,8 @@
 #ifndef TILEDARRAY_CONVERSIONS_VECTOR_OF_ARRAYS_H_
 #define TILEDARRAY_CONVERSIONS_VECTOR_OF_ARRAYS_H_
 
+#include <TiledArray/dist_array.h>
+
 namespace TiledArray {
 
 namespace detail {

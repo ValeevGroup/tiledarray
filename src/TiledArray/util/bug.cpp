@@ -246,7 +246,7 @@ void Debugger::debug(const char *reason) {
     ExEnv::outn() << prefix_
                   << "Failed debugger launch: system() did not succeed ..."
                   << std::endl;
-  } else { // call to system() succeeded
+  } else { // call to system() succeeded or cmd.empty()
     // wait until the debugger is ready
     if (sleep_) {
       std::cout << prefix_ << "Debugger: sleeping " << sleep_
