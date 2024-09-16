@@ -243,7 +243,7 @@ void Debugger::debug(const char *reason) {
     system_retvalue = system(cmd.c_str());
   }
   if (system_retvalue != 0) {
-    ExEnv::outn() << prefix_
+    std::cout << prefix_
                   << "Failed debugger launch: system() did not succeed ..."
                   << std::endl;
   } else { // call to system() succeeded
