@@ -121,6 +121,7 @@ void heig(Matrix<T>& A, std::vector<TiledArray::detail::real_t<T>>& W) {
   integer lda = A.rows();
   W.resize(n);
   auto* w = W.data();
+  if (n == 0) return;
   if constexpr (TiledArray::detail::is_complex_v<T>)
     TA_LAPACK(heev, jobz, uplo, n, a, lda, w);
   else
@@ -140,6 +141,7 @@ void heig(Matrix<T>& A, Matrix<T>& B,
   integer ldb = B.rows();
   W.resize(n);
   auto* w = W.data();
+  if (n == 0) return;
   if constexpr (TiledArray::detail::is_complex_v<T>)
     TA_LAPACK(hegv, itype, jobz, uplo, n, a, lda, b, ldb, w);
   else
