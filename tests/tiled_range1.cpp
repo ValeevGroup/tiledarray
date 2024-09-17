@@ -350,8 +350,10 @@ BOOST_AUTO_TEST_CASE(concatenation) {
 }
 
 BOOST_AUTO_TEST_CASE(make_uniform) {
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{0, 0}, 0));
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{0, 0}, 0) == TiledRange1{});
   BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{1, 1}, 0));
-  BOOST_CHECK(TiledRange1::make_uniform(Range1{1, 1}, 0) == TiledRange1{});
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{1, 1}, 0) == TiledRange1{1});
   BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{3, 6}, 10));
   BOOST_CHECK(TiledRange1::make_uniform(Range1{3, 6}, 10) ==
               (TiledRange1{3, 6}));
