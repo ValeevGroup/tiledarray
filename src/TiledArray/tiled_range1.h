@@ -308,7 +308,7 @@ class TiledRange1 {
       hashmarks.push_back(range.upbound());
       return TiledRange1(hashmarks.begin(), hashmarks.end());
     } else
-      return TiledRange1{};
+      return TiledRange1{range.lobound()};
   }
 
   /// same as make_uniform(const Range1&, std::size_t) for a 0-based range
