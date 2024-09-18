@@ -198,18 +198,9 @@ class TensorInterface {
       TA_ASSERT(data_ != other.data());
     }
 
-    if constexpr (detail::is_tensor_v<value_type>) {
-      range_ = BlockRange(other.range(), other.range().lobound(),
-                          other.range().upbound());
-      data_ = new value_type[other.total_size()];
-      auto cpy = other.clone();
-      for (auto i = 0; i < other.total_size(); ++i)
-        std::swap(data_[i], cpy.data()[i]);
-    } else {
-      detail::inplace_tensor_op([](numeric_type& MADNESS_RESTRICT result,
-                                   const numeric_t<T1> arg) { result = arg; },
-                                *this, other);
-    }
+    detail::inplace_tensor_op(
+        [](value_type& MADNESS_RESTRICT result, auto&& arg) { result = arg; },
+        *this, other);
 
     return *this;
   }

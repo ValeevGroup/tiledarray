@@ -599,8 +599,17 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
         [&op, stride](
             typename TR::pointer MADNESS_RESTRICT const result_data,
             typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
-          for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
-            inplace_tensor_op(op, result_data[i], tensors_data[i]...);
+          for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
+            if constexpr (std::is_invocable_v<
+                              std::remove_reference_t<Op>,
+                              typename std::remove_reference_t<TR>::value_type&,
+                              typename std::remove_reference_t<
+                                  Ts>::value_type const&...>) {
+              std::forward<Op>(op)(result_data[i], tensors_data[i]...);
+            } else {
+              inplace_tensor_op(op, result_data[i], tensors_data[i]...);
+            }
+          }
         };
 
     for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume; ord += stride)
