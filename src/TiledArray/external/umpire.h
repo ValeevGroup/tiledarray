@@ -156,6 +156,54 @@ bool operator!=(
   return !(lhs == rhs);
 }
 
+template <class T, class StaticLock, typename UmpireAllocatorAccessor>
+class umpire_based_allocator
+    : public umpire_based_allocator_impl<T, StaticLock> {
+ public:
+  using base_type = umpire_based_allocator_impl<T, StaticLock>;
+  using typename base_type::const_pointer;
+  using typename base_type::const_reference;
+  using typename base_type::pointer;
+  using typename base_type::reference;
+  using typename base_type::value_type;
+
+  umpire_based_allocator() noexcept : base_type(&UmpireAllocatorAccessor{}()) {}
+
+  template <class U>
+  umpire_based_allocator(
+      const umpire_based_allocator<U, StaticLock, UmpireAllocatorAccessor>&
+          rhs) noexcept
+      : base_type(
+            static_cast<const umpire_based_allocator_impl<U, StaticLock>&>(
+                rhs)) {}
+
+  template <typename T1, typename T2, class StaticLock_,
+            typename UmpireAllocatorAccessor_>
+  friend bool operator==(
+      const umpire_based_allocator<T1, StaticLock_, UmpireAllocatorAccessor_>&
+          lhs,
+      const umpire_based_allocator<T2, StaticLock_, UmpireAllocatorAccessor_>&
+          rhs) noexcept;
+};  // class umpire_based_allocator
+
+template <class T1, class T2, class StaticLock,
+          typename UmpireAllocatorAccessor>
+bool operator==(
+    const umpire_based_allocator<T1, StaticLock, UmpireAllocatorAccessor>& lhs,
+    const umpire_based_allocator<T2, StaticLock, UmpireAllocatorAccessor>&
+        rhs) noexcept {
+  return lhs.umpire_allocator() == rhs.umpire_allocator();
+}
+
+template <class T1, class T2, class StaticLock,
+          typename UmpireAllocatorAccessor>
+bool operator!=(
+    const umpire_based_allocator<T1, StaticLock, UmpireAllocatorAccessor>& lhs,
+    const umpire_based_allocator<T2, StaticLock, UmpireAllocatorAccessor>&
+        rhs) noexcept {
+  return !(lhs == rhs);
+}
+
 /// see
 /// https://stackoverflow.com/questions/21028299/is-this-behavior-of-vectorresizesize-type-n-under-c11-and-boost-container/21028912#21028912
 template <typename T, typename A>
@@ -202,7 +250,7 @@ struct ArchiveLoadImpl<Archive,
       const Archive& ar,
       TiledArray::umpire_based_allocator_impl<T, StaticLock>& allocator) {
     std::string allocator_name;
-    ar& allocator_name;
+    ar & allocator_name;
     allocator = TiledArray::umpire_based_allocator_impl<T, StaticLock>(
         umpire::ResourceManager::getInstance().getAllocator(allocator_name));
   }
@@ -214,7 +262,7 @@ struct ArchiveStoreImpl<
   static inline void store(
       const Archive& ar,
       const TiledArray::umpire_based_allocator_impl<T, StaticLock>& allocator) {
-    ar& allocator.umpire_allocator()->getName();
+    ar & allocator.umpire_allocator()->getName();
   }
 };
 
@@ -224,7 +272,7 @@ struct ArchiveLoadImpl<Archive, TiledArray::default_init_allocator<T, A>> {
                           TiledArray::default_init_allocator<T, A>& allocator) {
     if constexpr (!std::allocator_traits<A>::is_always_equal::value) {
       A base_allocator;
-      ar& base_allocator;
+      ar & base_allocator;
       allocator = TiledArray::default_init_allocator<T, A>(base_allocator);
     }
   }
@@ -239,6 +287,35 @@ struct ArchiveStoreImpl<Archive, TiledArray::default_init_allocator<T, A>> {
       ar& static_cast<const A&>(allocator);
     }
   }
+};
+
+}  // namespace archive
+}  // namespace madness
+
+namespace madness {
+namespace archive {
+
+template <class Archive, class T, class StaticLock,
+          typename UmpireAllocatorAccessor>
+struct ArchiveLoadImpl<Archive, TiledArray::umpire_based_allocator<
+                                    T, StaticLock, UmpireAllocatorAccessor>> {
+  static inline void load(
+      const Archive& ar,
+      TiledArray::umpire_based_allocator<T, StaticLock,
+                                         UmpireAllocatorAccessor>& allocator) {
+    allocator = TiledArray::umpire_based_allocator<T, StaticLock,
+                                                   UmpireAllocatorAccessor>{};
+  }
+};
+
+template <class Archive, class T, class StaticLock,
+          typename UmpireAllocatorAccessor>
+struct ArchiveStoreImpl<Archive, TiledArray::umpire_based_allocator<
+                                     T, StaticLock, UmpireAllocatorAccessor>> {
+  static inline void store(
+      const Archive& ar,
+      const TiledArray::umpire_based_allocator<
+          T, StaticLock, UmpireAllocatorAccessor>& allocator) {}
 };
 
 }  // namespace archive

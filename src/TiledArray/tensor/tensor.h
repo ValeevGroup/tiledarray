@@ -22,7 +22,8 @@
 
 #include "TiledArray/config.h"
 
-#include "TiledArray/host/allocator.h"
+#include "TiledArray/external/umpire.h"
+#include "TiledArray/host/env.h"
 
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"

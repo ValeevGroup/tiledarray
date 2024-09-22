@@ -148,6 +148,16 @@ class hostEnv {
   }
 };
 
+namespace detail {
+
+struct get_host_allocator {
+  umpire::Allocator& operator()() {
+    return hostEnv::instance()->host_allocator();
+  }
+};
+
+}  // namespace detail
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HOST_ENV_H__INCLUDED
