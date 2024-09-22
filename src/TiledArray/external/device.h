@@ -798,9 +798,22 @@ class Env {
     static std::unique_ptr<Env> instance_{nullptr};
     return instance_;
   }
-};
+};  // class Env
 
 namespace detail {
+
+struct get_um_allocator {
+  umpire::Allocator& operator()() {
+    return deviceEnv::instance()->um_allocator();
+  }
+};
+
+struct get_pinned_allocator {
+  umpire::Allocator& operator()() {
+    return deviceEnv::instance()->pinned_allocator();
+  }
+};
+
 // in a madness device task point to its local optional stream to use by
 // madness_task_stream_opt; set to nullptr after task callable finished
 inline std::optional<Stream>*& madness_task_stream_opt_ptr_accessor() {

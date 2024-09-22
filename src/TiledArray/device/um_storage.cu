@@ -22,7 +22,7 @@
  */
 
 
-#include <TiledArray/device/allocators.h>
+#include <TiledArray/external/device.h>
 #include <TiledArray/device/thrust.h>
 
 #ifdef TILEDARRAY_HAS_CUDA

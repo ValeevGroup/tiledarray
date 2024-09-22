@@ -134,7 +134,6 @@ TiledArray/external/btas.h
 TiledArray/external/madness.h
 TiledArray/external/umpire.h
 TiledArray/host/env.h
-TiledArray/host/allocator.h
 TiledArray/math/blas.h
 TiledArray/math/gemm_helper.h
 TiledArray/math/outer.h
@@ -223,7 +222,6 @@ if(CUDA_FOUND OR HIP_FOUND)
           TiledArray/device/kernel/thrust/reduce_kernel.h
           TiledArray/device/platform.h
           TiledArray/device/thrust.h
-          TiledArray/device/allocators.h
           TiledArray/device/um_storage.h)
   if(CUDA_FOUND)
     list(APPEND TILEDARRAY_HEADER_FILES
