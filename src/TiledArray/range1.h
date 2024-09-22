@@ -32,7 +32,8 @@ namespace TiledArray {
 /// an integer range `[first,second)`
 /// @note previously represented by std::pair, hence the design
 struct Range1 {
-  typedef TA_1INDEX_TYPE index1_type;
+  using index1_type = TA_1INDEX_TYPE;
+  using signed_index1_type = std::make_signed_t<index1_type>;
   index1_type first = 0;
   index1_type second = 0;  //< N.B. second >= first
 
@@ -164,6 +165,31 @@ struct Range1 {
 
   /// @}
 
+  /// shifts this Range1
+
+  /// @param[in] shift the shift to apply
+  /// @return reference to this
+  Range1& inplace_shift(signed_index1_type shift) {
+    if (shift == 0) return *this;
+    // ensure that it's safe to shift
+    TA_ASSERT(shift <= 0 || upbound() <= 0 ||
+              (shift <= (std::numeric_limits<index1_type>::max() - upbound())));
+    TA_ASSERT(shift >= 0 || lobound() >= 0 ||
+              (std::abs(shift) <=
+               (lobound() - std::numeric_limits<index1_type>::min())));
+    first += shift;
+    second += shift;
+    return *this;
+  }
+
+  /// creates a shifted Range1
+
+  /// @param[in] shift the shift value
+  /// @return a copy of this shifted by @p shift
+  [[nodiscard]] Range1 shift(signed_index1_type shift) const {
+    return Range1(*this).inplace_shift(shift);
+  }
+
   template <typename Archive,
             typename std::enable_if<madness::is_input_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
@@ -188,6 +214,12 @@ inline bool operator!=(const Range1& x, const Range1& y) { return !(x == y); }
 /// Exchange the data of the two given ranges.
 inline void swap(Range1& r0, Range1& r1) {  // no throw
   r0.swap(r1);
+}
+
+/// Range1 ostream operator
+inline std::ostream& operator<<(std::ostream& out, const Range1& rng) {
+  out << "[ " << rng.first << ", " << rng.second << " )";
+  return out;
 }
 
 /// Test that two Range1 objects are congruent

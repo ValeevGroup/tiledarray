@@ -32,6 +32,10 @@ BOOST_AUTO_TEST_CASE(range_accessor) {
   BOOST_CHECK_EQUAL(tr1.tiles_range().second, tiles.second);
   BOOST_CHECK_EQUAL(tr1.elements_range().first, elements.first);
   BOOST_CHECK_EQUAL(tr1.elements_range().second, elements.second);
+  BOOST_CHECK_EQUAL(tr1.tile_extent(), tiles.second - tiles.first);
+  BOOST_CHECK_EQUAL(tr1.extent(), elements.second - elements.first);
+  BOOST_CHECK_EQUAL(tr1.lobound(), elements.first);
+  BOOST_CHECK_EQUAL(tr1.upbound(), elements.second);
 
   // Check individual tiles
   for (std::size_t i = 0; i < a.size() - 1; ++i) {
@@ -43,11 +47,29 @@ BOOST_AUTO_TEST_CASE(range_accessor) {
 BOOST_AUTO_TEST_CASE(range_info) {
   BOOST_CHECK_EQUAL(tr1.tiles_range().first, 0ul);
   BOOST_CHECK_EQUAL(tr1.tiles_range().second, a.size() - 1);
-  BOOST_CHECK_EQUAL(tr1.elements_range().first, 0ul);
+  BOOST_CHECK_EQUAL(tr1.elements_range().first, a.front());
   BOOST_CHECK_EQUAL(tr1.elements_range().second, a.back());
+  BOOST_CHECK_EQUAL(tr1.tile_extent(), a.size() - 1);
+  BOOST_CHECK_EQUAL(tr1.extent(), a.back() - a.front());
+  BOOST_CHECK_EQUAL(tr1.lobound(), a.front());
+  BOOST_CHECK_EQUAL(tr1.upbound(), a.back());
   for (std::size_t i = 0; i < a.size() - 1; ++i) {
     BOOST_CHECK_EQUAL(tr1.tile(i).first, a[i]);
     BOOST_CHECK_EQUAL(tr1.tile(i).second, a[i + 1]);
+  }
+
+  auto a_base1 = make_hashmarks<ntiles + 1>(1);
+  BOOST_CHECK_EQUAL(tr1_base1.tiles_range().first, 0ul);
+  BOOST_CHECK_EQUAL(tr1_base1.tiles_range().second, a_base1.size() - 1);
+  BOOST_CHECK_EQUAL(tr1_base1.elements_range().first, a_base1.front());
+  BOOST_CHECK_EQUAL(tr1_base1.elements_range().second, a_base1.back());
+  BOOST_CHECK_EQUAL(tr1_base1.tile_extent(), a_base1.size() - 1);
+  BOOST_CHECK_EQUAL(tr1_base1.extent(), a_base1.back() - a_base1.front());
+  BOOST_CHECK_EQUAL(tr1_base1.lobound(), a_base1.front());
+  BOOST_CHECK_EQUAL(tr1_base1.upbound(), a_base1.back());
+  for (std::size_t i = 0; i < a.size() - 1; ++i) {
+    BOOST_CHECK_EQUAL(tr1_base1.tile(i).first, a_base1[i]);
+    BOOST_CHECK_EQUAL(tr1_base1.tile(i).second, a_base1[i + 1]);
   }
 }
 
@@ -61,6 +83,25 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r.elements_range().first, 0ul);
     BOOST_CHECK_EQUAL(r.elements_range().second, 0ul);
     BOOST_CHECK_TA_ASSERT(r.tile(0), Exception);
+  }
+
+  // check construction with single tile boundary (hence zero tiles)
+  {
+    {
+      BOOST_REQUIRE_NO_THROW(TiledRange1 r(0));
+      TiledRange1 r(0);
+      BOOST_CHECK_EQUAL(r, TiledRange1{});
+    }
+    {
+      BOOST_REQUIRE_NO_THROW(TiledRange1 r(1));
+      TiledRange1 r(1);
+      BOOST_CHECK_NE(r, TiledRange1{});
+      BOOST_CHECK_EQUAL(r.tiles_range().first, 0);
+      BOOST_CHECK_EQUAL(r.tiles_range().second, 0);
+      BOOST_CHECK_EQUAL(r.elements_range().first, 1);
+      BOOST_CHECK_EQUAL(r.elements_range().second, 1);
+      BOOST_CHECK_TA_ASSERT(r.tile(0), Exception);
+    }
   }
 
   // check construction with a iterators and the range info.
@@ -99,6 +140,21 @@ BOOST_AUTO_TEST_CASE(constructor) {
   {
     if (Range1Fixture::ntiles == 5) {
       TiledRange1 r{0, 2, 5, 10, 17, 28};
+      BOOST_CHECK_EQUAL(r.tiles_range().first, tiles.first);
+      BOOST_CHECK_EQUAL(r.tiles_range().second, tiles.second);
+      BOOST_CHECK_EQUAL(r.elements_range().first, elements.first);
+      BOOST_CHECK_EQUAL(r.elements_range().second, elements.second);
+      for (std::size_t i = 0; i < a.size() - 1; ++i) {
+        BOOST_CHECK_EQUAL(r.tile(i).first, a[i]);
+        BOOST_CHECK_EQUAL(r.tile(i).second, a[i + 1]);
+      }
+    }
+  }
+
+  // check constructor using range of tile boundaries.
+  {
+    if (Range1Fixture::ntiles == 5) {
+      TiledRange1 r(a);
       BOOST_CHECK_EQUAL(r.tiles_range().first, tiles.first);
       BOOST_CHECK_EQUAL(r.tiles_range().second, tiles.second);
       BOOST_CHECK_EQUAL(r.elements_range().first, elements.first);
@@ -185,7 +241,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_TA_ASSERT(TiledRange1 r(boundaries.begin(), boundaries.end()),
                           Exception);
     BOOST_CHECK_TA_ASSERT(TiledRange1 r(a.begin(), a.begin()), Exception);
-    BOOST_CHECK_TA_ASSERT(TiledRange1 r(a.begin(), a.begin() + 1), Exception);
+    BOOST_CHECK_NO_THROW(TiledRange1 r(a.begin(), a.begin() + 1));
     boundaries.push_back(2);
     boundaries.push_back(0);
     BOOST_CHECK_TA_ASSERT(TiledRange1 r(boundaries.begin(), boundaries.end()),
@@ -294,8 +350,10 @@ BOOST_AUTO_TEST_CASE(concatenation) {
 }
 
 BOOST_AUTO_TEST_CASE(make_uniform) {
+  BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{0, 0}, 0));
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{0, 0}, 0) == TiledRange1{});
   BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{1, 1}, 0));
-  BOOST_CHECK(TiledRange1::make_uniform(Range1{1, 1}, 0) == TiledRange1{});
+  BOOST_CHECK(TiledRange1::make_uniform(Range1{1, 1}, 0) == TiledRange1{1});
   BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(Range1{3, 6}, 10));
   BOOST_CHECK(TiledRange1::make_uniform(Range1{3, 6}, 10) ==
               (TiledRange1{3, 6}));
@@ -324,6 +382,44 @@ BOOST_AUTO_TEST_CASE(make_uniform) {
   BOOST_REQUIRE_NO_THROW(TiledRange1::make_uniform(59, 10));
   BOOST_CHECK(TiledRange1::make_uniform(59, 10) ==
               (TiledRange1{0, 10, 20, 30, 40, 50, 59}));
+
+  // member versions
+  BOOST_REQUIRE_NO_THROW((TiledRange1{0, 10, 20, 30, 40, 50}.make_uniform(30)));
+  BOOST_CHECK((TiledRange1{0, 10, 20, 30, 40, 50}.make_uniform(30) ==
+               TiledRange1{0, 25, 50}));
+  BOOST_REQUIRE_NO_THROW((TiledRange1{0, 40, 50}.make_uniform()));
+  BOOST_CHECK(
+      (TiledRange1{0, 40, 50}.make_uniform() == TiledRange1{0, 25, 50}));
+}
+
+BOOST_AUTO_TEST_CASE(shift) {
+  TiledRange1 r0;
+  TiledRange1 r0_plus_1;
+  BOOST_REQUIRE_NO_THROW(r0_plus_1 = r0.shift(1));
+  BOOST_CHECK_EQUAL(r0_plus_1, TiledRange1(1));
+  BOOST_REQUIRE_NO_THROW(r0_plus_1.inplace_shift(-1));
+  BOOST_CHECK_EQUAL(r0_plus_1, r0);
+
+  BOOST_CHECK_TA_ASSERT(
+      TiledRange1{std::numeric_limits<index1_type>::max()}.inplace_shift(1),
+      Exception);
+  BOOST_CHECK_TA_ASSERT(
+      TiledRange1{std::numeric_limits<index1_type>::min()}.inplace_shift(-1),
+      Exception);
+  TiledRange1 tmp;
+  BOOST_CHECK_TA_ASSERT(
+      tmp = TiledRange1{std::numeric_limits<index1_type>::max()}.shift(1),
+      Exception);
+  BOOST_CHECK_TA_ASSERT(
+      tmp = TiledRange1{std::numeric_limits<index1_type>::min()}.shift(-1),
+      Exception);
+
+  TiledRange1 r1{1, 3, 7, 9};
+  TiledRange1 r1_minus_1;
+  BOOST_REQUIRE_NO_THROW(r1_minus_1 = r1.shift(-1));
+  BOOST_CHECK_EQUAL(r1_minus_1, TiledRange1(0, 2, 6, 8));
+  BOOST_REQUIRE_NO_THROW(r1_minus_1.inplace_shift(1));
+  BOOST_CHECK_EQUAL(r1_minus_1, r1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

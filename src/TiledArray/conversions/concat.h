@@ -64,7 +64,7 @@ DistArray<Tile, Policy> concat(
   using std::begin;
   using std::end;
 
-  index b(r), e(r);  // updated for concatted modes only
+  index b(r), e(r);  // updated for concatenated modes only
   std::fill(begin(b), end(b), 0);
   for (auto i = 0ul; i != arrays.size(); ++i) {
     auto& tr = arrays[i].trange();
@@ -94,9 +94,6 @@ DistArray<Tile, Policy> concat(
   for (auto i = 0ul; i != arrays.size(); ++i) {
     if (arrays[i].trange().tiles_range().volume() !=
         0) {  // N.B. empty block range expression bug workaround
-      result.make_tsrexpr(annot).block(tile_begin_end[i].first,
-                                       tile_begin_end[i].second) =
-          arrays[i].make_tsrexpr(annot);
       result.make_tsrexpr(annot).block(tile_begin_end[i].first,
                                        tile_begin_end[i].second) =
           arrays[i].make_tsrexpr(annot);

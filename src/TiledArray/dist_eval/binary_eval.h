@@ -107,7 +107,10 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
         right_ntiles_discarded_(0)
 #endif
   {
-    TA_ASSERT(left.trange() == right.trange());
+    TA_ASSERT(ignore_tile_position()
+                  ? left.trange().elements_range().extent() ==
+                        right.trange().elements_range().extent()
+                  : left.trange() == right.trange());
   }
 
   virtual ~BinaryEvalImpl() {}

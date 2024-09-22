@@ -324,6 +324,61 @@ class TiledRange {
     std::swap(ranges_, other.ranges_);
   }
 
+  /// Shifts the lower and upper bounds of this range
+
+  /// \tparam Index An integral range type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A reference to this range
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
+  TiledRange_& inplace_shift(const Index& bound_shift) {
+    elements_range_.inplace_shift(bound_shift);
+    using std::begin;
+    auto bound_shift_it = begin(bound_shift);
+    for (std::size_t d = 0; d != rank(); ++d, ++bound_shift_it) {
+      ranges_[d].inplace_shift(*bound_shift_it);
+    }
+    return *this;
+  }
+
+  /// Shifts the lower and upper bound of this range
+
+  /// \tparam Index An integral type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A reference to this range
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  TiledRange_& inplace_shift(const std::initializer_list<Index>& bound_shift) {
+    return inplace_shift<std::initializer_list<Index>>(bound_shift);
+  }
+
+  /// Create a TiledRange with shifted lower and upper bounds
+
+  /// \tparam Index An integral range type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A shifted copy of this range
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
+  [[nodiscard]] TiledRange_ shift(const Index& bound_shift) const {
+    TiledRange_ result(*this);
+    result.inplace_shift(bound_shift);
+    return result;
+  }
+
+  /// Create a TiledRange with shifted lower and upper bounds
+
+  /// \tparam Index An integral type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A shifted copy of this range
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  [[nodiscard]] TiledRange_ shift(
+      const std::initializer_list<Index>& bound_shift) const {
+    TiledRange_ result(*this);
+    result.inplace_shift(bound_shift);
+    return result;
+  }
+
   template <typename Archive,
             typename std::enable_if<madness::is_input_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>
@@ -366,6 +421,19 @@ inline bool operator==(const TiledRange& r1, const TiledRange& r2) {
          (r1.tiles_range() == r2.tiles_range()) &&
          (r1.elements_range() == r2.elements_range()) &&
          std::equal(r1.data().begin(), r1.data().end(), r2.data().begin());
+}
+
+/// Test that two TiledRange objects are congruent
+
+/// Two tranges are congruent if one is a translation of another (i.e. their
+/// ranks and extents of all tiles) agree \param r1 a TiledRange object \param
+/// r2 a TiledRange object
+inline bool is_congruent(const TiledRange& r1, const TiledRange& r2) {
+  return r1.rank() == r2.rank() &&
+         std::equal(r1.begin(), r1.end(), r2.begin(),
+                    [](const auto& tr1_1, const auto& tr1_2) {
+                      return is_congruent(tr1_1, tr1_2);
+                    });
 }
 
 inline bool operator!=(const TiledRange& r1, const TiledRange& r2) {

@@ -45,7 +45,6 @@ auto list(const TiledRange &trange) {
   return v;
 }
 
-// template<>
 inline TiledRange make_trange(std::vector<std::vector<int64_t> > trange) {
   std::vector<TiledRange1> trange1;
   for (auto tr : trange) {
@@ -58,11 +57,7 @@ inline TiledRange make_trange(std::vector<std::vector<int64_t> > trange) {
 inline TiledRange make_trange(std::vector<int64_t> shape, size_t block) {
   std::vector<TiledRange1> trange1;
   for (size_t i = 0; i < shape.size(); ++i) {
-    std::vector<int64_t> tr1;
-    for (size_t j = 0; j <= (shape[i] + block - 1); j += block) {
-      tr1.push_back(std::min<int64_t>(j, shape[i]));
-    }
-    trange1.push_back(TiledRange1(tr1.begin(), tr1.end()));
+    trange1.emplace_back(TiledRange1::make_uniform(shape[i], block));
   }
   return TiledRange(trange1.begin(), trange1.end());
 }

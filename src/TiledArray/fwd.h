@@ -207,6 +207,14 @@ struct to;
 
 }  // namespace conversions
 
+/// used to indicate that block tensor expression should preserve the underlying
+/// tensor's trange lobound
+struct preserve_lobound_t {};
+
+/// used to tag block tensor expression methods that preserve the underlying
+/// tensor's trange lobound
+inline constexpr preserve_lobound_t preserve_lobound;
+
 }  // namespace TiledArray
 
 #ifndef TILEDARRAY_DISABLE_NAMESPACE_TA
