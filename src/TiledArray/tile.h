@@ -250,6 +250,11 @@ class Tile {
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   const_reference operator[](const Ordinal ord) const {
     TA_ASSERT(pimpl_);
+    // can't distinguish between operator[](Index...) and operator[](ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range().rank() != 1 &&
+              "use Tile::operator[](index) or "
+              "Tile::at_ordinal(index_ordinal) if this->range().rank()==1");
     TA_ASSERT(tensor().range().includes_ordinal(ord));
     return tensor().data()[ord];
   }
@@ -264,6 +269,41 @@ class Tile {
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   reference operator[](const Ordinal ord) {
+    TA_ASSERT(pimpl_);
+    // can't distinguish between operator[](Index...) and operator[](ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range().rank() != 1 &&
+              "use Tile::operator[](index) or "
+              "Tile::at_ordinal(index_ordinal) if this->range().rank()==1");
+    TA_ASSERT(tensor().range().includes_ordinal(ord));
+    return tensor().data()[ord];
+  }
+
+  /// Const element accessor
+
+  /// \tparam Ordinal an integer type that represents an ordinal
+  /// \param[in] ord an ordinal index
+  /// \return Const reference to the element at position \c ord .
+  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
+  /// included in the range
+  template <typename Ordinal,
+            std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+  const_reference at_ordinal(const Ordinal ord) const {
+    TA_ASSERT(pimpl_);
+    TA_ASSERT(tensor().range().includes_ordinal(ord));
+    return tensor().data()[ord];
+  }
+
+  /// Element accessor
+
+  /// \tparam Ordinal an integer type that represents an ordinal
+  /// \param[in] ord an ordinal index
+  /// \return Reference to the element at position \c ord .
+  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
+  /// included in the range
+  template <typename Ordinal,
+            std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+  reference at_ordinal(const Ordinal ord) {
     TA_ASSERT(pimpl_);
     TA_ASSERT(tensor().range().includes_ordinal(ord));
     return tensor().data()[ord];
@@ -401,6 +441,12 @@ class Tile {
                        detail::is_integral_list<Index...>::value>* = nullptr>
   const_reference operator()(const Index&... i) const {
     TA_ASSERT(pimpl_);
+    TA_ASSERT(this->range().rank() == sizeof...(Index));
+    // can't distinguish between operator()(Index...) and operator()(ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range().rank() != 1 &&
+              "use Tile::operator()(index) or "
+              "Tile::at_ordinal(index_ordinal) if this->range().rank()==1");
     TA_ASSERT(tensor().range().includes(i...));
     return tensor().data()[tensor().range().ordinal(i...)];
   }
@@ -417,6 +463,12 @@ class Tile {
                        detail::is_integral_list<Index...>::value>* = nullptr>
   reference operator()(const Index&... i) {
     TA_ASSERT(pimpl_);
+    TA_ASSERT(this->range().rank() == sizeof...(Index));
+    // can't distinguish between operator()(Index...) and operator()(ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range().rank() != 1 &&
+              "use Tile::operator()(index) or "
+              "Tile::at_ordinal(index_ordinal) if this->range().rank()==1");
     TA_ASSERT(tensor().range().includes(i...));
     return tensor().data()[tensor().range().ordinal(i...)];
   }

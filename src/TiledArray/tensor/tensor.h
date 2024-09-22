@@ -705,7 +705,7 @@ class Tensor {
   const_reference operator[](const Ordinal ord) const {
     TA_ASSERT(!this->empty());
     // can't distinguish between operator[](Index...) and operator[](ordinal)
-    // thus assume at_ordinal() if this->rank()==1
+    // thus insist on at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator[](index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
@@ -726,7 +726,7 @@ class Tensor {
   reference operator[](const Ordinal ord) {
     TA_ASSERT(!this->empty());
     // can't distinguish between operator[](Index...) and operator[](ordinal)
-    // thus assume at_ordinal() if this->rank()==1
+    // thus insist on at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator[](index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
@@ -848,7 +848,7 @@ class Tensor {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);
     // can't distinguish between operator[](Index...) and operator[](ordinal)
-    // thus assume at_ordinal() if this->rank()==1
+    // thus insist on at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator()(index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
@@ -869,7 +869,7 @@ class Tensor {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);
     // can't distinguish between operator[](Index...) and operator[](ordinal)
-    // thus assume at_ordinal() if this->rank()==1
+    // thus insist on at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator()(index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
@@ -960,6 +960,12 @@ class Tensor {
   const_reference operator()(const Index&... i) const {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);
+    TA_ASSERT(this->range().rank() == sizeof...(Index));
+    // can't distinguish between operator()(Index...) and operator()(ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range_.rank() != 1 &&
+              "use Tensor::operator()(index) or "
+              "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
     using Int = std::common_type_t<Index...>;
     const auto iord = this->range_.ordinal(
         std::array<Int, sizeof...(Index)>{{static_cast<Int>(i)...}});
@@ -982,6 +988,12 @@ class Tensor {
   reference operator()(const Index&... i) {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);
+    TA_ASSERT(this->range().rank() == sizeof...(Index));
+    // can't distinguish between operator()(Index...) and operator()(ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range_.rank() != 1 &&
+              "use Tensor::operator()(index) or "
+              "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
     using Int = std::common_type_t<Index...>;
     const auto iord = this->range_.ordinal(
         std::array<Int, sizeof...(Index)>{{static_cast<Int>(i)...}});
