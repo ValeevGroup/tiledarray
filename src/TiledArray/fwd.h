@@ -49,7 +49,10 @@ class umpire_based_allocator;
 template <typename T, typename A = std::allocator<T>>
 class default_init_allocator;
 
-class hostEnv;
+namespace host {
+class Env;
+}
+using hostEnv = host::Env;
 
 /// pooled thread-safe host memory allocator
 template <typename T>
