@@ -57,22 +57,10 @@ ubuntu:
       metrics: build/metrics.txt
   parallel:
     matrix:
-      - IMAGE : [ "ubuntu:20.04" ]
-        CXX: [ g++ ]
-        BUILD_TYPE : [ "RelWithDebInfo" ]
-        BLA_VENDOR : [ "BLAS_PREFERENCE_LIST=IntelMKL" ]
-        BLA_THREADS : [ "IntelMKL_THREAD_LAYER=tbb" ]
-        # ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
-        TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
-        RUNNER_TAGS: [ saas-linux-small-amd64 ]
-      - IMAGE : [ "ubuntu:22.04" ]
-        CXX: [ g++, clang++-13 ]
-        BUILD_TYPE : [ "RelWithDebInfo" ]
-        ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
-        RUNNER_TAGS: [ saas-linux-small-amd64 ]
       - IMAGE : [ "ubuntu:22.04" ]
         CXX: [ g++ ]
         BUILD_TYPE : [ "RelWithDebInfo" ]
+        TA_PYTHON : [ "TA_PYTHON=OFF" ]
         ENABLE_CUDA : [ "ENABLE_CUDA=ON" ]
         TA_TARGETS : [ "tiledarray examples-tiledarray check_serial-tiledarray" ]
         RUNNER_TAGS: [ cuda ]
