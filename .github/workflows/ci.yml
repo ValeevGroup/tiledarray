@@ -60,7 +60,8 @@ jobs:
         wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
         sudo apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
         sudo apt-get update
-        sudo apt-get -y install ninja-build g++-12 liblapack-dev libboost-dev libboost-serialization-dev libboost-random-dev libeigen3-dev openmpi-bin libopenmpi-dev libtbb-dev ccache flex bison libscalapack-openmpi-dev cmake doxygen
+        sudo apt-get -y install ninja-build g++-12 liblapack-dev libboost-dev libboost-serialization-dev libboost-random-dev libeigen3-dev openmpi-bin libopenmpi-dev libtbb-dev ccache flex bison libscalapack-mpi-dev cmake doxygen
+        sudo ln -s /usr/lib/x86_64-linux-gnu/libscalapack-openmpi.so /usr/lib/x86_64-linux-gnu/libscalapack.so
         echo "MPIEXEC=/usr/bin/mpiexec" >> $GITHUB_ENV
 
     - name: Prepare ccache timestamp
@@ -82,7 +83,7 @@ jobs:
       shell: bash
       run: |
         set -x;
-        cmake -B${{github.workspace}}/build $BUILD_CONFIG || (cat CMakeFiles/CMakeOutput.log && cat CMakeFiles/CMakeError.log)
+        cmake -B${{github.workspace}}/build $BUILD_CONFIG || (cat CMakeFiles/CMakeConfigureLog.yaml)
 
     - name: Build
       working-directory: ${{github.workspace}}/build
