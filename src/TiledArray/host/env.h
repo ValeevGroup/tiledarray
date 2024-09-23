@@ -41,24 +41,34 @@
 
 namespace TiledArray {
 
+namespace detail {
+
+struct get_host_allocator {
+  umpire::Allocator& operator()();
+};
+
+}  // namespace detail
+
+namespace host {
+
 /**
- * hostEnv maintains the (host-side, as opposed to device-side) environment,
+ * Env maintains the (host-side, as opposed to device-side) environment,
  * such as memory allocators
  *
  * \note this is a Singleton
  */
-class hostEnv {
+class Env {
  public:
-  ~hostEnv() = default;
+  ~Env() = default;
 
-  hostEnv(const hostEnv&) = delete;
-  hostEnv(hostEnv&&) = delete;
-  hostEnv& operator=(const hostEnv&) = delete;
-  hostEnv& operator=(hostEnv&&) = delete;
+  Env(const Env&) = delete;
+  Env(Env&&) = delete;
+  Env& operator=(const Env&) = delete;
+  Env& operator=(Env&&) = delete;
 
   /// access the singleton instance; if not initialized will be
-  /// initialized via hostEnv::initialize() with the default params
-  static std::unique_ptr<hostEnv>& instance() {
+  /// initialized via Env::initialize() with the default params
+  static std::unique_ptr<Env>& instance() {
     if (!instance_accessor()) {
       initialize();
     }
@@ -103,8 +113,7 @@ class hostEnv {
               "QuickPool_SizeLimited_HOST", host_size_limited_alloc, page_size,
               page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
 
-      auto host_env =
-          std::unique_ptr<hostEnv>(new hostEnv(world, host_dynamic_pool));
+      auto host_env = std::unique_ptr<Env>(new Env(world, host_dynamic_pool));
       instance_accessor() = std::move(host_env);
     }
   }
@@ -131,7 +140,7 @@ class hostEnv {
   }
 
  protected:
-  hostEnv(World& world, umpire::Allocator host_alloc)
+  Env(World& world, umpire::Allocator host_alloc)
       : world_(&world), host_allocator_(host_alloc) {}
 
  private:
@@ -142,11 +151,13 @@ class hostEnv {
   // N.B. not thread safe, so must be wrapped into umpire_based_allocator_impl
   umpire::Allocator host_allocator_;
 
-  inline static std::unique_ptr<hostEnv>& instance_accessor() {
-    static std::unique_ptr<hostEnv> instance_{nullptr};
+  inline static std::unique_ptr<Env>& instance_accessor() {
+    static std::unique_ptr<Env> instance_{nullptr};
     return instance_;
   }
 };
+
+}  // namespace host
 
 }  // namespace TiledArray
 

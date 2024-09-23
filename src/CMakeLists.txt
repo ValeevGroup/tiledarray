@@ -133,8 +133,8 @@ TiledArray/expressions/index_list.h
 TiledArray/external/btas.h
 TiledArray/external/madness.h
 TiledArray/external/umpire.h
+TiledArray/host/env.cpp
 TiledArray/host/env.h
-TiledArray/host/allocator.h
 TiledArray/math/blas.h
 TiledArray/math/gemm_helper.h
 TiledArray/math/outer.h
@@ -207,11 +207,7 @@ TiledArray/util/vector.h
 if(HIP_FOUND OR CUDA_FOUND)
   list(APPEND TILEDARRAY_HEADER_FILES
           TiledArray/external/device.h
-          TiledArray/external/librett.h)
-endif()
-
-if(CUDA_FOUND OR HIP_FOUND)
-  list(APPEND TILEDARRAY_HEADER_FILES
+          TiledArray/external/librett.h
           TiledArray/device/blas.cpp
           TiledArray/device/blas.h
           TiledArray/device/btas.h
@@ -223,7 +219,6 @@ if(CUDA_FOUND OR HIP_FOUND)
           TiledArray/device/kernel/thrust/reduce_kernel.h
           TiledArray/device/platform.h
           TiledArray/device/thrust.h
-          TiledArray/device/allocators.h
           TiledArray/device/um_storage.h)
   if(CUDA_FOUND)
     list(APPEND TILEDARRAY_HEADER_FILES

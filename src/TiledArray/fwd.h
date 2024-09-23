@@ -36,12 +36,30 @@ class aligned_allocator;
 
 // fwddecl host_allocator
 namespace TiledArray {
-template <class T>
-class host_allocator_impl;
-template <typename T, typename A>
+namespace detail {
+struct get_host_allocator;
+struct NullLock;
+template <typename Tag = void>
+class MutexLock;
+}  // namespace detail
+
+template <class T, class StaticLock, typename UmpireAllocatorAccessor>
+class umpire_based_allocator;
+
+template <typename T, typename A = std::allocator<T>>
 class default_init_allocator;
+
+namespace host {
+class Env;
+}
+using hostEnv = host::Env;
+
+/// pooled thread-safe host memory allocator
 template <typename T>
-using host_allocator = default_init_allocator<T, host_allocator_impl<T>>;
+using host_allocator =
+    default_init_allocator<T,
+                           umpire_based_allocator<T, detail::MutexLock<hostEnv>,
+                                                  detail::get_host_allocator>>;
 }  // namespace TiledArray
 
 namespace madness {
@@ -87,18 +105,9 @@ class Env;
 }
 using deviceEnv = device::Env;
 
-template <class T, class StaticLock, typename UmpireAllocatorAccessor>
-class umpire_based_allocator;
-
-template <typename T, typename A = std::allocator<T>>
-class default_init_allocator;
-
 namespace detail {
 struct get_um_allocator;
 struct get_pinned_allocator;
-struct NullLock;
-template <typename Tag = void>
-class MutexLock;
 }  // namespace detail
 
 /// pooled thread-safe unified memory (UM) allocator for device computing

@@ -85,7 +85,8 @@ struct UMExpressionsFixture : public TiledRangeFixture {
   template <typename Tile>
   static Tile make_rand_tile(const typename TA::Range& r) {
     Tile tile(r);
-    for (std::size_t i = 0ul; i < tile.size(); ++i) set_random(tile[i]);
+    for (std::size_t i = 0ul; i < tile.size(); ++i)
+      set_random(tile.at_ordinal(i));
     return tile;
   }
 
