@@ -262,8 +262,8 @@ class TensorInterface {
   /// \param idx The index pack
   template <typename... Index>
   reference operator()(const Index&... idx) {
-    TA_ASSERT(range_.includes(idx...));
-    return data_[range_.ordinal(idx...)];
+    const auto ord = range_.ordinal(idx...);
+    return data_[ord];
   }
 
   /// Element accessor
@@ -272,8 +272,8 @@ class TensorInterface {
   /// \param idx The index pack
   template <typename... Index>
   const_reference operator()(const Index&... idx) const {
-    TA_ASSERT(range_.includes(idx...));
-    return data_[range_.ordinal(idx...)];
+    const auto ord = range_.ordinal(idx...);
+    return data_[ord];
   }
 
   /// \brief Tensor interface iterator type
@@ -308,9 +308,7 @@ class TensorInterface {
 
     /// \brief dereferences this iterator
     /// \return const reference to the current index
-    auto& dereference() const {
-      return ti.at_ordinal(ti.range().ordinal(*idx_it));
-    }
+    auto& dereference() const { return ti(*idx_it); }
   };
   friend class Iterator<TensorInterface_>;
   friend class Iterator<const TensorInterface_>;
