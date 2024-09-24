@@ -163,8 +163,6 @@ struct Range1 {
   /// \return An iterator that points to the beginning of the local element set
   const_iterator cend() const { return end(); }
 
-  /// @}
-
   /// shifts this Range1
 
   /// @param[in] shift the shift to apply
