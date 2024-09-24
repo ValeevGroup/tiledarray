@@ -258,7 +258,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tensor_ctor, Tensor, tensor_types) {
   BOOST_CHECK(t1.empty());
 
   // can copy TA::Tensor to btas::Tensor
-  TA::Tensor<typename Tensor::value_type> ta_tensor(r);
+  TA::Tensor<typename Tensor::value_type> ta_tensor;
+  ta_tensor = make_rand_tile<decltype(ta_tensor)>(r);
   BOOST_REQUIRE_NO_THROW(Tensor(ta_tensor));
   Tensor t2(ta_tensor);
   for (auto i : r) {
