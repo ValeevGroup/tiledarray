@@ -267,10 +267,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tensor_ctor, Tensor, tensor_types) {
   }
 
   // can copy TA::TensorInterface to btas::Tensor
-  BOOST_REQUIRE_NO_THROW(Tensor(ta_tensor.block(r.lobound(), r.upbound())));
-  Tensor t3(ta_tensor.block(r.lobound(), r.upbound()));
-  for (auto i : r) {
-    BOOST_CHECK_EQUAL(ta_tensor(i), t3(i));
+  {
+    const auto l = {3, 3, 3};
+    const auto u = r.upbound();
+    BOOST_REQUIRE(r.includes(l));
+    BOOST_REQUIRE_NO_THROW(Tensor(ta_tensor.block(l, u)));
+    Tensor t3(ta_tensor.block(l, u));
+    for (auto i : t3.range()) {
+      BOOST_CHECK_EQUAL(ta_tensor(i), t3(i));
+    }
   }
 }
 
