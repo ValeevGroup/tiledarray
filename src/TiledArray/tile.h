@@ -201,6 +201,26 @@ class Tile {
   /// \return A const iterator to the last data element
   decltype(auto) end() const { return std::end(tensor()); }
 
+  /// Iterator factory
+
+  /// \return A const iterator to the first data element
+  decltype(auto) cbegin() { return std::cbegin(tensor()); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the first data element
+  decltype(auto) cbegin() const { return std::cbegin(tensor()); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the last data element
+  decltype(auto) cend() { return std::cend(tensor()); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the last data element
+  decltype(auto) cend() const { return std::cend(tensor()); }
+
   // Data accessor -------------------------------------------------------
 
   /// Data direct access
