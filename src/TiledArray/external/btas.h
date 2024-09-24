@@ -62,6 +62,13 @@ class boxrange_iteration_order<TiledArray::Range> {
   static constexpr int value = row_major;
 };
 
+template <typename T, typename A>
+class is_tensor<TiledArray::Tensor<T, A>> : public std::true_type {};
+
+template <typename T, typename R, typename O>
+class is_tensor<TiledArray::detail::TensorInterface<T, R, O>>
+    : public std::true_type {};
+
 }  // namespace btas
 
 namespace TiledArray {
