@@ -64,20 +64,10 @@ jobs:
         sudo ln -s /usr/lib/x86_64-linux-gnu/libscalapack-openmpi.so /usr/lib/x86_64-linux-gnu/libscalapack.so
         echo "MPIEXEC=/usr/bin/mpiexec" >> $GITHUB_ENV
 
-    - name: Prepare ccache timestamp
-      id: ccache_cache_timestamp
-      shell: cmake -P {0}
-      run: |
-        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-        message("::set-output name=timestamp::${current_date}")
-
-    - name: Setup ccache cache files
-      uses: actions/cache@v1.1.0
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
       with:
-        path: ${{github.workspace}}/build/.ccache
-        key: ${{ matrix.config.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
-        restore-keys: |
-          ${{ matrix.config.name }}-ccache-
+        key: ccache-${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.task_backend }}
 
     - name: "Configure build: ${{ env.BUILD_CONFIG }}"
       shell: bash
