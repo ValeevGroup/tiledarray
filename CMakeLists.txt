@@ -306,6 +306,7 @@ if(CCACHE)
   message (STATUS "Found ccache: ${CCACHE}")
   set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C++")
   set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C")
+  set(CMAKE_CUDA_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling CUDA")
 endif(CCACHE)
 
 # required deps:
