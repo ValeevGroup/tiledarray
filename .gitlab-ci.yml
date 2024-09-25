@@ -25,6 +25,14 @@ before_script:
   # TODO optimize ta_test build memory consumption
   - export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:=1}
   - echo "CMAKE_BUILD_PARALLEL_LEVEL=$CMAKE_BUILD_PARALLEL_LEVEL"
+  # configure ccache
+  - export CCACHE_DIR=/root/.ccache
+  - export CCACHE_COMPRESS=true
+  - export CCACHE_COMPRESSLEVEL=6
+  # print out the ccache configuration
+  - ccache -p
+  # zero out the ccache statistics
+  - ccache -z
 
 ubuntu:
   stage: build
@@ -64,3 +72,8 @@ ubuntu:
         ENABLE_CUDA : [ "ENABLE_CUDA=ON" ]
         TA_TARGETS : [ "tiledarray examples-tiledarray check_serial-tiledarray" ]
         RUNNER_TAGS: [ cuda ]
+
+
+after_script:
+  # print out the ccache statistics
+  - ccache -s
