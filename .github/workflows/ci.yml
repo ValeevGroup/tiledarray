@@ -79,7 +79,7 @@ jobs:
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
-        ccache -p && ccache -z && cmake --build . --target tiledarray && cmake --build . --target examples && ccache -s
+        ccache -p && ccache -z && cmake --build . --target tiledarray ta_test examples && ccache -s
 
     - name: Test
       working-directory: ${{github.workspace}}/build
@@ -87,5 +87,4 @@ jobs:
       #run: ctest -C $${{matrix.build_type}}
       run: |
         source ${{github.workspace}}/ci/openmpi.env
-        cmake --build . --target ta_test
         cmake --build . --target check-tiledarray
