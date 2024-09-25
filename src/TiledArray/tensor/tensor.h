@@ -1003,7 +1003,7 @@ class Tensor {
 
   /// Iterator factory
 
-  /// \return An iterator to the first data element
+  /// \return A const iterator to the first data element
   const_iterator begin() const { return (this->data() ? this->data() : NULL); }
 
   /// Iterator factory
@@ -1013,7 +1013,7 @@ class Tensor {
 
   /// Iterator factory
 
-  /// \return An iterator to the last data element
+  /// \return A const iterator to the last data element
   const_iterator end() const {
     return (this->data() ? this->data() + this->size() : NULL);
   }
@@ -1022,6 +1022,30 @@ class Tensor {
 
   /// \return An iterator to the last data element
   iterator end() { return (this->data() ? this->data() + this->size() : NULL); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the first data element
+  const_iterator cbegin() const { return (this->data() ? this->data() : NULL); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the first data element
+  const_iterator cbegin() { return (this->data() ? this->data() : NULL); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the last data element
+  const_iterator cend() const {
+    return (this->data() ? this->data() + this->size() : NULL);
+  }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the last data element
+  const_iterator cend() {
+    return (this->data() ? this->data() + this->size() : NULL);
+  }
 
   /// Read-only access to the data
 

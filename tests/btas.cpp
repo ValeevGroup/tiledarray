@@ -256,6 +256,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tensor_ctor, Tensor, tensor_types) {
   BOOST_REQUIRE_NO_THROW(Tensor t1 = t0);
   Tensor t1 = t0;
   BOOST_CHECK(t1.empty());
+
+  // can copy TA::Tensor to btas::Tensor
+  TA::Tensor<typename Tensor::value_type> ta_tensor;
+  ta_tensor = make_rand_tile<decltype(ta_tensor)>(r);
+  BOOST_REQUIRE_NO_THROW(Tensor(ta_tensor));
+  Tensor t2(ta_tensor);
+  for (auto i : r) {
+    BOOST_CHECK_EQUAL(ta_tensor(i), t2(i));
+  }
+
+  // can copy TA::TensorInterface to btas::Tensor
+  {
+    const auto l = {3, 3, 3};
+    const auto u = r.upbound();
+    BOOST_REQUIRE(r.includes(l));
+    BOOST_REQUIRE_NO_THROW(Tensor(ta_tensor.block(l, u)));
+    Tensor t3(ta_tensor.block(l, u));
+    for (auto i : t3.range()) {
+      BOOST_CHECK_EQUAL(ta_tensor(i), t3(i));
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(copy, Array, array_types) {
