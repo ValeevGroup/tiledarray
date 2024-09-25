@@ -98,6 +98,13 @@ else()
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
     endif(CMAKE_TOOLCHAIN_FILE)
 
+    foreach(lang C CXX CUDA)
+        if (DEFINED CMAKE_${lang}_COMPILER_LAUNCHER)
+            list(APPEND LIBRETT_CMAKE_ARGS
+                    "-DCMAKE_${lang}_COMPILER_LAUNCHER=${CMAKE_${lang}_COMPILER_LAUNCHER}")
+        endif()
+    endforeach()
+
     if (BUILD_SHARED_LIBS)
         set(LIBRETT_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
     else(BUILD_SHARED_LIBS)
