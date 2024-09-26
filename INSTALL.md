@@ -41,7 +41,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20 and later.
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 4b3757cc2b5862f93589afc1e37523e543779c7a . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag 1cfcb12647c768ccd83b098c64cda723e1275e49 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 95589b0d020a076f93d02eead6da654b23dd3d91 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
