@@ -36,12 +36,30 @@ class aligned_allocator;
 
 // fwddecl host_allocator
 namespace TiledArray {
-template <class T>
-class host_allocator_impl;
-template <typename T, typename A>
+namespace detail {
+struct get_host_allocator;
+struct NullLock;
+template <typename Tag = void>
+class MutexLock;
+}  // namespace detail
+
+template <class T, class StaticLock, typename UmpireAllocatorAccessor>
+class umpire_based_allocator;
+
+template <typename T, typename A = std::allocator<T>>
 class default_init_allocator;
+
+namespace host {
+class Env;
+}
+using hostEnv = host::Env;
+
+/// pooled thread-safe host memory allocator
 template <typename T>
-using host_allocator = default_init_allocator<T, host_allocator_impl<T>>;
+using host_allocator =
+    default_init_allocator<T,
+                           umpire_based_allocator<T, detail::MutexLock<hostEnv>,
+                                                  detail::get_host_allocator>>;
 }  // namespace TiledArray
 
 namespace madness {
@@ -87,18 +105,9 @@ class Env;
 }
 using deviceEnv = device::Env;
 
-template <class T, class StaticLock, typename UmpireAllocatorAccessor>
-class umpire_based_allocator;
-
-template <typename T, typename A = std::allocator<T>>
-class default_init_allocator;
-
 namespace detail {
 struct get_um_allocator;
 struct get_pinned_allocator;
-struct NullLock;
-template <typename Tag = void>
-class MutexLock;
 }  // namespace detail
 
 /// pooled thread-safe unified memory (UM) allocator for device computing
@@ -147,6 +156,23 @@ class SparseShape;
 template <typename, typename>
 class DistArray;
 
+/// Type trait to detect dense shape types
+template <typename S>
+struct is_dense : public std::false_type {};
+
+template <>
+struct is_dense<DenseShape> : public std::true_type {};
+
+template <>
+struct is_dense<DensePolicy> : public std::true_type {};
+
+template <typename Tile, typename Policy>
+struct is_dense<DistArray<Tile, Policy>>
+    : public is_dense<typename DistArray<Tile, Policy>::shape_type> {};
+
+template <typename T>
+constexpr const bool is_dense_v = is_dense<T>::value;
+
 // Dense Array Typedefs
 template <typename T>
 using TArray = DistArray<Tensor<T>, DensePolicy>;
@@ -189,6 +215,14 @@ template <typename To, typename From>
 struct to;
 
 }  // namespace conversions
+
+/// used to indicate that block tensor expression should preserve the underlying
+/// tensor's trange lobound
+struct preserve_lobound_t {};
+
+/// used to tag block tensor expression methods that preserve the underlying
+/// tensor's trange lobound
+inline constexpr preserve_lobound_t preserve_lobound;
 
 }  // namespace TiledArray
 

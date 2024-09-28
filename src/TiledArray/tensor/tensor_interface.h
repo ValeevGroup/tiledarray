@@ -259,8 +259,8 @@ class TensorInterface {
   /// \param idx The index pack
   template <typename... Index>
   reference operator()(const Index&... idx) {
-    TA_ASSERT(range_.includes(idx...));
-    return data_[range_.ordinal(idx...)];
+    const auto ord = range_.ordinal(idx...);
+    return data_[ord];
   }
 
   /// Element accessor
@@ -269,9 +269,83 @@ class TensorInterface {
   /// \param idx The index pack
   template <typename... Index>
   const_reference operator()(const Index&... idx) const {
-    TA_ASSERT(range_.includes(idx...));
-    return data_[range_.ordinal(idx...)];
+    const auto ord = range_.ordinal(idx...);
+    return data_[ord];
   }
+
+  /// \brief Tensor interface iterator type
+  ///
+  /// Iterates over elements of a tensor interface whose range is iterable
+  template <typename TI = TensorInterface_>
+  class Iterator : public boost::iterator_facade<
+                       Iterator<TI>,
+                       std::conditional_t<std::is_const_v<TI>,
+                                          const typename TI::value_type,
+                                          typename TI::value_type>,
+                       boost::forward_traversal_tag> {
+   public:
+    using range_iterator = typename TI::range_type::const_iterator;
+
+    Iterator(range_iterator idx_it, TI& ti) : idx_it(idx_it), ti(ti) {}
+
+   private:
+    range_iterator idx_it;
+    TI& ti;
+
+    friend class boost::iterator_core_access;
+
+    /// \brief increments this iterator
+    void increment() { ++idx_it; }
+
+    /// \brief Iterator comparer
+    /// \return true, if \c `*this==*other`
+    bool equal(Iterator const& other) const {
+      return this->idx_it == other.idx_it;
+    }
+
+    /// \brief dereferences this iterator
+    /// \return const reference to the current index
+    auto& dereference() const { return ti(*idx_it); }
+  };
+  friend class Iterator<TensorInterface_>;
+  friend class Iterator<const TensorInterface_>;
+
+  typedef Iterator<TensorInterface_> iterator;              ///< Iterator type
+  typedef Iterator<const TensorInterface_> const_iterator;  ///< Iterator type
+
+  /// Const begin iterator
+
+  /// \return An iterator that points to the beginning of this tensor view
+  const_iterator begin() const {
+    return const_iterator(range().begin(), *this);
+  }
+
+  /// Const end iterator
+
+  /// \return An iterator that points to the end of this tensor view
+  const_iterator end() const { return const_iterator(range().end(), *this); }
+
+  /// Nonconst begin iterator
+
+  /// \return An iterator that points to the beginning of this tensor view
+  iterator begin() { return iterator(range().begin(), *this); }
+
+  /// Nonconst begin iterator
+
+  /// \return An iterator that points to the beginning of this tensor view
+  iterator end() { return iterator(range().end(), *this); }
+
+  /// Const begin iterator
+
+  /// \return An iterator that points to the beginning of this tensor view
+  const_iterator cbegin() const {
+    return const_iterator(range().begin(), *this);
+  }
+
+  /// Const end iterator
+
+  /// \return An iterator that points to the end of this tensor view
+  const_iterator cend() const { return const_iterator(range().end(), *this); }
 
   /// Check for empty view
 

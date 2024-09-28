@@ -47,6 +47,10 @@
 
 #include <TiledArray/tensor/type_traits.h>
 
+#include <range/v3/algorithm/equal.hpp>
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/zip_with.hpp>
+
 namespace TiledArray::expressions {
 
 template <typename Engine>
@@ -461,6 +465,16 @@ class Expr {
     // set even though this is a requirement.
 #endif  // NDEBUG
 
+    // Assignment to block expression uses trange of the array it is bounded to
+    // Assert that the user did not try to override the trange by accident using
+    // set_trange_lobound or at least that it matches tsr.array's trange
+    TA_ASSERT(!tsr.trange_lobound().has_value() ||
+              (ranges::equal(tsr.trange_lobound().value(),
+                             tsr.array()
+                                 .trange()
+                                 .make_tile_range(tsr.lower_bound())
+                                 .lobound())));
+
     // Get the target world.
     World& world = tsr.array().world();
 
@@ -509,8 +523,14 @@ class Expr {
     if (tsr.array().trange().tiles_range().volume() != 0) {
       // N.B. must deep copy
       TA_ASSERT(tsr.array().trange().tiles_range().includes(tsr.lower_bound()));
-      const container::svector<long> shift =
-          tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound();
+      // N.B. this expression's range,
+      // dist_eval.trange().elements_range().lobound(), may not be zero!
+      const auto shift =
+          ranges::views::zip_with(
+              [](auto a, auto b) { return a - b; },
+              tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound(),
+              dist_eval.trange().elements_range().lobound()) |
+          ranges::to<container::svector<long>>();
 
       std::shared_ptr<op_type> shift_op =
           std::make_shared<op_type>(shift_op_type(shift));
@@ -644,7 +664,20 @@ class Expr {
     right_dist_eval.eval();
 
 #ifndef NDEBUG
-    if (left_dist_eval.trange() != right_dist_eval.trange()) {
+    if (ignore_tile_position()) {
+      if (!is_congruent(left_dist_eval.trange(), right_dist_eval.trange())) {
+        if (TiledArray::get_default_world().rank() == 0) {
+          TA_USER_ERROR_MESSAGE(
+              "The TiledRanges of the left- and right-hand arguments the "
+              "binary "
+              "reduction are not congruent:"
+              << "\n    left  = " << left_dist_eval.trange()
+              << "\n    right = " << right_dist_eval.trange());
+        }
+        TA_EXCEPTION(
+            "The TiledRange objects of a binary reduction are not congruent.");
+      }
+    } else if (left_dist_eval.trange() != right_dist_eval.trange()) {
       if (TiledArray::get_default_world().rank() == 0) {
         TA_USER_ERROR_MESSAGE(
             "The TiledRanges of the left- and right-hand arguments the binary "
@@ -654,7 +687,7 @@ class Expr {
       }
 
       TA_EXCEPTION(
-          "The TiledRange objects of a binary expression are not equal.");
+          "The TiledRange objects of a binary reduction are not equal.");
     }
 #endif  // NDEBUG
 

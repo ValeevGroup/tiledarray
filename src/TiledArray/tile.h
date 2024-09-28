@@ -39,19 +39,19 @@ namespace TiledArray {
 /// object to be used in TiledArray expressions, users must also define the
 /// following functions:
 /// \li \c add
-/// \li \c add_to
+/// \li \c add_to (in-place add)
 /// \li \c subt
-/// \li \c subt_to
+/// \li \c subt_to  (in-place subt)
 /// \li \c mult
-/// \li \c mult_to
+/// \li \c mult_to (in-place mult)
 /// \li \c scale
-/// \li \c scale_to
+/// \li \c scale_to  (in-place scale)
 /// \li \c gemm
 /// \li \c neg
 /// \li \c permute
 /// \li \c empty
 /// \li \c shift
-/// \li \c shift_to
+/// \li \c shift_to  (in-place shift)
 /// \li \c trace
 /// \li \c sum
 /// \li \c product
@@ -201,6 +201,26 @@ class Tile {
   /// \return A const iterator to the last data element
   decltype(auto) end() const { return std::end(tensor()); }
 
+  /// Iterator factory
+
+  /// \return A const iterator to the first data element
+  decltype(auto) cbegin() { return std::cbegin(tensor()); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the first data element
+  decltype(auto) cbegin() const { return std::cbegin(tensor()); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the last data element
+  decltype(auto) cend() { return std::cend(tensor()); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the last data element
+  decltype(auto) cend() const { return std::cend(tensor()); }
+
   // Data accessor -------------------------------------------------------
 
   /// Data direct access
@@ -215,10 +235,22 @@ class Tile {
 
   // Dimension information accessors -----------------------------------------
 
-  /// Size accessors
+  /// Size accessor
 
   /// \return The number of elements in the tensor
   decltype(auto) size() const { return tensor().size(); }
+
+  /// Total size accessor
+
+  /// \return The number of elements in the tensor, tallied across batches (if
+  /// any)
+  decltype(auto) total_size() const {
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<
+                      tensor_type>) {
+      return tensor().total_size();
+    } else
+      return size();
+  }
 
   /// Range accessor
 
@@ -238,6 +270,11 @@ class Tile {
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   const_reference operator[](const Ordinal ord) const {
     TA_ASSERT(pimpl_);
+    // can't distinguish between operator[](Index...) and operator[](ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range().rank() != 1 &&
+              "use Tile::operator[](index) or "
+              "Tile::at_ordinal(index_ordinal) if this->range().rank()==1");
     TA_ASSERT(tensor().range().includes_ordinal(ord));
     return tensor().data()[ord];
   }
@@ -252,6 +289,41 @@ class Tile {
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   reference operator[](const Ordinal ord) {
+    TA_ASSERT(pimpl_);
+    // can't distinguish between operator[](Index...) and operator[](ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range().rank() != 1 &&
+              "use Tile::operator[](index) or "
+              "Tile::at_ordinal(index_ordinal) if this->range().rank()==1");
+    TA_ASSERT(tensor().range().includes_ordinal(ord));
+    return tensor().data()[ord];
+  }
+
+  /// Const element accessor
+
+  /// \tparam Ordinal an integer type that represents an ordinal
+  /// \param[in] ord an ordinal index
+  /// \return Const reference to the element at position \c ord .
+  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
+  /// included in the range
+  template <typename Ordinal,
+            std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+  const_reference at_ordinal(const Ordinal ord) const {
+    TA_ASSERT(pimpl_);
+    TA_ASSERT(tensor().range().includes_ordinal(ord));
+    return tensor().data()[ord];
+  }
+
+  /// Element accessor
+
+  /// \tparam Ordinal an integer type that represents an ordinal
+  /// \param[in] ord an ordinal index
+  /// \return Reference to the element at position \c ord .
+  /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
+  /// included in the range
+  template <typename Ordinal,
+            std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+  reference at_ordinal(const Ordinal ord) {
     TA_ASSERT(pimpl_);
     TA_ASSERT(tensor().range().includes_ordinal(ord));
     return tensor().data()[ord];
@@ -389,6 +461,12 @@ class Tile {
                        detail::is_integral_list<Index...>::value>* = nullptr>
   const_reference operator()(const Index&... i) const {
     TA_ASSERT(pimpl_);
+    TA_ASSERT(this->range().rank() == sizeof...(Index));
+    // can't distinguish between operator()(Index...) and operator()(ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range().rank() != 1 &&
+              "use Tile::operator()(index) or "
+              "Tile::at_ordinal(index_ordinal) if this->range().rank()==1");
     TA_ASSERT(tensor().range().includes(i...));
     return tensor().data()[tensor().range().ordinal(i...)];
   }
@@ -405,6 +483,12 @@ class Tile {
                        detail::is_integral_list<Index...>::value>* = nullptr>
   reference operator()(const Index&... i) {
     TA_ASSERT(pimpl_);
+    TA_ASSERT(this->range().rank() == sizeof...(Index));
+    // can't distinguish between operator()(Index...) and operator()(ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range().rank() != 1 &&
+              "use Tile::operator()(index) or "
+              "Tile::at_ordinal(index_ordinal) if this->range().rank()==1");
     TA_ASSERT(tensor().range().includes(i...));
     return tensor().data()[tensor().range().ordinal(i...)];
   }

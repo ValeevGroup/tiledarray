@@ -50,11 +50,6 @@ int main(int argc, char** argv) {
     std::cerr << "Error: block sizes must be greater than zero.\n";
     return 1;
   }
-  if ((Nm % Bm) != 0ul || Nn % Bn != 0ul || Nk % Bk != 0ul) {
-    std::cerr
-        << "Error: dimension size must be evenly divisible by block size.\n";
-    return 1;
-  }
   const long repeat = (argc >= 8 ? atol(argv[7]) : 5);
   if (repeat <= 0) {
     std::cerr << "Error: number of repetitions must be greater than zero.\n";
@@ -72,22 +67,22 @@ int main(int argc, char** argv) {
 
   const bool do_memtrace = (argc >= 10 ? std::atol(argv[9]) : false);
 
-  const std::size_t Tm = Nm / Bm;
-  const std::size_t Tn = Nn / Bn;
-  const std::size_t Tk = Nk / Bk;
-
   // Construct TiledRange
   std::vector<unsigned int> blocking_m;
-  blocking_m.reserve(Tm + 1);
   for (long i = 0l; i <= Nm; i += Bm) blocking_m.push_back(i);
+  if (blocking_m.back() != Nm) blocking_m.push_back(Nm);
 
   std::vector<unsigned int> blocking_n;
-  blocking_n.reserve(Tn + 1);
   for (long i = 0l; i <= Nn; i += Bn) blocking_n.push_back(i);
+  if (blocking_n.back() != Nn) blocking_n.push_back(Nn);
 
   std::vector<unsigned int> blocking_k;
-  blocking_k.reserve(Tk + 1);
   for (long i = 0l; i <= Nk; i += Bk) blocking_k.push_back(i);
+  if (blocking_k.back() != Nk) blocking_k.push_back(Nk);
+
+  const std::size_t Tm = blocking_m.size() - 1;
+  const std::size_t Tn = blocking_n.size() - 1;
+  const std::size_t Tk = blocking_k.size() - 1;
 
   // Structure of c
   std::vector<TiledArray::TiledRange1> blocking_C;
@@ -138,13 +133,13 @@ int main(int argc, char** argv) {
                 << "\nScalar type       = " << scalar_type_str
                 << "\nSize of A         = " << Nm << "x" << Nk << " ("
                 << double(Nm * Nk * sizeof(T)) / 1.0e9 << " GB)"
-                << "\nSize of A block   = " << Bm << "x" << Bk
+                << "\nSize of (largest) A block   = " << Bm << "x" << Bk
                 << "\nSize of B         = " << Nk << "x" << Nn << " ("
                 << double(Nk * Nn * sizeof(T)) / 1.0e9 << " GB)"
-                << "\nSize of B block   = " << Bk << "x" << Bn
+                << "\nSize of (largest) B block   = " << Bk << "x" << Bn
                 << "\nSize of C         = " << Nm << "x" << Nn << " ("
                 << double(Nm * Nn * sizeof(T)) / 1.0e9 << " GB)"
-                << "\nSize of C block   = " << Bm << "x" << Bn
+                << "\nSize of (largest) C block   = " << Bm << "x" << Bn
                 << "\n# of blocks of C  = " << Tm * Tn
                 << "\nAverage # of blocks of C/node = "
                 << double(Tm * Tn) / double(world.size()) << "\n";
@@ -153,10 +148,11 @@ int main(int argc, char** argv) {
       if (do_memtrace) {
         world.gop.fence();
         madness::print_meminfo(world.rank(), str);
+      } else {
+        world.gop.fence();
       }
 #ifdef TA_TENSOR_MEM_PROFILE
       {
-        world.gop.fence();
         std::cout
             << str << ": TA::Tensor allocated "
             << TA::hostEnv::instance()->host_allocator_getActualHighWatermark()

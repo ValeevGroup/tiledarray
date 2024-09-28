@@ -36,44 +36,40 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   using RT = TiledArray::detail::scalar_t<Storage>;
   constexpr auto complex_T = TiledArray::detail::is_complex_v<T>;
 
-  const std::size_t Tm = Nm / Bm;
-  const std::size_t Tn = Nn / Bn;
-  const std::size_t Tk = Nk / Bk;
-
   const std::int64_t nflops =
       (complex_T ? 8 : 2)  // 1 multiply takes 6/1 flops for complex/real
                            // 1 add takes 2/1 flops for complex/real
       * static_cast<std::int64_t>(Nn) * static_cast<std::int64_t>(Nm) *
       static_cast<std::int64_t>(Nk);
 
+  // Construct TiledRange
+  std::vector<unsigned int> blocking_m;
+  for (long i = 0l; i <= Nm; i += Bm) blocking_m.push_back(i);
+  const std::size_t Tm = blocking_m.size() - 1;
+
+  std::vector<unsigned int> blocking_n;
+  for (long i = 0l; i <= Nn; i += Bn) blocking_n.push_back(i);
+  const std::size_t Tn = blocking_n.size() - 1;
+
+  std::vector<unsigned int> blocking_k;
+  for (long i = 0l; i <= Nk; i += Bk) blocking_k.push_back(i);
+  const std::size_t Tk = blocking_k.size();
+
   if (world.rank() == 0)
     std::cout << "TiledArray: dense matrix multiply test...\n"
               << "Number of nodes     = " << world.size()
               << "\nSize of A         = " << Nm << "x" << Nk << " ("
               << double(Nm * Nk * sizeof(T)) / 1.0e9 << " GB)"
-              << "\nSize of A block   = " << Bm << "x" << Bk
+              << "\nSize of (largest) A block   = " << Bm << "x" << Bk
               << "\nSize of B         = " << Nk << "x" << Nn << " ("
               << double(Nk * Nn * sizeof(T)) / 1.0e9 << " GB)"
-              << "\nSize of B block   = " << Bk << "x" << Bn
+              << "\nSize of (largest) B block   = " << Bk << "x" << Bn
               << "\nSize of C         = " << Nm << "x" << Nn << " ("
               << double(Nm * Nn * sizeof(T)) / 1.0e9 << " GB)"
-              << "\nSize of C block   = " << Bm << "x" << Bn
+              << "\nSize of (largest) C block   = " << Bm << "x" << Bn
               << "\n# of blocks of C  = " << Tm * Tn
               << "\nAverage # of blocks of C/node = "
               << double(Tm * Tn) / double(world.size()) << "\n";
-
-  // Construct TiledRange
-  std::vector<unsigned int> blocking_m;
-  blocking_m.reserve(Tm + 1);
-  for (long i = 0l; i <= Nm; i += Bm) blocking_m.push_back(i);
-
-  std::vector<unsigned int> blocking_n;
-  blocking_n.reserve(Tn + 1);
-  for (long i = 0l; i <= Nn; i += Bn) blocking_n.push_back(i);
-
-  std::vector<unsigned int> blocking_k;
-  blocking_k.reserve(Tk + 1);
-  for (long i = 0l; i <= Nk; i += Bk) blocking_k.push_back(i);
 
   // Structure of c
   std::vector<TiledArray::TiledRange1> blocking_C;
@@ -255,11 +251,6 @@ int try_main(int argc, char **argv) {
     std::cerr << "Error: block sizes must be greater than zero.\n";
     return 1;
   }
-  if ((Nm % Bm) != 0ul || Nn % Bn != 0ul || Nk % Bk != 0ul) {
-    std::cerr
-        << "Error: dimension size must be evenly divisible by block size.\n";
-    return 1;
-  }
   const long nrepeat = (argc >= 8 ? atol(argv[7]) : 5);
   if (nrepeat <= 0) {
     std::cerr << "Error: number of repetitions must be greater than zero.\n";
@@ -324,9 +315,7 @@ int try_main(int argc, char **argv) {
           std::cout << "error(GetDeviceProperties) = " << error << std::endl;
         }
         std::cout << "Device #" << device_id << ": " << prop.name << std::endl
-                  << "  managedMemory = " << prop.managedMemory << std::endl
-                  << "  singleToDoublePrecisionPerfRatio = "
-                  << prop.singleToDoublePrecisionPerfRatio << std::endl;
+                  << "  managedMemory = " << prop.managedMemory << std::endl;
         int result;
         error = TiledArray::device::deviceGetAttribute(
             &result, TiledArray::device::DevAttrUnifiedAddressing, device_id);

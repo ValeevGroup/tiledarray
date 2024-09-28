@@ -344,9 +344,9 @@ class Debugger {
   /// This calls handle(int) with all of the major signals.
   virtual void handle_defaults();
 
-  /// This sets a prefix which preceeds all messages printing by Debugger.
+  /// This sets a prefix which precedes all messages printing by Debugger.
   virtual void set_prefix(const char *p);
-  /// Set the prefix to the decimal represention of p followed by a ": ".
+  /// Set the prefix to the decimal representation of p followed by a ": ".
   virtual void set_prefix(int p);
 
   // clang-format off

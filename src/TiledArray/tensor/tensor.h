@@ -22,7 +22,8 @@
 
 #include "TiledArray/config.h"
 
-#include "TiledArray/host/allocator.h"
+#include "TiledArray/external/umpire.h"
+#include "TiledArray/host/env.h"
 
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
@@ -704,7 +705,7 @@ class Tensor {
   const_reference operator[](const Ordinal ord) const {
     TA_ASSERT(!this->empty());
     // can't distinguish between operator[](Index...) and operator[](ordinal)
-    // thus assume at_ordinal() if this->rank()==1
+    // thus insist on at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator[](index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
@@ -725,7 +726,7 @@ class Tensor {
   reference operator[](const Ordinal ord) {
     TA_ASSERT(!this->empty());
     // can't distinguish between operator[](Index...) and operator[](ordinal)
-    // thus assume at_ordinal() if this->rank()==1
+    // thus insist on at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator[](index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
@@ -847,7 +848,7 @@ class Tensor {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);
     // can't distinguish between operator[](Index...) and operator[](ordinal)
-    // thus assume at_ordinal() if this->rank()==1
+    // thus insist on at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator()(index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
@@ -868,7 +869,7 @@ class Tensor {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);
     // can't distinguish between operator[](Index...) and operator[](ordinal)
-    // thus assume at_ordinal() if this->rank()==1
+    // thus insist on at_ordinal() if this->rank()==1
     TA_ASSERT(this->range_.rank() != 1 &&
               "use Tensor::operator()(index) or "
               "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
@@ -959,6 +960,12 @@ class Tensor {
   const_reference operator()(const Index&... i) const {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);
+    TA_ASSERT(this->range().rank() == sizeof...(Index));
+    // can't distinguish between operator()(Index...) and operator()(ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range_.rank() != 1 &&
+              "use Tensor::operator()(index) or "
+              "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
     using Int = std::common_type_t<Index...>;
     const auto iord = this->range_.ordinal(
         std::array<Int, sizeof...(Index)>{{static_cast<Int>(i)...}});
@@ -981,6 +988,12 @@ class Tensor {
   reference operator()(const Index&... i) {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);
+    TA_ASSERT(this->range().rank() == sizeof...(Index));
+    // can't distinguish between operator()(Index...) and operator()(ordinal)
+    // thus insist on at_ordinal() if this->rank()==1
+    TA_ASSERT(this->range_.rank() != 1 &&
+              "use Tensor::operator()(index) or "
+              "Tensor::at_ordinal(index_ordinal) if this->range().rank()==1");
     using Int = std::common_type_t<Index...>;
     const auto iord = this->range_.ordinal(
         std::array<Int, sizeof...(Index)>{{static_cast<Int>(i)...}});
@@ -990,7 +1003,7 @@ class Tensor {
 
   /// Iterator factory
 
-  /// \return An iterator to the first data element
+  /// \return A const iterator to the first data element
   const_iterator begin() const { return (this->data() ? this->data() : NULL); }
 
   /// Iterator factory
@@ -1000,7 +1013,7 @@ class Tensor {
 
   /// Iterator factory
 
-  /// \return An iterator to the last data element
+  /// \return A const iterator to the last data element
   const_iterator end() const {
     return (this->data() ? this->data() + this->size() : NULL);
   }
@@ -1009,6 +1022,30 @@ class Tensor {
 
   /// \return An iterator to the last data element
   iterator end() { return (this->data() ? this->data() + this->size() : NULL); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the first data element
+  const_iterator cbegin() const { return (this->data() ? this->data() : NULL); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the first data element
+  const_iterator cbegin() { return (this->data() ? this->data() : NULL); }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the last data element
+  const_iterator cend() const {
+    return (this->data() ? this->data() + this->size() : NULL);
+  }
+
+  /// Iterator factory
+
+  /// \return A const iterator to the last data element
+  const_iterator cend() {
+    return (this->data() ? this->data() + this->size() : NULL);
+  }
 
   /// Read-only access to the data
 
@@ -1242,7 +1279,8 @@ class Tensor {
   // clang-format on
   /// @{
   template <typename PairRange,
-            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange> &&
+                                        !std::is_same_v<PairRange, Range>>>
   detail::TensorInterface<const T, BlockRange> block(
       const PairRange& bounds) const {
     return detail::TensorInterface<const T, BlockRange>(
@@ -1250,7 +1288,8 @@ class Tensor {
   }
 
   template <typename PairRange,
-            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange> &&
+                                        !std::is_same_v<PairRange, Range>>>
   detail::TensorInterface<T, BlockRange> block(const PairRange& bounds) {
     return detail::TensorInterface<T, BlockRange>(
         BlockRange(this->range_, bounds), this->data());
@@ -1286,6 +1325,38 @@ class Tensor {
       const std::initializer_list<std::initializer_list<Index>>& bounds) {
     return detail::TensorInterface<T, BlockRange>(
         BlockRange(this->range_, bounds), this->data());
+  }
+  /// @}
+
+  // clang-format off
+  /// Constructs a view of the block defined by a TiledArray::Range .
+
+  /// Examples of using this:
+  /// \code
+  ///   std::vector<size_t> lobounds = {0, 1, 2};
+  ///   std::vector<size_t> upbounds = {4, 6, 8};
+  ///
+  ///   auto tview = t.block(TiledArray::Range(lobounds, upbounds));
+  /// \endcode
+  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
+  /// \param bounds The block bounds
+  /// \return a {const,mutable} view of the block defined by its \p bounds
+  /// \throw TiledArray::Exception When the size of \p lower_bound is not
+  /// equal to that of \p upper_bound.
+  /// \throw TiledArray::Exception When `get<0>(bounds[i]) >= get<1>(bounds[i])`
+  // clang-format on
+  /// @{
+  detail::TensorInterface<const T, BlockRange> block(
+      const Range& bounds) const {
+    return detail::TensorInterface<const T, BlockRange>(
+        BlockRange(this->range_, bounds.lobound(), bounds.upbound()),
+        this->data());
+  }
+
+  detail::TensorInterface<T, BlockRange> block(const Range& bounds) {
+    return detail::TensorInterface<T, BlockRange>(
+        BlockRange(this->range_, bounds.lobound(), bounds.upbound()),
+        this->data());
   }
   /// @}
 
@@ -2373,7 +2444,6 @@ class Tensor {
 
   /// \return The vector norm of this tensor
   scalar_type squared_norm() const {
-
     if constexpr (detail::is_tensor_v<T>) {
       // If uninitialized tensor of tensor return zero.
       // All elements of this->data() are empty tensors in this case,

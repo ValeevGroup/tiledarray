@@ -28,9 +28,7 @@
 
 #include <TiledArray/util/eigen.h>
 #include <boost/range/combine.hpp>
-#ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
-#endif
 
 #include <TiledArray/config.h>
 
@@ -59,6 +57,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
   ExpressionsFixture()
       : s_tr_1(make_random_sparseshape(tr)),
         s_tr_2(make_random_sparseshape(tr)),
+        s_tr_base1_1(make_random_sparseshape(tr_base1)),
+        s_tr_base1_2(make_random_sparseshape(tr_base1)),
         s_tr1_1(make_random_sparseshape(trange1)),
         s_tr1_2(make_random_sparseshape(trange1)),
         s_tr2(make_random_sparseshape(trange2)),
@@ -67,6 +67,9 @@ struct ExpressionsFixture : public TiledRangeFixture {
         a(*GlobalFixture::world, tr, s_tr_1),
         b(*GlobalFixture::world, tr, s_tr_2),
         c(*GlobalFixture::world, tr, s_tr_2),
+        a_base1(*GlobalFixture::world, tr_base1, s_tr_base1_1),
+        b_base1(*GlobalFixture::world, tr_base1, s_tr_base1_2),
+        c_base1(*GlobalFixture::world, tr_base1, s_tr_base1_2),
         aC(*GlobalFixture::world, trangeC, s_trC),
         aC_f(*GlobalFixture::world, trangeC_f, s_trC_f),
         u(*GlobalFixture::world, trange1, s_tr1_1),
@@ -74,12 +77,16 @@ struct ExpressionsFixture : public TiledRangeFixture {
         w(*GlobalFixture::world, trange2, s_tr2) {
     random_fill(a);
     random_fill(b);
+    random_fill(a_base1);
+    random_fill(b_base1);
     random_fill(u);
     random_fill(v);
     random_fill(aC);
     GlobalFixture::world->gop.fence();
     a.truncate();
     b.truncate();
+    a_base1.truncate();
+    b_base1.truncate();
     u.truncate();
     v.truncate();
   }
@@ -91,6 +98,9 @@ struct ExpressionsFixture : public TiledRangeFixture {
       : a(*GlobalFixture::world, tr),
         b(*GlobalFixture::world, tr),
         c(*GlobalFixture::world, tr),
+        a_base1(*GlobalFixture::world, tr_base1),
+        b_base1(*GlobalFixture::world, tr_base1),
+        c_base1(*GlobalFixture::world, tr_base1),
         u(*GlobalFixture::world, trange1),
         v(*GlobalFixture::world, trange1),
         w(*GlobalFixture::world, trange2),
@@ -98,6 +108,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
         aC_f(*GlobalFixture::world, trangeC_f) {
     random_fill(a);
     random_fill(b);
+    random_fill(a_base1);
+    random_fill(b_base1);
     random_fill(u);
     random_fill(v);
     random_fill(aC);
@@ -231,6 +243,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
   SparseShape<float> s_tr_1;
   SparseShape<float> s_tr_2;
+  SparseShape<float> s_tr_base1_1;
+  SparseShape<float> s_tr_base1_2;
   SparseShape<float> s_tr1_1;
   SparseShape<float> s_tr1_2;
   SparseShape<float> s_tr2;
@@ -239,6 +253,9 @@ struct ExpressionsFixture : public TiledRangeFixture {
   TArray a;
   TArray b;
   TArray c;
+  TArray a_base1;
+  TArray b_base1;
+  TArray c_base1;
   TArray u;
   TArray v;
   TArray w;

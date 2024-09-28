@@ -28,7 +28,6 @@
 
 #include <TiledArray/conversions/btas.h>
 #include <TiledArray/expressions/einsum.h>
-#include <tiledarray.h>
 
 namespace TiledArray::math::cp {
 

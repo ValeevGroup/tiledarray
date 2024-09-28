@@ -50,6 +50,7 @@ class TiledRange1 {
  public:
   using range_type = Range1;
   using index1_type = range_type::index1_type;
+  using signed_index1_type = range_type::signed_index1_type;
   using const_iterator = std::vector<range_type>::const_iterator;
 
   /// Default constructor creates an empty range (tile and element ranges are
@@ -98,19 +99,38 @@ class TiledRange1 {
 
   /// Construct a 1D tiled range.
 
-  /// This will construct a 1D tiled range with tile boundaries ("hashmarks")
-  /// {\p t0 , \p t_rest... }
+  /// This will construct a 1D tiled range from range {t0, t1, t2, ... tn}
+  /// specifying the tile boundaries (hashmarks).
   /// The number of tile boundaries is n + 1, where n is the number of tiles.
   /// Tiles are defined as [\p t0 , t1), [t1, t2), [t2, t3), ...
   /// Tiles are indexed starting with 0.
   /// \tparam Integer An integral type
-  /// \param list The list of tile boundaries in order from smallest to largest
+  /// \param tile_boundaries The list of tile boundaries in order from smallest
+  /// to largest
+  /// \note validity of the {\p t0 , \p t_rest... } range is checked using
+  ///   #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
+  template <typename Range,
+            typename = std::enable_if_t<detail::is_integral_range_v<Range>>>
+  explicit TiledRange1(Range&& tile_boundaries) {
+    init_tiles_(tile_boundaries.begin(), tile_boundaries.end(), 0);
+  }
+
+  /// Construct a 1D tiled range.
+
+  /// This will construct a 1D tiled range from range {t0, t1, t2, ... tn}
+  /// specifying the tile boundaries (hashmarks).
+  /// The number of tile boundaries is n + 1, where n is the number of tiles.
+  /// Tiles are defined as [\p t0 , t1), [t1, t2), [t2, t3), ...
+  /// Tiles are indexed starting with 0.
+  /// \tparam Integer An integral type
+  /// \param tile_boundaries The list of tile boundaries in order from smallest
+  /// to largest
   /// \note validity of the {\p t0 , \p t_rest... } range is checked using
   /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
   template <typename Integer,
             typename = std::enable_if_t<std::is_integral_v<Integer>>>
-  explicit TiledRange1(const std::initializer_list<Integer>& list) {
-    init_tiles_(list.begin(), list.end(), 0);
+  explicit TiledRange1(const std::initializer_list<Integer>& tile_boundaries) {
+    init_tiles_(tile_boundaries.begin(), tile_boundaries.end(), 0);
   }
 
   /// Copy assignment operator
@@ -159,6 +179,18 @@ class TiledRange1 {
   /// Elements range extent accessor
   /// \return the number of elements in the range
   index1_type extent() const { return TiledArray::extent(elements_range_); }
+
+  // clang-format off
+  /// Elements range lobound accessor
+  /// \return lower bound of the elements range (i.e., the smallest index in the elements range, `a` in `[a,b)`)
+  // clang-format on
+  index1_type lobound() const { return elements_range_.lobound(); }
+
+  // clang-format off
+  /// Elements range upbound accessor
+  /// \return upper bound of the elements range (i.e., the smallest index greater than any in the elements range, `b` in `[a,b)`)
+  // clang-format on
+  index1_type upbound() const { return elements_range_.upbound(); }
 
   /// Computes hashmarks
   /// \return the hashmarks of the tiled range, consisting of the following
@@ -244,26 +276,27 @@ class TiledRange1 {
   // clang-format off
   /// @brief makes a uniform (or, as uniform as possible) TiledRange1
 
-  /// @param[in] range_size the range size
+  /// @param[in] range the Range to be tiled
   /// @param[in] target_tile_size the desired tile size
-  /// @return TiledRange1 obtained by tiling range `[0,range_size)` into
-  /// `ntiles = (range_size + target_tile_size - 1)/target_tile_size`
-  ///         tiles; if `x = range_size % ntiles` is not zero, first `x` tiles
+  /// @return TiledRange1 obtained by tiling \p range into
+  /// `ntiles = (range.extent() + target_tile_size - 1)/target_tile_size`
+  ///         tiles; if `x = range.extent() % ntiles` is not zero, first `x` tiles
   /// have size `target_tile_size` and last
   /// `ntiles - x` tiles have size `target_tile_size - 1`, else
   /// all tiles have size `target_tile_size` .
   // clang-format on
-  static TiledRange1 make_uniform(std::size_t range_size,
+  static TiledRange1 make_uniform(const Range1& range,
                                   std::size_t target_tile_size) {
-    if (range_size > 0) {
+    const auto range_extent = range.extent();
+    if (range_extent > 0) {
       TA_ASSERT(target_tile_size > 0);
       std::size_t ntiles =
-          (range_size + target_tile_size - 1) / target_tile_size;
-      auto dv = std::div((long)(range_size + ntiles - 1), (long)ntiles);
+          (range_extent + target_tile_size - 1) / target_tile_size;
+      auto dv = std::div((long)(range_extent + ntiles - 1), (long)ntiles);
       auto avg_tile_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
       std::vector<std::size_t> hashmarks;
       hashmarks.reserve(ntiles + 1);
-      std::size_t element = 0;
+      std::size_t element = range.lobound();
       for (auto i = 0; i < num_avg_plus_one;
            ++i, element += avg_tile_size + 1) {
         hashmarks.push_back(element);
@@ -272,10 +305,79 @@ class TiledRange1 {
            ++i, element += avg_tile_size) {
         hashmarks.push_back(element);
       }
-      hashmarks.push_back(range_size);
+      hashmarks.push_back(range.upbound());
       return TiledRange1(hashmarks.begin(), hashmarks.end());
     } else
-      return TiledRange1{};
+      return TiledRange1{range.lobound()};
+  }
+
+  /// same as make_uniform(const Range1&, std::size_t) for a 0-based range
+  /// specified by its extent
+  static TiledRange1 make_uniform(std::size_t range_extent,
+                                  std::size_t target_tile_size) {
+    return make_uniform(Range1(0, range_extent), target_tile_size);
+  }
+
+  /// same as make_uniform(const Range1&, std::size_t), using the element_range
+  /// of this TiledRange1
+  TiledRange1 make_uniform(std::size_t target_tile_size) const {
+    return make_uniform(this->elements_range(), target_tile_size);
+  }
+
+  /// make as uniformly-tiled range as possible out of this TiledRange1, with
+  /// the same number of tiles as this
+  TiledRange1 make_uniform() const {
+    return make_uniform(
+        this->elements_range(),
+        (this->elements_range().extent() + this->tile_extent() - 1) /
+            this->tile_extent());
+  }
+
+  /// shifts this TiledRange1
+
+  /// @param[in] shift the shift to apply
+  /// @return reference to this
+  TiledRange1& inplace_shift(signed_index1_type shift) {
+    if (shift == 0) return *this;
+    // ensure that it's safe to shift
+    TA_ASSERT(shift <= 0 || elements_range().upbound() <= 0 ||
+              (shift <= (std::numeric_limits<index1_type>::max() -
+                         elements_range().upbound())));
+    TA_ASSERT(shift >= 0 || elements_range().lobound() >= 0 ||
+              (std::abs(shift) <= (elements_range().lobound() -
+                                   std::numeric_limits<index1_type>::min())));
+    elements_range_.inplace_shift(shift);
+    for (auto& tile : tiles_ranges_) {
+      tile.inplace_shift(shift);
+    }
+    elem2tile_.reset();
+    return *this;
+  }
+
+  /// creates a shifted TiledRange1
+
+  /// equivalent to (but more efficient than) `TiledRange1(*this).shift(shift)`
+  /// @param[in] shift the shift value
+  [[nodiscard]] TiledRange1 shift(signed_index1_type shift) const {
+    if (shift == 0) return *this;
+    // ensure that it's safe to shift
+    TA_ASSERT(shift <= 0 || elements_range().upbound() <= 0 ||
+              (shift <= (std::numeric_limits<index1_type>::max() -
+                         elements_range().upbound())));
+    TA_ASSERT(shift >= 0 || elements_range().lobound() >= 0 ||
+              (std::abs(shift) <= (elements_range().lobound() -
+                                   std::numeric_limits<index1_type>::min())));
+    std::vector<index1_type> hashmarks;
+    hashmarks.reserve(tile_extent() + 1);
+    if (tiles_ranges_.empty())
+      hashmarks.emplace_back(elements_range_.lobound() + shift);
+    else {
+      for (auto& t : tiles_ranges_) {
+        hashmarks.push_back(t.first + shift);
+      }
+      hashmarks.push_back(elements_range_.upbound() + shift);
+    }
+    return TiledRange1(hashmarks.begin(), hashmarks.end());
   }
 
   /// swapper
@@ -311,10 +413,11 @@ class TiledRange1 {
   /// Validates tile_boundaries
   template <typename RandIter>
   static void valid_(RandIter first, RandIter last) {
-    // Verify at least 2 elements are present if the vector is not empty.
-    TA_ASSERT((std::distance(first, last) >= 2) &&
-              "TiledRange1 construction failed: You need at least 2 "
-              "elements in the tile boundary list.");
+    // Need at least 1 tile hashmark to position the element range
+    // (zero hashmarks is handled by the default ctor)
+    TA_ASSERT((std::distance(first, last) >= 1) &&
+              "TiledRange1 construction failed: You need at least 1 "
+              "element in the tile boundary list.");
     // Verify the requirement that a0 <= a1 <= a2 <= ...
     for (; first != (last - 1); ++first) {
       TA_ASSERT(
@@ -337,7 +440,9 @@ class TiledRange1 {
     valid_(first, last);
 #endif  // NDEBUG
     range_.first = start_tile_index;
-    range_.second = start_tile_index + last - first - 1;
+    using std::distance;
+    range_.second =
+        start_tile_index + static_cast<index1_type>(distance(first, last)) - 1;
     elements_range_.first = *first;
     elements_range_.second = *(last - 1);
     for (; first != (last - 1); ++first)
@@ -407,10 +512,8 @@ inline bool operator!=(const TiledRange1& r1, const TiledRange1& r2) {
 
 /// TiledRange1 ostream operator
 inline std::ostream& operator<<(std::ostream& out, const TiledRange1& rng) {
-  out << "( tiles = [ " << rng.tiles_range().first << ", "
-      << rng.tiles_range().second << " ), elements = [ "
-      << rng.elements_range().first << ", " << rng.elements_range().second
-      << " ) )";
+  out << "( tiles = " << rng.tiles_range()
+      << ", elements = " << rng.elements_range() << " )";
   return out;
 }
 
@@ -447,9 +550,8 @@ inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
 /// Test that two TiledRange1 objects are congruent
 
 /// This function tests that the tile sizes of the two ranges coincide.
-/// \tparam Range The range type
-/// \param r1 an TiledRange1 object
-/// \param r2 an TiledRange1 object
+/// \param r1 a TiledRange1 object
+/// \param r2 a TiledRange1 object
 inline bool is_congruent(const TiledRange1& r1, const TiledRange1& r2) {
   return r1.tile_extent() == r2.tile_extent() &&
          std::equal(r1.begin(), r1.end(), r2.begin(),

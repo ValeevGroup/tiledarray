@@ -949,7 +949,7 @@ class Range {
     return *this;
   }
 
-  /// Shift the lower and upper bound of this range
+  /// Shifts the lower and upper bounds of this range
 
   /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the range
@@ -987,7 +987,7 @@ class Range {
     return *this;
   }
 
-  /// Shift the lower and upper bound of this range
+  /// Shifts the lower and upper bounds of this range
 
   /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the range
@@ -998,27 +998,28 @@ class Range {
     return inplace_shift<std::initializer_list<Index>>(bound_shift);
   }
 
-  /// Create a Range with shiften lower and upper bounds
+  /// Create a Range with shifted lower and upper bounds
 
   /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the range
   /// \return A shifted copy of this range
   template <typename Index,
             typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-  Range_ shift(const Index& bound_shift) {
+  [[nodiscard]] Range_ shift(const Index& bound_shift) const {
     Range_ result(*this);
     result.inplace_shift(bound_shift);
     return result;
   }
 
-  /// Create a Range with shiften lower and upper bounds
+  /// Create a Range with shifted lower and upper bounds
 
   /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the range
   /// \return A shifted copy of this range
   template <typename Index,
             typename = std::enable_if_t<std::is_integral_v<Index>>>
-  Range_ shift(const std::initializer_list<Index>& bound_shift) {
+  [[nodiscard]] Range_ shift(
+      const std::initializer_list<Index>& bound_shift) const {
     Range_ result(*this);
     result.inplace_shift(bound_shift);
     return result;

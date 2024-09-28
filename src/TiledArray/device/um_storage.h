@@ -24,7 +24,7 @@
 #ifndef TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED
 #define TILEDARRAY_DEVICE_UM_VECTOR_H__INCLUDED
 
-#include <TiledArray/device/allocators.h>
+#include <TiledArray/external/device.h>
 
 #ifdef TILEDARRAY_HAS_DEVICE
 

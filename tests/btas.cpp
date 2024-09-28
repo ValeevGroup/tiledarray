@@ -256,6 +256,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tensor_ctor, Tensor, tensor_types) {
   BOOST_REQUIRE_NO_THROW(Tensor t1 = t0);
   Tensor t1 = t0;
   BOOST_CHECK(t1.empty());
+
+  // can copy TA::Tensor to btas::Tensor
+  TA::Tensor<typename Tensor::value_type> ta_tensor;
+  ta_tensor = make_rand_tile<decltype(ta_tensor)>(r);
+  BOOST_REQUIRE_NO_THROW(Tensor(ta_tensor));
+  Tensor t2(ta_tensor);
+  for (auto i : r) {
+    BOOST_CHECK_EQUAL(ta_tensor(i), t2(i));
+  }
+
+  // can copy TA::TensorInterface to btas::Tensor
+  {
+    const auto l = {3, 3, 3};
+    const auto u = r.upbound();
+    BOOST_REQUIRE(r.includes(l));
+    BOOST_REQUIRE_NO_THROW(Tensor(ta_tensor.block(l, u)));
+    Tensor t3(ta_tensor.block(l, u));
+    for (auto i : t3.range()) {
+      BOOST_CHECK_EQUAL(ta_tensor(i), t3(i));
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(copy, Array, array_types) {
@@ -324,8 +345,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
 
   // make tiled range
   using trange1_t = TiledArray::TiledRange1;
-  TiledArray::TiledRange trange(
-      {trange1_t(0, 10, 20), trange1_t(0, 11, 22), trange1_t(0, 12, 24)});
+  TiledArray::TiledRange trange({trange1_t(0, 10, 20),
+                                 trange1_t(0, 11, 22).inplace_shift(1),
+                                 trange1_t(0, 12, 24).inplace_shift(2)});
 
   // convert to a replicated DistArray
   using T = typename bTensor::value_type;
@@ -369,6 +391,22 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
       }
     } else {
       BOOST_CHECK(src_copy == btas::Tensor<T>{});
+    }
+  }
+
+  // convert the replicated DistArray back to a btas::Tensor while preserving
+  // the DistArray range
+  {
+    btas::Tensor<T> src_copy;
+    BOOST_REQUIRE_NO_THROW(
+        src_copy = array_to_btas_tensor(dst, TiledArray::preserve_lobound));
+    BOOST_CHECK(ranges::equal(src_copy.range().lobound(),
+                              dst.trange().elements_range().lobound()));
+    for (const auto& i : src.range()) {
+      auto i_copy = i;
+      i_copy[1] += 1;
+      i_copy[2] += 2;
+      BOOST_CHECK_EQUAL(src(i), src_copy(i_copy));
     }
   }
 }

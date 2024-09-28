@@ -41,8 +41,6 @@
 #include <thrust/system_error.h>
 #endif
 
-#include <TiledArray/external/umpire.h>
-
 #include <TiledArray/external/madness.h>
 #include <madness/world/print.h>
 #include <madness/world/safempi.h>
@@ -50,6 +48,20 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/initialize.h>
+
+#include <TiledArray/external/umpire.h>
+
+namespace TiledArray::detail {
+
+struct get_um_allocator {
+  inline umpire::Allocator& operator()();
+};
+
+struct get_pinned_allocator {
+  inline umpire::Allocator& operator()();
+};
+
+}  // namespace TiledArray::detail
 
 #if defined(TILEDARRAY_HAS_CUDA)
 
@@ -503,8 +515,7 @@ class Env {
   /// \param page_size memory added to the pools supporting `this->um_allocator()`, `this->device_allocator()`, and `this->pinned_allocator()` in chunks of at least
   ///                  this size (bytes) [default=2^25]
   /// \param pinned_alloc_limit the maximum total amount of memory (in bytes) that
-  ///        allocator returned by `this->pinned_allocator()` can allocate;
-  ///        this allocator is not used by default [default=0]
+  ///        allocator returned by `this->pinned_allocator()` can allocate [default=2^40]
   // clang-format on
   static void initialize(World& world = TiledArray::get_default_world(),
                          const std::uint64_t page_size = (1ul << 25),
@@ -563,8 +574,9 @@ class Env {
       // allocate all currently-free memory for UM pool
       auto um_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
-              "UMDynamicPool", rm.getAllocator("UM"), mem_total_free.second,
-              pinned_alloc_limit);
+              "UMDynamicPool", rm.getAllocator("UM"),
+              /* first_minimum_pool_allocation_size = */ 0,
+              /* next_minimum_pool_allocation_size = */ page_size);
 
       // allocate zero memory for device pool
       auto dev_size_limited_alloc =
@@ -573,8 +585,9 @@ class Env {
               mem_total_free.first);
       auto dev_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
-              "DEVICEDynamicPool", dev_size_limited_alloc, 0,
-              pinned_alloc_limit);
+              "DEVICEDynamicPool", dev_size_limited_alloc,
+              /* first_minimum_pool_allocation_size = */ 0,
+              /* next_minimum_pool_allocation_size = */ page_size);
 
       // allocate pinned_alloc_limit in pinned memory
       auto pinned_size_limited_alloc =
@@ -584,7 +597,9 @@ class Env {
       auto pinned_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "QuickPool_SizeLimited_PINNED", pinned_size_limited_alloc,
-              page_size, page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
+              /* first_minimum_pool_allocation_size = */ 0,
+              /* next_minimum_pool_allocation_size = */ page_size,
+              /* alignment */ TILEDARRAY_ALIGN_SIZE);
 
       auto env = std::unique_ptr<Env>(new Env(
           world, num_visible_devices, compute_devices, num_streams_per_device,
@@ -795,9 +810,10 @@ class Env {
     static std::unique_ptr<Env> instance_{nullptr};
     return instance_;
   }
-};
+};  // class Env
 
 namespace detail {
+
 // in a madness device task point to its local optional stream to use by
 // madness_task_stream_opt; set to nullptr after task callable finished
 inline std::optional<Stream>*& madness_task_stream_opt_ptr_accessor() {
@@ -888,6 +904,18 @@ device::Stream stream_for(const Range& range) {
 }
 
 }  // namespace device
+
+namespace detail {
+
+inline umpire::Allocator& get_um_allocator::operator()() {
+  return deviceEnv::instance()->um_allocator();
+}
+
+inline umpire::Allocator& get_pinned_allocator::operator()() {
+  return deviceEnv::instance()->pinned_allocator();
+}
+
+}  // namespace detail
 
 #endif  // TILEDARRAY_HAS_DEVICE
 

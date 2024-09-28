@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2018  Virginia Tech
+ *  Copyright (C) 2021  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,26 +17,20 @@
  *
  *  Chong Peng
  *  Department of Chemistry, Virginia Tech
- *
- *  expressions_sparse.cpp
- *  May 4, 2018
+ *  July 23, 2018
  *
  */
 
-#include <TiledArray/config.h>
+#include <TiledArray/host/env.h>
 
-#ifdef TILEDARRAY_HAS_BTAS
-#include "expressions_fixture.h"
+namespace TiledArray {
 
-typedef ExpressionsFixture<
-    TA::Tile<btas::Tensor<int, TiledArray::Range, btas::varray<int>>>,
-    TA::DensePolicy>
-    EF_TABtasI;
+namespace detail {
 
-typedef boost::mpl::vector<EF_TABtasI> Fixtures;
+umpire::Allocator& get_host_allocator::operator()() {
+  return TiledArray::host::Env::instance()->host_allocator();
+}
 
-BOOST_AUTO_TEST_SUITE(expressions_btas_suite)
+}  // namespace detail
 
-#include "expressions_impl.h"
-
-#endif
+}  // namespace TiledArray

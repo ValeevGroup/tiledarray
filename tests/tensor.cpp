@@ -18,9 +18,7 @@
  */
 
 #include <boost/range/combine.hpp>
-#ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
-#endif
 
 #include <iterator>
 #include "TiledArray/math/gemm_helper.h"
@@ -709,9 +707,7 @@ BOOST_AUTO_TEST_CASE(block) {
   // need to #include <boost/range/combine.hpp>
   BOOST_CHECK_NO_THROW(s.block(boost::combine(lobound, upbound)));
 
-#ifdef TILEDARRAY_HAS_RANGEV3
   BOOST_CHECK_NO_THROW(s.block(ranges::views::zip(lobound, upbound)));
-#endif
 
   auto sview0 = s.block(lobound, upbound);
   BOOST_CHECK(sview0.range().includes(lobound));
