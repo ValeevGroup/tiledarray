@@ -225,7 +225,7 @@ if(HIP_FOUND OR CUDA_FOUND)
        TiledArray/external/cuda.h
        TiledArray/device/cpu_cuda_vector.h)
   endif(CUDA_FOUND)
-endif(CUDA_FOUND OR HIP_FOUND)
+endif(HIP_FOUND OR CUDA_FOUND)
 
 set(TILEDARRAY_SOURCE_FILES
 TiledArray/tiledarray.cpp
