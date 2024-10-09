@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_CONVERSIONS_MAKE_ARRAY_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_MAKE_ARRAY_H__INCLUDED
 
+#include "TiledArray/array_impl.h"
 #include "TiledArray/external/madness.h"
 #include "TiledArray/shape.h"
 #include "TiledArray/type_traits.h"
@@ -79,6 +80,10 @@ inline Array make_array(
   // Make an empty result array
   Array result(world, trange);
 
+  // Construct the task function used to construct the result tiles.
+  std::atomic<std::int64_t> ntask_completed{0};
+  std::int64_t ntask_created{0};
+
   // Iterate over local tiles of arg
   for (const auto index : *result.pmap()) {
     // Spawn a task to evaluate the tile
@@ -89,10 +94,19 @@ inline Array make_array(
           return tile;
         },
         trange.make_tile_range(index));
-
+    ++ntask_created;
+    tile.register_callback(
+        new detail::IncrementCounter<decltype(ntask_completed)>(
+            ntask_completed));
     // Store result tile
-    result.set(index, tile);
+    result.set(index, std::move(tile));
   }
+
+  // Wait for tile tasks to complete
+  if (ntask_created > 0)
+    world.await([&ntask_completed, ntask_created]() -> bool {
+      return ntask_completed == ntask_created;
+    });
 
   return result;
 }
@@ -150,26 +164,28 @@ inline Array make_array(
       trange.tiles_range(), 0);
 
   // Construct the task function used to construct the result tiles.
-  madness::AtomicInt counter;
-  counter = 0;
-  int task_count = 0;
+  std::atomic<std::int64_t> ntask_completed{0};
+  std::int64_t ntask_created{0};
   auto task = [&](const ordinal_type index) -> value_type {
     value_type tile;
     tile_norms.at_ordinal(index) = op(tile, trange.make_tile_range(index));
-    ++counter;
     return tile;
   };
 
   for (const auto index : *pmap) {
     auto result_tile = world.taskq.add(task, index);
-    ++task_count;
+    ++ntask_created;
+    result_tile.register_callback(
+        new detail::IncrementCounter<decltype(ntask_completed)>(
+            ntask_completed));
     tiles.emplace_back(index, std::move(result_tile));
   }
 
   // Wait for tile norm data to be collected.
-  if (task_count > 0)
-    world.await(
-        [&counter, task_count]() -> bool { return counter == task_count; });
+  if (ntask_created > 0)
+    world.await([&ntask_completed, ntask_created]() -> bool {
+      return ntask_completed == ntask_created;
+    });
 
   // Construct the new array
   Array result(world, trange,
