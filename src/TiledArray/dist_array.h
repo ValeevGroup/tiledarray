@@ -906,23 +906,29 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already set. Weak throw guarantee.
-  void fill_local(const element_type& value = element_type(),
-                  bool skip_set = false) {
-    init_tiles(
+  template <Fence fence = Fence::No>
+  std::int64_t fill_local(const element_type& value = element_type(),
+                          bool skip_set = false) {
+    return init_tiles<HostExecutor::Default, fence>(
         [value](const range_type& range) { return value_type(range, value); },
         skip_set);
   }
 
   /// Fill all local tiles with the specified value
 
+  /// \tparam fence If Fence::No, the operation will return early,
+  ///         before the tasks have completed
   /// \param[in] value What each local tile should be filled with.
   /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \return the total number of tiles that have been (or will be) initialized
   /// \throw TiledArray::Exception if the PIMPL is uninitialized. Strong throw
   ///                              guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already set. Weak throw guarantee.
-  void fill(const element_type& value = numeric_type(), bool skip_set = false) {
-    fill_local(value, skip_set);
+  template <Fence fence = Fence::No>
+  std::int64_t fill(const element_type& value = numeric_type(),
+                    bool skip_set = false) {
+    return fill_local<fence>(value, skip_set);
   }
 
   /// Fill all local tiles with random values
@@ -934,18 +940,21 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// generate random values of type T this function will be disabled via SFINAE
   /// and attempting to use it will lead to a compile-time error.
   ///
+  /// \tparam fence If Fence::No, the operation will return early,
+  ///         before the tasks have completed
   /// \tparam T The type of random value to generate. Defaults to
   ///           element_type.
   /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \return the total number of tiles that have been (or will be) initialized
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
   ///                              throw guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already initialized. Weak throw guarantee.
   template <HostExecutor Exec = HostExecutor::Default,
-            typename T = element_type,
+            typename T = element_type, Fence fence = Fence::No,
             typename = detail::enable_if_can_make_random_t<T>>
-  void fill_random(bool skip_set = false) {
-    init_elements<Exec>(
+  std::int64_t fill_random(bool skip_set = false) {
+    return init_elements<Exec, fence>(
         [](const auto&) { return detail::MakeRandom<T>::generate_value(); });
   }
 
@@ -978,6 +987,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///        return tile;
   ///     });
   /// \endcode
+  /// \tparam fence If Fence::No, the operation will return early,
+  ///         before the tasks have completed
   /// \tparam Op The type of the functor/function
   /// \param[in] op The operation used to generate tiles
   /// \param[in] skip_set If false, will throw if any tiles are already set
@@ -985,9 +996,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if a tile is already set and skip_set is
   ///                              false. Weak throw guarantee.
-  template <HostExecutor Exec = HostExecutor::Default, typename Op>
-  void init_tiles(Op&& op, bool skip_set = false) {
-    impl_ref().template init_tiles<Exec>(std::forward<Op>(op), skip_set);
+  template <HostExecutor Exec = HostExecutor::Default, Fence fence = Fence::No,
+            typename Op>
+  std::int64_t init_tiles(Op&& op, bool skip_set = false) {
+    return impl_ref().template init_tiles<Exec, fence>(std::forward<Op>(op),
+                                                       skip_set);
   }
 
   /// Initialize elements of local, non-zero tiles with a user provided functor
@@ -1009,15 +1022,17 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \tparam Op Type of the function/functor which will generate the elements.
   /// \param[in] op The operation used to generate elements
   /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \return the total number of tiles that have been (or will be) initialized
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
   ///                              throw guarnatee.
   /// \throw TiledArray::Exception if skip_set is false and a local, non-zero
   ///                              tile is already initialized. Weak throw
   ///                              guarantee.
-  template <HostExecutor Exec = HostExecutor::Default, typename Op>
-  void init_elements(Op&& op, bool skip_set = false) {
+  template <HostExecutor Exec = HostExecutor::Default, Fence fence = Fence::No,
+            typename Op>
+  std::int64_t init_elements(Op&& op, bool skip_set = false) {
     auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
-    init_tiles<Exec>(
+    return init_tiles<Exec, fence>(
         [op = std::move(op_shared_handle)](
             const TiledArray::Range& range) -> value_type {
           // Initialize the tile with the given range object

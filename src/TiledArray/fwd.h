@@ -203,6 +203,14 @@ using Array
 
 enum class HostExecutor { Thread, MADWorld, Default = MADWorld };
 
+/// fence types
+enum class Fence {
+  Global,  //!< global fence (`world.gop.fence()`)
+  Local,   //!< local fence (all local work done, equivalent to
+           //!< `world.taskq.fence() in absence of active messages)
+  No       //!< no fence
+};
+
 namespace conversions {
 
 /// user defined conversions
