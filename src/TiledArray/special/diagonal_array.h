@@ -157,7 +157,8 @@ std::enable_if_t<is_iterator<RandomAccessIterator>::value, void>
 write_diag_tiles_to_array_rng(Array &A, RandomAccessIterator diagonals_begin) {
   using Tile = typename Array::value_type;
 
-  A.init_tiles(
+  // N.B. Fence::Local ensures lifetime of the diagonals range
+  A.template init_tiles<HostExecutor::Default, Fence::Local>(
       // Task to create each tile
       [diagonals_begin](const Range &rng) {
         // Compute range of diagonal elements in the tile
@@ -221,7 +222,6 @@ diagonal_array(World &world, TiledRange const &trange,
   if constexpr (is_dense_v<Policy>) {
     Array A(world, trange);
     detail::write_diag_tiles_to_array_rng(A, diagonals_begin);
-    A.world().taskq.fence();  // ensure tasks outlive the diagonals_begin view
     return A;
   } else {
     // Compute shape and init the Array
@@ -231,7 +231,6 @@ diagonal_array(World &world, TiledRange const &trange,
     ShapeType shape(shape_norm, trange);
     Array A(world, trange, shape);
     detail::write_diag_tiles_to_array_rng(A, diagonals_begin);
-    A.world().taskq.fence();  // ensure tasks outlive the diagonals_begin view
     return A;
   }
   abort();  // unreachable
