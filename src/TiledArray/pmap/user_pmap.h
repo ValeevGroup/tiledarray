@@ -52,7 +52,7 @@ class UserPmap : public Pmap {
   UserPmap(World& world, size_type size, Index2Rank&& i2r)
       : Pmap(world, size), index2rank_(std::forward<Index2Rank>(i2r)) {}
 
-  /// Constructs map that does not know the number of local elements
+  /// Constructs map that knows the number of local elements
 
   /// \tparam Index2Rank a callable type with `size_type(size_t)` signature
   /// \param world A reference to the world
@@ -88,10 +88,10 @@ class UserPmap : public Pmap {
   virtual bool known_local_size() const { return known_local_size_; }
 
   virtual const_iterator begin() const {
-    return Iterator(*this, 0, this->size_, 0, false);
+    return Iterator(*this, 0, this->size_, 0,  /* checking = */ true);
   }
   virtual const_iterator end() const {
-    return Iterator(*this, 0, this->size_, this->size_, false);
+    return Iterator(*this, 0, this->size_, this->size_, /* checking = */ true);
   }
 
  private:
