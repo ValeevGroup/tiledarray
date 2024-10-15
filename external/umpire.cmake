@@ -152,6 +152,13 @@ else()
             )
     endif(CMAKE_TOOLCHAIN_FILE)
 
+    foreach(lang C CXX CUDA)
+        if (DEFINED CMAKE_${lang}_COMPILER_LAUNCHER)
+            list(APPEND UMPIRE_CMAKE_ARGS
+                    "-DCMAKE_${lang}_COMPILER_LAUNCHER=${CMAKE_${lang}_COMPILER_LAUNCHER}")
+        endif()
+    endforeach()
+
     if (BUILD_SHARED_LIBS)
         set(UMPIRE_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
     else(BUILD_SHARED_LIBS)
@@ -170,8 +177,6 @@ else()
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${UMPIRE_URL}
             GIT_TAG ${UMPIRE_TAG}
-            #--Patch step-----------------
-            PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/external/umpire.finalize_io.patch
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
             LIST_SEPARATOR ::
@@ -218,6 +223,8 @@ else()
             "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl/umpire/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl/umpire/fmt/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/src/tpl/umpire/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/include>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/include>"
             INTERFACE_LINK_LIBRARIES
             "$<BUILD_INTERFACE:${UMPIRE_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/lib/libumpire${UMPIRE_DEFAULT_LIBRARY_SUFFIX}>"
+            INTERFACE_COMPILE_DEFINITIONS
+            FMT_HEADER_ONLY=1
             )
 
 install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)

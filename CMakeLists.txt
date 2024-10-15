@@ -299,6 +299,16 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 ##########################
 add_custom_target(External-tiledarray)
 
+# ccache is an optional dep but must be found first so that the rest of dependencies can use it
+find_program(CCACHE ccache)
+if(CCACHE)
+  mark_as_advanced(CCACHE)
+  message (STATUS "Found ccache: ${CCACHE}")
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C++")
+  set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C")
+  set(CMAKE_CUDA_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling CUDA")
+endif(CCACHE)
+
 # required deps:
 # 1. derive runtime (CUDA/HIP/...) first since others may depend on it
 if(ENABLE_CUDA)
@@ -336,15 +346,7 @@ if(ENABLE_SCALAPACK)
   include(external/scalapackpp.cmake)
 endif()
 
-# optional deps:
-# 1. ccache
-find_program(CCACHE ccache)
-if(CCACHE)
-    mark_as_advanced(CCACHE)
-    message (STATUS "Found ccache: ${CCACHE}")
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C++")
-    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C")
-endif(CCACHE)
+# other optional deps:
 # 2. TTG
 # N.B. make sure TA configures MADNESS correctly
 #if (TA_TTG)

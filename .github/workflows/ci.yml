@@ -64,20 +64,10 @@ jobs:
         sudo ln -s /usr/lib/x86_64-linux-gnu/libscalapack-openmpi.so /usr/lib/x86_64-linux-gnu/libscalapack.so
         echo "MPIEXEC=/usr/bin/mpiexec" >> $GITHUB_ENV
 
-    - name: Prepare ccache timestamp
-      id: ccache_cache_timestamp
-      shell: cmake -P {0}
-      run: |
-        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-        message("::set-output name=timestamp::${current_date}")
-
-    - name: Setup ccache cache files
-      uses: actions/cache@v1.1.0
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
       with:
-        path: ${{github.workspace}}/build/.ccache
-        key: ${{ matrix.config.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
-        restore-keys: |
-          ${{ matrix.config.name }}-ccache-
+        key: ccache-${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.task_backend }}
 
     - name: "Configure build: ${{ env.BUILD_CONFIG }}"
       shell: bash
@@ -89,7 +79,7 @@ jobs:
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
-        ccache -p && ccache -z && cmake --build . --target tiledarray && cmake --build . --target examples && ccache -s
+        ccache -p && ccache -z && cmake --build . --target tiledarray ta_test examples && ccache -s
 
     - name: Test
       working-directory: ${{github.workspace}}/build
@@ -97,5 +87,4 @@ jobs:
       #run: ctest -C $${{matrix.build_type}}
       run: |
         source ${{github.workspace}}/ci/openmpi.env
-        cmake --build . --target ta_test
         cmake --build . --target check-tiledarray

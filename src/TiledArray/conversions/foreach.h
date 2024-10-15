@@ -283,11 +283,10 @@ inline std::
       arg.trange().tiles_range(), 0);
 
   // Construct the task function used to construct the result tiles.
-  madness::AtomicInt counter;
-  counter = 0;
-  int task_count = 0;
+  std::atomic<std::int64_t> ntask_completed{0};
+  std::int64_t ntask_created{0};
   auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
-  const auto task = [op_shared_handle, &counter, &tile_norms](
+  const auto task = [op_shared_handle, &tile_norms](
                         const ordinal_type ord,
                         const_if_t<not inplace, arg_value_type>& arg_tile,
                         const ArgTiles&... arg_tiles) -> result_value_type {
@@ -295,7 +294,6 @@ inline std::
     auto result_tile =
         op_caller(std::move(op_shared_handle), tile_norms.at_ordinal(ord),
                   arg_tile, arg_tiles...);
-    ++counter;
     return result_tile;
   };
 
@@ -310,7 +308,9 @@ inline std::
           continue;
         auto result_tile =
             world.taskq.add(task, ord, arg.find_local(ord), args.find(ord)...);
-        ++task_count;
+        ++ntask_created;
+        result_tile.register_callback(
+            new IncrementCounter<decltype(ntask_completed)>(ntask_completed));
         tiles.emplace_back(ord, std::move(result_tile));
         if (op_returns_void)  // if Op does not evaluate norms, use the (scaled)
                               // norms of the first arg
@@ -324,7 +324,9 @@ inline std::
         auto result_tile =
             world.taskq.add(task, ord, detail::get_sparse_tile(ord, arg),
                             detail::get_sparse_tile(ord, args)...);
-        ++task_count;
+        ++ntask_created;
+        result_tile.register_callback(
+            new IncrementCounter<decltype(ntask_completed)>(ntask_completed));
         tiles.emplace_back(ord, std::move(result_tile));
         if (op_returns_void)  // if Op does not evaluate norms, find max
                               // (scaled) norms of all args
@@ -339,9 +341,10 @@ inline std::
   }
 
   // Wait for tile norm data to be collected.
-  if (task_count > 0)
-    world.await(
-        [&counter, task_count]() -> bool { return counter == task_count; });
+  if (ntask_created > 0)
+    world.await([&ntask_completed, ntask_created]() -> bool {
+      return ntask_created == ntask_completed;
+    });
 
   // Construct the new array
   result_array_type result(
