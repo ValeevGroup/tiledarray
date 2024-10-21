@@ -60,7 +60,7 @@ namespace {
 std::string to_parallel_archive_file_name(const char* prefix_name, int rank) {
   char buf[256];
   MADNESS_ASSERT(strlen(prefix_name) + 7 <= sizeof(buf));
-  sprintf(buf, "%s.%5.5d", prefix_name, rank);
+  snprintf(buf, sizeof(buf), "%s.%5.5d", prefix_name, rank);
   return buf;
 }
 }  // namespace
@@ -716,7 +716,7 @@ BOOST_AUTO_TEST_CASE(parallel_serialization) {
   mktemp(archive_file_prefix_name);
   madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
                                                 nio);
-  oar& a;
+  oar & a;
   oar.close();
 
   madness::archive::ParallelInputArchive<> iar(world, archive_file_prefix_name,
@@ -740,7 +740,7 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
   mktemp(archive_file_prefix_name);
   madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
                                                 nio);
-  oar& b;
+  oar & b;
   oar.close();
 
   madness::archive::ParallelInputArchive<> iar(world, archive_file_prefix_name,
@@ -783,7 +783,7 @@ BOOST_AUTO_TEST_CASE(issue_225) {
   madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
   decltype(S) S_read;
   decltype(St) St_read;
-  iar& S_read& St_read;
+  iar & S_read & St_read;
 
   BOOST_CHECK_EQUAL(S_read.trange(), S.trange());
   BOOST_REQUIRE(S_read.shape() == S.shape());

@@ -166,7 +166,7 @@ void Debugger::set_prefix(const char *p) {
 
 void Debugger::set_prefix(int i) {
   char p[128];
-  sprintf(p, "%3d: ", i);
+  snprintf(p, sizeof(p), "%3d: ", i);
   set_prefix(p);
 }
 
