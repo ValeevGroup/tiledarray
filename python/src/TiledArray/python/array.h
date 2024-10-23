@@ -208,7 +208,7 @@ void make_array_class(py::object m, const char *name) {
                                  py::return_value_policy::reference)
           .def_property_readonly("trange", &array::trange<Array>)
           .def_property_readonly("shape", &array::shape<Array, py::tuple>)
-          .def("fill", &Array::fill, py::arg("value"),
+          .def("fill", &Array::template fill<>, py::arg("value"),
                py::arg("skip_set") = false)
           .def("init", &array::init_tiles<Array>)
           // Array object needs be alive while iterator is used */
