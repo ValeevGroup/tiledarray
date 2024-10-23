@@ -26,7 +26,7 @@ set(TILEDARRAY_HAS_CUDA 1 CACHE BOOL "Whether TiledArray has CUDA support")
 # NB CUDAToolkit does NOT have COMPONENTS
 find_package(CUDAToolkit REQUIRED)
 
-foreach (library cublas;nvToolsExt)
+foreach (library cublas;nvtx3)
   if (NOT TARGET CUDA::${library})
     message(FATAL_ERROR "CUDA::${library} not found")
   endif()

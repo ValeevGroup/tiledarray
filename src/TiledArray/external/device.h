@@ -36,7 +36,7 @@
 #elif defined(TILEDARRAY_HAS_CUDA)
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 #endif
