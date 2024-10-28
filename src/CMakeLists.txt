@@ -277,7 +277,7 @@ if(CUDA_FOUND OR HIP_FOUND)
     endforeach()
 
     # the list of libraries on which TiledArray depends on
-    list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvToolsExt)
+    list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvtx3)
 
   endif(CUDA_FOUND)
 

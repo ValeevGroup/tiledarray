@@ -49,7 +49,7 @@ set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
 if(TILEDARRAY_HAS_CUDA)
   cmake_minimum_required(VERSION 3.17)
   if (NOT TARGET CUDA::cublas)
-    find_dependency(CUDAToolkit REQUIRED COMPONENTS cublas nvToolsExt)
+    find_dependency(CUDAToolkit REQUIRED COMPONENTS cublas nvtx3)
   endif(NOT TARGET CUDA::cublas)
   set(CMAKE_CUDA_HOST_COMPILER "@CMAKE_CUDA_HOST_COMPILER@")
   # workaround from https://gitlab.kitware.com/cmake/cmake/issues/18614#note_485631
