@@ -23,6 +23,9 @@
 
 #include <TiledArray/device/blas.h>
 
+#include <memory>
+#include <vector>
+
 namespace TiledArray {
 
 std::vector<std::unique_ptr<blas::Queue>> BLASQueuePool::queues_;
