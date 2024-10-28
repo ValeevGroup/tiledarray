@@ -104,7 +104,7 @@ set(ta_test_src_files  ta_test.cpp
     btas.cpp
 )
 
-if(CUDA_FOUND OR HIP_FOUND)
+if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
   list(APPEND ta_test_src_files librett.cpp expressions_device_um.cpp tensor_um.cpp)
 endif()
 
@@ -118,7 +118,7 @@ if (CMAKE_CXX_STANDARD GREATER_EQUAL 20 AND DEFINED Boost_VERSION)
 endif()
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
-if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE)
+if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT TILEDARRAY_HAS_CUDA AND FALSE)
   add_ta_executable(${executable} "${ta_test_src_files}" "MADworld;${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
   if (LAPACK_INCLUDE_DIRS)

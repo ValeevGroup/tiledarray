@@ -204,7 +204,7 @@ TiledArray/util/time.h
 TiledArray/util/vector.h
 )
 
-if(HIP_FOUND OR CUDA_FOUND)
+if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
   list(APPEND TILEDARRAY_HEADER_FILES
           TiledArray/external/device.h
           TiledArray/external/librett.h
@@ -220,12 +220,12 @@ if(HIP_FOUND OR CUDA_FOUND)
           TiledArray/device/platform.h
           TiledArray/device/thrust.h
           TiledArray/device/um_storage.h)
-  if(CUDA_FOUND)
+  if(TILEDARRAY_HAS_CUDA)
     list(APPEND TILEDARRAY_HEADER_FILES
        TiledArray/external/cuda.h
        TiledArray/device/cpu_cuda_vector.h)
-  endif(CUDA_FOUND)
-endif(HIP_FOUND OR CUDA_FOUND)
+  endif(TILEDARRAY_HAS_CUDA)
+endif(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
 
 set(TILEDARRAY_SOURCE_FILES
 TiledArray/tiledarray.cpp
@@ -256,13 +256,13 @@ set_source_files_properties(
 # when FetchContent umpire: set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers umpire)
 set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers TiledArray_UMPIRE range-v3::range-v3)
 
-if(CUDA_FOUND OR HIP_FOUND)
+if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
   set(TILEDARRAY_DEVICE_SOURCE_FILES
           TiledArray/device/btas_um_tensor.cpp
   )
 
-  if(CUDA_FOUND)
+  if(TILEDARRAY_HAS_CUDA)
 
     list(APPEND TILEDARRAY_DEVICE_SOURCE_FILES
           TiledArray/device/cpu_cuda_vector.cu
@@ -279,9 +279,9 @@ if(CUDA_FOUND OR HIP_FOUND)
     # the list of libraries on which TiledArray depends on
     list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvtx3)
 
-  endif(CUDA_FOUND)
+  endif(TILEDARRAY_HAS_CUDA)
 
-  if (HIP_FOUND)
+  if (TILEDARRAY_HAS_HIP)
     list(APPEND TILEDARRAY_DEVICE_SOURCE_FILES
             TiledArray/device/kernel/thrust/mult_kernel.hip
             TiledArray/device/kernel/thrust/reduce_kernel.hip
@@ -298,7 +298,7 @@ if(CUDA_FOUND OR HIP_FOUND)
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_LIBRETT)
 
   list(APPEND TILEDARRAY_SOURCE_FILES "${TILEDARRAY_DEVICE_SOURCE_FILES}")
-endif(CUDA_FOUND OR HIP_FOUND)
+endif(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
 if( TARGET TiledArray_SCALAPACK )
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)
@@ -345,10 +345,10 @@ add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
   target_compile_options(${targetname} PUBLIC ${CMAKE_CXX_FLAG_LIST})
   target_compile_features(${targetname} PUBLIC "cxx_std_${CMAKE_CXX_STANDARD}")
 
-  if (CUDA_FOUND)
+  if (TILEDARRAY_HAS_CUDA)
     target_include_directories(${targetname} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
     target_compile_features(tiledarray PUBLIC "cuda_std_${CMAKE_CUDA_STANDARD}")
-  endif (CUDA_FOUND)
+  endif (TILEDARRAY_HAS_CUDA)
 
   if (LAPACK_INCLUDE_DIRS)
     target_include_directories(${targetname} PUBLIC ${LAPACK_INCLUDE_DIRS})
