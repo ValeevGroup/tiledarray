@@ -45,7 +45,7 @@ endif()
 # if TA is a CUDA-dependent library it needs CUDA to link properly ... unfortunately CMake is not able to do this correctly
 # see https://gitlab.kitware.com/cmake/cmake/issues/18614
 # so try workarounds
-set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
+set(TILEDARRAY_HAS_CUDA "@TILEDARRAY_HAS_CUDA@")
 if(TILEDARRAY_HAS_CUDA)
   cmake_minimum_required(VERSION 3.17)
   if (NOT TARGET CUDA::cublas)
