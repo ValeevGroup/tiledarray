@@ -915,9 +915,9 @@ inline umpire::Allocator& get_pinned_allocator::operator()() {
   return deviceEnv::instance()->pinned_allocator();
 }
 
-}  // namespace detail
-
 #endif  // TILEDARRAY_HAS_DEVICE
+
+}  // namespace detail
 
 #ifdef TILEDARRAY_HAS_CUDA
 namespace nvidia {
