@@ -110,6 +110,9 @@ class TensorInterface {
   template <typename X>
   using numeric_t = typename TiledArray::detail::numeric_type<X>::type;
 
+  template <typename X>
+  using value_t = typename std::remove_reference_t<X>::value_type;
+
   template <typename, typename, typename>
   friend class TensorInterface;
 
@@ -188,16 +191,16 @@ class TensorInterface {
     TA_ASSERT(data);
   }
 
-  template <typename T1, typename std::enable_if<
-                             detail::is_tensor<T1>::value>::type* = nullptr>
+  template <typename T1, typename std::enable_if<detail::is_nested_tensor<
+                             T1>::value>::type* = nullptr>
   TensorInterface_& operator=(const T1& other) {
     if constexpr (std::is_same_v<numeric_type, numeric_t<T1>>) {
       TA_ASSERT(data_ != other.data());
     }
 
-    detail::inplace_tensor_op([](numeric_type& MADNESS_RESTRICT result,
-                                 const numeric_t<T1> arg) { result = arg; },
-                              *this, other);
+    detail::inplace_tensor_op(
+        [](value_type& MADNESS_RESTRICT result, auto&& arg) { result = arg; },
+        *this, other);
 
     return *this;
   }
