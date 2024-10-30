@@ -176,6 +176,10 @@ BOOST_AUTO_TEST_CASE(mult_factories) {
   // BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") * v("a,b"));
 }
 
+BOOST_AUTO_TEST_CASE(reduction_factories) {
+  BOOST_CHECK_NO_THROW(v("a,b").norm());
+}
+
 BOOST_AUTO_TEST_CASE(kronecker) {
 #if !MULT_DENSE_SPARSE_TO_SPARSE
   // ok

@@ -638,7 +638,9 @@ typename EigenSparseTile<T, TagType>::numeric_type product(
 // foreach(i) result += arg[i] * arg[i]
 template <typename T, typename TagType>
 typename EigenSparseTile<T, TagType>::numeric_type squared_norm(
-    const EigenSparseTile<T, TagType>& arg);
+    const EigenSparseTile<T, TagType>& arg) {
+  return arg.matrix().squaredNorm();
+}
 // sqrt(squared_norm(arg))
 template <typename T, typename TagType>
 typename EigenSparseTile<T, TagType>::numeric_type norm(
