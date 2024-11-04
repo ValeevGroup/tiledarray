@@ -431,7 +431,8 @@ class Tensor {
         auto volume = total_size();
         for (decltype(volume) i = 0; i < volume; ++i) {
           auto& el = *(data() + i);
-          el = p(el, inner_perm);
+          if (!el.empty())
+            el = p(el, inner_perm);
         }
       }
     }
@@ -588,9 +589,13 @@ class Tensor {
   Tensor clone() const {
     Tensor result;
     if (data_) {
-      result = detail::tensor_op<Tensor>(
-          [](const numeric_type value) -> numeric_type { return value; },
-          *this);
+      if constexpr (detail::is_tensor_of_tensor_v<Tensor>) {
+        result = Tensor(*this, [](value_type const& el) { return el.clone(); });
+      } else {
+        result = detail::tensor_op<Tensor>(
+            [](const numeric_type value) -> numeric_type { return value; },
+            *this);
+      }
     } else if (range_) {  // corner case: data_ = null implies range_.volume()
                           // == 0;
       TA_ASSERT(range_.volume() == 0);
@@ -1538,6 +1543,7 @@ class Tensor {
         detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
     if constexpr (!is_tot) {
+      if (empty()) return *this;
       if constexpr (is_bperm) {
         TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
         return Tensor(*this, op, outer(std::forward<Perm>(perm)));
@@ -1574,6 +1580,7 @@ class Tensor {
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor scale(const Scalar factor) const {
+    if (range().volume() == 0) return *this;
     return unary([factor](const value_type& a) -> decltype(auto) {
       using namespace TiledArray::detail;
       return a * factor;
@@ -1626,6 +1633,10 @@ class Tensor {
     return binary(
         right,
         [](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
+          if constexpr (detail::is_tensor_v<value_type>) {
+            if (l.empty() && r.empty())
+              return value_type{};
+          }
           return l + r;
         });
   }
@@ -1740,6 +1751,7 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor& add_to(const Right& right) {
+    if (right.empty()) return *this;
     if (empty()) {
       *this = Tensor{right.range(), value_type{}};
     }
@@ -1923,11 +1935,17 @@ class Tensor {
             typename std::enable_if<detail::is_nested_tensor_v<Right>>::type* =
                 nullptr>
   decltype(auto) mult(const Right& right) const {
-    return binary(
-        right,
-        [](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
-          return l * r;
-        });
+
+    auto mult_op =[](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
+      return l * r;
+    };
+
+    if (empty() || right.empty()) {
+      using res_t = decltype(std::declval<Tensor>().binary(std::declval<Right>(), mult_op));
+      return res_t{};
+    }
+
+    return binary(right, mult_op);
   }
 
   /// Multiply this by \c right to create a new, permuted tensor

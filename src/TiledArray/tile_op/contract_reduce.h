@@ -326,17 +326,17 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// \param[in] right The right-hand tile to be contracted
   void operator()(result_type& result, const first_argument_type& left,
                   const second_argument_type& right) const {
+    using TiledArray::empty;
+    using TiledArray::gemm;
+    if (empty(left) || empty(right)) return;
+
     if constexpr (!ContractReduceBase_::plain_tensors) {
       TA_ASSERT(this->elem_muladd_op());
       // not yet implemented
-      using TiledArray::empty;
-      using TiledArray::gemm;
       gemm(result, left, right, ContractReduceBase_::gemm_helper(),
            this->elem_muladd_op());
     } else {  // plain tensors
       TA_ASSERT(!this->elem_muladd_op());
-      using TiledArray::empty;
-      using TiledArray::gemm;
       if (empty(result))
         result = gemm(left, right, ContractReduceBase_::factor(),
                       ContractReduceBase_::gemm_helper());
