@@ -123,6 +123,8 @@ inline DistArray<Tile, Policy> concat(const DistArray<Tile, Policy>& a,
     case Concat::Both:
       return TiledArray::concat<Tile, Policy>({a, b},
                                               std::vector<bool>{true, true});
+    default:
+      TA_EXCEPTION("Invalid Concat value");
   }
 }
 
@@ -257,7 +259,7 @@ inline auto norm2(
       TiledArray::math::linalg::detail::prefer_distributed(MATRIX))     \
     return TiledArray::math::linalg::ttg::FN;                           \
   if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
-    TA_EXCEPTION("ScaLAPACK lineear algebra backend is not available"); \
+    TA_EXCEPTION("ScaLAPACK linear algebra backend is not available"); \
   return non_distributed::FN;
 #elif !TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
 #define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)           \
@@ -274,7 +276,7 @@ inline auto norm2(
   if (get_linalg_backend() == LinearAlgebraBackend::TTG)                \
     TA_EXCEPTION("TTG linear algebra backend is not available");        \
   if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
-    TA_EXCEPTION("ScaLAPACK lineear algebra backend is not available"); \
+    TA_EXCEPTION("ScaLAPACK linear algebra backend is not available"); \
   return non_distributed::FN;
 #endif  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
 #endif  // defined(TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG)
@@ -301,7 +303,7 @@ inline auto norm2(
     TA_EXCEPTION(TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG_STRINGIFY(      \
         FN) " is not provided by the TTG backend");                     \
   if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
-    TA_EXCEPTION("ScaLAPACK lineear algebra backend is not available"); \
+    TA_EXCEPTION("ScaLAPACK linear algebra backend is not available"); \
   return non_distributed::FN;
 #elif !TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
 #define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)          \
@@ -318,7 +320,7 @@ inline auto norm2(
   if (get_linalg_backend() == LinearAlgebraBackend::TTG)                \
     TA_EXCEPTION("TTG linear algebra backend is not available");        \
   if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
-    TA_EXCEPTION("ScaLAPACK lineear algebra backend is not available"); \
+    TA_EXCEPTION("ScaLAPACK linear algebra backend is not available"); \
   return non_distributed::FN;
 #endif  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
 #endif  // defined(TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG)
