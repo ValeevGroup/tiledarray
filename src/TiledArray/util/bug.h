@@ -395,9 +395,10 @@ class Debugger {
   /// \param cmd a string
   /// \return processed str
   std::string replace_macros(std::string cmd);
+
   static const std::string gdb_cmd_;
   static const std::string lldb_cmd_;
-  std::vector<std::function<void()>> actions_; // prelaunch actions
+  std::vector<std::function<void()>> actions_;  // prelaunch actions
 };
 
 /// Use this to create a Debugger object and make it the default
