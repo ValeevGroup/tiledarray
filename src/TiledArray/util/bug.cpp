@@ -105,14 +105,14 @@ static void handler(int sig) {
 void Debugger::handle(int sig) {
   if (sig >= NSIG) return;
   typedef void (*handler_type)(int);
-  signal(sig, (handler_type)handler);
+  std::signal(sig, (handler_type)handler);
   signals[sig] = this;
   mysigs_[sig] = 1;
 }
 
 void Debugger::release(int sig) {
   if (sig >= NSIG) return;
-  signal(sig, SIG_DFL);
+  std::signal(sig, SIG_DFL);
   signals[sig] = nullptr;
   mysigs_[sig] = 0;
 }
@@ -231,7 +231,6 @@ void Debugger::debug(const char *reason) {
     std::cout << "no reason given";
   std::cout << std::endl;
 
-
   const std::string cmd = replace_macros(cmd_);
   // start the debugger
   // before starting the debugger de-register signal handler for SIGTRAP to
@@ -240,13 +239,13 @@ void Debugger::debug(const char *reason) {
   int system_retvalue = 0;
   if (!cmd.empty()) {
     std::cout << prefix_ << "Debugger: starting \"" << cmd << "\"" << std::endl;
-    system_retvalue = system(cmd.c_str());
+    system_retvalue = std::system(cmd.c_str());
   }
   if (system_retvalue != 0) {
     std::cout << prefix_
-                  << "Failed debugger launch: system() did not succeed ..."
-                  << std::endl;
-  } else { // call to system() succeeded
+              << "Failed debugger launch: system() did not succeed ..."
+              << std::endl;
+  } else {  // call to system() succeeded
     // wait until the debugger is ready
     if (sleep_) {
       std::cout << prefix_ << "Debugger: sleeping " << sleep_
@@ -257,17 +256,17 @@ void Debugger::debug(const char *reason) {
       std::cout << prefix_ << "Debugger: waiting for the user ...";
       if (cmd_.find(" gdb ") != std::string::npos ||
           cmd_.find(" lldb ") != std::string::npos) {
-        std::cout <<
-            " configure debugging session (set breakpoints/watchpoints, "
-            "etc.) then type 'c' to continue running";
+        std::cout
+            << " configure debugging session (set breakpoints/watchpoints, "
+               "etc.) then type 'c' to continue running";
       } else if (cmd.empty()) {
-        std::cout << " attach debugger to process "
-                  << std::to_string(getpid())
+        std::cout << " attach debugger to process " << std::to_string(getpid())
                   << " as follows:" << std::endl
-                  << prefix_ << "Debugger: - if using  gdb: "
-                  << replace_macros(gdb_cmd_) << std::endl
-                  << prefix_ << "Debugger: - if using lldb: "
-                  << replace_macros(lldb_cmd_);
+                  << prefix_
+                  << "Debugger: - if using  gdb: " << replace_macros(gdb_cmd_)
+                  << std::endl
+                  << prefix_
+                  << "Debugger: - if using lldb: " << replace_macros(lldb_cmd_);
       }
       std::cout << std::endl;
 
@@ -299,7 +298,7 @@ void Debugger::got_signal(int sig) {
   else
     signame = "UNKNOWN SIGNAL";
 
-  for (auto const &action: actions_) {
+  for (auto const &action : actions_) {
     action();
   }
   actions_.clear();
