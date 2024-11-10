@@ -996,6 +996,8 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
 
   auto result = identity;
   for (std::remove_cv_t<decltype(volume)> ord = 0ul; ord < volume; ++ord) {
+    if (tensor1.data()[ord].range().volume() == 0
+        || ((tensors.data()[ord].range().volume() == 0) || ...)) continue;
     auto temp = tensor_reduce(reduce_op, join_op, identity, tensor1.data()[ord],
                               tensors.data()[ord]...);
     join_op(result, temp);

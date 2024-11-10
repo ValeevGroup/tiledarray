@@ -485,8 +485,13 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     //  Step IV:  C2(ijpq) -> C(ipjq)
 
     auto sum_tot_2_tos = [](auto const &tot) {
-      typename std::remove_reference_t<decltype(tot)>::value_type result(
-          tot.range(), [tot](auto &&ix) { return tot(ix).sum(); });
+      using tot_t = std::remove_reference_t<decltype(tot)>;
+      typename tot_t::value_type result(
+          tot.range(), [tot](auto &&ix) {
+            if (!tot(ix).empty())
+              return tot(ix).sum();
+            else return typename tot_t::numeric_type{};
+          });
       return result;
     };
 
