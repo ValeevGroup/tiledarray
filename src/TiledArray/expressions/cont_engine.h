@@ -279,25 +279,62 @@ class ContEngine : public BinaryEngine<Derived> {
             outer_size(left_indices_), outer_size(right_indices_),
             (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}));
       } else {
+
+        auto make_total_perm = [this]() -> BipartitePermutation {
+          if (this->product_type() != TensorProduct::Contraction
+              || this->implicit_permute_inner_)
+            return this->implicit_permute_outer_
+                       ? BipartitePermutation()
+                       : BipartitePermutation(outer(this->perm_));
+
+          // Here,
+          // this->product_type() is Tensor::Contraction, and,
+          // this->implicit_permute_inner_ is false
+
+          return this->inner_product_type() == TensorProduct::Scale
+                     ? BipartitePermutation(outer(this->perm_))
+                     : this->perm_;
+        };
+
+        auto total_perm = make_total_perm();
+
         // factor_ is absorbed into inner_tile_nonreturn_op_
         op_ = op_type(
             left_op, right_op, scalar_type(1), outer_size(indices_),
             outer_size(left_indices_), outer_size(right_indices_),
-            (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}),
+            total_perm,
             this->element_nonreturn_op_);
       }
       trange_ = ContEngine_::make_trange(outer_perm);
       shape_ = ContEngine_::make_shape(outer_perm);
     } else {
       // Initialize non-permuted structure
+
       if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
         op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_));
       } else {
+
+        auto make_total_perm = [this]() -> BipartitePermutation {
+          if (this->product_type() != TensorProduct::Contraction
+              || this->implicit_permute_inner_)
+            return {};
+
+          // Here,
+          // this->product_type() is Tensor::Contraction, and,
+          // this->implicit_permute_inner_ is false
+
+          return this->inner_product_type() == TensorProduct::Scale
+                     ? BipartitePermutation(outer(this->perm_))
+                     : this->perm_;
+        };
+
+        auto total_perm = make_total_perm();
+
         // factor_ is absorbed into inner_tile_nonreturn_op_
         op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_),
-                      BipartitePermutation{}, this->element_nonreturn_op_);
+                      total_perm, this->element_nonreturn_op_);
       }
       trange_ = ContEngine_::make_trange();
       shape_ = ContEngine_::make_shape();
@@ -509,12 +546,15 @@ class ContEngine : public BinaryEngine<Derived> {
                             inner_size(this->left_indices_),
                             inner_size(this->right_indices_));
           this->element_nonreturn_op_ =
-              [contrreduce_op](result_tile_element_type& result,
-                               const left_tile_element_type& left,
-                               const right_tile_element_type& right) {
+              [contrreduce_op, permute_inner = this->product_type() !=
+                                                   TensorProduct::Contraction](
+                  result_tile_element_type& result,
+                  const left_tile_element_type& left,
+                  const right_tile_element_type& right) {
                 contrreduce_op(result, left, right);
-                if (!TA::empty(result))
-                  result = contrreduce_op(result);  // permutations of result are applied as "postprocessing"
+                // permutations of result are applied as "postprocessing"
+                if (permute_inner && !TA::empty(result))
+                  result = contrreduce_op(result);
               };
         }  // ToT x ToT
       } else if (inner_prod == TensorProduct::Hadamard) {

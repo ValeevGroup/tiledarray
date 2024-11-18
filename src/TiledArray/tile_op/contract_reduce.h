@@ -332,7 +332,6 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 
     if constexpr (!ContractReduceBase_::plain_tensors) {
       TA_ASSERT(this->elem_muladd_op());
-      // not yet implemented
       gemm(result, left, right, ContractReduceBase_::gemm_helper(),
            this->elem_muladd_op());
     } else {  // plain tensors
