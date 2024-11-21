@@ -417,14 +417,15 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
 
-  const auto volume = result.range().volume();
-
-  for (decltype(result.range().volume()) ord = 0ul; ord < volume; ++ord) {
+  auto volume = result.total_size();
+  for (decltype(volume) ord = 0; ord < volume; ++ord) {
+    if constexpr (is_tensor_of_tensor_v<TR, Ts...>)
+      if (((tensors.data()[ord].range().volume() == 0) || ...)) continue;
     if constexpr (std::is_invocable_r_v<void, Op, typename TR::value_type&,
                                         typename Ts::value_type...>)
-      op(result.at_ordinal(ord), tensors.at_ordinal(ord)...);
+      op(result.data()[ord], tensors.data()[ord]...);
     else
-      inplace_tensor_op(op, result.at_ordinal(ord), tensors.at_ordinal(ord)...);
+      inplace_tensor_op(op, result.data()[ord], tensors.data()[ord]...);
   }
 }
 
