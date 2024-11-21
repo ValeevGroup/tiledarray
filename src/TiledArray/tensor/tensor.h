@@ -1630,6 +1630,7 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor add(const Right& right) const& {
+    if (right.empty()) return *this;
     return binary(
         right,
         [](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
