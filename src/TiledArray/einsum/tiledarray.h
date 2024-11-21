@@ -664,6 +664,7 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
               using TensorT = std::remove_reference_t<decltype(el)>;
 
               auto mult_op = [&inner](auto const &l, auto const &r) -> TensorT {
+                if (l.empty() || r.empty()) return TensorT{};
                 return inner.h ? TA::detail::tensor_hadamard(l, inner.A, r,
                                                              inner.B, inner.C)
                                : TA::detail::tensor_contract(l, inner.A, r,
