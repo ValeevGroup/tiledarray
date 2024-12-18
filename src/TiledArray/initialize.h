@@ -17,6 +17,10 @@ bool initialized();
 /// @return true if TiledArray has been finalized at least once
 bool finalized();
 
+/// @return true if TiledArray (and, necessarily, MADWorld runtime) was
+/// initialized to be quiet
+bool initialized_to_be_quiet();
+
 // clang-format off
 /// @name TiledArray initialization.
 ///       These functions initialize TiledArray and (if needed) MADWorld

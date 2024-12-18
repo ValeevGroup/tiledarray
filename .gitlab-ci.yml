@@ -15,6 +15,7 @@ variables:
     TA_UT_CTEST_TIMEOUT=3000
     ${TA_PYTHON}
     ${ENABLE_CUDA}
+    CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda
     ${BLA_VENDOR}
     ${BLA_THREADS}
     ${ENABLE_SCALAPACK}
@@ -24,11 +25,18 @@ before_script:
   # TODO optimize ta_test build memory consumption
   - export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:=1}
   - echo "CMAKE_BUILD_PARALLEL_LEVEL=$CMAKE_BUILD_PARALLEL_LEVEL"
+  # configure ccache
+  - export CCACHE_DIR=/root/.ccache
+  - export CCACHE_COMPRESS=true
+  - export CCACHE_COMPRESSLEVEL=6
+  # print out the ccache configuration
+  - ccache -p
+  # zero out the ccache statistics
+  - ccache -z
 
 ubuntu:
   stage: build
   tags:
-    - docker
     - ${RUNNER_TAGS}
   timeout: 3h
   image: valeevgroup/${IMAGE}
@@ -52,26 +60,20 @@ ubuntu:
     - build/CMakeCache.txt
     - build/CMakeFiles/CMakeOutput.log
     - build/CMakeFiles/CMakeError.log
+    - build/CMakeFiles/CMakeConfigureLog.yaml
     reports:
       metrics: build/metrics.txt
   parallel:
     matrix:
-      - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
+      - IMAGE : [ "ubuntu:22.04" ]
         CXX: [ g++ ]
-        BUILD_TYPE : [ "Release" ]
-        BLA_VENDOR : [ "BLAS_PREFERENCE_LIST=IntelMKL" ]
-        BLA_THREADS : [ "IntelMKL_THREAD_LAYER=tbb" ]
-        # ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
-        TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
-        RUNNER_TAGS: [ linux ]
-      - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
-        CXX: [ g++, clang++-9 ]
-        BUILD_TYPE : [ "Release", "Debug" ]
-        ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
-        RUNNER_TAGS: [ linux ]
-      - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
-        CXX: [ g++ ]
-        BUILD_TYPE : [ "Release", "Debug" ]
+        BUILD_TYPE : [ "RelWithDebInfo" ]
+        TA_PYTHON : [ "TA_PYTHON=OFF" ]
         ENABLE_CUDA : [ "ENABLE_CUDA=ON" ]
         TA_TARGETS : [ "tiledarray examples-tiledarray check_serial-tiledarray" ]
         RUNNER_TAGS: [ cuda ]
+
+
+after_script:
+  # print out the ccache statistics
+  - ccache -s

@@ -32,7 +32,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
-- [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.18 or higher is required.
+- [CMake](https://cmake.org/), version 3.15 or higher; if {CUDA,HIP} support is needed, CMake {3.18,3.21} or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org/), version 3.3.5 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.59 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
@@ -40,9 +40,10 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 6fcb6451bc7ca46a00534a30c51dc5c230c39ac3 . If usable BTAS installation is not found, TiledArray will download and compile
+- [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20 and later.
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag 1cfcb12647c768ccd83b098c64cda723e1275e49 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 0b44ef319643cb9721fbe17d294987c146e6460e .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 93a9a5cec2a8fa87fba3afe8056607e6062a9058 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
@@ -63,16 +64,18 @@ Compiling BTAS requires the following prerequisites:
   - BLAS and LAPACK libraries
 
 Optional prerequisites:
-- [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 11 or later is required. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
-  - [LibreTT](github.com/victor-anisimov/LibreTT) -- free tensor transpose library for CUDA, HIP, and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) extended to provide thread-safety improvements (via github.com/ValeevGroup/cutt) and extended to non-CUDA platforms by [@victor-anisimov](github.com/victor-anisimov) (tag 68abe31a9ec6fd2fd9ffbcd874daa80457f947da).
-  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f9640e0fa4245691cdd434e4f719ac5f7d455f82).
+- for execution on GPGPUs:
+  - device programming runtime:
+    - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on NVIDIA's CUDA-enabled accelerators. CUDA 11 or later is required.
+    - [HIP/ROCm compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on AMD's ROCm-enabled accelerators. Note that TiledArray does not use ROCm directly but its C++ Heterogeneous-Compute Interface for Portability, `HIP`; although HIP can also be used to program CUDA-enabled devices, in TiledArray it is used only to program ROCm devices, hence ROCm and HIP will be used interchangeably.
+  - [LibreTT](github.com/victor-anisimov/LibreTT) -- free tensor transpose library for CUDA, ROCm, and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) extended to provide thread-safety improvements (via github.com/ValeevGroup/cutt) and extended to non-CUDA platforms by [@victor-anisimov](github.com/victor-anisimov) (tag 6eed30d4dd2a5aa58840fe895dcffd80be7fbece).
+  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag 8c85866107f78a58403e20a2ae8e1f24c9852287).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
   - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 6397f52cf11c0dfd82a79698ee198a2fce515d81); pulls and builds the following additional prerequisite
     - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS
 - Python3 interpreter -- to test (optionally-built) Python bindings
-- [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20; only used for some unit testing of the functionality anticipated to be supported by future C++ standards.
-- [TTG](https://github.com/TESSEorg/ttg.git) -- C++ implementation of the Template Task Graph programming model for fine-grained flow-graph composition of distributed memory programs.
+- [TTG](https://github.com/TESSEorg/ttg.git) -- C++ implementation of the Template Task Graph programming model for fine-grained flow-graph composition of distributed memory programs (tag 3fe4a06dbf4b05091269488aab38223da1f8cb8e).
 
 Many of these dependencies can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
@@ -323,17 +326,18 @@ To discover and configure the use of Intel MKL consider these suggestions:
 
 Also note that even if OpenMP or TBB backends are used, TiledArray will be default set the number of threads to be used by MKL kernels to 1, regardless of the value of environment variables `MKL_NUM_THREADS`/`OMP_NUM_THREADS`. It is possible to change the number of threads to be used programmatically in your application by calling MKL function `mkl_set_num_threads()`.
 
-## CUDA
+## GPGPU support
 
-Support for execution on CUDA-enabled hardware is controlled by the following variables:
+Support for execution on NVIDIA and AMD GPGPUs is controlled by the following variables:
 
 * `ENABLE_CUDA`  -- Set to `ON` to turn on CUDA support. [Default=OFF].
 * `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers used to be notorious for only being able to use specific C++ host compilers, but support for more recent C++ host compilers has improved. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
-* `ENABLE_CUDA_ERROR_CHECK` -- Set to `ON` to turn on assertions for successful completion of calls to CUDA runtime and libraries. [Default=OFF].
+* `ENABLE_HIP`  -- Set to `ON` to turn on HIP/ROCm support. [Default=OFF].
 * `LIBRETT_INSTALL_DIR` -- the installation prefix of the pre-installed LibreTT library. This should not be normally needed; it is strongly recommended to let TiledArray build and install LibreTT.
 * `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library. This should not be normally needed; it is strongly recommended to let TiledArray build and install Umpire.
 
-For the CUDA compiler and toolkit to be discoverable the CUDA compiler (`nvcc`) should be in the `PATH` environment variable. Refer to the [FindCUDAToolkit module](https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html) for more info.
+- For the CUDA compiler and toolkit to be discoverable the CUDA compiler (`nvcc`) should be in the `PATH` environment variable. Refer to the [FindCUDAToolkit module](https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html) for more info.
+- For the ROCm platform to be discoverable add its prefix path (e.g., `/opt/rocm`) to `CMAKE_PREFIX_PATH`
 
 ## Eigen 3
 
@@ -412,13 +416,13 @@ support may be added.
 * `TA_ASSERT_POLICY` -- Set to `TA_ASSERT_IGNORE` to disable `TA_ASSERT` assertions, `TA_ASSERT_THROW` to cause `TA_ASSERT` assertions to throw, `TA_ASSERT_ABORT` to cause `TA_ASSERT` assertions to abort. The default is `TA_ASSERT_IGNORE` if CMake uses a single-configuration generator and`CMAKE_BUILD_TYPE` is set to `Release` or `MinSizeRel`, else the default is `TA_ASSERT_THROW`.
 * `BUILD_TESTING` -- Set of `OFF` to disable building unit tests. The default is `ON`.
 * `TA_TRACE_TASKS` -- Set to `ON` to enable tracing of MADNESS tasks using custom task tracer. Note that standard profilers/tracers are generally useless (except in the trivial cases) with MADWorld-based programs since the submission context of tasks is not captured by standard tracing tools; this makes it impossible in a nontrivial program to attribute tasks to source code. WARNING: task tracing his will greatly increase the memory requirements. [Default=OFF].
-* `TA_RANGEV3` -- Set to `ON` to find or fetch the Range-V3 library and enable additional tests of TA components with constructs anticipated to be supported in the future. [Default=OFF].
 * `TA_TTG` -- Set to `ON` to find or fetch the TTG library. [Default=OFF].
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.
 * `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile host memory allocations used by TA::Tensor. This causes the use of Umpire for host memory allocation. This also enables additional tracing facilities provided by Umpire; these can be controlled via [environment variable `UMPIRE_LOG_LEVEL`](https://umpire.readthedocs.io/en/develop/sphinx/features/logging_and_replay.html), but note that the default is to log Umpire info into a file rather than stdout.
 * `TA_TENSOR_MEM_TRACE` -- Set to `ON` to *trace* host memory allocations used by TA::Tensor. This turns on support for tracking memory used by `Tensor` objects; such tracking must be enabled programmatically. This can greatly increase memory consumption by the application and is only intended for expert developers troubleshooting memory use by TiledArray.
 * `TA_UT_CTEST_TIMEOUT` -- The value (in seconds) of the timeout to use for running the TA unit tests via CTest when building the `check`/`check-tiledarray` targets. The default timeout is 1500s.
+* `IntelMKL_FAIR_DISPATCH` -- If want to use Intel MKL library on non-Intel (e.g., AMD) CPUs, set to `ON` to use fair kernel dispatch. [Default=OFF].
 
 # Build TiledArray
 

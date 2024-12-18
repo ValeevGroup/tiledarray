@@ -28,6 +28,7 @@
 
 #include <TiledArray/expressions/index_list.h>
 #include <TiledArray/expressions/product.h>
+#include <TiledArray/math/blas.h>
 #include <TiledArray/permutation.h>
 #include <memory>
 
@@ -44,12 +45,65 @@ namespace expressions {
 enum class PermutationType { identity = 1, matrix_transpose = 2, general = 3 };
 
 inline blas::Op to_cblas_op(PermutationType permtype) {
-  TA_ASSERT(permtype == PermutationType::matrix_transpose ||
-            permtype == PermutationType::identity);
+  // N.B. 3 cases:
+  // - permtype == identity : no transpose needed
+  // - permtype == matrix_transpose : transpose needed
+  // - permtype == general : the argument will be explicitly permuted to be in a
+  // layout which does not require permutation hence no need for a switch ...
   return permtype == PermutationType::matrix_transpose
              ? math::blas::Transpose
              : math::blas::NoTranspose;
 }
+
+/// Optimizer of permutations for a unary operation
+class UnaryOpPermutationOptimizer {
+ public:
+  /// construct using initial indices for the argument
+  /// \param argument_indices the initial argument index list
+  UnaryOpPermutationOptimizer(const IndexList& argument_indices)
+      : argument_indices_(argument_indices) {}
+
+  /// construct using initial indices for the argument,
+  /// and the desired result indices
+  /// \param result_indices the desired result index list
+  /// \param argument_indices the initial argument index list
+  UnaryOpPermutationOptimizer(const IndexList& result_indices,
+                              const IndexList& argument_indices)
+      : result_indices_(result_indices), argument_indices_(argument_indices) {
+    TA_ASSERT(argument_indices_.is_permutation(argument_indices_));
+    target_result_indices_ = argument_indices_;
+  }
+
+  UnaryOpPermutationOptimizer() = delete;
+  UnaryOpPermutationOptimizer(const UnaryOpPermutationOptimizer&) = default;
+  UnaryOpPermutationOptimizer& operator=(const UnaryOpPermutationOptimizer&) =
+      default;
+  virtual ~UnaryOpPermutationOptimizer() = default;
+
+  /// \return the desired result indices
+  const IndexList& result_indices() const {
+    TA_ASSERT(result_indices_);
+    return result_indices_;
+  }
+  /// \return initial argument indices
+  const IndexList& argument_indices() const { return argument_indices_; }
+
+  /// \return the proposed argument index list
+  const IndexList& target_argument_indices() const {
+    return target_result_indices_;
+  }
+  /// \return the proposed result index list (not necessarily same as that
+  /// returned by result_indices())
+  const IndexList& target_result_indices() const {
+    return target_result_indices_;
+  }
+  /// \return the type of permutation bringing the initial left index list to
+  /// the target left index list
+  PermutationType argument_permtype() const { return PermutationType::general; }
+
+ private:
+  IndexList result_indices_, argument_indices_, target_result_indices_;
+};
 
 /// Abstract optimizer of permutations for a binary operation
 class BinaryOpPermutationOptimizer {
@@ -479,6 +533,61 @@ class HadamardPermutationOptimizer : public BinaryOpPermutationOptimizer {
   IndexList target_result_indices_;
 };
 
+// clang-format off
+/// Implements BinaryOpPermutationOptimizer interface for a scale operation viewed as a binary tensor product, i.e.
+/// a tensor product between an order-0 tensor and an arbitrary tensor
+// clang-format on
+class ScalePermutationOptimizer : public BinaryOpPermutationOptimizer {
+ public:
+  ScalePermutationOptimizer(const ScalePermutationOptimizer&) = default;
+  ScalePermutationOptimizer& operator=(const ScalePermutationOptimizer&) =
+      default;
+  ~ScalePermutationOptimizer() = default;
+
+  ScalePermutationOptimizer(const IndexList& left_indices,
+                            const IndexList& right_indices)
+      : BinaryOpPermutationOptimizer(left_indices, right_indices,
+                                     left_indices ? true : false),
+        left_argument_is_scalar_(!left_indices),
+        target_result_indices_(left_argument_is_scalar_ ? right_indices
+                                                        : left_indices) {}
+
+  ScalePermutationOptimizer(const IndexList& result_indices,
+                            const IndexList& left_indices,
+                            const IndexList& right_indices)
+      : BinaryOpPermutationOptimizer(result_indices, left_indices,
+                                     right_indices,
+                                     left_indices ? true : false),
+        left_argument_is_scalar_(!left_indices) {
+    const auto& arg_indices =
+        left_argument_is_scalar_ ? right_indices : left_indices;
+    TA_ASSERT(arg_indices.is_permutation(result_indices));
+    target_result_indices_ = arg_indices;
+  }
+
+  const IndexList& target_left_indices() const override final {
+    return !left_argument_is_scalar_ ? target_result_indices_ : null_indices_;
+  }
+  const IndexList& target_right_indices() const override final {
+    return left_argument_is_scalar_ ? target_result_indices_ : null_indices_;
+  }
+  const IndexList& target_result_indices() const override final {
+    return target_result_indices_;
+  }
+  PermutationType left_permtype() const override final {
+    return PermutationType::general;
+  }
+  PermutationType right_permtype() const override final {
+    return PermutationType::general;
+  }
+  TensorProduct op_type() const override final { return TensorProduct::Scale; }
+
+ private:
+  bool left_argument_is_scalar_;
+  IndexList target_result_indices_;
+  static IndexList null_indices_;
+};
+
 class NullBinaryOpPermutationOptimizer : public BinaryOpPermutationOptimizer {
  public:
   NullBinaryOpPermutationOptimizer(const NullBinaryOpPermutationOptimizer&) =
@@ -540,6 +649,9 @@ inline std::shared_ptr<BinaryOpPermutationOptimizer> make_permutation_optimizer(
     case TensorProduct::Invalid:
       return std::make_shared<NullBinaryOpPermutationOptimizer>(
           left_indices, right_indices, prefer_to_permute_left);
+    case TensorProduct::Scale:
+      return std::make_shared<ScalePermutationOptimizer>(left_indices,
+                                                         right_indices);
     default:
       abort();
   }
@@ -559,6 +671,9 @@ inline std::shared_ptr<BinaryOpPermutationOptimizer> make_permutation_optimizer(
     case TensorProduct::Invalid:
       return std::make_shared<NullBinaryOpPermutationOptimizer>(
           target_indices, left_indices, right_indices, prefer_to_permute_left);
+    case TensorProduct::Scale:
+      return std::make_shared<ScalePermutationOptimizer>(
+          target_indices, left_indices, right_indices);
     default:
       abort();
   }

@@ -27,23 +27,23 @@
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/math/linalg/util.h>
-#include <TiledArray/math/linalg/rank-local.h>
 #include <TiledArray/conversions/eigen.h>
+#include <TiledArray/math/linalg/rank-local.h>
+#include <TiledArray/math/linalg/util.h>
 
 namespace TiledArray::math::linalg::non_distributed {
 
 /**
- *  @brief Compute the singular value decomposition (SVD) via ScaLAPACK
+ *  @brief Compute the singular value decomposition (SVD) via LAPACK
  *
  *  A(i,j) = S(k) U(i,k) conj(V(j,k))
  *
  *  Example Usage:
  *
- *  auto S          = svd<SVDValuesOnly>  (A, ...)
- *  auto [S, U]     = svd<SVDLeftstd::vectors> (A, ...)
- *  auto [S, VT]    = svd<SVDRightstd::vectors>(A, ...)
- *  auto [S, U, VT] = svd<SVDAllstd::vectors>  (A, ...)
+ *  auto S          = svd<SVD::Vectors::ValuesOnly>  (A, ...)
+ *  auto [S, U]     = svd<SVD::Vectors::LeftVectors> (A, ...)
+ *  auto [S, VT]    = svd<SVD::Vectors::RightVectors>(A, ...)
+ *  auto [S, U, VT] = svd<SVD::Vectors::AllVectors>  (A, ...)
  *
  *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
  *
@@ -52,13 +52,14 @@ namespace TiledArray::math::linalg::non_distributed {
  *  @param[in] vt_trange   TiledRange for resulting right singular vectors
  * (transposed).
  *
- *  @returns A tuple containing the eigenvalues and eigenvectors of input array
- *  as std::vector and in TA format, respectively.
+ *  @returns A tuple containing the singular values and singular vectors of
+ * input array as std::vector and in TA format, respectively.
  */
-template<SVD::Vectors Vectors, typename Array>
-auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trange = TiledRange()) {
-
+template <SVD::Vectors Vectors, typename Array>
+auto svd(const Array& A, TiledRange u_trange = TiledRange(),
+         TiledRange vt_trange = TiledRange()) {
   using T = typename Array::numeric_type;
+  using TS = typename Array::scalar_type;
   using Matrix = linalg::rank_local::Matrix<T>;
 
   World& world = A.world();
@@ -68,21 +69,19 @@ auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trang
   constexpr bool need_u = (Vectors == SVD::LeftVectors) or svd_all_vectors;
   constexpr bool need_vt = (Vectors == SVD::RightVectors) or svd_all_vectors;
 
-  std::vector<T> S;
+  std::vector<TS> S;
   std::unique_ptr<Matrix> U, VT;
 
   if constexpr (need_u) U = std::make_unique<Matrix>();
   if constexpr (need_vt) VT = std::make_unique<Matrix>();
 
-  if (world.rank() == 0) {
-    linalg::rank_local::svd(A_eig, S, U.get(), VT.get());
-  }
+  TA_LAPACK_ON_RANK_ZERO(svd, world, A_eig, S, U.get(), VT.get());
 
   world.gop.broadcast_serializable(S, 0);
   if (U) world.gop.broadcast_serializable(*U, 0);
   if (VT) world.gop.broadcast_serializable(*VT, 0);
 
-  auto make_array = [&world](auto && ... args) {
+  auto make_array = [&world](auto&&... args) {
     return eigen_to_array<Array>(world, args...);
   };
 
@@ -97,7 +96,6 @@ auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trang
   }
 
   if constexpr (!need_u && !need_vt) return S;
-
 }
 
 }  // namespace TiledArray::math::linalg::non_distributed

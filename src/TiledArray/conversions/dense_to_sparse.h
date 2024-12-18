@@ -27,7 +27,7 @@ to_sparse(DistArray<Tile, ArgPolicy> const &dense_array) {
   const auto begin = dense_array.begin();
   for (auto it = begin; it != end; ++it) {
     // write the norm of each local tile to the tensor
-    norm(it->get(), tile_norms[it.ordinal()]);
+    norm(it->get(), tile_norms[it.index()]);
   }
 
   // Construct a sparse shape the constructor will handle communicating the
@@ -40,9 +40,9 @@ to_sparse(DistArray<Tile, ArgPolicy> const &dense_array) {
   // sparse_array set the sparse array tile with a clone so as not to hold
   // a pointer to the original tile.
   for (auto it = begin; it != end; ++it) {
-    const auto ord = it.ordinal();
-    if (!sparse_array.is_zero(ord)) {
-      sparse_array.set(ord, it->get().clone());
+    const auto ix = it.index();
+    if (!sparse_array.is_zero(ix)) {
+      sparse_array.set(ix, it->get().clone());
     }
   }
 

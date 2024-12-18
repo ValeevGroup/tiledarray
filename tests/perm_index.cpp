@@ -49,8 +49,7 @@ const std::array<std::size_t, 4> PermIndexFixture::start = {
 const std::array<std::size_t, 4> PermIndexFixture::finish = {
     {3ul, 5ul, 7ul, 11ul}};
 
-BOOST_FIXTURE_TEST_SUITE(perm_index_suite, PermIndexFixture,
-                         TA_UT_LABEL_SERIAL)
+BOOST_FIXTURE_TEST_SUITE(perm_index_suite, PermIndexFixture, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK_NO_THROW(PermIndex x;);
@@ -61,7 +60,7 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK(!x.data());
 
   // Check that an exception is thrown when using a default constructed object
-  BOOST_CHECK_THROW(x(0), TiledArray::Exception);
+  BOOST_CHECK_TA_ASSERT(x(0), TiledArray::Exception);
 }
 
 BOOST_AUTO_TEST_CASE(constructor) {

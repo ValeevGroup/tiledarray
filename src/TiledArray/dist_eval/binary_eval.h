@@ -68,6 +68,16 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   right_type right_;  ///< Right argument
   op_type op_;        ///< binary element operator
 
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+  // artifacts of tracing
+  mutable ordinal_type left_ntiles_used_;   // # of tiles used from left_
+  mutable ordinal_type right_ntiles_used_;  // # of tiles used from right_
+  mutable ordinal_type
+      left_ntiles_discarded_;  // # of tiles discarded from left_
+  mutable ordinal_type
+      right_ntiles_discarded_;  // # of tiles discarded from right_
+#endif
+
  public:
   /// Construct a binary evaluator
 
@@ -88,8 +98,19 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         left_(left),
         right_(right),
-        op_(op) {
-    TA_ASSERT(left.trange() == right.trange());
+        op_(op)
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+        ,
+        left_ntiles_used_(0),
+        right_ntiles_used_(0),
+        left_ntiles_discarded_(0),
+        right_ntiles_discarded_(0)
+#endif
+  {
+    TA_ASSERT(ignore_tile_position()
+                  ? left.trange().elements_range().extent() ==
+                        right.trange().elements_range().extent()
+                  : left.trange() == right.trange());
   }
 
   virtual ~BinaryEvalImpl() {}
@@ -100,14 +121,14 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \return A \c Future to the tile at index i
   /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
   /// \throw TiledArray::Exception When tile \c i a zero tile.
-  virtual Future<value_type> get_tile(ordinal_type i) const {
+  Future<value_type> get_tile(ordinal_type i) const override {
     TA_ASSERT(TensorImpl_::is_local(i));
     TA_ASSERT(!TensorImpl_::is_zero(i));
 
     const auto source_index = DistEvalImpl_::perm_index_to_source(i);
-    const ProcessID source =
-        left_.owner(source_index);  // Left and right
-                                    // should have the same owner
+    const ProcessID source = left_.owner(source_index);
+    // Left and right should have the same owner
+    TA_ASSERT(source == right_.owner(source_index));
 
     const madness::DistributedID key(DistEvalImpl_::id(), i);
     return TensorImpl_::world().gop.template recv<value_type>(source, key);
@@ -118,17 +139,17 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(ordinal_type i) const { get_tile(i); }
+  void discard_tile(ordinal_type i) const override { get_tile(i); }
 
  private:
   /// Task function for evaluating tiles
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// \param i The tile index
   /// \param left The left-hand tile
   /// \param right The right-hand tile
   template <typename L, typename R, typename U = value_type>
-  std::enable_if_t<!detail::is_cuda_tile_v<U>, void> eval_tile(
+  std::enable_if_t<!detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, L left, R right) {
     DistEvalImpl_::set_tile(i, op_(left, right));
   }
@@ -137,11 +158,11 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \param left The left-hand tile
   /// \param right The right-hand tile
   template <typename L, typename R, typename U = value_type>
-  std::enable_if_t<detail::is_cuda_tile_v<U>, void> eval_tile(
+  std::enable_if_t<detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, L left, R right) {
     // TODO avoid copy the Op object
     auto result_tile =
-        madness::add_cuda_task(DistEvalImpl_::world(), op_, left, right);
+        madness::add_device_task(DistEvalImpl_::world(), op_, left, right);
     DistEvalImpl_::set_tile(i, result_tile);
   }
 #else
@@ -160,7 +181,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// until the tasks for the children are evaluated (not for the tasks of
   /// this object).
   /// \return The number of tiles that will be set by this process
-  virtual int internal_eval() {
+  int internal_eval() override {
     // Evaluate child tensors
     left_.eval();
     right_.eval();
@@ -195,6 +216,12 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
             &BinaryEvalImpl_::template eval_tile<left_argument_type,
                                                  right_argument_type>,
             target_index, left_.get(source_index), right_.get(source_index));
+        TA_ASSERT(left_.is_local(source_index));
+        TA_ASSERT(right_.is_local(source_index));
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+        left_ntiles_used_++;
+        right_ntiles_used_++;
+#endif
 
         ++task_count;
       }
@@ -213,32 +240,64 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
                 &BinaryEvalImpl_::template eval_tile<const ZeroTensor,
                                                      right_argument_type>,
                 target_index, ZeroTensor(), right_.get(index));
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+            right_ntiles_used_++;
+#endif
           } else if (right_.is_zero(index)) {
             TensorImpl_::world().taskq.add(
                 self,
                 &BinaryEvalImpl_::template eval_tile<left_argument_type,
                                                      const ZeroTensor>,
                 target_index, left_.get(index), ZeroTensor());
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+            left_ntiles_used_++;
+#endif
           } else {
+            TA_ASSERT(!left_.is_zero(index) && !right_.is_zero(index));
             TensorImpl_::world().taskq.add(
                 self,
                 &BinaryEvalImpl_::template eval_tile<left_argument_type,
                                                      right_argument_type>,
                 target_index, left_.get(index), right_.get(index));
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+            left_ntiles_used_++;
+            right_ntiles_used_++;
+#endif
           }
 
           ++task_count;
         } else {
           // Cleanup unused tiles
-          if (!left_.is_zero(index)) left_.discard(index);
-          if (!right_.is_zero(index)) right_.discard(index);
+          if (!left_.is_zero(index)) {
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+            left_ntiles_discarded_++;
+#endif
+            left_.discard(index);
+          }
+          if (!right_.is_zero(index)) {
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+            right_ntiles_discarded_++;
+#endif
+            right_.discard(index);
+          }
         }
       }
     }
 
     // Wait for child tensors to be evaluated, and process tasks while waiting.
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+    TA_ASSERT(left_.local_nnz() == left_ntiles_used_ + left_ntiles_discarded_);
+    TA_ASSERT(right_.local_nnz() ==
+              right_ntiles_used_ + right_ntiles_discarded_);
+#endif
     left_.wait();
     right_.wait();
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+    // for some evaluators like SUMMA real task counts are not available even
+    // after wait() TA_ASSERT(left_.task_count() >= left_ntiles_used_ +
+    // left_ntiles_discarded_); TA_ASSERT(right_.task_count() >=
+    // right_ntiles_used_ + right_ntiles_discarded_);
+#endif
 
     return task_count;
   }

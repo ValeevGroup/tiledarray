@@ -60,7 +60,7 @@ namespace {
 std::string to_parallel_archive_file_name(const char* prefix_name, int rank) {
   char buf[256];
   MADNESS_ASSERT(strlen(prefix_name) + 7 <= sizeof(buf));
-  sprintf(buf, "%s.%5.5d", prefix_name, rank);
+  snprintf(buf, sizeof(buf), "%s.%5.5d", prefix_name, rank);
   return buf;
 }
 }  // namespace
@@ -76,6 +76,13 @@ BOOST_AUTO_TEST_CASE(constructors) {
   for (ArrayN::const_iterator it = ad.begin(); it != ad.end(); ++it)
     BOOST_CHECK(!it->probe());
 
+  // Construct a dense array in default world
+  {
+    BOOST_REQUIRE_NO_THROW(ArrayN ad(tr));
+    ArrayN ad(tr);
+    BOOST_CHECK_EQUAL(ad.world().id(), get_default_world().id());
+  }
+
   // Construct a sparse array
   BOOST_REQUIRE_NO_THROW(
       SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr)));
@@ -87,6 +94,14 @@ BOOST_AUTO_TEST_CASE(constructors) {
 
   // now fill it
   BOOST_REQUIRE_NO_THROW(as.fill(1));
+
+  // Construct a sparse array in default world
+  {
+    BOOST_REQUIRE_NO_THROW(
+        SpArrayN as(tr, TiledArray::SparseShape<float>(shape_tensor, tr)));
+    SpArrayN as(tr, TiledArray::SparseShape<float>(shape_tensor, tr));
+    BOOST_CHECK_EQUAL(as.world().id(), get_default_world().id());
+  }
 
   // Construct a sparse array from another sparse array
   {
@@ -107,6 +122,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
         ++itr;
       }
     }
+
+    // now with default world
+    {
+      TArray<double> a_vector(il);
+      BOOST_CHECK_EQUAL(a_vector.world().id(), get_default_world().id());
+    }
   }
 
   // Create a matrix with an initializer list
@@ -121,6 +142,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
           ++itr;
         }
       }
+    }
+
+    // now with default world
+    {
+      TArray<double> a_matrix(il);
+      BOOST_CHECK_EQUAL(a_matrix.world().id(), get_default_world().id());
     }
   }
 
@@ -143,6 +170,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
           }
         }
       }
+    }
+
+    // now with default world
+    {
+      TArray<double> a_tensor3(il);
+      BOOST_CHECK_EQUAL(a_tensor3.world().id(), get_default_world().id());
     }
   }
 
@@ -167,6 +200,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
           }
         }
       }
+    }
+
+    // now with default world
+    {
+      TArray<double> a_tensor4(il);
+      BOOST_CHECK_EQUAL(a_tensor4.world().id(), get_default_world().id());
     }
   }
 
@@ -193,6 +232,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
           }
         }
       }
+    }
+
+    // now with default world
+    {
+      TArray<double> a_tensor5(il);
+      BOOST_CHECK_EQUAL(a_tensor5.world().id(), get_default_world().id());
     }
   }
 
@@ -222,6 +267,12 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
         }
       }
     }
+
+    // now with default world
+    {
+      TArray<double> a_tensor6(il);
+      BOOST_CHECK_EQUAL(a_tensor6.world().id(), get_default_world().id());
+    }
   }
 }
 
@@ -232,6 +283,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 3}};
     TArray<double> a_vector(world, tr, il);
     BOOST_CHECK_EQUAL(a_vector.size(), 2);
+
+    // now with default world
+    {
+      TArray<double> a_vector(tr, il);
+      BOOST_CHECK_EQUAL(a_vector.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -239,6 +296,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 2}, {0, 1, 3}};
     TArray<double> a_matrix(world, tr, il);
     BOOST_CHECK_EQUAL(a_matrix.size(), 4);
+
+    // now with default world
+    {
+      TArray<double> a_matrix(tr, il);
+      BOOST_CHECK_EQUAL(a_matrix.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -247,6 +310,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 8);
+
+    // now with default world
+    {
+      TArray<double> a_tensor(tr, il);
+      BOOST_CHECK_EQUAL(a_tensor.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -257,6 +326,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 16);
+
+    // now with default world
+    {
+      TArray<double> a_tensor(tr, il);
+      BOOST_CHECK_EQUAL(a_tensor.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -269,6 +344,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
     TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 32);
+
+    // now with default world
+    {
+      TArray<double> a_tensor(tr, il);
+      BOOST_CHECK_EQUAL(a_tensor.world().id(), get_default_world().id());
+    }
   }
 
   {
@@ -286,6 +367,12 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
                   {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 64);
+
+    // now with default world
+    {
+      TArray<double> a_tensor(tr, il);
+      BOOST_CHECK_EQUAL(a_tensor.world().id(), get_default_world().id());
+    }
   }
 }
 
@@ -513,7 +600,7 @@ BOOST_AUTO_TEST_CASE(make_replicated) {
   BOOST_REQUIRE_NO_THROW(a.make_replicated());
 
   // check for cda7b8a33b85f9ebe92bc369d6a362c94f1eae40 bug
-  for (const auto &tile : a) {
+  for (const auto& tile : a) {
     BOOST_CHECK(tile.get().size() != 0);
   }
 
@@ -532,7 +619,6 @@ BOOST_AUTO_TEST_CASE(make_replicated) {
          it != tile.get().end(); ++it)
       BOOST_CHECK_EQUAL(*it, distributed_pmap->owner(i) + 1);
   }
-
 }
 
 BOOST_AUTO_TEST_CASE(serialization_by_tile) {
@@ -630,7 +716,7 @@ BOOST_AUTO_TEST_CASE(parallel_serialization) {
   mktemp(archive_file_prefix_name);
   madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
                                                 nio);
-  oar& a;
+  oar & a;
   oar.close();
 
   madness::archive::ParallelInputArchive<> iar(world, archive_file_prefix_name,
@@ -654,7 +740,7 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
   mktemp(archive_file_prefix_name);
   madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
                                                 nio);
-  oar& b;
+  oar & b;
   oar.close();
 
   madness::archive::ParallelInputArchive<> iar(world, archive_file_prefix_name,
@@ -697,7 +783,7 @@ BOOST_AUTO_TEST_CASE(issue_225) {
   madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
   decltype(S) S_read;
   decltype(St) St_read;
-  iar& S_read& St_read;
+  iar & S_read & St_read;
 
   BOOST_CHECK_EQUAL(S_read.trange(), S.trange());
   BOOST_REQUIRE(S_read.shape() == S.shape());
@@ -708,6 +794,154 @@ BOOST_AUTO_TEST_CASE(issue_225) {
   BOOST_CHECK_EQUAL_COLLECTIONS(St_read.begin(), St_read.end(), St.begin(),
                                 St.end());
   std::remove(archive_file_name);
+}
+
+BOOST_AUTO_TEST_CASE(rebind) {
+  static_assert(
+      std::is_same_v<typename ArrayN::template rebind_t<TensorD>, TArrayD>);
+  static_assert(
+      std::is_same_v<typename ArrayN::template rebind_numeric_t<double>,
+                     TArrayD>);
+  static_assert(
+      std::is_same_v<typename SpArrayN::template rebind_t<TensorD>, TSpArrayD>);
+  static_assert(
+      std::is_same_v<typename SpArrayN::template rebind_numeric_t<double>,
+                     TSpArrayD>);
+  static_assert(std::is_same_v<TiledArray::detail::real_t<TArrayZ>, TArrayD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<TArrayD>, TArrayZ>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::real_t<TSpArrayZ>, TSpArrayD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<TSpArrayD>, TSpArrayZ>);
+
+  // DistArray of Tensors
+  using SpArrayTD = DistArray<Tensor<TensorD>, SparsePolicy>;
+  using SpArrayTZ = DistArray<Tensor<TensorZ>, SparsePolicy>;
+  static_assert(std::is_same_v<typename SpArrayTD::template rebind_t<TensorZ>,
+                               TSpArrayZ>);
+  static_assert(
+      std::is_same_v<
+          typename SpArrayTD::template rebind_numeric_t<std::complex<double>>,
+          SpArrayTZ>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::real_t<SpArrayTZ>, SpArrayTD>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<SpArrayTD>, SpArrayTZ>);
+}
+
+BOOST_AUTO_TEST_CASE(volume) {
+  using T = Tensor<double>;
+  using ToT = Tensor<T>;
+  using Policy = SparsePolicy;
+  using ArrayToT = DistArray<ToT, Policy>;
+
+  size_t constexpr nrows = 3;
+  size_t constexpr ncols = 4;
+  TiledRange const trange({{0, 2, 5, 7}, {0, 5, 7, 10, 12}});
+  TA_ASSERT(trange.tiles_range().extent().at(0) == nrows &&
+                trange.tiles_range().extent().at(1) == ncols,
+            "Following code depends on this condition.");
+
+  // this Range is used to construct all inner tensors of the tile with
+  // tile index @c tix.
+  auto inner_dims = [nrows, ncols](Range::index_type const& tix) -> Range {
+    static std::array<size_t, nrows> const rows{7, 8, 9};
+    static std::array<size_t, ncols> const cols{7, 8, 9, 10};
+
+    TA_ASSERT(tix.size() == 2, "Only rank-2 tensor expected.");
+    return Range({rows[tix.at(0) % nrows], cols[tix.at(1) % ncols]});
+  };
+
+  // let's make all 'diagonal' tiles zero
+  auto zero_tile = [](Range::index_type const& tix) -> bool {
+    return tix.at(0) == tix.at(1);
+  };
+
+  auto make_tile = [inner_dims, zero_tile, &trange](auto& tile,
+                                                    auto const& rng) {
+    auto&& tix = trange.element_to_tile(rng.lobound());
+    if (zero_tile(tix))
+      return 0.;
+    else {
+      tile = ToT(rng, [inner_rng = inner_dims(tix)](auto&&) {
+        return T(inner_rng, 0.1);
+      });
+      return tile.norm();
+    }
+  };
+
+  auto& world = get_default_world();
+  auto array = make_array<ArrayToT>(world, trange, make_tile);
+
+  // manually compute the volume of array
+  size_t vol = 0;
+  for (auto&& tix : trange.tiles_range())
+    if (!zero_tile(tix))
+      vol += trange.tile(tix).volume() * inner_dims(tix).volume();
+
+  BOOST_REQUIRE(vol == TA::volume(array));
+}
+
+BOOST_AUTO_TEST_CASE(reduction) {
+  using Numeric = double;
+  using T = Tensor<Numeric>;
+  using ToT = Tensor<T>;
+  using Policy = SparsePolicy;
+  using ArrayToT = DistArray<ToT, Policy>;
+
+  auto unit_T = [](Range const& rng) { return T(rng, Numeric{1}); };
+
+  auto unit_ToT = [unit_T](Range const& rngo, Range const& rngi) {
+    return ToT(rngo, unit_T(rngi));
+  };
+
+  size_t constexpr nrows = 3;
+  size_t constexpr ncols = 4;
+  TiledRange const trange({{0, 2, 5, 7}, {0, 5, 7, 10, 12}});
+  TA_ASSERT(trange.tiles_range().extent().at(0) == nrows &&
+                trange.tiles_range().extent().at(1) == ncols,
+            "Following code depends on this condition.");
+
+  // this Range is used to construct all inner tensors of the tile with
+  // tile index @c tix.
+  auto inner_dims = [nrows, ncols](Range::index_type const& tix) -> Range {
+    static std::array<size_t, nrows> const rows{7, 8, 9};
+    static std::array<size_t, ncols> const cols{7, 8, 9, 10};
+
+    TA_ASSERT(tix.size() == 2, "Only rank-2 tensor expected.");
+    return Range({rows[tix.at(0) % nrows], cols[tix.at(1) % ncols]});
+  };
+
+  // let's make all 'diagonal' tiles zero
+  auto zero_tile = [](Range::index_type const& tix) -> bool {
+    return tix.at(0) == tix.at(1);
+  };
+
+  auto make_tile = [inner_dims,  //
+                    zero_tile,   //
+                    &trange,     //
+                    unit_ToT](auto& tile, auto const& rng) {
+    auto&& tix = trange.element_to_tile(rng.lobound());
+    if (zero_tile(tix))
+      return 0.;
+    else {
+      tile = unit_ToT(rng, inner_dims(tix));
+      return tile.norm();
+    }
+  };
+
+  auto& world = get_default_world();
+
+  // all non-zero inner tensors of this ToT array are unit (ie all
+  // inner tensors' elements are 1.)
+  auto array = make_array<ArrayToT>(world, trange, make_tile);
+
+  // since all inner tensors are filled with 1.
+  double array_norm = std::sqrt(TA::volume(array));
+
+  BOOST_REQUIRE(array_norm == TA::norm2(array));
+  BOOST_REQUIRE(array_norm = std::sqrt(TA::dot(array, array)));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

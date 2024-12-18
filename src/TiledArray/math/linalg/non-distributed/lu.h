@@ -27,9 +27,9 @@
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/math/linalg/util.h>
-#include <TiledArray/math/linalg/rank-local.h>
 #include <TiledArray/conversions/eigen.h>
+#include <TiledArray/math/linalg/rank-local.h>
+#include <TiledArray/math/linalg/util.h>
 
 namespace TiledArray::math::linalg::non_distributed {
 
@@ -37,15 +37,14 @@ namespace TiledArray::math::linalg::non_distributed {
  *  @brief Solve a linear system via LU factorization
  */
 template <typename ArrayA, typename ArrayB>
-auto lu_solve(const ArrayA& A, const ArrayB& B, TiledRange x_trange = TiledRange()) {
+auto lu_solve(const ArrayA& A, const ArrayB& B,
+              TiledRange x_trange = TiledRange()) {
   (void)detail::array_traits<ArrayA>{};
   (void)detail::array_traits<ArrayB>{};
   auto& world = A.world();
   auto A_eig = detail::make_matrix(A);
   auto B_eig = detail::make_matrix(B);
-  if (world.rank() == 0) {
-    linalg::rank_local::lu_solve(A_eig, B_eig);
-  }
+  TA_LAPACK_ON_RANK_ZERO(lu_solve, world, A_eig, B_eig);
   world.gop.broadcast_serializable(B_eig, 0);
   if (x_trange.rank() == 0) x_trange = B.trange();
   return eigen_to_array<ArrayB>(world, x_trange, B_eig);
@@ -59,14 +58,12 @@ auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange()) {
   (void)detail::array_traits<Array>{};
   auto& world = A.world();
   auto A_eig = detail::make_matrix(A);
-  if (world.rank() == 0) {
-    linalg::rank_local::lu_inv(A_eig);
-  }
+  TA_LAPACK_ON_RANK_ZERO(lu_inv, world, A_eig);
   world.gop.broadcast_serializable(A_eig, 0);
   if (ainv_trange.rank() == 0) ainv_trange = A.trange();
   return eigen_to_array<Array>(A.world(), ainv_trange, A_eig);
 }
 
-}  // namespace TiledArray::math::linalg::lapack
+}  // namespace TiledArray::math::linalg::non_distributed
 
 #endif  // TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_LU_H__INCLUDED

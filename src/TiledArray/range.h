@@ -49,9 +49,12 @@ class Range {
   typedef Range Range_;                ///< This object type
   typedef TA_1INDEX_TYPE index1_type;  ///< 1-index type, to conform to
                                        ///< Tensor Working Group (TWG) spec
+  typedef std::make_signed_t<TA_1INDEX_TYPE>
+      index1_difference_type;  ///< type representing difference of 1-indices
   typedef container::svector<index1_type>
-      index_type;            ///< Coordinate index type, to conform to
-                             ///< TWG spec
+      index_type;  ///< Coordinate index type, to conform to
+                   ///< TWG spec
+  typedef container::svector<index1_difference_type> index_difference_type;
   typedef index_type index;  ///< Coordinate index type (deprecated)
   typedef detail::SizeArray<const index1_type>
       index_view_type;  ///< Non-owning variant of index_type
@@ -610,10 +613,10 @@ class Range {
 
   /// Permuting copy constructor
 
-  /// \param perm The permutation applied to other
-  /// \param other The range to be permuted and copied
+  /// \param perm The permutation applied to other; if `!perm` then no
+  /// permutation is applied \param other The range to be permuted and copied
   Range(const Permutation& perm, const Range_& other) {
-    TA_ASSERT(perm.size() == other.rank_);
+    TA_ASSERT(perm.size() == other.rank_ || !perm);
 
     if (other.rank_ > 0ul) {
       rank_ = other.rank_;
@@ -946,7 +949,7 @@ class Range {
     return *this;
   }
 
-  /// Shift the lower and upper bound of this range
+  /// Shifts the lower and upper bounds of this range
 
   /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the range
@@ -984,7 +987,7 @@ class Range {
     return *this;
   }
 
-  /// Shift the lower and upper bound of this range
+  /// Shifts the lower and upper bounds of this range
 
   /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the range
@@ -995,27 +998,28 @@ class Range {
     return inplace_shift<std::initializer_list<Index>>(bound_shift);
   }
 
-  /// Create a Range with shiften lower and upper bounds
+  /// Create a Range with shifted lower and upper bounds
 
   /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the range
   /// \return A shifted copy of this range
   template <typename Index,
             typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-  Range_ shift(const Index& bound_shift) {
+  [[nodiscard]] Range_ shift(const Index& bound_shift) const {
     Range_ result(*this);
     result.inplace_shift(bound_shift);
     return result;
   }
 
-  /// Create a Range with shiften lower and upper bounds
+  /// Create a Range with shifted lower and upper bounds
 
   /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the range
   /// \return A shifted copy of this range
   template <typename Index,
             typename = std::enable_if_t<std::is_integral_v<Index>>>
-  Range_ shift(const std::initializer_list<Index>& bound_shift) {
+  [[nodiscard]] Range_ shift(
+      const std::initializer_list<Index>& bound_shift) const {
     Range_ result(*this);
     result.inplace_shift(bound_shift);
     return result;
@@ -1136,7 +1140,7 @@ class Range {
 
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& rank_;
+    ar & rank_;
     const auto four_x_rank = rank_ << 2;
     // read via madness::archive::wrap to be able to
     // - avoid having to serialize datavec_'s size
@@ -1148,7 +1152,7 @@ class Range {
       ar << madness::archive::wrap(datavec_.data(), four_x_rank);
     } else
       abort();  // unreachable
-    ar& offset_& volume_;
+    ar & offset_ & volume_;
   }
 
   void swap(Range_& other) {
@@ -1244,6 +1248,10 @@ class Range {
   }
 
 };  // class Range
+
+// lift Range::index_type and Range::index_view_type into user-land
+using Index = Range::index_type;
+using IndexView = Range::index_view_type;
 
 inline Range& Range::operator*=(const Permutation& perm) {
   TA_ASSERT(perm.size() == rank_);

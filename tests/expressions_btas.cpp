@@ -23,6 +23,8 @@
  *
  */
 
+#include <TiledArray/config.h>
+
 #ifdef TILEDARRAY_HAS_BTAS
 #include "expressions_fixture.h"
 

@@ -41,37 +41,52 @@
 
 namespace TiledArray {
 
+namespace detail {
+
+struct get_host_allocator {
+  umpire::Allocator& operator()();
+};
+
+}  // namespace detail
+
+namespace host {
+
 /**
- * hostEnv maintains the (host-side, as opposed to device-side) environment,
+ * Env maintains the (host-side, as opposed to device-side) environment,
  * such as memory allocators
  *
  * \note this is a Singleton
  */
-class hostEnv {
+class Env {
  public:
-  ~hostEnv() = default;
+  ~Env() = default;
 
-  hostEnv(const hostEnv&) = delete;
-  hostEnv(hostEnv&&) = delete;
-  hostEnv& operator=(const hostEnv&) = delete;
-  hostEnv& operator=(hostEnv&&) = delete;
+  Env(const Env&) = delete;
+  Env(Env&&) = delete;
+  Env& operator=(const Env&) = delete;
+  Env& operator=(Env&&) = delete;
 
   /// access the singleton instance; if not initialized will be
-  /// initialized via hostEnv::initialize() with the default params
-  static std::unique_ptr<hostEnv>& instance() {
+  /// initialized via Env::initialize() with the default params
+  static std::unique_ptr<Env>& instance() {
     if (!instance_accessor()) {
       initialize();
     }
     return instance_accessor();
   }
 
+  // clang-format off
   /// initialize the instance using explicit params
-  /// \param max_memory_size max amount of memory (bytes) that TiledArray
-  ///        can use for storage of TA::Tensor objects (these by default
+  /// \param world the world to use for initialization
+  /// \param host_alloc_limit the maximum total amount of memory (in bytes) that
+  ///        allocator returned by `this->host_allocator()` can allocate;
+  ///        this allocator is used by TiledArray for storage of TA::Tensor objects (these by default
   ///        store DistArray tile data and (if sparse) shape [default=2^40]
   /// \param page_size memory added to the pool in chunks of at least
   ///                  this size (bytes) [default=2^25]
-  static void initialize(const std::uint64_t max_memory_size = (1ul << 40),
+  // clang-format on
+  static void initialize(World& world = TiledArray::get_default_world(),
+                         const std::uint64_t host_alloc_limit = (1ul << 40),
                          const std::uint64_t page_size = (1ul << 25)) {
     static std::mutex mtx;  // to make initialize() reentrant
     std::scoped_lock lock{mtx};
@@ -92,14 +107,13 @@ class hostEnv {
       // use QuickPool for host memory allocation, with min grain of 1 page
       auto host_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
-              "SizeLimited_HOST", rm.getAllocator("HOST"), max_memory_size);
+              "SizeLimited_HOST", rm.getAllocator("HOST"), host_alloc_limit);
       auto host_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "QuickPool_SizeLimited_HOST", host_size_limited_alloc, page_size,
               page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
 
-      auto host_env = std::unique_ptr<hostEnv>(
-          new hostEnv(TiledArray::get_default_world(), host_dynamic_pool));
+      auto host_env = std::unique_ptr<Env>(new Env(world, host_dynamic_pool));
       instance_accessor() = std::move(host_env);
     }
   }
@@ -109,7 +123,7 @@ class hostEnv {
   /// @return an Umpire allocator that allocates from a
   ///         host memory pool
   /// @warning this is not a thread-safe allocator, should be only used when
-  ///          wrapped into umpire_allocator_impl
+  ///          wrapped into umpire_based_allocator_impl
   umpire::Allocator& host_allocator() { return host_allocator_; }
 
   // clang-format off
@@ -126,7 +140,7 @@ class hostEnv {
   }
 
  protected:
-  hostEnv(World& world, umpire::Allocator host_alloc)
+  Env(World& world, umpire::Allocator host_alloc)
       : world_(&world), host_allocator_(host_alloc) {}
 
  private:
@@ -134,14 +148,16 @@ class hostEnv {
   World* world_;
 
   // allocates from a dynamic, size-limited host memory pool
-  // N.B. not thread safe, so must be wrapped into umpire_allocator_impl
+  // N.B. not thread safe, so must be wrapped into umpire_based_allocator_impl
   umpire::Allocator host_allocator_;
 
-  inline static std::unique_ptr<hostEnv>& instance_accessor() {
-    static std::unique_ptr<hostEnv> instance_{nullptr};
+  inline static std::unique_ptr<Env>& instance_accessor() {
+    static std::unique_ptr<Env> instance_{nullptr};
     return instance_;
   }
 };
+
+}  // namespace host
 
 }  // namespace TiledArray
 

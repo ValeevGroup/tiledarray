@@ -75,8 +75,19 @@ cmd "source ci/openmpi.env"
 cmd "echo 'localhost slots=2' > /etc/openmpi/openmpi-default-hostfile"
 if [[ "$vars" =~ \"-DBLAS_PREFERENCE_LIST=IntelMKL ]]; then
   cmd "make -C /home/ValeevGroup install/intel-mkl"
-  cmd "source /opt/intel/mkl/bin/mklvars.sh intel64"
+  cmd "source /opt/intel/oneapi/mkl/latest/env/vars.sh"
   cmd "echo MKLROOT=\$MKLROOT"
+  # DevOps installs OneAPI MKL which requires OneAPI TBB ... although MKL bundles TBB
+  # the systemwide TBB package is found first + the MKL's TBB does not bundle
+  # so we can't discover it properly anyway
+  # unfortunately the default, libtbb-dev, package on ubuntu 20.04 is pre-OneAPI, so let's
+  # get rid of it + install "full" OneAPI TBB
+  if [[ "$vars" =~ \"-DIntelMKL_THREAD_LAYER=tbb ]]; then
+    cmd "(apt show libtbb2 && apt remove -y libtbb2) || echo \"no need to install libtbb2\""
+  fi
+  cmd "apt-get -yq install intel-oneapi-tbb-devel"
+  cmd "source /opt/intel/oneapi/tbb/latest/env/vars.sh"
+  cmd "echo TBBROOT=\$TBBROOT"
 fi
 if [[ "$vars" =~ \"-D([a-zA-Z]+_)?ENABLE_CUDA=(ON|TRUE|1|YES)\" ]]; then
   cmd "make -C /home/ValeevGroup install/cuda"

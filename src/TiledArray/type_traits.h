@@ -108,9 +108,9 @@ class LazyArrayTile;
     struct Derived : T, Fallback {};                                           \
                                                                                \
     template <class U>                                                         \
-    static No& test(decltype(U::Member)*);                                     \
+    static No &test(decltype(U::Member) *);                                    \
     template <typename U>                                                      \
-    static Yes& test(U*);                                                      \
+    static Yes &test(U *);                                                     \
                                                                                \
    public:                                                                     \
     static constexpr bool value =                                              \
@@ -141,9 +141,9 @@ class LazyArrayTile;
     struct Derived : T, Fallback {};                                          \
                                                                               \
     template <class U>                                                        \
-    static No& test(typename U::Type*);                                       \
+    static No &test(typename U::Type *);                                      \
     template <typename U>                                                     \
-    static Yes& test(U*);                                                     \
+    static Yes &test(U *);                                                    \
                                                                               \
    public:                                                                    \
     static constexpr bool value =                                             \
@@ -177,11 +177,11 @@ class LazyArrayTile;
     template <typename U, Result (U::*)(Args...) const>                        \
     struct CheckConst;                                                         \
     template <typename U>                                                      \
-    static Yes test_const(CheckConst<U, &U::Member>*);                         \
+    static Yes test_const(CheckConst<U, &U::Member> *);                        \
     template <typename U>                                                      \
     static No test_const(...);                                                 \
     template <typename U>                                                      \
-    static Yes test_nonconst(Check<U, &U::Member>*);                           \
+    static Yes test_nonconst(Check<U, &U::Member> *);                          \
     template <typename U>                                                      \
     static No test_nonconst(...);                                              \
                                                                                \
@@ -215,7 +215,7 @@ class LazyArrayTile;
     using Yes = char;                                                          \
     using No = int;                                                            \
     template <typename U, typename... Args_>                                   \
-    static auto func(void*)                                                    \
+    static auto func(void *)                                                   \
         -> decltype(std::add_pointer_t<decltype(std::declval<U>().Member(      \
                         std::declval<Args_>()...))>{},                         \
                     Yes{});                                                    \
@@ -248,9 +248,10 @@ class LazyArrayTile;
     using Yes = char;                                                          \
     using No = int;                                                            \
     template <typename... Args_>                                               \
-    static auto func(void*) -> decltype(                                       \
-        std::add_pointer_t<decltype(Function(std::declval<Args_>()...))>{},    \
-        Yes{});                                                                \
+    static auto func(void *)                                                   \
+        -> decltype(std::add_pointer_t<                                        \
+                        decltype(Function(std::declval<Args_>()...))>{},       \
+                    Yes{});                                                    \
     template <typename...>                                                     \
     static No func(...);                                                       \
                                                                                \
@@ -277,7 +278,7 @@ class LazyArrayTile;
     using Yes = char;                                                          \
     using No = int;                                                            \
     template <typename... Args_>                                               \
-    static auto func(void*)                                                    \
+    static auto func(void *)                                                   \
         -> decltype(std::add_pointer_t<decltype(::std::Function(               \
                         std::declval<Args_>()...))>{},                         \
                     Yes{});                                                    \
@@ -321,6 +322,8 @@ GENERATE_HAS_MEMBER_TYPE(mapped_type)
 
 GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(size)
 GENERATE_HAS_MEMBER_FUNCTION(size)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(total_size)
+GENERATE_HAS_MEMBER_FUNCTION(total_size)
 GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(data)
 GENERATE_HAS_MEMBER_FUNCTION(data)
 GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(empty)
@@ -450,7 +453,7 @@ template <typename From, typename To>
 struct has_conversion_operator<
     From, To,
     typename std::enable_if<
-        is_type<decltype(std::declval<From>().operator To&())>::value>::type>
+        is_type<decltype(std::declval<From>().operator To &())>::value>::type>
     : std::true_type {};
 #else
 template <typename From, typename To>
@@ -472,7 +475,7 @@ struct has_conversion_operator {
   /* operator exists */
   template <typename A>
   static decltype(test(&A::operator To)) test(decltype(&A::operator To),
-                                              void*) {
+                                              void *) {
     /* Operator exists. What about sig? */
     typedef decltype(test(&A::operator To)) return_type;
     return return_type();
@@ -632,6 +635,42 @@ struct is_complex<std::complex<T>> : public std::true_type {};
 template <typename T>
 constexpr const bool is_complex_v = is_complex<T>::value;
 
+template <typename T, typename Enabler = void>
+struct complex_t_impl;
+
+template <typename T>
+struct complex_t_impl<std::complex<T>> {
+  using type = std::complex<T>;
+};
+
+template <typename T>
+struct complex_t_impl<T, std::enable_if_t<std::is_floating_point_v<T>>> {
+  using type = std::complex<T>;
+};
+
+/// evaluates to std::complex<T> if T is real, else T
+/// @note specialize complex_t_impl<T> to customize the behavior for type T
+template <typename T>
+using complex_t = typename complex_t_impl<T>::type;
+
+template <typename T, typename Enabler = void>
+struct real_t_impl;
+
+template <typename T>
+struct real_t_impl<std::complex<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct real_t_impl<T, std::enable_if_t<std::is_floating_point_v<T>>> {
+  using type = T;
+};
+
+/// evaluates to U if T is std::complex<U>, or if T is real then evaluates to T
+/// @note specialize real_t_impl<T> to customize the behavior for type T
+template <typename T>
+using real_t = typename real_t_impl<T>::type;
+
 template <typename T>
 struct is_numeric : public std::is_arithmetic<T> {};
 
@@ -658,6 +697,25 @@ struct is_scalar<std::complex<T>> : public std::false_type {};
 /// \c is_scalar_v<T> is an alias for \c is_scalar_v<T>
 template <typename T>
 constexpr const bool is_scalar_v = is_scalar<T>::value;
+
+template <typename T>
+struct is_blas_numeric : public std::false_type {};
+
+template <>
+struct is_blas_numeric<float> : public std::true_type {};
+
+template <>
+struct is_blas_numeric<double> : public std::true_type {};
+
+template <>
+struct is_blas_numeric<std::complex<float>> : public std::true_type {};
+
+template <>
+struct is_blas_numeric<std::complex<double>> : public std::true_type {};
+
+/// \c is_blas_numeric_v<T> is an alias for \c is_blas_numeric<T>::value
+template <typename T>
+constexpr const bool is_blas_numeric_v = is_blas_numeric<T>::value;
 
 /// Detect tiles used by \c ArrayEvalImpl
 
@@ -760,20 +818,200 @@ struct scalar_type<T, typename std::enable_if<!is_numeric_v<T>>::type>
 template <typename T>
 using scalar_t = typename TiledArray::detail::scalar_type<T>::type;
 
+/// is true type if `T::rebind_t<Element>` is defined
+template <typename T, typename Element, typename = void>
+struct has_rebind : std::false_type {};
+template <typename T, typename Element>
+struct has_rebind<T, Element,
+                  std::void_t<typename T::template rebind_t<Element>>>
+    : std::true_type {};
+
+/// alias to has_rebind<T, Element>::value
+template <typename T, typename Element>
+inline constexpr bool has_rebind_v = has_rebind<T, Element>::value;
+
+/// is true type if `T::rebind_numeric_t<Numeric>` is defined
+template <typename T, typename Numeric, typename = void>
+struct has_rebind_numeric : std::false_type {};
+template <typename T, typename Numeric>
+struct has_rebind_numeric<
+    T, Numeric, std::void_t<typename T::template rebind_numeric_t<Numeric>>>
+    : std::true_type {};
+
+/// alias to has_rebind_numeric<T, Element>::value
+template <typename T, typename Element>
+inline constexpr bool has_rebind_numeric_v =
+    has_rebind_numeric<T, Element>::value;
+
 template <typename T>
 struct is_strictly_ordered_helper {
   using Yes = char;
   using No = int;
   template <typename U>
-  static auto test(void*) -> decltype(
-      std::add_pointer_t<decltype(std::declval<U>() < std::declval<U>())>{},
-      Yes{});
+  static auto test(void *)
+      -> decltype(std::add_pointer_t<decltype(std::declval<U>() <
+                                              std::declval<U>())>{},
+                  Yes{});
   template <typename...>
   static No test(...);
 
  public:
   static constexpr const bool value = sizeof(test<T>(0)) == sizeof(Yes);
 };
+
+///////// is_less_than_comparable /////////
+
+template <typename T, typename = std::void_t<>>
+struct is_less_than_comparable : public std::false_type {};
+
+template <typename T>
+struct is_less_than_comparable<T,
+                               std::void_t<decltype(std::declval<const T &>() <
+                                                    std::declval<const T &>())>>
+    : public std::true_type {};
+
+template <typename T>
+static constexpr bool is_less_than_comparable_v =
+    is_less_than_comparable<T>::value;
+
+///////// are_less_than_comparable /////////
+
+template <typename T, typename U, typename = std::void_t<>>
+struct are_less_than_comparable : public std::false_type {};
+
+template <typename T, typename U>
+struct are_less_than_comparable<
+    T, U,
+    std::void_t<decltype(std::declval<const T &>() <
+                         std::declval<const U &>())>> : public std::true_type {
+};
+
+template <typename T, typename U>
+static constexpr bool are_less_than_comparable_v =
+    are_less_than_comparable<T, U>::value;
+
+///////// is_less_than_or_equal_comparable /////////
+
+template <typename T, typename = std::void_t<>>
+struct is_less_than_or_equal_comparable : public std::false_type {};
+
+template <typename T>
+struct is_less_than_or_equal_comparable<
+    T, std::void_t<decltype(std::declval<const T &>() <=
+                            std::declval<const T &>())>>
+    : public std::true_type {};
+
+template <typename T>
+static constexpr bool is_less_than_or_equal_comparable_v =
+    is_less_than_or_equal_comparable<T>::value;
+
+///////// are_less_than_comparable /////////
+
+template <typename T, typename U, typename = std::void_t<>>
+struct are_less_than_or_equal_comparable : public std::false_type {};
+
+template <typename T, typename U>
+struct are_less_than_or_equal_comparable<
+    T, U,
+    std::void_t<decltype(std::declval<const T &>() <=
+                         std::declval<const U &>())>> : public std::true_type {
+};
+
+template <typename T, typename U>
+static constexpr bool are_less_than_or_equal_comparable_v =
+    are_less_than_or_equal_comparable<T, U>::value;
+
+///////// is_greater_than_comparable /////////
+
+template <typename T, typename = std::void_t<>>
+struct is_greater_than_comparable : public std::false_type {};
+
+template <typename T>
+struct is_greater_than_comparable<
+    T, std::void_t<decltype(std::declval<const T &>() >
+                            std::declval<const T &>())>>
+    : public std::true_type {};
+
+template <typename T>
+static constexpr bool is_greater_than_comparable_v =
+    is_greater_than_comparable<T>::value;
+
+///////// are_greater_than_comparable /////////
+
+template <typename T, typename U, typename = std::void_t<>>
+struct are_greater_than_comparable : public std::false_type {};
+
+template <typename T, typename U>
+struct are_greater_than_comparable<
+    T, U,
+    std::void_t<decltype(std::declval<const T &>() >
+                         std::declval<const U &>())>> : public std::true_type {
+};
+
+template <typename T, typename U>
+static constexpr bool are_greater_than_comparable_v =
+    are_greater_than_comparable<T, U>::value;
+
+///////// is_greater_than_or_equal_comparable /////////
+
+template <typename T, typename = std::void_t<>>
+struct is_greater_than_or_equal_comparable : public std::false_type {};
+
+template <typename T>
+struct is_greater_than_or_equal_comparable<
+    T, std::void_t<decltype(std::declval<const T &>() >=
+                            std::declval<const T &>())>>
+    : public std::true_type {};
+
+template <typename T>
+static constexpr bool is_greater_than_or_equal_comparable_v =
+    is_greater_than_or_equal_comparable<T>::value;
+
+///////// are_greater_than_comparable /////////
+
+template <typename T, typename U, typename = std::void_t<>>
+struct are_greater_than_or_equal_comparable : public std::false_type {};
+
+template <typename T, typename U>
+struct are_greater_than_or_equal_comparable<
+    T, U,
+    std::void_t<decltype(std::declval<const T &>() >=
+                         std::declval<const U &>())>> : public std::true_type {
+};
+
+template <typename T, typename U>
+static constexpr bool are_greater_than_or_equal_comparable_v =
+    are_greater_than_or_equal_comparable<T, U>::value;
+
+///////// is_equality_comparable /////////
+
+template <typename T, typename = std::void_t<>>
+struct is_equality_comparable : public std::false_type {};
+
+template <typename T>
+struct is_equality_comparable<T,
+                              std::void_t<decltype(std::declval<const T &>() ==
+                                                   std::declval<const T &>())>>
+    : public std::true_type {};
+
+template <typename T>
+static constexpr bool is_equality_comparable_v =
+    is_equality_comparable<T>::value;
+
+///////// are_equality_comparable /////////
+
+template <typename T, typename U, typename = std::void_t<>>
+struct are_equality_comparable : public std::false_type {};
+
+template <typename T, typename U>
+struct are_equality_comparable<T, U,
+                               std::void_t<decltype(std::declval<const T &>() ==
+                                                    std::declval<const U &>())>>
+    : public std::true_type {};
+
+template <typename T, typename U>
+static constexpr bool are_equality_comparable_v =
+    are_equality_comparable<T, U>::value;
 
 /// \c is_strictly_ordered<T>::value is true if strict order is defined for T,
 /// i.e. "T < T" is defined
@@ -834,7 +1072,7 @@ struct is_std_gettable : std::false_type {};
 
 template <std::size_t I, typename T>
 struct is_std_gettable<
-    I, T, std::void_t<decltype(::std::get<I>(std::declval<const T&>()))>>
+    I, T, std::void_t<decltype(::std::get<I>(std::declval<const T &>()))>>
     : std::true_type {};
 
 template <std::size_t I, typename T>
@@ -845,7 +1083,7 @@ struct is_boost_gettable : std::false_type {};
 
 template <std::size_t I, typename T>
 struct is_boost_gettable<
-    I, T, std::void_t<decltype(::boost::get<I>(std::declval<const T&>()))>>
+    I, T, std::void_t<decltype(::boost::get<I>(std::declval<const T &>()))>>
     : std::true_type {};
 
 template <std::size_t I, typename T>
@@ -856,7 +1094,7 @@ constexpr const bool is_gettable_v =
     is_std_gettable_v<I, T> || is_boost_gettable_v<I, T>;
 
 template <std::size_t I, typename T>
-auto get(T&& t) {
+auto get(T &&t) {
   using boost::get;
   using std::get;
   return get<I>(std::forward<T>(t));
@@ -1017,22 +1255,22 @@ struct is_iterator<T, typename std::enable_if<
 };
 
 template <typename T>
-struct is_iterator<T*, void> : std::true_type {
+struct is_iterator<T *, void> : std::true_type {
   typedef std::random_access_iterator_tag iterator_category;
 };
 
 template <typename T>
-struct is_iterator<const T*, void> : std::true_type {
+struct is_iterator<const T *, void> : std::true_type {
   typedef std::random_access_iterator_tag iterator_category;
 };
 
 template <typename T>
-struct is_iterator<T* const, void> : std::true_type {
+struct is_iterator<T *const, void> : std::true_type {
   typedef std::random_access_iterator_tag iterator_category;
 };
 
 template <typename T>
-struct is_iterator<const T* const, void> : std::true_type {
+struct is_iterator<const T *const, void> : std::true_type {
   typedef std::random_access_iterator_tag iterator_category;
 };
 
@@ -1071,8 +1309,8 @@ template <typename T, typename Enabler = void>
 struct is_range : std::false_type {};
 
 template <typename T>
-struct is_range<T, std::void_t<decltype(std::begin(std::declval<T&>()),
-                                        std::end(std::declval<T&>()))>>
+struct is_range<T, std::void_t<decltype(std::begin(std::declval<T &>()),
+                                        std::end(std::declval<T &>()))>>
     : std::true_type {};
 
 /// \c is_range_v<T> is an alias for \c is_range<T>::value
@@ -1087,7 +1325,7 @@ template <typename T, typename Enabler = void>
 struct is_sized_range : std::false_type {};
 
 template <typename T>
-struct is_sized_range<T, std::void_t<decltype(std::size(std::declval<T&>()))>>
+struct is_sized_range<T, std::void_t<decltype(std::size(std::declval<T &>()))>>
     : is_range<T> {};
 
 /// `is_sized_range_v<T>` is an alias for `is_sized_range<T>::value`
@@ -1102,9 +1340,8 @@ template <typename T, typename Enabler = void>
 struct is_contiguous_range : std::false_type {};
 
 template <typename T>
-struct is_contiguous_range<T,
-                           std::void_t<decltype(std::data(std::declval<T&>()))>>
-    : is_range<T> {};
+struct is_contiguous_range<
+    T, std::void_t<decltype(std::data(std::declval<T &>()))>> : is_range<T> {};
 
 /// `is_contiguous_range_v<T>` is an alias for `is_contiguous_range<T>::value`
 template <typename T>
@@ -1115,14 +1352,14 @@ static constexpr bool is_contiguous_range_v = is_contiguous_range<T>::value;
 /// std::begin(T&)
 /// @warning will be replaced by C++20 ranges::iterator_t
 template <class T>
-using iterator_t = decltype(std::begin(std::declval<T&>()));
+using iterator_t = decltype(std::begin(std::declval<T &>()));
 
 /// @tparam T a range type
 /// @c value_t<T> is the value type, i.e. the type to which @c std::begin(T&)
 /// dereferences to
 /// @warning will be replaced by C++20 ranges::value_t
 template <class T>
-using value_t = remove_cvr_t<decltype(*std::begin(std::declval<T&>()))>;
+using value_t = remove_cvr_t<decltype(*std::begin(std::declval<T &>()))>;
 
 /// @tparam T a type
 /// `is_integral_range<T>::value` is true if @p T is a range type that
@@ -1176,8 +1413,9 @@ struct is_array : public std::false_type {};
 template <typename T, typename P>
 struct is_array<DistArray<T, P>> : public std::true_type {};
 
-template <typename T>
-static constexpr bool is_array_v = is_array<T>::value;
+template <typename... Ts>
+constexpr bool is_array_v =
+    (is_array<std::remove_reference_t<Ts>>::value && ...);
 
 template <typename T>
 using trange_t = typename T::trange_type;
@@ -1278,7 +1516,7 @@ static constexpr bool is_gpair_range_v = is_gpair_range<T>::value;
 template <typename GeneralizedPair,
           typename = std::enable_if_t<
               is_gpair_v<std::remove_reference_t<GeneralizedPair>>>>
-decltype(auto) at(GeneralizedPair&& v, std::size_t idx) {
+decltype(auto) at(GeneralizedPair &&v, std::size_t idx) {
   assert(idx == 0 || idx == 1);
   if constexpr (is_gettable_pair_v<std::decay_t<decltype(v)>>) {
 #if __cplusplus <= 201703L

@@ -62,6 +62,13 @@ class boxrange_iteration_order<TiledArray::Range> {
   static constexpr int value = row_major;
 };
 
+template <typename T, typename A>
+class is_tensor<TiledArray::Tensor<T, A>> : public std::true_type {};
+
+template <typename T, typename R, typename O>
+class is_tensor<TiledArray::detail::TensorInterface<T, R, O>>
+    : public std::true_type {};
+
 }  // namespace btas
 
 namespace TiledArray {
@@ -103,6 +110,34 @@ namespace btas {
 /// \param r2 The second Range to compare
 template <blas::Layout Order, typename... Args>
 inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
+                         const btas::RangeNd<Order, Args...>& r2) {
+  return (r1.rank() == r2.rank()) &&
+         std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
+                    r2.extent_data());
+}
+
+/// Test if a BTAS range and a TA range are congruent
+
+/// This function tests that the rank and extent of
+/// \c r1 are equal to those of \c r2.
+/// \param r1 The first Range to compare
+/// \param r2 The second Range to compare
+template <blas::Layout Order, typename... Args>
+inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
+                         const TiledArray::Range& r2) {
+  return (r1.rank() == r2.rank()) &&
+         std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
+                    r2.extent_data());
+}
+
+/// Test if a TA range and a BTAS range are congruent
+
+/// This function tests that the rank and extent of
+/// \c r1 are equal to those of \c r2.
+/// \param r1 The first Range to compare
+/// \param r2 The second Range to compare
+template <blas::Layout Order, typename... Args>
+inline bool is_congruent(const TiledArray::Range& r1,
                          const btas::RangeNd<Order, Args...>& r2) {
   return (r1.rank() == r2.rank()) &&
          std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
@@ -633,16 +668,19 @@ inline btas::Tensor<T, Range, Storage> gemm(
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
-  const integer lda =
-      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
-  const integer ldb =
-      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+  const integer lda = std::max(
+      integer{1},
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m));
+  const integer ldb = std::max(
+      integer{1},
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
 
   T factor_t(factor);
 
+  const integer ldc = std::max(integer{1}, n);
   TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m,
                                n, k, factor_t, left.data(), lda, right.data(),
-                               ldb, T(0), result.data(), n);
+                               ldb, T(0), result.data(), ldc);
 
   return result;
 }
@@ -708,16 +746,19 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
-  const integer lda =
-      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
-  const integer ldb =
-      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+  const integer lda = std::max(
+      integer{1},
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m));
+  const integer ldb = std::max(
+      integer{1},
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
 
   T factor_t(factor);
 
+  const integer ldc = std::max(integer{1}, n);
   TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m,
                                n, k, factor_t, left.data(), lda, right.data(),
-                               ldb, T(1), result.data(), n);
+                               ldb, T(1), result.data(), ldc);
 }
 
 // sum of the hyperdiagonal elements
@@ -839,6 +880,20 @@ struct ordinal_traits<btas::RangeNd<_Order, _Index, _Ordinal>> {
   static constexpr const auto type = _Order == ::blas::Layout::RowMajor
                                          ? OrdinalType::RowMajor
                                          : OrdinalType::ColMajor;
+};
+
+template <typename T, typename Range, typename Storage>
+struct real_t_impl<btas::Tensor<T, Range, Storage>> {
+  using type =
+      typename btas::Tensor<T, Range, Storage>::template rebind_numeric_t<
+          typename btas::Tensor<T, Range, Storage>::scalar_type>;
+};
+
+template <typename T, typename Range, typename Storage>
+struct complex_t_impl<btas::Tensor<T, Range, Storage>> {
+  using type =
+      typename btas::Tensor<T, Range, Storage>::template rebind_numeric_t<
+          std::complex<typename btas::Tensor<T, Range, Storage>::scalar_type>>;
 };
 
 }  // namespace detail

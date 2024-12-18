@@ -39,6 +39,9 @@ enum class TensorProduct {
   Contraction,
   /// free, fused, and contracted indices
   General,
+  /// no indices on one, free indices on the other; only used for inner index
+  /// products in mixed nested products (ToT x T)
+  Scale,
   /// invalid
   Invalid = -1
 };
@@ -57,6 +60,9 @@ inline TensorProduct compute_product_type(const IndexList& left_indices,
       result = TensorProduct::Hadamard;
     else
       result = TensorProduct::Contraction;
+  } else if ((left_indices && !right_indices) ||
+             (!left_indices && right_indices)) {  // used for ToT*T or T*ToT
+    result = TensorProduct::Scale;
   }
   return result;
 }
@@ -67,8 +73,10 @@ inline TensorProduct compute_product_type(const IndexList& left_indices,
                                           const IndexList& right_indices,
                                           const IndexList& target_indices) {
   auto result = compute_product_type(left_indices, right_indices);
-  if (result == TensorProduct::Hadamard)
+  if (result == TensorProduct::Hadamard) {
     TA_ASSERT(left_indices.is_permutation(target_indices));
+    TA_ASSERT(right_indices.is_permutation(target_indices));
+  }
   return result;
 }
 

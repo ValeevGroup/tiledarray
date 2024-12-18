@@ -64,17 +64,20 @@ class ContractReduceBase {
   using elem_muladd_op_type = void(result_value_type&, const left_value_type&,
                                    const right_value_type&);
 
-  static_assert(
-      TiledArray::detail::is_tensor_v<left_value_type> ==
-              TiledArray::detail::is_tensor_v<right_value_type> &&
-          TiledArray::detail::is_tensor_v<left_value_type> ==
-              TiledArray::detail::is_tensor_v<result_value_type>,
-      "ContractReduce can only handle plain tensors or nested tensors "
-      "(tensors-of-tensors); mixed contractions are not supported");
   static constexpr bool plain_tensors =
-      !(TiledArray::detail::is_tensor_v<left_value_type> &&
-        TiledArray::detail::is_tensor_v<right_value_type> &&
-        TiledArray::detail::is_tensor_v<result_value_type>);
+      !TiledArray::detail::is_nested_tensor_v<left_value_type> &&
+      !TiledArray::detail::is_nested_tensor_v<right_value_type> &&
+      !TiledArray::detail::is_nested_tensor_v<result_value_type>;
+  static constexpr bool nested_tensors =
+      TiledArray::detail::is_nested_tensor_v<left_value_type, right_value_type,
+                                             result_value_type>;
+  static constexpr bool mixed_tensors = !plain_tensors && !nested_tensors;
+  static_assert(!mixed_tensors ||
+                    (mixed_tensors &&
+                     TiledArray::detail::is_nested_tensor_v<result_value_type>),
+                "ContractReduce applied to 1 plain tensor and 1 nested tensor "
+                "must produce a nested tensor "
+                "(tensors-of-tensors)");
 
  private:
   struct Impl {
@@ -82,17 +85,18 @@ class ContractReduceBase {
         typename Perm = BipartitePermutation,
         typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
         typename = std::enable_if_t<
-            TiledArray::detail::is_permutation_v<Perm> &&
+            TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>> &&
             std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                   result_value_type&, const left_value_type&,
                                   const right_value_type&>>>
     Impl(const math::blas::Op left_op, const math::blas::Op right_op,
          const scalar_type alpha, const unsigned int result_rank,
          const unsigned int left_rank, const unsigned int right_rank,
-         const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
+         Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
         : gemm_helper_(left_op, right_op, result_rank, left_rank, right_rank),
           alpha_(alpha),
-          perm_(perm),
+          perm_(std::forward<Perm>(perm)),
           elem_muladd_op_(std::forward<ElemMultAddOp>(elem_muladd_op)) {
       // non-unit alpha must be absorbed into elem_muladd_op
       if (elem_muladd_op_) TA_ASSERT(alpha == scalar_type(1));
@@ -138,7 +142,7 @@ class ContractReduceBase {
       typename Perm = BipartitePermutation,
       typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
       typename = std::enable_if_t<
-          TiledArray::detail::is_permutation_v<Perm> &&
+          TiledArray::detail::is_permutation_v<std::remove_reference_t<Perm>> &&
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&>>>
@@ -146,10 +150,11 @@ class ContractReduceBase {
                      const math::blas::Op right_op, const scalar_type alpha,
                      const unsigned int result_rank,
                      const unsigned int left_rank,
-                     const unsigned int right_rank, const Perm& perm = {},
+                     const unsigned int right_rank, Perm&& perm = {},
                      ElemMultAddOp&& elem_muladd_op = {})
       : pimpl_(std::make_shared<Impl>(
-            left_op, right_op, alpha, result_rank, left_rank, right_rank, perm,
+            left_op, right_op, alpha, result_rank, left_rank, right_rank,
+            std::forward<Perm>(perm),
             std::forward<ElemMultAddOp>(elem_muladd_op))) {}
 
   /// Gemm meta data accessor
@@ -273,16 +278,16 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
       typename Perm = BipartitePermutation,
       typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
       typename = std::enable_if_t<
-          TiledArray::detail::is_permutation_v<Perm> &&
+          TiledArray::detail::is_permutation_v<std::remove_reference_t<Perm>> &&
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&>>>
   ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
+                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
-                            right_rank, perm,
+                            right_rank, std::forward<Perm>(perm),
                             std::forward<ElemMultAddOp>(elem_muladd_op)) {}
 
   /// Create a result type object
@@ -321,17 +326,16 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// \param[in] right The right-hand tile to be contracted
   void operator()(result_type& result, const first_argument_type& left,
                   const second_argument_type& right) const {
+    using TiledArray::empty;
+    using TiledArray::gemm;
+    if (empty(left) || empty(right)) return;
+
     if constexpr (!ContractReduceBase_::plain_tensors) {
       TA_ASSERT(this->elem_muladd_op());
-      // not yet implemented
-      using TiledArray::empty;
-      using TiledArray::gemm;
       gemm(result, left, right, ContractReduceBase_::gemm_helper(),
            this->elem_muladd_op());
     } else {  // plain tensors
       TA_ASSERT(!this->elem_muladd_op());
-      using TiledArray::empty;
-      using TiledArray::gemm;
       if (empty(result))
         result = gemm(left, right, ContractReduceBase_::factor(),
                       ContractReduceBase_::gemm_helper());
@@ -401,16 +405,16 @@ class ContractReduce<Result, Left, Right,
       typename Perm = BipartitePermutation,
       typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
       typename = std::enable_if_t<
-          TiledArray::detail::is_permutation_v<Perm> &&
+          TiledArray::detail::is_permutation_v<std::remove_reference_t<Perm>> &&
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&>>>
   ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
+                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
-                            right_rank, perm,
+                            right_rank, std::forward<Perm>(perm),
                             std::forward<ElemMultAddOp>(elem_muladd_op)) {}
 
   /// Create a result type object
@@ -527,16 +531,16 @@ class ContractReduce<Result, Left, Right,
       typename Perm = BipartitePermutation,
       typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
       typename = std::enable_if_t<
-          TiledArray::detail::is_permutation_v<Perm> &&
+          TiledArray::detail::is_permutation_v<std::remove_reference_t<Perm>> &&
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&>>>
   ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
+                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
-                            right_rank, perm,
+                            right_rank, std::forward<Perm>(perm),
                             std::forward<ElemMultAddOp>(elem_muladd_op)) {}
 
   /// Create a result type object

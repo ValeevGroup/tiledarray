@@ -275,4 +275,32 @@ BOOST_AUTO_TEST_CASE(convertibility) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(tensor) {
+  using TI = TiledArray::Tensor<int>;
+  using TTI = TiledArray::Tensor<TiledArray::Tensor<int>>;
+  using TTTI = TiledArray::Tensor<TiledArray::Tensor<TiledArray::Tensor<int>>>;
+  using TD = TiledArray::Tensor<double>;
+  using TTD = TiledArray::Tensor<TiledArray::Tensor<double>>;
+  using TTTD =
+      TiledArray::Tensor<TiledArray::Tensor<TiledArray::Tensor<double>>>;
+
+  using namespace TiledArray::detail;
+  BOOST_CHECK((is_tensor_v<TI>));
+  BOOST_CHECK(!(is_tensor_v<TI, TTI, TTTI, TD, TTD, TTTD>));
+  BOOST_CHECK((is_tensor_of_tensor_v<TTI, TTD>));
+  BOOST_CHECK(!(is_tensor_of_tensor_v<TTI, TTTI, TTD, TTTD>));
+  BOOST_CHECK((!is_tensor_of_tensor_v<TI>));
+  BOOST_CHECK((!is_tensor_of_tensor_v<TD>));
+  BOOST_CHECK((is_nested_tensor_v<TI, TTI, TTTI, TD, TTD, TTTD>));
+  BOOST_CHECK((!tensors_have_equal_nested_rank_v<int, double>));
+  BOOST_CHECK((tensors_have_equal_nested_rank_v<TI, TD>));
+  BOOST_CHECK((tensors_have_equal_nested_rank_v<TTI, TTD>));
+  BOOST_CHECK((tensors_have_equal_nested_rank_v<TTTI, TTTD>));
+  BOOST_CHECK((!tensors_have_equal_nested_rank_v<int, TD>));
+  BOOST_CHECK((!tensors_have_equal_nested_rank_v<TI, TTI>));
+  BOOST_CHECK((!tensors_have_equal_nested_rank_v<TI, TTTI>));
+  BOOST_CHECK((!tensors_have_equal_nested_rank_v<TTI, TTTI>));
+  BOOST_CHECK((!tensors_have_equal_nested_rank_v<TI, TD, TTD>));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -33,6 +33,8 @@
 #include <umpire/strategy/QuickPool.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
 
+#include <madness/world/archive.h>
+
 #include <memory>
 #include <stdexcept>
 
@@ -45,7 +47,7 @@ struct NullLock {
   static void unlock() {}
 };
 
-template <typename Tag = void>
+template <typename Tag>
 class MutexLock {
   static std::mutex mtx_;
 
@@ -69,7 +71,7 @@ std::mutex MutexLock<Tag>::mtx_;
 /// \tparam StaticLock a type providing static `lock()` and `unlock()` methods ;
 ///         defaults to NullLock which does not lock
 template <class T, class StaticLock = detail::NullLock>
-class umpire_allocator_impl {
+class umpire_based_allocator_impl {
  public:
   using value_type = T;
   using pointer = value_type*;
@@ -87,18 +89,20 @@ class umpire_allocator_impl {
       typename std::pointer_traits<pointer>::difference_type;
   using size_type = std::make_unsigned_t<difference_type>;
 
-  umpire_allocator_impl(umpire::Allocator* umpalloc) noexcept
+  umpire_based_allocator_impl(umpire::Allocator* umpalloc) noexcept
       : umpalloc_(umpalloc) {}
 
   template <class U>
-  umpire_allocator_impl(const umpire_allocator_impl<U>& rhs) noexcept
+  umpire_based_allocator_impl(
+      const umpire_based_allocator_impl<U, StaticLock>& rhs) noexcept
       : umpalloc_(rhs.umpalloc_) {}
 
   /// allocates memory using umpire dynamic pool
   pointer allocate(size_t n) {
     TA_ASSERT(umpalloc_);
 
-    size_t nbytes = n * sizeof(T);
+    // QuickPool::allocate_internal does not handle zero-size allocations
+    size_t nbytes = n == 0 ? 1 : n * sizeof(T);
     pointer result = nullptr;
     auto* allocation_strategy = umpalloc_->getAllocationStrategy();
 
@@ -117,7 +121,8 @@ class umpire_allocator_impl {
   void deallocate(pointer ptr, size_t n) {
     TA_ASSERT(umpalloc_);
 
-    const auto nbytes = n * sizeof(T);
+    // QuickPool::allocate_internal does not handle zero-size allocations
+    const auto nbytes = n == 0 ? 1 : n * sizeof(T);
     auto* allocation_strategy = umpalloc_->getAllocationStrategy();
 
     // N.B. with multiple threads would have to do this test in
@@ -135,17 +140,67 @@ class umpire_allocator_impl {
 
  private:
   umpire::Allocator* umpalloc_;
-};  // class umpire_allocator
+};  // class umpire_based_allocator_impl
 
-template <class T1, class T2>
-bool operator==(const umpire_allocator_impl<T1>& lhs,
-                const umpire_allocator_impl<T2>& rhs) noexcept {
+template <class T1, class T2, class StaticLock>
+bool operator==(
+    const umpire_based_allocator_impl<T1, StaticLock>& lhs,
+    const umpire_based_allocator_impl<T2, StaticLock>& rhs) noexcept {
   return lhs.umpire_allocator() == rhs.umpire_allocator();
 }
 
-template <class T1, class T2>
-bool operator!=(const umpire_allocator_impl<T1>& lhs,
-                const umpire_allocator_impl<T2>& rhs) noexcept {
+template <class T1, class T2, class StaticLock>
+bool operator!=(
+    const umpire_based_allocator_impl<T1, StaticLock>& lhs,
+    const umpire_based_allocator_impl<T2, StaticLock>& rhs) noexcept {
+  return !(lhs == rhs);
+}
+
+template <class T, class StaticLock, typename UmpireAllocatorAccessor>
+class umpire_based_allocator
+    : public umpire_based_allocator_impl<T, StaticLock> {
+ public:
+  using base_type = umpire_based_allocator_impl<T, StaticLock>;
+  using typename base_type::const_pointer;
+  using typename base_type::const_reference;
+  using typename base_type::pointer;
+  using typename base_type::reference;
+  using typename base_type::value_type;
+
+  umpire_based_allocator() noexcept : base_type(&UmpireAllocatorAccessor{}()) {}
+
+  template <class U>
+  umpire_based_allocator(
+      const umpire_based_allocator<U, StaticLock, UmpireAllocatorAccessor>&
+          rhs) noexcept
+      : base_type(
+            static_cast<const umpire_based_allocator_impl<U, StaticLock>&>(
+                rhs)) {}
+
+  template <typename T1, typename T2, class StaticLock_,
+            typename UmpireAllocatorAccessor_>
+  friend bool operator==(
+      const umpire_based_allocator<T1, StaticLock_, UmpireAllocatorAccessor_>&
+          lhs,
+      const umpire_based_allocator<T2, StaticLock_, UmpireAllocatorAccessor_>&
+          rhs) noexcept;
+};  // class umpire_based_allocator
+
+template <class T1, class T2, class StaticLock,
+          typename UmpireAllocatorAccessor>
+bool operator==(
+    const umpire_based_allocator<T1, StaticLock, UmpireAllocatorAccessor>& lhs,
+    const umpire_based_allocator<T2, StaticLock, UmpireAllocatorAccessor>&
+        rhs) noexcept {
+  return lhs.umpire_allocator() == rhs.umpire_allocator();
+}
+
+template <class T1, class T2, class StaticLock,
+          typename UmpireAllocatorAccessor>
+bool operator!=(
+    const umpire_based_allocator<T1, StaticLock, UmpireAllocatorAccessor>& lhs,
+    const umpire_based_allocator<T2, StaticLock, UmpireAllocatorAccessor>&
+        rhs) noexcept {
   return !(lhs == rhs);
 }
 
@@ -169,6 +224,9 @@ class default_init_allocator : public A {
 
   using A::A;
 
+  default_init_allocator(A const& a) noexcept : A(a) {}
+  default_init_allocator(A&& a) noexcept : A(std::move(a)) {}
+
   template <typename U>
   void construct(U* ptr) noexcept(
       std::is_nothrow_default_constructible<U>::value) {
@@ -182,4 +240,85 @@ class default_init_allocator : public A {
 
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_CUDA_UM_ALLOCATOR_H___INCLUDED
+namespace madness {
+namespace archive {
+
+template <class Archive, class T, class StaticLock>
+struct ArchiveLoadImpl<Archive,
+                       TiledArray::umpire_based_allocator_impl<T, StaticLock>> {
+  static inline void load(
+      const Archive& ar,
+      TiledArray::umpire_based_allocator_impl<T, StaticLock>& allocator) {
+    std::string allocator_name;
+    ar & allocator_name;
+    allocator = TiledArray::umpire_based_allocator_impl<T, StaticLock>(
+        umpire::ResourceManager::getInstance().getAllocator(allocator_name));
+  }
+};
+
+template <class Archive, class T, class StaticLock>
+struct ArchiveStoreImpl<
+    Archive, TiledArray::umpire_based_allocator_impl<T, StaticLock>> {
+  static inline void store(
+      const Archive& ar,
+      const TiledArray::umpire_based_allocator_impl<T, StaticLock>& allocator) {
+    ar & allocator.umpire_allocator()->getName();
+  }
+};
+
+template <class Archive, typename T, typename A>
+struct ArchiveLoadImpl<Archive, TiledArray::default_init_allocator<T, A>> {
+  static inline void load(const Archive& ar,
+                          TiledArray::default_init_allocator<T, A>& allocator) {
+    if constexpr (!std::allocator_traits<A>::is_always_equal::value) {
+      A base_allocator;
+      ar & base_allocator;
+      allocator = TiledArray::default_init_allocator<T, A>(base_allocator);
+    }
+  }
+};
+
+template <class Archive, typename T, typename A>
+struct ArchiveStoreImpl<Archive, TiledArray::default_init_allocator<T, A>> {
+  static inline void store(
+      const Archive& ar,
+      const TiledArray::default_init_allocator<T, A>& allocator) {
+    if constexpr (!std::allocator_traits<A>::is_always_equal::value) {
+      ar& static_cast<const A&>(allocator);
+    }
+  }
+};
+
+}  // namespace archive
+}  // namespace madness
+
+namespace madness {
+namespace archive {
+
+template <class Archive, class T, class StaticLock,
+          typename UmpireAllocatorAccessor>
+struct ArchiveLoadImpl<Archive, TiledArray::umpire_based_allocator<
+                                    T, StaticLock, UmpireAllocatorAccessor>> {
+  static inline void load(
+      const Archive& ar,
+      TiledArray::umpire_based_allocator<T, StaticLock,
+                                         UmpireAllocatorAccessor>& allocator) {
+    allocator = TiledArray::umpire_based_allocator<T, StaticLock,
+                                                   UmpireAllocatorAccessor>{};
+  }
+};
+
+template <class Archive, class T, class StaticLock,
+          typename UmpireAllocatorAccessor>
+struct ArchiveStoreImpl<Archive, TiledArray::umpire_based_allocator<
+                                     T, StaticLock, UmpireAllocatorAccessor>> {
+  static inline void store(
+      const Archive& ar,
+      const TiledArray::umpire_based_allocator<
+          T, StaticLock, UmpireAllocatorAccessor>& allocator) {}
+};
+
+}  // namespace archive
+}  // namespace madness
+
+#endif  // TILEDARRAY_EXTERNAL_UMPIRE_H___INCLUDED

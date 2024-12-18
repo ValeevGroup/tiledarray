@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_CHECK_NO_THROW((Range1{1, 1}));
   BOOST_CHECK_NO_THROW(Range1(1, 1));
   BOOST_CHECK_EQUAL(Range1(1, 1).first, 1);
-  BOOST_CHECK_EQUAL(Range1(1, 1).first, 1);
+  BOOST_CHECK_EQUAL(Range1(1, 1).second, 1);
 
   BOOST_CHECK_NO_THROW((Range1{-11, 13}));
   BOOST_CHECK_EQUAL(Range1(-11, 13).first, -11);
@@ -86,6 +86,15 @@ BOOST_AUTO_TEST_CASE(accessors) {
   BOOST_CHECK_EQUAL(r.upbound(), 10);
   BOOST_CHECK_NO_THROW(r.extent());
   BOOST_CHECK_EQUAL(r.extent(), 9);
+
+  // corner case: empty range
+  Range1 r1{1, 1};
+  BOOST_CHECK_NO_THROW(r1.lobound());
+  BOOST_CHECK_EQUAL(r1.lobound(), 1);
+  BOOST_CHECK_NO_THROW(r1.upbound());
+  BOOST_CHECK_EQUAL(r1.upbound(), 1);
+  BOOST_CHECK_NO_THROW(r.extent());
+  BOOST_CHECK_EQUAL(r1.extent(), 0);
 }
 
 BOOST_AUTO_TEST_CASE(iteration) {
@@ -128,19 +137,56 @@ BOOST_AUTO_TEST_CASE(comparison) {
   BOOST_CHECK(r1 != r4);
 }
 
+BOOST_AUTO_TEST_CASE(shift) {
+  Range1 r0;
+  Range1 r0_plus_1;
+  BOOST_REQUIRE_NO_THROW(r0_plus_1 = r0.shift(1));
+  BOOST_CHECK_EQUAL(r0_plus_1, Range1(1, 1));
+  BOOST_REQUIRE_NO_THROW(r0_plus_1.inplace_shift(-1));
+  BOOST_CHECK_EQUAL(r0_plus_1, r0);
+
+  using index1_type = Range1::index1_type;
+  BOOST_CHECK_TA_ASSERT((Range1{std::numeric_limits<index1_type>::max() - 1,
+                                std::numeric_limits<index1_type>::max()}
+                             .inplace_shift(1)),
+                        Exception);
+  BOOST_CHECK_TA_ASSERT((Range1{std::numeric_limits<index1_type>::min(),
+                                std::numeric_limits<index1_type>::min() + 1}
+                             .inplace_shift(-1)),
+                        Exception);
+  Range1 tmp;
+  BOOST_CHECK_TA_ASSERT(
+      tmp = (Range1{std::numeric_limits<index1_type>::max() - 1,
+                    std::numeric_limits<index1_type>::max()}
+                 .shift(1)),
+      Exception);
+  BOOST_CHECK_TA_ASSERT(
+      tmp = (Range1{std::numeric_limits<index1_type>::min(),
+                    std::numeric_limits<index1_type>::min() + 1}
+                 .shift(-1)),
+      Exception);
+
+  Range1 r1{1, 3};
+  Range1 r1_minus_1;
+  BOOST_REQUIRE_NO_THROW(r1_minus_1 = r1.shift(-1));
+  BOOST_CHECK_EQUAL(r1_minus_1, Range1(0, 2));
+  BOOST_REQUIRE_NO_THROW(r1_minus_1.inplace_shift(1));
+  BOOST_CHECK_EQUAL(r1_minus_1, r1);
+}
+
 BOOST_AUTO_TEST_CASE(serialization) {
   Range1 r{1, 10};
 
   std::size_t buf_size = sizeof(Range1);
   unsigned char* buf = new unsigned char[buf_size];
   madness::archive::BufferOutputArchive oar(buf, buf_size);
-  oar& r;
+  oar & r;
   std::size_t nbyte = oar.size();
   oar.close();
 
   Range1 rs;
   madness::archive::BufferInputArchive iar(buf, nbyte);
-  iar& rs;
+  iar & rs;
   iar.close();
 
   delete[] buf;

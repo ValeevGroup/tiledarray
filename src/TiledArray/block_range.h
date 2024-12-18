@@ -85,7 +85,7 @@ class BlockRange : public Range {
       upper[d] = upper_bound_d;
       // Check input dimensions
       TA_ASSERT(lower[d] >= range.lobound(d));
-      TA_ASSERT(lower[d] < upper[d]);
+      TA_ASSERT(lower[d] <= upper[d]);
       TA_ASSERT(upper[d] <= range.upbound(d));
       extent[d] = upper[d] - lower[d];
       TA_ASSERT(extent[d] ==
@@ -132,7 +132,7 @@ class BlockRange : public Range {
       upper[d] = upper_bound_d;
       // Check input dimensions
       TA_ASSERT(lower[d] >= range.lobound(d));
-      TA_ASSERT(lower[d] < upper[d]);
+      TA_ASSERT(lower[d] <= upper[d]);
       TA_ASSERT(upper[d] <= range.upbound(d));
       extent[d] = upper[d] - lower[d];
       TA_ASSERT(extent[d] ==
@@ -177,9 +177,10 @@ class BlockRange : public Range {
   /// \param range the host Range
   /// \param lower_bound A sequence of lower bounds for each dimension
   /// \param upper_bound A sequence of upper bounds for each dimension
+  /// \note Zero-extent blocks along any mode is possible, i.e. `lower_bound[d] == upper_bound[d]` is supported
   /// \throw TiledArray::Exception When the size of \p lower_bound is not
   /// equal to that of \p upper_bound.
-  /// \throw TiledArray::Exception When `lower_bound[i] >= upper_bound[i]`
+  /// \throw TiledArray::Exception When `lower_bound[i] > upper_bound[i]`
   // clang-format on
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
@@ -204,9 +205,10 @@ class BlockRange : public Range {
   /// \param range the host Range
   /// \param lower_bound An initializer list of lower bounds for each dimension
   /// \param upper_bound An initializer list of upper bounds for each dimension
+  /// \note Zero-extent blocks along any mode is possible, i.e. `lower_bound[d] == upper_bound[d]` is supported
   /// \throw TiledArray::Exception When the size of \p lower_bound is not
   /// equal to that of \p upper_bound.
-  /// \throw TiledArray::Exception When `lower_bound[i] >= upper_bound[i]`
+  /// \throw TiledArray::Exception When `lower_bound[i] > upper_bound[i]`
   // clang-format on
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<std::is_integral_v<Index1> &&
@@ -247,7 +249,8 @@ class BlockRange : public Range {
   /// \endcode
   /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
   /// \param bounds A range of {lower,upper} bounds for each dimension
-  /// \throw TiledArray::Exception When `bounds[i].lower>=bounds[i].upper` for any \c i .
+  /// \note Zero-extent blocks along any mode is possible, i.e. `bounds[d].lower == bounds[d].upper` is supported
+  /// \throw TiledArray::Exception When `bounds[i].lower>bounds[i].upper` for any \c i .
   // clang-format on
   template <typename PairRange,
             typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
@@ -264,8 +267,9 @@ class BlockRange : public Range {
   ///   BlockRange br0(r, {std::make_pair(0,4), std::pair{1,6}, std::pair(2,8)});
   /// \endcode
   /// \tparam GPair a generalized pair of integral types
-  /// \param bound A range of {lower,upper} bounds for each dimension
-  /// \throw TiledArray::Exception When `bound[i].lower>=bound[i].upper` for any \c i .
+  /// \param bounds A range of {lower,upper} bounds for each dimension
+  /// \note Zero-extent blocks along any mode is possible, i.e. `bounds[d].lower == bounds[d].upper` is supported
+  /// \throw TiledArray::Exception When `bounds[i].lower>bounds[i].upper` for any \c i .
   // clang-format on
   template <typename GPair>
   BlockRange(const Range& range, const std::initializer_list<GPair>& bounds,
@@ -290,8 +294,9 @@ class BlockRange : public Range {
   ///   BlockRange br0(r, {{0,4}, {1,6}, {2,8}});
   /// \endcode
   /// \tparam Index An integral type
-  /// \param bound A range of {lower,upper} bounds for each dimension
-  /// \throw TiledArray::Exception When `bound[i].lower>=bound[i].upper` for any \c i .
+  /// \param bounds A range of {lower,upper} bounds for each dimension
+  /// \note Zero-extent blocks along any mode is possible, i.e. `bounds[d].lower == bounds[d].upper` is supported
+  /// \throw TiledArray::Exception When `bounds[i].lower>bounds[i].upper` for any \c i .
   // clang-format on
   template <typename Index,
             typename = std::enable_if_t<std::is_integral_v<Index>>>
@@ -354,6 +359,8 @@ class BlockRange : public Range {
   /// \return The ordinal index in the
   /// \throw TiledArray::Exception When \c index is not included in this range
   ordinal_type ordinal(ordinal_type ord) const {
+    // ordinals are useless for zero-volume ranges
+    TA_ASSERT(volume() != 0);
     // Check that ord is contained by this range.
     TA_ASSERT(Range::includes_ordinal(ord));
 
@@ -414,7 +421,7 @@ class BlockRange : public Range {
   template <typename Archive>
   void serialize(Archive& ar) const {
     Range::serialize(ar);
-    ar& block_offset_;
+    ar & block_offset_;
   }
 };  // BlockRange
 

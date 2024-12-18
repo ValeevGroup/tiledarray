@@ -40,12 +40,16 @@
 #include "TiledArray/tile.h"
 #include "TiledArray/tile_interface/trace.h"
 #include "expr_engine.h"
-#ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/cuda/cuda_task_fn.h>
-#include <TiledArray/external/cuda.h>
+#ifdef TILEDARRAY_HAS_DEVICE
+#include <TiledArray/device/device_task_fn.h>
+#include <TiledArray/external/device.h>
 #endif
 
 #include <TiledArray/tensor/type_traits.h>
+
+#include <range/v3/algorithm/equal.hpp>
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/zip_with.hpp>
 
 namespace TiledArray::expressions {
 
@@ -186,8 +190,8 @@ class Expr {
       typename A, typename I, typename T,
       typename std::enable_if<!std::is_same<typename A::value_type, T>::value &&
                               is_lazy_tile<T>::value
-#ifdef TILEDARRAY_HAS_CUDA
-                              && !::TiledArray::detail::is_cuda_tile_v<T>
+#ifdef TILEDARRAY_HAS_DEVICE
+                              && !::TiledArray::detail::is_device_tile_v<T>
 #endif
                               >::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
@@ -195,7 +199,7 @@ class Expr {
                          TiledArray::Cast<typename A::value_type, T>(), tile));
   }
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// Set an array tile with a lazy tile
 
   /// Spawn a task to evaluate a lazy tile and set the \a array tile at
@@ -210,9 +214,9 @@ class Expr {
             typename std::enable_if<
                 !std::is_same<typename A::value_type, T>::value &&
                 is_lazy_tile<T>::value &&
-                ::TiledArray::detail::is_cuda_tile_v<T>>::type* = nullptr>
+                ::TiledArray::detail::is_device_tile_v<T>>::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
-    array.set(index, madness::add_cuda_task(
+    array.set(index, madness::add_device_task(
                          array.world(),
                          TiledArray::Cast<typename A::value_type, T>(), tile));
   }
@@ -246,22 +250,22 @@ class Expr {
   template <
       typename A, typename I, typename T, typename Op,
       typename std::enable_if<!std::is_same<typename A::value_type, T>::value
-#ifdef TILEDARRAY_HAS_CUDA
-                              && !::TiledArray::detail::is_cuda_tile_v<T>
+#ifdef TILEDARRAY_HAS_DEVICE
+                              && !::TiledArray::detail::is_device_tile_v<T>
 #endif
                               >::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
                 const std::shared_ptr<Op>& op) const {
-    auto eval_tile_fn =
-        &Expr_::template eval_tile<typename A::value_type, const T&,
-                                   TiledArray::Cast<typename A::value_type, T>,
-                                   Op>;
-    array.set(index, array.world().taskq.add(
-                         eval_tile_fn, tile,
-                         TiledArray::Cast<typename A::value_type, T>(), op));
+    auto eval_tile_fn = &Expr_::template eval_tile<
+        typename A::value_type, const T&,
+        TiledArray::Cast<typename Op::argument_type, T>, Op>;
+    array.set(index,
+              array.world().taskq.add(
+                  eval_tile_fn, tile,
+                  TiledArray::Cast<typename Op::argument_type, T>(), op));
   }
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// Set an array tile with a lazy tile
 
   /// Spawn a task to evaluate a lazy tile and set the \a array tile at
@@ -275,16 +279,16 @@ class Expr {
   template <typename A, typename I, typename T, typename Op,
             typename std::enable_if<
                 !std::is_same<typename A::value_type, T>::value &&
-                ::TiledArray::detail::is_cuda_tile_v<T>>::type* = nullptr>
+                ::TiledArray::detail::is_device_tile_v<T>>::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
                 const std::shared_ptr<Op>& op) const {
-    auto eval_tile_fn =
-        &Expr_::template eval_tile<typename A::value_type, const T&,
-                                   TiledArray::Cast<typename A::value_type, T>,
-                                   Op>;
-    array.set(index, madness::add_cuda_task(
-                         array.world(), eval_tile_fn, tile,
-                         TiledArray::Cast<typename A::value_type, T>(), op));
+    auto eval_tile_fn = &Expr_::template eval_tile<
+        typename A::value_type, const T&,
+        TiledArray::Cast<typename Op::argument_type, T>, Op>;
+    array.set(index,
+              madness::add_device_task(
+                  array.world(), eval_tile_fn, tile,
+                  TiledArray::Cast<typename Op::argument_type, T>(), op));
   }
 #endif
 
@@ -303,8 +307,8 @@ class Expr {
   template <
       typename A, typename I, typename T, typename Op,
       typename std::enable_if<std::is_same<typename A::value_type, T>::value
-#ifdef TILEDARRAY_HAS_CUDA
-                              && !::TiledArray::detail::is_cuda_tile_v<T>
+#ifdef TILEDARRAY_HAS_DEVICE
+                              && !::TiledArray::detail::is_device_tile_v<T>
 #endif
                               >::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
@@ -317,7 +321,7 @@ class Expr {
     array.set(index, array.world().taskq.add(eval_tile_fn_ptr, tile, op));
   }
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 
   /// Spawn a task to evaluate a lazy tile and set the \a array tile at
   /// \c index with the result.
@@ -332,7 +336,7 @@ class Expr {
   template <typename A, typename I, typename T, typename Op,
             typename std::enable_if<
                 std::is_same<typename A::value_type, T>::value&& ::TiledArray::
-                    detail::is_cuda_tile_v<T>>::type* = nullptr>
+                    detail::is_device_tile_v<T>>::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
                 const std::shared_ptr<Op>& op) const {
     auto eval_tile_fn_ptr = &Expr_::template eval_tile<const T&, Op>;
@@ -340,8 +344,8 @@ class Expr {
     static_assert(madness::detail::function_traits<fn_ptr_type(
                       const T&, const std::shared_ptr<Op>&)>::value,
                   "ouch");
-    array.set(index, madness::add_cuda_task(array.world(), eval_tile_fn_ptr,
-                                            tile, op));
+    array.set(index, madness::add_device_task(array.world(), eval_tile_fn_ptr,
+                                              tile, op));
   }
 #endif
 
@@ -420,6 +424,10 @@ class Expr {
     dist_eval.wait();
     // Swap the new array with the result array object.
     result.swap(tsr.array());
+
+#if 0
+    std::cout << "array.id()=" << tsr.array().id() << " evaluated using dist_eval.id=" << dist_eval.id() << std::endl;
+#endif
   }
 
   /// Evaluate this object and assign it to \c tsr
@@ -456,6 +464,16 @@ class Expr {
     // Note: Unfortunately we cannot check that the array tiles have been
     // set even though this is a requirement.
 #endif  // NDEBUG
+
+    // Assignment to block expression uses trange of the array it is bounded to
+    // Assert that the user did not try to override the trange by accident using
+    // set_trange_lobound or at least that it matches tsr.array's trange
+    TA_ASSERT(!tsr.trange_lobound().has_value() ||
+              (ranges::equal(tsr.trange_lobound().value(),
+                             tsr.array()
+                                 .trange()
+                                 .make_tile_range(tsr.lower_bound())
+                                 .lobound())));
 
     // Get the target world.
     World& world = tsr.array().world();
@@ -500,10 +518,19 @@ class Expr {
     // Move the data from dist_eval into the sub-block of result array.
     // This step may involve communication when the tiles are moved from the
     // sub-block distribution to the array distribution.
-    {
+    // N.B. handle the corner case of zero-volume host array, then no data needs
+    // to be moved
+    if (tsr.array().trange().tiles_range().volume() != 0) {
       // N.B. must deep copy
-      const container::svector<long> shift =
-          tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound();
+      TA_ASSERT(tsr.array().trange().tiles_range().includes(tsr.lower_bound()));
+      // N.B. this expression's range,
+      // dist_eval.trange().elements_range().lobound(), may not be zero!
+      const auto shift =
+          ranges::views::zip_with(
+              [](auto a, auto b) { return a - b; },
+              tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound(),
+              dist_eval.trange().elements_range().lobound()) |
+          ranges::to<container::svector<long>>();
 
       std::shared_ptr<op_type> shift_op =
           std::make_shared<op_type>(shift_op_type(shift));
@@ -637,7 +664,20 @@ class Expr {
     right_dist_eval.eval();
 
 #ifndef NDEBUG
-    if (left_dist_eval.trange() != right_dist_eval.trange()) {
+    if (ignore_tile_position()) {
+      if (!is_congruent(left_dist_eval.trange(), right_dist_eval.trange())) {
+        if (TiledArray::get_default_world().rank() == 0) {
+          TA_USER_ERROR_MESSAGE(
+              "The TiledRanges of the left- and right-hand arguments the "
+              "binary "
+              "reduction are not congruent:"
+              << "\n    left  = " << left_dist_eval.trange()
+              << "\n    right = " << right_dist_eval.trange());
+        }
+        TA_EXCEPTION(
+            "The TiledRange objects of a binary reduction are not congruent.");
+      }
+    } else if (left_dist_eval.trange() != right_dist_eval.trange()) {
       if (TiledArray::get_default_world().rank() == 0) {
         TA_USER_ERROR_MESSAGE(
             "The TiledRanges of the left- and right-hand arguments the binary "
@@ -647,7 +687,7 @@ class Expr {
       }
 
       TA_EXCEPTION(
-          "The TiledRange objects of a binary expression are not equal.");
+          "The TiledRange objects of a binary reduction are not equal.");
     }
 #endif  // NDEBUG
 

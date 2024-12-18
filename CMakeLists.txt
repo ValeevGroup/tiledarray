@@ -78,25 +78,23 @@ enable_language(C)  # C needed even for basic platform introspection
 
 # Set install paths ============================================================
 
-set(TILEDARRAY_INSTALL_BINDIR "bin"
-    CACHE PATH "TiledArray binary install directory")
-set(TILEDARRAY_INSTALL_INCLUDEDIR "include"
-    CACHE PATH "TiledArray INCLUDE install directory")
-set(TILEDARRAY_INSTALL_LIBDIR "lib"
-    CACHE PATH "TiledArray LIB install directory")
-set(TILEDARRAY_INSTALL_SHAREDIR "share/tiledarray/${TILEDARRAY_EXT_VERSION}"
-    CACHE PATH "TiledArray DATA install directory")
-set(TILEDARRAY_INSTALL_DATADIR "${TILEDARRAY_INSTALL_SHAREDIR}/data"
-    CACHE PATH "TiledArray DATA install directory")
-set(TILEDARRAY_INSTALL_DOCDIR "${TILEDARRAY_INSTALL_SHAREDIR}/doc"
-    CACHE PATH "TiledArray DOC install directory")
-set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
-    CACHE PATH "TiledArray CMAKE install directory")
+include(GNUInstallDirs)
+set(TILEDARRAY_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}"
+        CACHE PATH "TiledArray binary install directory")
+set(TILEDARRAY_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}"
+        CACHE PATH "TiledArray INCLUDE install directory")
+set(TILEDARRAY_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}"
+        CACHE PATH "TiledArray LIB install directory")
+set(TILEDARRAY_INSTALL_DATADIR "${CMAKE_INSTALL_DATAROOTDIR}/tiledarray/${TILEDARRAY_EXT_VERSION}"
+        CACHE PATH "TiledArray DATA install directory")
+set(TILEDARRAY_INSTALL_DOCDIR "${TILEDARRAY_INSTALL_DATADIR}/doc"
+        CACHE PATH "TiledArray DOC install directory")
+set(TILEDARRAY_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/tiledarray"
+        CACHE PATH "TiledArray CMAKE install directory")
 
 # Add module directory and modules =============================================
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
 include(CMakePushCheckState)
-include(GNUInstallDirs)
 include(AppendFlags)
 include(RedefaultableOption)
 include(DetectMADNESSConfig)
@@ -111,6 +109,7 @@ include(LoadFetchContent)
 include(CMakeDependentOption)
 include(CMakePackageConfigHelpers)
 include(FeatureSummary)
+include(CTest)  # testing, defined BUILD_TESTING
 
 set(MPI_CXX_SKIP_MPICXX TRUE CACHE BOOL "MPI_CXX_SKIP_MPICXX")
 
@@ -130,10 +129,8 @@ add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks (TBB) supports pro
 option(ENABLE_CUDA "Enable use of CUDA with TiledArray" OFF)
 add_feature_info(CUDA ENABLE_CUDA "NVIDIA CUDA support for GPU")
 
-if(ENABLE_CUDA)
-  option(ENABLE_CUDA_ERROR_CHECK "TiledArray will always check errors in CUDA calls" ON)
-  add_feature_info(CUDA_ERROR_CHECK ENABLE_CUDA_ERROR_CHECK "Checks CUDA Error")
-endif()
+option(ENABLE_HIP "Enable use of HIP with TiledArray" OFF)
+add_feature_info(HIP ENABLE_HIP "AMD HIP/ROCm support for GPU")
 
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
 add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
@@ -168,11 +165,15 @@ if(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
   set(TA_TILE_OPS_LOG_LEVEL 1)
 endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 
-option(TA_RANGEV3 "Enable Range-V3 library" OFF)
-add_feature_info(TA_RANGEV3 TA_RANGEV3 "Range-V3 ranges library")
+option(TA_TRACE_GLOBAL_COMM_STATS "Enable tracing of communication stats of global objects (DistEval's and DIstributedStorage) TiledArray" OFF)
+add_feature_info(TASK_TRACE_DEBUG TA_TRACE_GLOBAL_COMM_STATS "Debug communication stats of global objects (DistEval's and DIstributedStorage) TiledArray")
+set(TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE ${TA_TRACE_GLOBAL_COMM_STATS})
 
 option(TA_TTG "Enable search/build of TTG library" OFF)
 add_feature_info(TA_TTG TA_TTG "TTG library")
+
+option(IntelMKL_FAIR_DISPATCH "Enable fair dispatch in Intel MKL" OFF)
+add_feature_info(IntelMKL_FAIR_DISPATCH IntelMKL_FAIR_DISPATCH "Use of fair dispatch in Intel MKL")
 
 # Enable shared library support options
 redefaultable_option(TA_ASSUMES_ASLR_DISABLED "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled" OFF)
@@ -288,13 +289,6 @@ set_property(
   CACHE TA_ASSERT_POLICY PROPERTY
   STRINGS TA_ASSERT_THROW TA_ASSERT_ABORT TA_ASSERT_IGNORE)
 
-# if building unit tests default to throw to be able to test TA_ASSERT statements
-if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW))
-  if (BUILD_TESTING)
-    message(FATAL_ERROR "TA_ASSERT_POLICY=${TA_ASSERT_POLICY} requires BUILD_TESTING=OFF")
-  endif(BUILD_TESTING)
-endif()
-
 ##########################
 # Include source dirctories
 ##########################
@@ -305,15 +299,29 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 ##########################
 add_custom_target(External-tiledarray)
 
+# ccache is an optional dep but must be found first so that the rest of dependencies can use it
+find_program(CCACHE ccache)
+if(CCACHE)
+  mark_as_advanced(CCACHE)
+  message (STATUS "Found ccache: ${CCACHE}")
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C++")
+  set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C")
+  set(CMAKE_CUDA_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling CUDA")
+endif(CCACHE)
+
 # required deps:
-# 1. CUDA first since others may depend on it
+# 1. derive runtime (CUDA/HIP/...) first since others may depend on it
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
+if(ENABLE_HIP)
+  include(external/hip.cmake)
+endif()
+include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchRangeV3.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchMADWorld.cmake)
 if (TA_TTG)
   include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchTTG.cmake)
 endif(TA_TTG)
-include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchMADWorld.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
 # the FetchContent-based version will not work due to BLT target name conflicts
@@ -331,28 +339,15 @@ if (ENABLE_WFN91_LINALG_DISCOVERY_KIT)
   include(FetchWfn91LinAlgModules)
   include(FindLinalg)
 endif(ENABLE_WFN91_LINALG_DISCOVERY_KIT)
-# BTAS does a better job of building and checking Boost since it uses Boost::serialization
-# it also memorized the location of its config for use from install tree
+# Boost is to be discovered by the top cmake project, and every (sub)project needs to make sure it has all of its targets
+include(external/boost.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBTAS.cmake)
-include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBoost.cmake)
 if(ENABLE_SCALAPACK)
   include(external/scalapackpp.cmake)
 endif()
 
-# optional deps:
-# 1. ccache
-find_program(CCACHE ccache)
-if(CCACHE)
-    mark_as_advanced(CCACHE)
-    message (STATUS "Found ccache: ${CCACHE}")
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C++")
-    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C")
-endif(CCACHE)
-# 2. range-v3
-if (TA_RANGEV3)
-  include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchRangeV3.cmake)
-endif(TA_RANGEV3)
-# 3. TTG
+# other optional deps:
+# 2. TTG
 # N.B. make sure TA configures MADNESS correctly
 #if (TA_TTG)
 #  include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchTTG.cmake)
@@ -369,7 +364,7 @@ add_subdirectory(doc)
 ##########################
 # checking/testing
 ##########################
-include(CTest)
+# N.B. CTest was included above
 if (BUILD_TESTING)
   set(_ctest_args -V -R "tiledarray/unit/run-np.*")
   set(_ctest_args_serial -V -R "tiledarray/unit/run-np-1")
@@ -377,6 +372,12 @@ if (BUILD_TESTING)
     list(APPEND _ctest_args --timeout ${TA_UT_CTEST_TIMEOUT})
     list(APPEND _ctest_args_serial --timeout ${TA_UT_CTEST_TIMEOUT})
   endif(DEFINED TA_UT_CTEST_TIMEOUT)
+
+  # if building unit tests need to configure with TA_ASSERT_POLICY=TA_ASSERT_THROW to be able to test TA_ASSERT statements
+  if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW))
+    message(WARNING "BUILD_TESTING=ON requires configuring with TA_ASSERT_POLICY=TA_ASSERT_THROW to engage REQUIRE_THROWS() tests; will skip these tests")
+  endif()
+
   add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} ${_ctest_args})
   add_custom_target_subproject(tiledarray check_serial USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} ${_ctest_args_serial})
   add_subdirectory(tests)
@@ -431,7 +432,7 @@ CONFIGURE_FILE(
 
 # install config files
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
-    DESTINATION lib/pkgconfig)
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 
 # include extra cmake files
 install(FILES
@@ -480,8 +481,11 @@ ADD_CUSTOM_TARGET(release
   COMMENT "Switch CMAKE_BUILD_TYPE to Release"
   )
 
-feature_summary(WHAT ALL
-                DESCRIPTION "=== TiledArray Package/Feature Info ===")
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  feature_summary(WHAT ALL
+                  DESCRIPTION "=== TiledArray Package/Feature Info ===")
+  feature_summary(FILENAME ${CMAKE_CURRENT_BINARY_DIR}/features.log WHAT ALL)
+endif()
 
 option(TA_PYTHON "Build TA python module" OFF)
 if (TA_PYTHON)

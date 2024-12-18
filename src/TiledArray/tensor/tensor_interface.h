@@ -110,6 +110,9 @@ class TensorInterface {
   template <typename X>
   using numeric_t = typename TiledArray::detail::numeric_type<X>::type;
 
+  template <typename X>
+  using value_t = typename std::remove_reference_t<X>::value_type;
+
   template <typename, typename, typename>
   friend class TensorInterface;
 
@@ -188,14 +191,16 @@ class TensorInterface {
     TA_ASSERT(data);
   }
 
-  template <typename T1, typename std::enable_if<
-                             detail::is_tensor<T1>::value>::type* = nullptr>
+  template <typename T1, typename std::enable_if<detail::is_nested_tensor<
+                             T1>::value>::type* = nullptr>
   TensorInterface_& operator=(const T1& other) {
-    TA_ASSERT(data_ != other.data());
+    if constexpr (std::is_same_v<numeric_type, numeric_t<T1>>) {
+      TA_ASSERT(data_ != other.data());
+    }
 
-    detail::inplace_tensor_op([](numeric_type& MADNESS_RESTRICT result,
-                                 const numeric_t<T1> arg) { result = arg; },
-                              *this, other);
+    detail::inplace_tensor_op(
+        [](value_type& MADNESS_RESTRICT result, auto&& arg) { result = arg; },
+        *this, other);
 
     return *this;
   }
@@ -217,41 +222,133 @@ class TensorInterface {
 
   /// Element subscript accessor
 
-  /// \param index The ordinal element index
-  /// \return A const reference to the element at \c index.
-  const_reference operator[](const ordinal_type index) const {
-    TA_ASSERT(range_.includes(index));
-    return data_[range_.ordinal(index)];
+  /// \param index_ordinal The ordinal element index
+  /// \return A const reference to the element at \c index_ordinal.
+  const_reference operator[](const ordinal_type index_ordinal) const {
+    TA_ASSERT(range_.includes(index_ordinal));
+    return data_[range_.ordinal(index_ordinal)];
   }
 
   /// Element subscript accessor
 
   /// \param index The ordinal element index
-  /// \return A const reference to the element at \c index.
-  reference operator[](const ordinal_type index) {
-    TA_ASSERT(range_.includes(index));
-    return data_[range_.ordinal(index)];
+  /// \return A const reference to the element at \c index_ordinal.
+  reference operator[](const ordinal_type index_ordinal) {
+    TA_ASSERT(range_.includes(index_ordinal));
+    return data_[range_.ordinal(index_ordinal)];
   }
 
   /// Element accessor
 
-  /// \tparam Index An integral type pack or a single coodinate index type
+  /// \param index_ordinal The ordinal element index
+  /// \return A const reference to the element at \c index_ordinal.
+  const_reference at_ordinal(const ordinal_type index_ordinal) const {
+    TA_ASSERT(range_.includes(index_ordinal));
+    return data_[range_.ordinal(index_ordinal)];
+  }
+
+  /// Element accessor
+
+  /// \param index_ordinal The ordinal element index
+  /// \return A const reference to the element at \c index_ordinal.
+  reference at_ordinal(const ordinal_type index_ordinal) {
+    TA_ASSERT(range_.includes(index_ordinal));
+    return data_[range_.ordinal(index_ordinal)];
+  }
+
+  /// Element accessor
+
+  /// \tparam Index An integral type pack or a single coordinate index type
   /// \param idx The index pack
   template <typename... Index>
   reference operator()(const Index&... idx) {
-    TA_ASSERT(range_.includes(idx...));
-    return data_[range_.ordinal(idx...)];
+    const auto ord = range_.ordinal(idx...);
+    return data_[ord];
   }
 
   /// Element accessor
 
-  /// \tparam Index An integral type pack or a single coodinate index type
+  /// \tparam Index An integral type pack or a single coordinate index type
   /// \param idx The index pack
   template <typename... Index>
   const_reference operator()(const Index&... idx) const {
-    TA_ASSERT(range_.includes(idx...));
-    return data_[range_.ordinal(idx...)];
+    const auto ord = range_.ordinal(idx...);
+    return data_[ord];
   }
+
+  /// \brief Tensor interface iterator type
+  ///
+  /// Iterates over elements of a tensor interface whose range is iterable
+  template <typename TI = TensorInterface_>
+  class Iterator : public boost::iterator_facade<
+                       Iterator<TI>,
+                       std::conditional_t<std::is_const_v<TI>,
+                                          const typename TI::value_type,
+                                          typename TI::value_type>,
+                       boost::forward_traversal_tag> {
+   public:
+    using range_iterator = typename TI::range_type::const_iterator;
+
+    Iterator(range_iterator idx_it, TI& ti) : idx_it(idx_it), ti(ti) {}
+
+   private:
+    range_iterator idx_it;
+    TI& ti;
+
+    friend class boost::iterator_core_access;
+
+    /// \brief increments this iterator
+    void increment() { ++idx_it; }
+
+    /// \brief Iterator comparer
+    /// \return true, if \c `*this==*other`
+    bool equal(Iterator const& other) const {
+      return this->idx_it == other.idx_it;
+    }
+
+    /// \brief dereferences this iterator
+    /// \return const reference to the current index
+    auto& dereference() const { return ti(*idx_it); }
+  };
+  friend class Iterator<TensorInterface_>;
+  friend class Iterator<const TensorInterface_>;
+
+  typedef Iterator<TensorInterface_> iterator;              ///< Iterator type
+  typedef Iterator<const TensorInterface_> const_iterator;  ///< Iterator type
+
+  /// Const begin iterator
+
+  /// \return An iterator that points to the beginning of this tensor view
+  const_iterator begin() const {
+    return const_iterator(range().begin(), *this);
+  }
+
+  /// Const end iterator
+
+  /// \return An iterator that points to the end of this tensor view
+  const_iterator end() const { return const_iterator(range().end(), *this); }
+
+  /// Nonconst begin iterator
+
+  /// \return An iterator that points to the beginning of this tensor view
+  iterator begin() { return iterator(range().begin(), *this); }
+
+  /// Nonconst begin iterator
+
+  /// \return An iterator that points to the beginning of this tensor view
+  iterator end() { return iterator(range().end(), *this); }
+
+  /// Const begin iterator
+
+  /// \return An iterator that points to the beginning of this tensor view
+  const_iterator cbegin() const {
+    return const_iterator(range().begin(), *this);
+  }
+
+  /// Const end iterator
+
+  /// \return An iterator that points to the end of this tensor view
+  const_iterator cend() const { return const_iterator(range().end(), *this); }
 
   /// Check for empty view
 
@@ -979,17 +1076,20 @@ class TensorInterface {
   /// \c i in the index range of \c this . \c result is initialized to \c
   /// identity . If HAVE_INTEL_TBB is defined, and this is a contiguous tensor,
   /// the reduction will be executed in an undefined order, otherwise will
-  /// execute in the order of increasing \c i . \tparam ReduceOp The reduction
-  /// operation type \tparam JoinOp The join operation type \param reduce_op The
-  /// element-wise reduction operation \param join_op The join result operation
+  /// execute in the order of increasing \c i .
+  /// \tparam ReduceOp The reduction operation type
+  /// \tparam JoinOp The join operation type
+  /// \tparam Identity a type that can be used as argument to ReduceOp
+  /// \param reduce_op The element-wise reduction operation
+  /// \param join_op The join result operation
   /// \param identity The identity value of the reduction
   /// \return The reduced value
-  template <typename ReduceOp, typename JoinOp>
-  numeric_type reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
-                      const numeric_type identity) const {
+  template <typename ReduceOp, typename JoinOp, typename Identity>
+  decltype(auto) reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
+                        Identity&& identity) const {
     return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
-                                 std::forward<JoinOp>(join_op), identity,
-                                 *this);
+                                 std::forward<JoinOp>(join_op),
+                                 std::forward<Identity>(identity), *this);
   }
 
   /// Binary reduction operation
@@ -999,19 +1099,24 @@ class TensorInterface {
   /// for each \c i in the index range of \c this . \c result is initialized to
   /// \c identity . If HAVE_INTEL_TBB is defined, and this is a contiguous
   /// tensor, the reduction will be executed in an undefined order, otherwise
-  /// will execute in the order of increasing \c i . \tparam Right The
-  /// right-hand argument tensor type \tparam ReduceOp The reduction operation
-  /// type \tparam JoinOp The join operation type \param other The right-hand
-  /// argument of the binary reduction \param reduce_op The element-wise
-  /// reduction operation \param join_op The join result operation \param
-  /// identity The identity value of the reduction \return The reduced value
+  /// will execute in the order of increasing \c i .
+  /// \tparam Right The right-hand argument tensor type
+  /// \tparam ReduceOp The reduction operation type
+  /// \tparam JoinOp The join operation type
+  /// \tparam Identity a type that can be used as argument to ReduceOp
+  /// \param other The right-hand argument of the binary reduction
+  /// \param reduce_op The element-wise reduction operation
+  /// \param join_op The join result operation
+  /// \param identity The identity value of the reduction
+  /// \return The reduced value
   template <typename Right, typename ReduceOp, typename JoinOp,
+            typename Identity,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  numeric_type reduce(const Right& other, ReduceOp&& reduce_op,
-                      JoinOp&& join_op, const numeric_type identity) const {
-    return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
-                                 std::forward<JoinOp>(join_op), identity, *this,
-                                 other);
+  decltype(auto) reduce(const Right& other, ReduceOp&& reduce_op,
+                        JoinOp&& join_op, Identity&& identity) const {
+    return detail::tensor_reduce(
+        std::forward<ReduceOp>(reduce_op), std::forward<JoinOp>(join_op),
+        std::forward<Identity>(identity), *this, other);
   }
 
   /// Sum of elements
@@ -1038,12 +1143,12 @@ class TensorInterface {
   scalar_type squared_norm() const {
     auto square_op = [](scalar_type& MADNESS_RESTRICT res,
                         const numeric_type arg) {
-      res += TiledArray::detail::norm(arg);
+      res += TiledArray::detail::squared_norm(arg);
     };
     auto sum_op = [](scalar_type& MADNESS_RESTRICT res, const scalar_type arg) {
       res += arg;
     };
-    return reduce(square_op, sum_op, numeric_type(0));
+    return reduce(square_op, sum_op, scalar_type(0));
   }
 
   /// Vector 2-norm
@@ -1077,27 +1182,29 @@ class TensorInterface {
   /// Absolute minimum element
 
   /// \return The minimum elements of this tensor
-  numeric_type abs_min() const {
-    auto abs_min_op = [](numeric_type& MADNESS_RESTRICT res,
+  scalar_type abs_min() const {
+    auto abs_min_op = [](scalar_type& MADNESS_RESTRICT res,
                          const numeric_type arg) {
       res = std::min(res, std::abs(arg));
     };
-    auto min_op = [](numeric_type& MADNESS_RESTRICT res,
-                     const numeric_type arg) { res = std::min(res, arg); };
-    return reduce(abs_min_op, min_op, std::numeric_limits<numeric_type>::max());
+    auto min_op = [](scalar_type& MADNESS_RESTRICT res, const scalar_type arg) {
+      res = std::min(res, arg);
+    };
+    return reduce(abs_min_op, min_op, std::numeric_limits<scalar_type>::max());
   }
 
   /// Absolute maximum element
 
   /// \return The maximum elements of this tensor
-  numeric_type abs_max() const {
-    auto abs_max_op = [](numeric_type& MADNESS_RESTRICT res,
+  scalar_type abs_max() const {
+    auto abs_max_op = [](scalar_type& MADNESS_RESTRICT res,
                          const numeric_type arg) {
       res = std::max(res, std::abs(arg));
     };
-    auto max_op = [](numeric_type& MADNESS_RESTRICT res,
-                     const numeric_type arg) { res = std::max(res, arg); };
-    return reduce(abs_max_op, max_op, numeric_type(0));
+    auto max_op = [](scalar_type& MADNESS_RESTRICT res, const scalar_type arg) {
+      res = std::max(res, arg);
+    };
+    return reduce(abs_max_op, max_op, scalar_type(0));
   }
 
   /// Vector dot product

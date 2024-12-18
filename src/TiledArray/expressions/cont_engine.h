@@ -94,9 +94,10 @@ class ContEngine : public BinaryEngine<Derived> {
   using BinaryEngine_::right_indices_;
   using BinaryEngine_::right_inner_permtype_;
   using BinaryEngine_::right_outer_permtype_;
+  using ExprEngine_::implicit_permute_inner_;
+  using ExprEngine_::implicit_permute_outer_;
   using ExprEngine_::indices_;
   using ExprEngine_::perm_;
-  using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
@@ -107,15 +108,26 @@ class ContEngine : public BinaryEngine<Derived> {
 
  protected:
   op_type op_;  ///< Tile operation
-  using tile_element_type = typename value_type::value_type;
-  std::function<void(tile_element_type&, const tile_element_type&,
-                     const tile_element_type&)>
-      inner_tile_nonreturn_op_;  ///< Tile element operation (only non-null for
-                                 ///< nested tensor expressions)
-  std::function<tile_element_type(const tile_element_type&,
-                                  const tile_element_type&)>
-      inner_tile_return_op_;  ///< Same as inner_tile_nonreturn_op_ but returns
-                              ///< the result
+
+  // tile types of the result and (after evaluation) left and right arguments
+  using result_tile_type = value_type;
+  using left_tile_type = typename EngineTrait<left_type>::eval_type;
+  using right_tile_type = typename EngineTrait<right_type>::eval_type;
+
+  // tile element types of the result and (after evaluation) left and right
+  // arguments
+  using result_tile_element_type = typename result_tile_type::value_type;
+  using left_tile_element_type = typename left_tile_type::value_type;
+  using right_tile_element_type = typename right_tile_type::value_type;
+
+  std::function<void(result_tile_element_type&, const left_tile_element_type&,
+                     const right_tile_element_type&)>
+      element_nonreturn_op_;  ///< Tile element operation (only non-null for
+                              ///< nested tensor expressions)
+  std::function<result_tile_element_type(const left_tile_element_type&,
+                                         const right_tile_element_type&)>
+      element_return_op_;  ///< Same as element_nonreturn_op_ but returns
+                           ///< the result
   TiledArray::detail::ProcGrid
       proc_grid_;    ///< Process grid for the contraction
   size_type K_ = 1;  ///< Inner dimension size
@@ -147,9 +159,10 @@ class ContEngine : public BinaryEngine<Derived> {
   TensorProduct inner_product_type() const {
     TA_ASSERT(inner_product_type_ !=
               TensorProduct::Invalid);  // init_indices() must initialize this
-    /// only Hadamard and contraction are supported now
+    /// only Hadamard, contraction, and scale are supported now
     TA_ASSERT(inner_product_type_ == TensorProduct::Hadamard ||
-              inner_product_type_ == TensorProduct::Contraction);
+              inner_product_type_ == TensorProduct::Contraction ||
+              inner_product_type_ == TensorProduct::Scale);
     return inner_product_type_;
   }
 
@@ -190,7 +203,7 @@ class ContEngine : public BinaryEngine<Derived> {
   void perm_indices(const BipartiteIndexList& target_indices) {
     // assert that init_indices has been called
     TA_ASSERT(left_.indices() && right_.indices());
-    if (permute_tiles_) {
+    if (!this->implicit_permute()) {
       this->template init_indices_<TensorProduct::Contraction>(target_indices);
 
       // propagate the indices down the tree, if needed
@@ -239,8 +252,8 @@ class ContEngine : public BinaryEngine<Derived> {
     // precondition checks
     // 1. if ToT inner tile op has been initialized
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      TA_ASSERT(inner_tile_nonreturn_op_);
-      TA_ASSERT(inner_tile_return_op_);
+      TA_ASSERT(element_nonreturn_op_);
+      TA_ASSERT(element_return_op_);
     }
 
     // Initialize children
@@ -250,41 +263,78 @@ class ContEngine : public BinaryEngine<Derived> {
     // Initialize the tile operation in this function because it is used to
     // evaluate the tiled range and shape.
 
-    const math::blas::Op left_op =
-        (left_outer_permtype_ == PermutationType::matrix_transpose
-             ? math::blas::Transpose
-             : math::blas::NoTranspose);
-    const math::blas::Op right_op =
-        (right_outer_permtype_ == PermutationType::matrix_transpose
-             ? math::blas::Transpose
-             : math::blas::NoTranspose);
+    const auto left_op = to_cblas_op(left_outer_permtype_);
+    const auto right_op = to_cblas_op(right_outer_permtype_);
 
+    // initialize perm_
+    this->init_perm(target_indices);
+
+    // initialize op_, trange_, and shape_ which only refer to the outer modes
     if (outer(target_indices) != outer(indices_)) {
+      const auto outer_perm = outer(perm_);
       // Initialize permuted structure
-      perm_ = ExprEngine_::make_perm(target_indices);
       if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-        op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
-                      outer_size(left_indices_), outer_size(right_indices_),
-                      (permute_tiles_ ? perm_ : BipartitePermutation{}));
+        op_ = op_type(
+            left_op, right_op, factor_, outer_size(indices_),
+            outer_size(left_indices_), outer_size(right_indices_),
+            (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}));
       } else {
+
+        auto make_total_perm = [this]() -> BipartitePermutation {
+          if (this->product_type() != TensorProduct::Contraction
+              || this->implicit_permute_inner_)
+            return this->implicit_permute_outer_
+                       ? BipartitePermutation()
+                       : BipartitePermutation(outer(this->perm_));
+
+          // Here,
+          // this->product_type() is Tensor::Contraction, and,
+          // this->implicit_permute_inner_ is false
+
+          return this->inner_product_type() == TensorProduct::Scale
+                     ? BipartitePermutation(outer(this->perm_))
+                     : this->perm_;
+        };
+
+        auto total_perm = make_total_perm();
+
         // factor_ is absorbed into inner_tile_nonreturn_op_
-        op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
-                      outer_size(left_indices_), outer_size(right_indices_),
-                      (permute_tiles_ ? perm_ : BipartitePermutation{}),
-                      this->inner_tile_nonreturn_op_);
+        op_ = op_type(
+            left_op, right_op, scalar_type(1), outer_size(indices_),
+            outer_size(left_indices_), outer_size(right_indices_),
+            total_perm,
+            this->element_nonreturn_op_);
       }
-      trange_ = ContEngine_::make_trange(outer(perm_));
-      shape_ = ContEngine_::make_shape(outer(perm_));
+      trange_ = ContEngine_::make_trange(outer_perm);
+      shape_ = ContEngine_::make_shape(outer_perm);
     } else {
       // Initialize non-permuted structure
+
       if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
         op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_));
       } else {
+
+        auto make_total_perm = [this]() -> BipartitePermutation {
+          if (this->product_type() != TensorProduct::Contraction
+              || this->implicit_permute_inner_)
+            return {};
+
+          // Here,
+          // this->product_type() is Tensor::Contraction, and,
+          // this->implicit_permute_inner_ is false
+
+          return this->inner_product_type() == TensorProduct::Scale
+                     ? BipartitePermutation(outer(this->perm_))
+                     : this->perm_;
+        };
+
+        auto total_perm = make_total_perm();
+
         // factor_ is absorbed into inner_tile_nonreturn_op_
         op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_),
-                      BipartitePermutation{}, this->inner_tile_nonreturn_op_);
+                      total_perm, this->element_nonreturn_op_);
       }
       trange_ = ContEngine_::make_trange();
       shape_ = ContEngine_::make_shape();
@@ -331,16 +381,26 @@ class ContEngine : public BinaryEngine<Derived> {
       n *= right_element_size[i];
     }
 
-    // Construct the process grid.
-    proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
+    // corner case: zero-volume result ... easier to skip proc_grid_
+    // construction alltogether
+    if (M == 0 || N == 0) {
+      left_.init_distribution(world, {});
+      right_.init_distribution(world, {});
+      ExprEngine_::init_distribution(
+          world, (pmap ? pmap : policy::default_pmap(*world, M * N)));
+    } else {  // M!=0 && N!=0
 
-    // Initialize children
-    left_.init_distribution(world, proc_grid_.make_row_phase_pmap(K_));
-    right_.init_distribution(world, proc_grid_.make_col_phase_pmap(K_));
+      // Construct the process grid.
+      proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
 
-    // Initialize the process map in not already defined
-    if (!pmap) pmap = proc_grid_.make_pmap();
-    ExprEngine_::init_distribution(world, pmap);
+      // Initialize children
+      left_.init_distribution(world, proc_grid_.make_row_phase_pmap(K_));
+      right_.init_distribution(world, proc_grid_.make_col_phase_pmap(K_));
+
+      // Initialize the process map if not already defined
+      if (!pmap) pmap = proc_grid_.make_pmap();
+      ExprEngine_::init_distribution(world, pmap);
+    }
   }
 
   /// Tiled range factory function
@@ -457,120 +517,189 @@ class ContEngine : public BinaryEngine<Derived> {
 
  protected:
   void init_inner_tile_op(const IndexList& inner_target_indices) {
-    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      using inner_tile_type = typename value_type::value_type;
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>) {
+      constexpr bool tot_x_tot = TiledArray::detail::is_tensor_of_tensor_v<
+          result_tile_type, left_tile_type, right_tile_type>;
       const auto inner_prod = this->inner_product_type();
       TA_ASSERT(inner_prod == TensorProduct::Contraction ||
-                inner_prod == TensorProduct::Hadamard);
+                inner_prod == TensorProduct::Hadamard ||
+                inner_prod == TensorProduct::Scale);
       if (inner_prod == TensorProduct::Contraction) {
-        using inner_tile_type = typename value_type::value_type;
-        using contract_inner_tile_type =
-            TiledArray::detail::ContractReduce<inner_tile_type, inner_tile_type,
-                                               inner_tile_type, scalar_type>;
-        // factor_ is absorbed into inner_tile_nonreturn_op_
-        auto contrreduce_op =
-            (inner_target_indices != inner(this->indices_))
-                ? contract_inner_tile_type(
-                      to_cblas_op(this->left_inner_permtype_),
-                      to_cblas_op(this->right_inner_permtype_), this->factor_,
-                      inner_size(this->indices_),
-                      inner_size(this->left_indices_),
-                      inner_size(this->right_indices_),
-                      (this->permute_tiles_ ? inner(this->perm_)
-                                            : Permutation{}))
-                : contract_inner_tile_type(
-                      to_cblas_op(this->left_inner_permtype_),
-                      to_cblas_op(this->right_inner_permtype_), this->factor_,
-                      inner_size(this->indices_),
-                      inner_size(this->left_indices_),
-                      inner_size(this->right_indices_));
-        this->inner_tile_nonreturn_op_ = [contrreduce_op](
-                                             inner_tile_type& result,
-                                             const inner_tile_type& left,
-                                             const inner_tile_type& right) {
-          contrreduce_op(result, left, right);
-        };
+        TA_ASSERT(tot_x_tot);
+        if constexpr (tot_x_tot) {
+          using op_type = TiledArray::detail::ContractReduce<
+              result_tile_element_type, left_tile_element_type,
+              right_tile_element_type, scalar_type>;
+          // factor_ is absorbed into inner_tile_nonreturn_op_
+          auto contrreduce_op =
+              (inner_target_indices != inner(this->indices_))
+                  ? op_type(to_cblas_op(this->left_inner_permtype_),
+                            to_cblas_op(this->right_inner_permtype_),
+                            this->factor_, inner_size(this->indices_),
+                            inner_size(this->left_indices_),
+                            inner_size(this->right_indices_),
+                            (!this->implicit_permute_inner_ ? inner(this->perm_)
+                                                            : Permutation{}))
+                  : op_type(to_cblas_op(this->left_inner_permtype_),
+                            to_cblas_op(this->right_inner_permtype_),
+                            this->factor_, inner_size(this->indices_),
+                            inner_size(this->left_indices_),
+                            inner_size(this->right_indices_));
+          this->element_nonreturn_op_ =
+              [contrreduce_op, permute_inner = this->product_type() !=
+                                                   TensorProduct::Contraction](
+                  result_tile_element_type& result,
+                  const left_tile_element_type& left,
+                  const right_tile_element_type& right) {
+                contrreduce_op(result, left, right);
+                // permutations of result are applied as "postprocessing"
+                if (permute_inner && !TA::empty(result))
+                  result = contrreduce_op(result);
+              };
+        }  // ToT x ToT
       } else if (inner_prod == TensorProduct::Hadamard) {
-        // inner tile op depends on the outer op ... e.g. if outer op
-        // is contract then inner must implement (ternary) multiply-add;
-        // if the outer is hadamard then the inner is binary multiply
-        const auto outer_prod = this->product_type();
-        if (this->factor_ == 1) {
-          using base_op_type =
-              TiledArray::detail::Mult<inner_tile_type, inner_tile_type,
-                                       inner_tile_type, false, false>;
-          using op_type = TiledArray::detail::BinaryWrapper<
-              base_op_type>;  // can't consume inputs if they are used multiple
-                              // times, e.g. when outer op is gemm
-          auto mult_op = (inner_target_indices != inner(this->indices_))
-                             ? op_type(base_op_type(), this->permute_tiles_
-                                                           ? inner(this->perm_)
-                                                           : Permutation{})
-                             : op_type(base_op_type());
-          this->inner_tile_nonreturn_op_ = [mult_op, outer_prod](
-                                               inner_tile_type& result,
-                                               const inner_tile_type& left,
-                                               const inner_tile_type& right) {
-            if (outer_prod == TensorProduct::Hadamard)
-              result = mult_op(left, right);
-            else {
-              TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
-                        outer_prod == TensorProduct::Contraction);
-              // there is currently no fused MultAdd ternary Op, only Add and
-              // Mult thus implement this as 2 separate steps
-              // TODO optimize by implementing (ternary) MultAdd
-              if (empty(result))
-                result = mult_op(left, right);
-              else {
-                auto result_increment = mult_op(left, right);
-                add_to(result, result_increment);
-              }
-            }
+        TA_ASSERT(tot_x_tot);
+        if constexpr (tot_x_tot) {
+          // inner tile op depends on the outer op ... e.g. if outer op
+          // is contract then inner must implement (ternary) multiply-add;
+          // if the outer is hadamard then the inner is binary multiply
+          const auto outer_prod = this->product_type();
+          if (this->factor_ == scalar_type{1}) {
+            using base_op_type =
+                TiledArray::detail::Mult<result_tile_element_type,
+                                         left_tile_element_type,
+                                         right_tile_element_type, false, false>;
+            using op_type = TiledArray::detail::BinaryWrapper<
+                base_op_type>;  // can't consume inputs if they are used
+                                // multiple times, e.g. when outer op is gemm
+            auto mult_op =
+                (inner_target_indices != inner(this->indices_))
+                    ? op_type(base_op_type(), !this->implicit_permute_inner_
+                                                  ? inner(this->perm_)
+                                                  : Permutation{})
+                    : op_type(base_op_type());
+            this->element_nonreturn_op_ =
+                [mult_op, outer_prod](result_tile_element_type& result,
+                                      const left_tile_element_type& left,
+                                      const right_tile_element_type& right) {
+                  if (outer_prod == TensorProduct::Hadamard)
+                    result = mult_op(left, right);
+                  else {
+                    TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
+                              outer_prod == TensorProduct::Contraction);
+                    // there is currently no fused MultAdd ternary Op, only Add
+                    // and Mult thus implement this as 2 separate steps
+                    // TODO optimize by implementing (ternary) MultAdd
+                    if (empty(result))
+                      result = mult_op(left, right);
+                    else {
+                      auto result_increment = mult_op(left, right);
+                      add_to(result, result_increment);
+                    }
+                  }
+                };
+          } else {
+            using base_op_type = TiledArray::detail::ScalMult<
+                result_tile_element_type, left_tile_element_type,
+                right_tile_element_type, scalar_type, false, false>;
+            using op_type = TiledArray::detail::BinaryWrapper<
+                base_op_type>;  // can't consume inputs if they are used
+                                // multiple times, e.g. when outer op is gemm
+            auto mult_op = (inner_target_indices != inner(this->indices_))
+                               ? op_type(base_op_type(this->factor_),
+                                         !this->implicit_permute_inner_
+                                             ? inner(this->perm_)
+                                             : Permutation{})
+                               : op_type(base_op_type(this->factor_));
+            this->element_nonreturn_op_ =
+                [mult_op, outer_prod](result_tile_element_type& result,
+                                      const left_tile_element_type& left,
+                                      const right_tile_element_type& right) {
+                  TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
+                            outer_prod == TensorProduct::Contraction);
+                  if (outer_prod == TensorProduct::Hadamard)
+                    result = mult_op(left, right);
+                  else {
+                    // there is currently no fused MultAdd ternary Op, only Add
+                    // and Mult thus implement this as 2 separate steps
+                    // TODO optimize by implementing (ternary) MultAdd
+                    if (empty(result))
+                      result = mult_op(left, right);
+                    else {
+                      auto result_increment = mult_op(left, right);
+                      add_to(result, result_increment);
+                    }
+                  }
+                };
+          }
+        }  // ToT x T or T x ToT
+      } else if (inner_prod == TensorProduct::Scale) {
+        TA_ASSERT(!tot_x_tot);
+        constexpr bool tot_x_t =
+            TiledArray::detail::is_tensor_of_tensor_v<result_tile_type,
+                                                      left_tile_type> &&
+            TiledArray::detail::is_tensor_v<right_tile_type>;
+        constexpr bool t_x_tot =
+            TiledArray::detail::is_tensor_of_tensor_v<result_tile_type,
+                                                      right_tile_type> &&
+            TiledArray::detail::is_tensor_v<left_tile_type>;
+        if constexpr (tot_x_t || t_x_tot) {
+          using arg_tile_element_type =
+              std::conditional_t<tot_x_t, left_tile_element_type,
+                                 right_tile_element_type>;
+          using scalar_type =
+              std::conditional_t<tot_x_t, right_tile_element_type,
+                                 left_tile_element_type>;
+
+          auto scal_op = [perm = !this->implicit_permute_inner_
+                                     ? inner(this->perm_)
+                                     : Permutation{}](
+                             const left_tile_element_type& left,
+                             const right_tile_element_type& right)
+              -> result_tile_element_type {
+            using TiledArray::scale;
+            if constexpr (tot_x_t) {
+              if (perm)
+                return scale(left, right, perm);
+              else
+                return scale(left, right);
+            } else if constexpr (t_x_tot) {
+              if (perm)
+                return scale(right, left, perm);
+              else
+                return scale(right, left);
+            } else
+              abort();  // unreachable
           };
-        } else {
-          using base_op_type =
-              TiledArray::detail::ScalMult<inner_tile_type, inner_tile_type,
-                                           inner_tile_type, scalar_type, false,
-                                           false>;
-          using op_type = TiledArray::detail::BinaryWrapper<
-              base_op_type>;  // can't consume inputs if they are used multiple
-                              // times, e.g. when outer op is gemm
-          auto mult_op = (inner_target_indices != inner(this->indices_))
-                             ? op_type(base_op_type(this->factor_),
-                                       this->permute_tiles_ ? inner(this->perm_)
-                                                            : Permutation{})
-                             : op_type(base_op_type(this->factor_));
-          this->inner_tile_nonreturn_op_ = [mult_op, outer_prod](
-                                               inner_tile_type& result,
-                                               const inner_tile_type& left,
-                                               const inner_tile_type& right) {
-            TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
-                      outer_prod == TensorProduct::Contraction);
-            if (outer_prod == TensorProduct::Hadamard)
-              result = mult_op(left, right);
-            else {
-              // there is currently no fused MultAdd ternary Op, only Add and
-              // Mult thus implement this as 2 separate steps
-              // TODO optimize by implementing (ternary) MultAdd
-              if (empty(result))
-                result = mult_op(left, right);
-              else {
-                auto result_increment = mult_op(left, right);
-                add_to(result, result_increment);
-              }
-            }
-          };
+          this->element_nonreturn_op_ =
+              [scal_op, outer_prod = (this->product_type())](
+                  result_tile_element_type& result,
+                  const left_tile_element_type& left,
+                  const right_tile_element_type& right) {
+                if (outer_prod == TensorProduct::Contraction) {
+                  if (empty(result))
+                    result = scal_op(left, right);
+                  else {
+                    auto result_increment = scal_op(left, right);
+                    add_to(result, result_increment);
+                  }
+                  // result += scal_op(left, right);
+                } else {
+                  result = scal_op(left, right);
+                }
+              };
         }
       } else
         abort();  // unsupported TensorProduct type
-      TA_ASSERT(inner_tile_nonreturn_op_);
-      this->inner_tile_return_op_ =
-          [inner_tile_nonreturn_op = this->inner_tile_nonreturn_op_](
-              const inner_tile_type& left, const inner_tile_type& right) {
-            inner_tile_type result;
-            inner_tile_nonreturn_op(result, left, right);
-            return result;
-          };
+      TA_ASSERT(element_nonreturn_op_);
+      this->element_return_op_ = [inner_tile_nonreturn_op =
+                                      this->element_nonreturn_op_](
+                                     const left_tile_element_type& left,
+                                     const right_tile_element_type& right) {
+        result_tile_element_type result;
+        inner_tile_nonreturn_op(result, left, right);
+        return result;
+      };
     }
   }
 

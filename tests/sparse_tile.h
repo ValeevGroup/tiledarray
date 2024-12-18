@@ -24,8 +24,6 @@
 #include <memory>
 #include <tuple>
 
-#include <tiledarray.h>
-
 #include <TiledArray/external/madness.h>
 
 // Array class
@@ -37,6 +35,8 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/policies/sparse_policy.h>
 
+#include <TiledArray/tile_interface/add.h>
+
 // sparse 2-dimensional matrix type, with tag type thrown in to make expression
 // engine work harder
 template <typename T, typename TagType = std::tuple<>>
@@ -47,6 +47,8 @@ class EigenSparseTile {
   typedef T value_type;                  // Element type
   typedef T numeric_type;  // The scalar type that is compatible with value_type
   typedef size_t size_type;  // Size type
+  typedef const T& const_reference;
+  typedef size_type ordinal_type;
   // other typedefs
   typedef Eigen::SparseMatrix<T, Eigen::RowMajor> matrix_type;
 
@@ -122,10 +124,49 @@ class EigenSparseTile {
   matrix_type& matrix() { return std::get<0>(*impl_); }
 
   /// data read-write accessor
-  template <typename Index>
+  template <typename Index, typename = std::enable_if_t<
+                                detail::is_integral_sized_range_v<Index>>>
   value_type& operator[](const Index& idx) {
     auto start = range().lobound_data();
-    return std::get<0>(*impl_).coeffRef(idx[0] - start[0], idx[1] - start[1]);
+    return matrix().coeffRef(idx[0] - start[0], idx[1] - start[1]);
+  }
+
+  /// data read-write accessor
+  template <typename Ordinal,
+            std::enable_if_t<std::is_integral_v<Ordinal>>* = nullptr>
+  value_type& operator[](const Ordinal& ord) {
+    auto idx = range().idx(ord);
+    auto start = range().lobound_data();
+    return matrix().coeffRef(idx[0] - start[0], idx[1] - start[1]);
+  }
+
+  /// data read-only accessor
+  template <typename Index>
+  std::enable_if_t<detail::is_integral_sized_range_v<Index>, const value_type&>
+  operator[](const Index& idx) const {
+    static const value_type zero = 0;
+    auto start = range().lobound_data();
+    auto* ptr = coeffPtr(idx[0] - start[0], idx[1] - start[1]);
+    return ptr == nullptr ? zero : *ptr;
+  }
+
+  /// data read-only accessor
+  template <typename Ordinal,
+            typename = std::enable_if_t<std::is_integral_v<Ordinal>>>
+  const value_type& operator[](const Ordinal& ord) const {
+    static const value_type zero = 0;
+    auto idx = range().idx(ord);
+    auto start = range().lobound_data();
+    auto* ptr = coeffPtr(idx[0] - start[0], idx[1] - start[1]);
+    return ptr == nullptr ? zero : *ptr;
+  }
+
+  const value_type& at_ordinal(const ordinal_type index_ordinal) const {
+    return this->operator[](index_ordinal);
+  }
+
+  value_type& at_ordinal(const ordinal_type index_ordinal) {
+    return this->operator[](index_ordinal);
   }
 
   /// Maximum # of elements in the tile
@@ -138,8 +179,8 @@ class EigenSparseTile {
 
   // output
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     if (impl_) {
       ar & true;
@@ -151,7 +192,7 @@ class EigenSparseTile {
         for (typename matrix_type::InnerIterator it(mat, k); it; ++it) {
           datavec.push_back(Eigen::Triplet<T>(it.row(), it.col(), it.value()));
         }
-      ar& datavec & this->range();
+      ar & datavec& this->range();
     } else {
       ar & false;
     }
@@ -159,15 +200,15 @@ class EigenSparseTile {
 
   // output
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     bool have_impl = false;
-    ar& have_impl;
+    ar & have_impl;
     if (have_impl) {
       std::vector<Eigen::Triplet<T>> datavec;
       range_type range;
-      ar& datavec& range;
+      ar & datavec & range;
       auto extents = range.extent();
       matrix_type mat(extents[0], extents[1]);
       mat.setFromTriplets(datavec.begin(), datavec.end());
@@ -191,6 +232,32 @@ class EigenSparseTile {
 
  private:
   std::shared_ptr<impl_type> impl_;
+
+  // pointer-based coeffRef
+  const value_type* coeffPtr(Eigen::Index row, Eigen::Index col) const {
+    auto& mat = matrix();
+    constexpr bool IsRowMajor =
+        std::decay_t<decltype(mat)>::Flags & Eigen::RowMajorBit ? 1 : 0;
+    using Eigen::Index;
+    const Index outer = IsRowMajor ? row : col;
+    const Index inner = IsRowMajor ? col : row;
+
+    auto* outerIndexPtr = mat.outerIndexPtr();
+    auto* innerNonZeros = mat.innerNonZeroPtr();
+    const auto start = outerIndexPtr[outer];
+    const auto end = innerNonZeros ? outerIndexPtr[outer] + innerNonZeros[outer]
+                                   : outerIndexPtr[outer + 1];
+    TA_ASSERT(end >= start &&
+              "you probably called coeffRef on a non finalized matrix");
+    if (end <= start) return nullptr;
+    const Index p = mat.data().searchLowerIndex(
+        start, end - 1,
+        (typename std::decay_t<decltype(mat)>::StorageIndex)inner);
+    if ((p < end) && (mat.data().index(p) == inner))
+      return &(mat.data().value(p));
+    else
+      return nullptr;
+  }
 
 };  // class EigenSparseTile
 
@@ -229,22 +296,22 @@ EigenSparseTile<T, TagType> add(const EigenSparseTile<T, TagType>& arg1,
                                      arg1.range());
 }
 
-// dense_result[i] = dense_arg1[i] + sparse_arg2[i]
-template <typename T, typename TagType>
-TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
-                          const EigenSparseTile<T, TagType>& arg2) {
-  TA_ASSERT(arg1.range() == arg2.range());
-
-  // this could be done better ...
-  return TiledArray::add(arg1, static_cast<TiledArray::Tensor<T>>(arg2));
-}
-
-// dense_result[i] = sparse_arg1[i] + dense_arg2[i]
-template <typename T, typename TagType>
-TiledArray::Tensor<T> add(const EigenSparseTile<T, TagType>& arg1,
-                          const TiledArray::Tensor<T>& arg2) {
-  return TiledArray::add(arg2, arg1);
-}
+//// dense_result[i] = dense_arg1[i] + sparse_arg2[i]
+// template <typename T, typename TagType>
+// TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
+//                           const EigenSparseTile<T, TagType>& arg2) {
+//   TA_ASSERT(arg1.range() == arg2.range());
+//
+//   // this could be done better ...
+//   return TiledArray::add(arg1, static_cast<TiledArray::Tensor<T>>(arg2));
+// }
+//
+//// dense_result[i] = sparse_arg1[i] + dense_arg2[i]
+// template <typename T, typename TagType>
+// TiledArray::Tensor<T> add(const EigenSparseTile<T, TagType>& arg1,
+//                           const TiledArray::Tensor<T>& arg2) {
+//   return TiledArray::add(arg2, static_cast<TiledArray::Tensor<T>>(arg1));
+// }
 
 // dense_result[perm ^ i] = dense_arg1[i] + sparse_arg2[i]
 template <
@@ -633,7 +700,7 @@ struct ArchiveLoadImpl<Archive, Eigen::Triplet<T>> {
   static inline void load(const Archive& ar, Eigen::Triplet<T>& obj) {
     int row, col;
     T value;
-    ar& row& col& value;
+    ar & row & col & value;
     obj = Eigen::Triplet<T>(row, col, value);
   }
 };
@@ -641,7 +708,7 @@ struct ArchiveLoadImpl<Archive, Eigen::Triplet<T>> {
 template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, Eigen::Triplet<T>> {
   static inline void store(const Archive& ar, const Eigen::Triplet<T>& obj) {
-    ar& obj.row() & obj.col() & obj.value();
+    ar & obj.row() & obj.col() & obj.value();
   }
 };
 }  // namespace archive

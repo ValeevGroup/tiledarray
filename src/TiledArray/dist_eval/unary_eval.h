@@ -74,7 +74,13 @@ class UnaryEvalImpl
                 const Perm& perm, const op_type& op)
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         arg_(arg),
-        op_(op) {}
+        op_(op)
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+        ,
+        arg_ntiles_used_(0)
+#endif
+  {
+  }
 
   /// Virtual destructor
   virtual ~UnaryEvalImpl() {}
@@ -85,7 +91,7 @@ class UnaryEvalImpl
   /// \return A \c Future to the tile at index i
   /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
   /// \throw TiledArray::Exception When tile \c i a zero tile.
-  virtual Future<value_type> get_tile(ordinal_type i) const {
+  Future<value_type> get_tile(ordinal_type i) const override {
     TA_ASSERT(TensorImpl_::is_local(i));
     TA_ASSERT(!TensorImpl_::is_zero(i));
     const auto source = arg_.owner(DistEvalImpl_::perm_index_to_source(i));
@@ -98,7 +104,7 @@ class UnaryEvalImpl
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(ordinal_type i) const { get_tile(i); }
+  void discard_tile(ordinal_type i) const override { get_tile(i); }
 
  private:
   /// Input tile argument type
@@ -111,22 +117,22 @@ class UnaryEvalImpl
 
   /// Task function for evaluating tiles
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
   /// \param i The tile index
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
-  std::enable_if_t<detail::is_cuda_tile_v<U>, void> eval_tile(
+  std::enable_if_t<detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, tile_argument_type tile) {
     // TODO avoid copy Op object
     auto result_tile =
-        madness::add_cuda_task(DistEvalImpl_::world(), op_, tile);
+        madness::add_device_task(DistEvalImpl_::world(), op_, tile);
     DistEvalImpl_::set_tile(i, result_tile);
   }
 
   /// \param i The tile index
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
-  std::enable_if_t<!detail::is_cuda_tile_v<U>, void> eval_tile(
+  std::enable_if_t<!detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, tile_argument_type tile) {
     DistEvalImpl_::set_tile(i, op_(tile));
   }
@@ -144,7 +150,7 @@ class UnaryEvalImpl
   /// until the tasks for the children are evaluated (not for the tasks of
   /// this object).
   /// \return The number of tiles that will be set by this process
-  virtual int internal_eval() {
+  int internal_eval() override {
     // Convert pimpl to this object type so it can be used in tasks
     std::shared_ptr<UnaryEvalImpl_> self =
         std::enable_shared_from_this<UnaryEvalImpl_>::shared_from_this();
@@ -152,10 +158,12 @@ class UnaryEvalImpl
     // Evaluate argument
     arg_.eval();
 
-    // Counter for the number of tasks submitted by this object
+    // Counter for the number of tasks that will use local tiles of arg_
     ordinal_type task_count = 0ul;
 
-    // Make sure all local tiles are present.
+    // now create tasks that will produce result tiles and push them to the
+    // destination N.B. data is pushed, rather than pulled, to be able to manage
+    // the lifetime of the argument
     const typename pmap_interface::const_iterator end = arg_.pmap()->end();
     typename pmap_interface::const_iterator it = arg_.pmap()->begin();
     for (; it != end; ++it) {
@@ -165,9 +173,11 @@ class UnaryEvalImpl
       if (!arg_.is_zero(index)) {
         // Get target tile index
         const auto target_index = DistEvalImpl_::perm_index_to_target(index);
+        TA_ASSERT(!this->is_zero(target_index));
 
         // Schedule tile evaluation task
-#ifdef TILEDARRAY_HAS_CUDA
+        TA_ASSERT(arg_.is_local(index));
+#ifdef TILEDARRAY_HAS_DEVICE
         TensorImpl_::world().taskq.add(self,
                                        &UnaryEvalImpl_::template eval_tile<>,
                                        target_index, arg_.get(index));
@@ -175,12 +185,18 @@ class UnaryEvalImpl
         TensorImpl_::world().taskq.add(self, &UnaryEvalImpl_::eval_tile,
                                        target_index, arg_.get(index));
 #endif
-
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+        arg_ntiles_used_++;
+#endif
         ++task_count;
       }
     }
 
     // Wait for local tiles of argument to be evaluated
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+    TA_ASSERT(arg_.local_nnz() == arg_ntiles_used_);
+    TA_ASSERT(arg_.task_count() >= arg_ntiles_used_);
+#endif  //
     arg_.wait();
 
     return task_count;
@@ -188,7 +204,14 @@ class UnaryEvalImpl
 
   arg_type arg_;  ///< Argument
   op_type op_;    ///< The unary tile operation
-};                // class UnaryEvalImpl
+
+#ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
+  // artifacts of tracing/debugging
+  mutable ordinal_type arg_ntiles_used_;  // # of tiles used from arg_ ; N.B. no
+                                          // tiles are discarded!
+#endif
+
+};  // class UnaryEvalImpl
 
 }  // namespace detail
 }  // namespace TiledArray

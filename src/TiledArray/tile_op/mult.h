@@ -128,17 +128,30 @@ class Mult {
 
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   result_type eval(left_type& first, const right_type& second) const {
-    TA_ASSERT(!element_op_);
-    using TiledArray::mult_to;
-    return mult_to(first, second);
+    if (!element_op_) {
+      using TiledArray::mult_to;
+      return mult_to(first, second);
+    } else {
+      // TODO figure out why this does not compiles!!!
+      //      using TiledArray::inplace_binary;
+      //      return inplace_binary(first, second, element_op_);
+      using TiledArray::binary;
+      return binary(first, second, element_op_);
+    }
   }
 
   template <bool LC, bool RC,
             typename std::enable_if<!LC && RC>::type* = nullptr>
   result_type eval(const left_type& first, right_type& second) const {
-    TA_ASSERT(!element_op_);
-    using TiledArray::mult_to;
-    return mult_to(second, first);
+    if (!element_op_) {
+      using TiledArray::mult_to;
+      return mult_to(second, first);
+    } else {  // WARNING: element_op_ might be noncommuting, so can't swap first
+              // and second! for GEMM could optimize, but can't introspect
+              // element_op_
+      using TiledArray::binary;
+      return binary(first, second, element_op_);
+    }
   }
 
   template <bool LC, bool RC, typename std::enable_if<!RC>::type* = nullptr>

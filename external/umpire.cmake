@@ -14,6 +14,21 @@ if(_UMPIRE_INSTALL_DIR)
 #    find_package(umpire REQUIRED)
     message(STATUS "Umpire found at ${_UMPIRE_INSTALL_DIR}")
 
+    add_library(TiledArray_UMPIRE INTERFACE)
+
+    set_target_properties(
+            TiledArray_UMPIRE
+            PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES
+            "${_UMPIRE_INSTALL_DIR}/include"
+            INTERFACE_LINK_LIBRARIES
+            "umpire"
+            INTERFACE_LINK_DIRECTORIES
+            "${_UMPIRE_INSTALL_DIR}/lib/"
+            )
+
+     install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)
+
 elseif(TA_EXPERT)
 
     message("** Umpire was not found")
@@ -48,11 +63,15 @@ else()
         set(enable_umpire_asserts ON)
     endif()
 
-    # as of now BLT only supports up to C++17, so limit CMAKE_CXX_STANDARD
+    # as of now BLT only supports up to C++20, so limit CMAKE_CXX_STANDARD
     set(BLT_CXX_STD ${CMAKE_CXX_STANDARD})
-    set(BLT_CXX_STD_MAX 17)
+    set(BLT_CXX_STD_MAX 20)
     if (BLT_CXX_STD GREATER ${BLT_CXX_STD_MAX})
         set(BLT_CXX_STD ${BLT_CXX_STD_MAX})
+    endif()
+
+    if (CMAKE_PREFIX_PATH)
+        set(UMPIRE_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
     endif()
 
     set(UMPIRE_CMAKE_ARGS
@@ -60,6 +79,7 @@ else()
         -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
         -DCMAKE_POSITION_INDEPENDENT_CODE=${CMAKE_POSITION_INDEPENDENT_CODE}
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_PREFIX_PATH=${UMPIRE_CMAKE_PREFIX_PATH}
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
         -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
@@ -82,6 +102,7 @@ else()
         -DENABLE_EXAMPLES=OFF
         -DENABLE_LOGGING=OFF
         -DENABLE_ASSERTS=${enable_umpire_asserts}
+        -DENABLE_CLANGFORMAT=OFF
         )
 
     # caveat: on recent Ubuntu default libstdc++ provides filesystem, but if using older gcc (gcc-8) must link against
@@ -102,14 +123,41 @@ else()
                 -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
                 )
         if (DEFINED CMAKE_CUDA_ARCHITECTURES)
-            list(APPEND UMPIRE_CMAKE_ARGS -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES})
+            list(APPEND UMPIRE_CMAKE_ARGS "-DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES}")
         endif(DEFINED CMAKE_CUDA_ARCHITECTURES)
+        # BLT will need FindCUDA until https://github.com/LLNL/blt/pull/585 is merged
+        # with CMake 3.28.1 needs to set CMP0146 to OLD
+        if (POLICY CMP0146)
+            list(APPEND UMPIRE_CMAKE_ARGS -DCMAKE_POLICY_DEFAULT_CMP0146=OLD)
+        endif()
+        # as of CMake 3.28+ FindCUDA seems to require CUDA_TOOLKIT_ROOT_DIR to be defined
+        if (DEFINED CUDA_TOOLKIT_ROOT_DIR)
+            list(APPEND UMPIRE_CMAKE_ARGS "-DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}")
+        endif()
     endif(ENABLE_CUDA)
+    if (ENABLE_HIP)
+        list(APPEND UMPIRE_CMAKE_ARGS
+                -DENABLE_HIP=ON
+                -DCMAKE_HIP_COMPILER=${CMAKE_HIP_COMPILER}
+                -DCMAKE_HIP_STANDARD=${CMAKE_HIP_STANDARD}
+                -DCMAKE_HIP_EXTENSIONS=${CMAKE_HIP_EXTENSIONS}
+        )
+        if (DEFINED CMAKE_HIP_ARCHITECTURES)
+            list(APPEND UMPIRE_CMAKE_ARGS "-DCMAKE_HIP_ARCHITECTURES=${CMAKE_HIP_ARCHITECTURES}")
+        endif(DEFINED CMAKE_HIP_ARCHITECTURES)
+    endif(ENABLE_HIP)
     if (CMAKE_TOOLCHAIN_FILE)
         set(UMPIRE_CMAKE_ARGS "${UMPIRE_CMAKE_ARGS}"
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
             )
     endif(CMAKE_TOOLCHAIN_FILE)
+
+    foreach(lang C CXX CUDA)
+        if (DEFINED CMAKE_${lang}_COMPILER_LAUNCHER)
+            list(APPEND UMPIRE_CMAKE_ARGS
+                    "-DCMAKE_${lang}_COMPILER_LAUNCHER=${CMAKE_${lang}_COMPILER_LAUNCHER}")
+        endif()
+    endforeach()
 
     if (BUILD_SHARED_LIBS)
         set(UMPIRE_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
@@ -122,7 +170,7 @@ else()
     message(STATUS "custom target Umpire is expected to build these byproducts: ${UMPIRE_BUILD_BYPRODUCTS}")
 
     ExternalProject_Add(Umpire
-            PREFIX ${CMAKE_INSTALL_PREFIX}
+            PREFIX ${FETCHCONTENT_BASE_DIR}
             STAMP_DIR ${FETCHCONTENT_BASE_DIR}/umpire-ep-artifacts
             TMP_DIR ${FETCHCONTENT_BASE_DIR}/umpire-ep-artifacts   # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
@@ -145,7 +193,8 @@ else()
             )
 
     # TiledArray_UMPIRE target depends on existence of these directories to be usable from the build tree at configure time
-    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_SOURCE_DIR}/src/umpire/tpl/camp/include")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_SOURCE_DIR}/src/tpl/umpire/camp/include")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_BUILD_DIR}/src/tpl/umpire/camp/include")
     execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_BUILD_DIR}/include")
 
     # do install of Umpire as part of building TiledArray's install target
@@ -164,22 +213,23 @@ else()
 
     set(_UMPIRE_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
-endif(_UMPIRE_INSTALL_DIR)
 
-# manually add Umpire library
+    add_library(TiledArray_UMPIRE INTERFACE)
 
-add_library(TiledArray_UMPIRE INTERFACE)
-
-set_target_properties(
-        TiledArray_UMPIRE
-        PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES
-        "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/umpire/tpl/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/include>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/include>"
-        INTERFACE_LINK_LIBRARIES
-        "$<BUILD_INTERFACE:${UMPIRE_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/lib/libumpire${UMPIRE_DEFAULT_LIBRARY_SUFFIX}>"
-        )
+    set_target_properties(
+            TiledArray_UMPIRE
+            PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES
+            "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl/umpire/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/tpl/umpire/fmt/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/src/tpl/umpire/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/include>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/include>"
+            INTERFACE_LINK_LIBRARIES
+            "$<BUILD_INTERFACE:${UMPIRE_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/lib/libumpire${UMPIRE_DEFAULT_LIBRARY_SUFFIX}>"
+            INTERFACE_COMPILE_DEFINITIONS
+            FMT_HEADER_ONLY=1
+            )
 
 install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)
+
+endif(_UMPIRE_INSTALL_DIR)
 
 #TODO test Umpire
 

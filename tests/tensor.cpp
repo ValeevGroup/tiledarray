@@ -18,9 +18,7 @@
  */
 
 #include <boost/range/combine.hpp>
-#ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
-#endif
 
 #include <iterator>
 #include "TiledArray/math/gemm_helper.h"
@@ -709,9 +707,7 @@ BOOST_AUTO_TEST_CASE(block) {
   // need to #include <boost/range/combine.hpp>
   BOOST_CHECK_NO_THROW(s.block(boost::combine(lobound, upbound)));
 
-#ifdef TILEDARRAY_HAS_RANGEV3
   BOOST_CHECK_NO_THROW(s.block(ranges::views::zip(lobound, upbound)));
-#endif
 
   auto sview0 = s.block(lobound, upbound);
   BOOST_CHECK(sview0.range().includes(lobound));
@@ -722,6 +718,30 @@ BOOST_AUTO_TEST_CASE(block) {
   BOOST_CHECK(sview1.range().includes(lobound));
   BOOST_CHECK(sview1(lobound) == s(lobound));
 #endif
+}
+
+BOOST_AUTO_TEST_CASE(allocator) {
+  TensorD x(r, 1.0);
+  Tensor<double, std::allocator<double>> y(r, 1.0);
+  static_assert(std::is_same_v<decltype(x.add(y)), TensorD>);
+  static_assert(std::is_same_v<decltype(y.add(x)), decltype(y)>);
+  static_assert(std::is_same_v<decltype(x.subt(y)), TensorD>);
+  static_assert(std::is_same_v<decltype(y.subt(x)), decltype(y)>);
+  static_assert(std::is_same_v<decltype(x.mult(y)), TensorD>);
+  static_assert(std::is_same_v<decltype(y.mult(x)), decltype(y)>);
+  BOOST_REQUIRE_NO_THROW(x.add_to(y));
+  BOOST_REQUIRE_NO_THROW(x.subt_to(y));
+  BOOST_REQUIRE_NO_THROW(x.mult_to(y));
+}
+
+BOOST_AUTO_TEST_CASE(rebind) {
+  static_assert(
+      std::is_same_v<TensorD::rebind_t<std::complex<double>>, TensorZ>);
+  static_assert(
+      std::is_same_v<TensorD::rebind_numeric_t<std::complex<double>>, TensorZ>);
+  static_assert(
+      std::is_same_v<TiledArray::detail::complex_t<TensorD>, TensorZ>);
+  static_assert(std::is_same_v<TiledArray::detail::real_t<TensorZ>, TensorD>);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

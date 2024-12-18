@@ -133,7 +133,7 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
   template <typename Tile,
             typename = std::enable_if_t<
                 TiledArray::detail::is_contiguous_tensor_v<Tile>>>
-  Tile extract_submatrix(std::vector<size_t> lo, std::vector<size_t> up) {
+  Tile extract_submatrix(std::array<size_t, 2> lo, std::array<size_t, 2> up) {
     assert(bc_dist_.i_own(lo[0], lo[1]));
 
     auto [i_st, j_st] = bc_dist_.local_indx(lo[0], lo[1]);
@@ -247,8 +247,10 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
           const auto j_block_end = std::min(n, j_block_begin + nb);
 
           // Cut block if necessary to adhere to tile dimensions
-          const auto i_last = std::min(i_block_end, static_cast<decltype(m)>(up[0]));
-          const auto j_last = std::min(j_block_end, static_cast<decltype(m)>(up[1]));
+          const auto i_last =
+              std::min(i_block_end, static_cast<decltype(m)>(up[0]));
+          const auto j_last =
+              std::min(j_block_end, static_cast<decltype(m)>(up[1]));
 
           // Calculate extents of the block to be copied
           i_extent = i_last - i;
@@ -263,22 +265,25 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
                 local_mat_.block(i_local, j_local, i_extent, j_extent);
 
           } else {
-            std::vector<size_t> lo{i, j};
-            std::vector<size_t> up{i_last, j_last};
+            std::array<size_t, 2> lo{i, j};
+            std::array<size_t, 2> up{i_last, j_last};
+            // N.B. send instead of task guarantees progress
             madness::Future<Tensor<T>> remtile_fut = world_base_t::send(
                 owner(i, j),
                 &BlockCyclicMatrix<T>::template extract_submatrix<Tensor<T>>,
                 lo, up);
 
+            // N.B. Future::get(dowork=false) since calling from within a task
+            // and PaRSEC gets sad otherwise
             if constexpr (TiledArray::detail::is_ta_tensor_v<Tile>)
-              tile.block(lo, up) = remtile_fut.get();
+              tile.block(lo, up) = remtile_fut.get(/* dowork = */ false);
             else {
               auto tile_blk_range = TiledArray::BlockRange(
                   TiledArray::detail::make_ta_range(tile.range()), lo, up);
               using std::data;
               auto tile_blk_view =
                   TiledArray::make_map(data(tile), tile_blk_range);
-              tile_blk_view = remtile_fut.get();
+              tile_blk_view = remtile_fut.get(/* dowork = */ false);
             }
           }
         }

@@ -12,16 +12,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os : [ macos-latest ]
-        cxx : [ clang++, /usr/local/bin/g++-10 ]
+        os : [ macos-latest, ubuntu-22.04 ]
         build_type : [ Release, Debug ]
         task_backend: [ Pthreads, PaRSEC ]
-        prerequisites : [ gcc@10 boost eigen open-mpi bison scalapack ]
+        include:
+          - os: ubuntu-22.04
+            cc: /usr/bin/gcc-12
+            cxx: /usr/bin/g++-12
+          - os: macos-latest
+            cc: clang
+            cxx: clang++
 
     name: "${{ matrix.os }}: ${{ matrix.cxx }} ${{ matrix.build_type }} ${{ matrix.task_backend }}"
     runs-on: ${{ matrix.os }}
     env:
       CXX : ${{ matrix.cxx }}
+      CCACHE_DIR : ${{github.workspace}}/build/.ccache
+      CCACHE_COMPRESS : true
+      CCACHE_COMPRESSLEVEL : 6
+      OMPI_MCA_btl_vader_single_copy_mechanism : none
+      PARSEC_MCA_runtime_bind_threads : 0
       BUILD_CONFIG : >
         -DMADNESS_TASK_BACKEND=${{ matrix.task_backend }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
@@ -33,31 +43,43 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: '<14'
-
     - name: Host system info
       shell: bash
       run: cmake -P ${{github.workspace}}/ci/host_system_info.cmake
 
-    - name: Install ${{matrix.prerequisites}}
+
+    - name: Install prerequisite MacOS packages
+      if: ${{ matrix.os == 'macos-latest' }}
       run: |
-        brew install ${{matrix.prerequisites}}
-        echo "/usr/local/opt/bison/bin" >> $GITHUB_PATH
+        brew install ninja boost eigen open-mpi bison scalapack ccache
+        echo "MPIEXEC=/opt/homebrew/bin/mpiexec" >> $GITHUB_ENV
+
+    - name: Install prerequisites Ubuntu packages
+      if: ${{ matrix.os == 'ubuntu-22.04' }}
+      run: |
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+        sudo apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
+        sudo apt-get update
+        sudo apt-get -y install ninja-build g++-12 liblapack-dev libboost-dev libboost-serialization-dev libboost-random-dev libeigen3-dev openmpi-bin libopenmpi-dev libtbb-dev ccache flex bison libscalapack-mpi-dev cmake doxygen
+        sudo ln -s /usr/lib/x86_64-linux-gnu/libscalapack-openmpi.so /usr/lib/x86_64-linux-gnu/libscalapack.so
+        echo "MPIEXEC=/usr/bin/mpiexec" >> $GITHUB_ENV
+
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ccache-${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.task_backend }}
 
     - name: "Configure build: ${{ env.BUILD_CONFIG }}"
       shell: bash
       run: |
         set -x;
-        cmake -B${{github.workspace}}/build $BUILD_CONFIG || (cat CMakeFiles/CMakeOutput.log && cat CMakeFiles/CMakeError.log)
+        cmake -B${{github.workspace}}/build $BUILD_CONFIG || (cat CMakeFiles/CMakeConfigureLog.yaml)
 
     - name: Build
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
-        cmake --build . --target tiledarray
-        cmake --build . --target examples
+        ccache -p && ccache -z && cmake --build . --target tiledarray ta_test examples && ccache -s
 
     - name: Test
       working-directory: ${{github.workspace}}/build
@@ -65,5 +87,4 @@ jobs:
       #run: ctest -C $${{matrix.build_type}}
       run: |
         source ${{github.workspace}}/ci/openmpi.env
-        cmake --build . --target ta_test
         cmake --build . --target check-tiledarray

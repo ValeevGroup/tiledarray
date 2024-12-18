@@ -5,27 +5,35 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
+# N.B. need relaxed constexpr for std::complex
+# see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#constexpr-functions%5B/url%5D:
+if (DEFINED CMAKE_CUDA_FLAGS)
+  set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr ${CMAKE_CUDA_FLAGS}")
+else()
+  set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
+endif()
+# if CMAKE_CUDA_HOST_COMPILER not set, set it to CMAKE_CXX_COMPILER, else NVCC will grab something from PATH
+if (NOT DEFINED CMAKE_CUDA_HOST_COMPILER)
+  set(CMAKE_CUDA_HOST_COMPILER "${CMAKE_CXX_COMPILER}" CACHE STRING "The host C++ compiler to be used by the CUDA compiler")
+endif()
+
 enable_language(CUDA)
 
 set(CUDA_FOUND TRUE)
 set(TILEDARRAY_HAS_CUDA 1 CACHE BOOL "Whether TiledArray has CUDA support")
 
-if(ENABLE_CUDA_ERROR_CHECK)
-  set (TILEDARRAY_CHECK_CUDA_ERROR 1)
-endif(ENABLE_CUDA_ERROR_CHECK)
-
 # find CUDA toolkit
 # NB CUDAToolkit does NOT have COMPONENTS
 find_package(CUDAToolkit REQUIRED)
 
-foreach (library cublas;nvToolsExt)
+foreach (library cublas;nvtx3)
   if (NOT TARGET CUDA::${library})
     message(FATAL_ERROR "CUDA::${library} not found")
   endif()
 endforeach()
 
 if (NOT DEFINED CUDAToolkit_ROOT)
-  get_filename_component(CUDAToolkit_ROOT "${CUDAToolkit_INCLUDE_DIR}/../" ABSOLUTE CACHE)
+  get_filename_component(CUDAToolkit_ROOT "${CUDAToolkit_LIBRARY_DIR}/../" ABSOLUTE CACHE)
 endif(NOT DEFINED CUDAToolkit_ROOT)
 
 # sanitize implicit dirs if CUDA host compiler != C++ compiler

@@ -189,12 +189,14 @@ struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result>> {
 /// Multiplication expression engine
 
 /// This implements any expression encoded with the multiplication operator.
-/// This includes Hadamard product, e.g. \code (c("i,j")=)a("i,j")*b("i,j")
-/// \endcode , and pure contractions, e.g. \code (c("i,j")=)a("i,k")*b("k,j")
-/// \endcode . \internal mixed Hadamard-contraction case, e.g. \code
-/// c("i,j,l")=a("i,l,k")*b("j,l,k") \endcode , is not supported since
-///   this requires that the result labels are assigned by user (currently they
-///   are computed by this engine)
+/// This includes Hadamard product, e.g.
+/// \code (c("i,j")=)a("i,j")*b("i,j") \endcode ,
+/// and pure contractions, e.g. \code (c("i,j")=)a("i,k")*b("k,j") \endcode .
+/// \internal mixed Hadamard-contraction case, e.g.
+/// \code c("i,j,l")=a("i,l,k")*b("j,l,k") \endcode ,
+/// is not supported since
+/// this requires that the result labels are assigned by user (currently they
+/// are computed by this engine)
 /// \tparam Left The left-hand engine type
 /// \tparam Right The right-hand engine type
 /// \tparam Result The result tile type
@@ -297,7 +299,6 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     // the tile op; the type of the tile op does not need to match the type of
     // the operation on the outer indices
     if (this->product_type() == TensorProduct::Hadamard) {
-      // assumes inner op is also Hadamard
       BinaryEngine_::perm_indices(target_indices);
     } else {
       auto children_initialized = true;
@@ -333,6 +334,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    this->init_perm(target_indices);
+
+    // for ContEngine_::init_struct need to initialize element op first
     this->init_inner_tile_op(inner(target_indices));
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_struct(target_indices);
@@ -404,7 +408,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
                                 // dimensions as well
         return op_type(op_base_type());
       } else if (inner_prod == TensorProduct::Contraction) {
-        return op_type(op_base_type(this->inner_tile_return_op_));
+        return op_type(op_base_type(this->element_return_op_));
+      } else if (inner_prod == TensorProduct::Scale) {
+        return op_type(op_base_type());
       } else
         abort();
     } else {  // plain tensors
@@ -417,9 +423,10 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// \param perm The permutation to be applied to the result
   /// \return The tile operation
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  op_type make_tile_op(const Perm& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  op_type make_tile_op(Perm&& perm) const {
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<
                       value_type>) {  // nested tensors
       const auto inner_prod = this->inner_product_type();
@@ -427,13 +434,21 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
         TA_ASSERT(this->product_type() ==
                   inner_prod);  // Hadamard automatically works for inner
                                 // dimensions as well
-        return op_type(op_base_type(), perm);
+        return op_type(op_base_type(), std::forward<Perm>(perm));
       } else if (inner_prod == TensorProduct::Contraction) {
-        return op_type(op_base_type(this->inner_tile_return_op_), perm);
+        // inner permutation, if needed, was fused into inner op, do not apply
+        // inner part of the perm again
+        return op_type(op_base_type(this->element_return_op_),
+                       outer(std::forward<Perm>(perm)));
+      } else if (inner_prod == TensorProduct::Scale) {
+        // inner permutation, if needed, was fused into inner op, do not apply
+        // inner part of the perm again
+        return op_type(op_base_type(this->element_return_op_),
+                       outer(std::forward<Perm>(perm)));
       } else
         abort();
     } else {  // plain tensor
-      return op_type(op_base_type(), perm);
+      return op_type(op_base_type(), std::forward<Perm>(perm));
     }
     abort();  // unreachable
   }
@@ -587,6 +602,9 @@ class ScalMultEngine
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    this->init_perm(target_indices);
+
+    // for ContEngine_::init_struct need to initialize element op first
     this->init_inner_tile_op(inner(target_indices));
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_struct(target_indices);
@@ -667,10 +685,12 @@ class ScalMultEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  template <typename Perm, typename = std::enable_if_t<
-                               TiledArray::detail::is_permutation_v<Perm>>>
-  op_type make_tile_op(const Perm& perm) const {
-    return op_type(op_base_type(ContEngine_::factor_), perm);
+  template <typename Perm,
+            typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
+                std::remove_reference_t<Perm>>>>
+  op_type make_tile_op(Perm&& perm) const {
+    return op_type(op_base_type(ContEngine_::factor_),
+                   std::forward<Perm>(perm));
   }
 
   /// Expression identification tag

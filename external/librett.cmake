@@ -35,12 +35,12 @@ else()
         set(LIBRETT_TAG ${TA_TRACKED_LIBRETT_TAG})
     endif (NOT LIBRETT_TAG)
 
-    message("** Will clone LibreTT from ${LIBRETT_URL}")
+    if (CMAKE_PREFIX_PATH)
+        set(LIBRETT_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+    endif()
+    list(APPEND LIBRETT_CMAKE_PREFIX_PATH ${_UMPIRE_INSTALL_DIR})
 
-    # need to change the separator of list to avoid issues with ExternalProject parsing
-#    set(CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
-#    string(REPLACE ";" "::" CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
-    #message(STATUS "CUDA_FLAGS: " "${CUDA_FLAGS}")
+    message("** Will clone LibreTT from ${LIBRETT_URL}")
 
     set(LIBRETT_CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
@@ -62,26 +62,48 @@ else()
         -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
         -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
         -DCMAKE_AR=${CMAKE_AR}
-        -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
-        -DCMAKE_CUDA_STANDARD=${CMAKE_CUDA_STANDARD}
-        -DCMAKE_CUDA_EXTENSIONS=${CMAKE_CUDA_EXTENSIONS}
         -DENABLE_UMPIRE=OFF
         # N.B. ThreadSafeUMDynamicPool this no longer exists!!! Must teach LibreTT to take allocate/deallocate methods
         # from the user code
         -DLIBRETT_USES_THIS_UMPIRE_ALLOCATOR=ThreadSafeUMDynamicPool
-        -DCMAKE_PREFIX_PATH=${_UMPIRE_INSTALL_DIR}
+        -DCMAKE_PREFIX_PATH=${LIBRETT_CMAKE_PREFIX_PATH}
         -DENABLE_NO_ALIGNED_ALLOC=ON
-        -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
-        -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
-	-DENABLE_CUDA=ON
         )
-    if (DEFINED CMAKE_CUDA_ARCHITECTURES)
-        list(APPEND LIBRETT_CMAKE_ARGS -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES})
-    endif(DEFINED CMAKE_CUDA_ARCHITECTURES)
+    if (ENABLE_CUDA)
+        list(APPEND LIBRETT_CMAKE_ARGS
+                -DENABLE_CUDA=ON
+                -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
+                -DCMAKE_CUDA_STANDARD=${CMAKE_CUDA_STANDARD}
+                -DCMAKE_CUDA_EXTENSIONS=${CMAKE_CUDA_EXTENSIONS}
+                -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
+                -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
+        )
+        if (DEFINED CMAKE_CUDA_ARCHITECTURES)
+            list(APPEND LIBRETT_CMAKE_ARGS "-DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES}")
+        endif(DEFINED CMAKE_CUDA_ARCHITECTURES)
+    endif()
+    if (ENABLE_HIP)
+        list(APPEND LIBRETT_CMAKE_ARGS
+                -DENABLE_HIP=ON
+                -DCMAKE_HIP_COMPILER=${CMAKE_HIP_COMPILER}
+                -DCMAKE_HIP_STANDARD=${CMAKE_HIP_STANDARD}
+                -DCMAKE_HIP_EXTENSIONS=${CMAKE_HIP_EXTENSIONS}
+        )
+        if (DEFINED CMAKE_HIP_ARCHITECTURES)
+            list(APPEND LIBRETT_CMAKE_ARGS "-DCMAKE_HIP_ARCHITECTURES=${CMAKE_HIP_ARCHITECTURES}")
+        endif(DEFINED CMAKE_HIP_ARCHITECTURES)
+    endif()
     if (CMAKE_TOOLCHAIN_FILE)
         set(LIBRETT_CMAKE_ARGS "${LIBRETT_CMAKE_ARGS}"
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
     endif(CMAKE_TOOLCHAIN_FILE)
+
+    foreach(lang C CXX CUDA)
+        if (DEFINED CMAKE_${lang}_COMPILER_LAUNCHER)
+            list(APPEND LIBRETT_CMAKE_ARGS
+                    "-DCMAKE_${lang}_COMPILER_LAUNCHER=${CMAKE_${lang}_COMPILER_LAUNCHER}")
+        endif()
+    endforeach()
 
     if (BUILD_SHARED_LIBS)
         set(LIBRETT_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
@@ -94,7 +116,7 @@ else()
     message(STATUS "custom target librett is expected to build these byproducts: ${LIBRETT_BUILD_BYPRODUCTS}")
 
     ExternalProject_Add(librett
-            PREFIX ${CMAKE_INSTALL_PREFIX}
+            PREFIX ${FETCHCONTENT_BASE_DIR}
             STAMP_DIR ${FETCHCONTENT_BASE_DIR}/librett-ep-artifacts
             TMP_DIR ${FETCHCONTENT_BASE_DIR}/librett-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
@@ -133,7 +155,7 @@ else()
             ")
 
     # Add LibreTT dependency to External
-    add_dependencies(External-tiledarray librett-build)
+    add_dependencies(External-tiledarray librett)
 
     set(_LIBRETT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
@@ -148,6 +170,20 @@ set_target_properties(TiledArray_LIBRETT
         INTERFACE_LINK_LIBRARIES
         "$<BUILD_INTERFACE:${LIBRETT_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_LIBRETT_INSTALL_DIR}/lib/librett.${LIBRETT_DEFAULT_LIBRARY_SUFFIX}>"
         )
+if (ENABLE_CUDA)
+    set_target_properties(TiledArray_LIBRETT
+            PROPERTIES
+            INTERFACE_COMPILE_DEFINITIONS
+            "LIBRETT_USES_CUDA=1"
+    )
+endif()
+if (ENABLE_HIP)
+    set_target_properties(TiledArray_LIBRETT
+            PROPERTIES
+            INTERFACE_COMPILE_DEFINITIONS
+            "LIBRETT_USES_HIP=1"
+    )
+endif()
 
 install(TARGETS TiledArray_LIBRETT EXPORT tiledarray COMPONENT tiledarray)
 

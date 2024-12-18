@@ -27,6 +27,7 @@
 #define TILEDARRAY_SRC_TILEDARRAY_TENSOR_COMPLEX_H__INCLUDED
 
 #include <TiledArray/config.h>
+#include <TiledArray/fwd.h>
 #include <TiledArray/type_traits.h>
 
 namespace TiledArray {
@@ -80,30 +81,30 @@ TILEDARRAY_FORCE_INLINE auto inner_product(const L l, const R r) {
   return TiledArray::detail::conj(l) * r;
 }
 
-/// Wrapper function for `std::norm`
+/// Squared norm of a real number
 
 /// This function disables the call to `std::conj` for real values to
 /// prevent the result from being converted into a complex value.
 /// \tparam R A real scalar type
 /// \param r The real scalar
-/// \return `r`
+/// \return squared norm of `z` `r*r`
 template <typename R,
           typename std::enable_if<is_numeric_v<R> &&
                                   !is_complex<R>::value>::type* = nullptr>
-TILEDARRAY_FORCE_INLINE R norm(const R r) {
+TILEDARRAY_FORCE_INLINE R squared_norm(const R r) {
   return r * r;
 }
 
-/// Compute the norm of a complex number `z`
+/// Compute the squared norm of a complex number `z`
 
 /// \f[
-///   {\rm norm}(z) = zz^* = {\rm Re}(z)^2 + {\rm Im}(z)^2
+///   {\rm norm}(z)^2 = zz^* = {\rm Re}(z)^2 + {\rm Im}(z)^2
 /// \f]
 /// \tparam R The scalar type
 /// \param z The complex scalar
-/// \return The complex conjugate of `z`
+/// \return squared norm of `z`
 template <typename R>
-TILEDARRAY_FORCE_INLINE R norm(const std::complex<R> z) {
+TILEDARRAY_FORCE_INLINE R squared_norm(const std::complex<R> z) {
   const R real = z.real();
   const R imag = z.imag();
   return real * real + imag * imag;
@@ -274,7 +275,46 @@ inline auto abs(const ComplexConjugate<T>& a) {
 
 inline int abs(const ComplexConjugate<void>& a) { return 1; }
 
+template <typename L, typename R,
+          typename = std::enable_if_t<std::is_integral_v<L>>>
+TILEDARRAY_FORCE_INLINE auto operator*(const L l, const std::complex<R> r) {
+  return static_cast<R>(l) * r;
+}
+
+template <typename L, typename R,
+          typename = std::enable_if_t<std::is_integral_v<R>>>
+TILEDARRAY_FORCE_INLINE auto operator*(const std::complex<L> l, const R r) {
+  return l * static_cast<L>(r);
+}
+
+template <typename L, typename R>
+TILEDARRAY_FORCE_INLINE
+    std::enable_if_t<std::is_floating_point_v<L>, std::complex<R>>
+    operator*(const L l, const std::complex<R> r) {
+  return std::complex<R>(l, 0.) * r;
+}
+
+template <typename L, typename R>
+TILEDARRAY_FORCE_INLINE
+    std::enable_if_t<std::is_floating_point_v<R>, std::complex<L>>
+    operator*(const std::complex<L> l, const R r) {
+  return l * std::complex<L>(r, 0.);
+}
+
 }  // namespace detail
+
+namespace conversions {
+
+template <typename T>
+struct to<T, std::complex<T>> {
+  T operator()(const std::complex<T>& v) {
+    TA_ASSERT(v.imag() == 0);
+    return v.real();
+  }
+};
+
+}  // namespace conversions
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_SRC_TILEDARRAY_TENSOR_COMPLEX_H__INCLUDED

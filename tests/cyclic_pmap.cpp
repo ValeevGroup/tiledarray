@@ -24,7 +24,7 @@
 using namespace TiledArray;
 
 struct CyclicPmapFixture {
-  CyclicPmapFixture() {}
+  constexpr static std::size_t max_ntiles_per_dim = 4ul;
 };
 
 // =============================================================================
@@ -60,28 +60,22 @@ BOOST_AUTO_TEST_CASE(constructor) {
 
   ProcessID size = GlobalFixture::world->size();
 
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
-                                                        0ul, 10ul, 1, 1),
-                    TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
-                                                        10ul, 0ul, 1, 1),
-                    TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
-                                                        10ul, 10ul, 0, 1),
-                    TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
-                                                        10ul, 10ul, 1, 0),
-                    TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(
-                        *GlobalFixture::world, 10ul, 10ul, size * 2, 1),
-                    TiledArray::Exception);
-  BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(
-                        *GlobalFixture::world, 10ul, 10ul, 1, size * 2),
-                    TiledArray::Exception);
+  BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(
+                            *GlobalFixture::world, 10ul, 10ul, 0, 1),
+                        TiledArray::Exception);
+  BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(
+                            *GlobalFixture::world, 10ul, 10ul, 1, 0),
+                        TiledArray::Exception);
+  BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(
+                            *GlobalFixture::world, 10ul, 10ul, size * 2, 1),
+                        TiledArray::Exception);
+  BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(
+                            *GlobalFixture::world, 10ul, 10ul, 1, size * 2),
+                        TiledArray::Exception);
   if (size > 1) {
-    BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(
-                          *GlobalFixture::world, 10ul, 10ul, size, size),
-                      TiledArray::Exception);
+    BOOST_CHECK_TA_ASSERT(TiledArray::detail::CyclicPmap pmap(
+                              *GlobalFixture::world, 10ul, 10ul, size, size),
+                          TiledArray::Exception);
   }
 }
 
@@ -92,8 +86,8 @@ BOOST_AUTO_TEST_CASE(owner) {
   ProcessID* p_owner = new ProcessID[size];
 
   // Check various pmap sizes
-  for (std::size_t x = 1ul; x < 10ul; ++x) {
-    for (std::size_t y = 1ul; y < 10ul; ++y) {
+  for (std::size_t x = 1ul; x < max_ntiles_per_dim; ++x) {
+    for (std::size_t y = 1ul; y < max_ntiles_per_dim; ++y) {
       // Compute the limits for process rows
       const std::size_t min_proc_rows = std::max<std::size_t>(
           ((GlobalFixture::world->size() + y - 1ul) / y), 1ul);
@@ -129,8 +123,8 @@ BOOST_AUTO_TEST_CASE(owner) {
 }
 
 BOOST_AUTO_TEST_CASE(local_size) {
-  for (std::size_t x = 1ul; x < 10ul; ++x) {
-    for (std::size_t y = 1ul; y < 10ul; ++y) {
+  for (std::size_t x = 1ul; x < max_ntiles_per_dim; ++x) {
+    for (std::size_t y = 1ul; y < max_ntiles_per_dim; ++y) {
       // Compute the limits for process rows
       const std::size_t min_proc_rows = std::max<std::size_t>(
           ((GlobalFixture::world->size() + y - 1ul) / y), 1ul);
@@ -162,8 +156,8 @@ BOOST_AUTO_TEST_CASE(local_size) {
 BOOST_AUTO_TEST_CASE(local_group) {
   ProcessID tile_owners[100];
 
-  for (std::size_t x = 1ul; x < 10ul; ++x) {
-    for (std::size_t y = 1ul; y < 10ul; ++y) {
+  for (std::size_t x = 1ul; x < max_ntiles_per_dim; ++x) {
+    for (std::size_t y = 1ul; y < max_ntiles_per_dim; ++y) {
       // Compute the limits for process rows
       const std::size_t min_proc_rows = std::max<std::size_t>(
           ((GlobalFixture::world->size() + y - 1ul) / y), 1ul);

@@ -59,23 +59,7 @@ with open(version_cmake_path) as inf:
         tokens = line.split()
         if len(tokens) < 3:
             continue
-        if tokens[1].find('TRACKED_BOOST') != -1:
-            if tokens[1].find('PREVIOUS') != -1:
-                boost_old_version = tokens[2]
-            else:
-                boost_new_version = tokens[2]
-        elif tokens[1].find('INSTALL_BOOST') != -1:
-            if tokens[1].find('VERSION') != -1:
-                if tokens[1].find('PREVIOUS') != -1:
-                    boost_old_install_version = tokens[2]
-                else:
-                    boost_new_install_version = tokens[2]
-            else:  # URL_HASH
-                if tokens[1].find('PREVIOUS') != -1:
-                    boost_old_install_url_hash = tokens[2]
-                else:
-                    boost_new_install_url_hash = tokens[2]
-        elif tokens[1].find('TRACKED_EIGEN') != -1:
+        if tokens[1].find('TRACKED_EIGEN') != -1:
             if tokens[1].find('PREVIOUS') != -1:
                 eigen_old_version = tokens[2]
             else:
@@ -126,11 +110,13 @@ with open(version_cmake_path) as inf:
                 scalapackpp_old_tag = tokens[2]
             else:
                 scalapackpp_new_tag = tokens[2]
+        elif tokens[1].find('TTG') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                ttg_old_tag = tokens[2]
+            else:
+                ttg_new_tag = tokens[2]
 
 any_files_changed = False
-
-# Boost version in INSTALL.md
-any_files_changed |= replace_dep_id(topsrc, 'md', 'Boost', boost_old_version, boost_new_version, 'boost.org/), version ', ' or higher')
 
 # Eigen version in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'Eigen', eigen_old_version, eigen_new_version, 'eigen.tuxfamily.org), version ', ' or higher')
@@ -154,6 +140,9 @@ any_files_changed |= replace_dep_id(topsrc, 'md', 'Umpire', umpire_old_tag, umpi
 
 # SCALAPACKPP tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'SCALAPACKPP', scalapackpp_old_tag, scalapackpp_new_tag, '', '')
+
+# TTG tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'TTG', ttg_old_tag, ttg_new_tag, '', '')
 
 if any_files_changed:
     sys.exit(1)

@@ -26,6 +26,8 @@
 #include <TiledArray/util/vector.h>
 #include <cstddef>
 
+#include <range/v3/range/concepts.hpp>
+
 namespace TiledArray {
 namespace detail {
 
@@ -41,6 +43,15 @@ class SizeArray {
  private:
   T* first_ = nullptr;  ///< First element of the array
   T* last_ = nullptr;   ///< Last element of the array
+
+  // can compare to any sized range
+  template <typename U, typename SizedRange>
+  friend std::enable_if_t<
+      is_sized_range_v<std::remove_reference_t<SizedRange>> &&
+          !std::is_same_v<SizeArray<U>, std::remove_reference_t<SizedRange>> &&
+          !std::is_base_of_v<SizeArray<U>, std::remove_reference_t<SizedRange>>,
+      bool>
+  operator==(const SizeArray<U>&, SizedRange&&);
 
  public:
   // type definitions
@@ -436,6 +447,33 @@ class SizeArray {
 
 };  // class SizeArray
 
+}  // namespace detail
+}  // namespace TiledArray
+
+namespace ranges {
+template <typename T>
+inline constexpr bool enable_view<TiledArray::detail::SizeArray<T>> = true;
+}  // namespace ranges
+
+static_assert(ranges::range<TiledArray::detail::SizeArray<const long long>>);
+static_assert(
+    ranges::viewable_range<TiledArray::detail::SizeArray<const long long>>);
+
+namespace TiledArray::detail {
+
+template <typename U, typename SizedRange>
+std::enable_if_t<
+    is_sized_range_v<std::remove_reference_t<SizedRange>> &&
+        !std::is_same_v<SizeArray<U>, std::remove_reference_t<SizedRange>> &&
+        !std::is_base_of_v<SizeArray<U>, std::remove_reference_t<SizedRange>>,
+    bool>
+operator==(const SizeArray<U>& idx1, SizedRange&& idx2) {
+  if (idx1.size() == idx2.size())
+    return std::equal(idx1.begin(), idx1.end(), idx2.begin());
+  else
+    return false;
+}
+
 template <typename T>
 inline std::vector<T> operator*(const Permutation& perm,
                                 const SizeArray<T>& orig) {
@@ -451,7 +489,6 @@ inline std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
-}  // namespace detail
-}  // namespace TiledArray
+}  // namespace TiledArray::detail
 
 #endif  // TILEDARRAY_SIZE_ARRAY_H__INCLUDED

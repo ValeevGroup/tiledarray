@@ -18,10 +18,8 @@ is devoted to communication. [Default = number of cores reported by ]
 
 ## MPI
 
-## CUDA
+## GPU/Device compute runtimes
 
-In addition to [the environment variables that control the CUDA runtime behavior](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#env-vars), several environment variables control specifically the execution of TiledArray on CUDA devices:
-* `TA_CUDA_NUM_STREAMS` -- The number of [CUDA streams](https://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf) used to execute tasks on each device. Each stream can be viewed as a thread in a threadpool, with tasks in a given stream executing in order, but each stream executing independently of others. For small tasks this may need to be increased. [Default=3]
-* `CUDA_VISIBLE_DEVICES` -- This CUDA runtime environment variable is queried by TiledArray to determine whether CUDA devices on a multi-GPU node have been pre-mapped to MPI ranks.
-  * By default (i.e. when # of MPI ranks on a node <= # of _available_ CUDA devices) TiledArray will map 1 device (in the order of increasing rank) to each MPI rank.
-  * If # of available CUDA devices < # of MPI ranks on a node _and_ `CUDA_VISIBLE_DEVICES` is set TiledArray will assume that the user mapped the devices to the MPI ranks appropriately (e.g. using a resource manager like `jsrun`) and only checks that each rank has access to 1 CUDA device.
+In addition to the environment variables that control the runtime behavior of [CUDA](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#env-vars) and [HIP/ROCm](https://rocm.docs.amd.com/en/latest/search.html?q=environment+variables), several environment variables control specifically the execution of TiledArray on compute devices:
+* `TA_DEVICE_NUM_STREAMS` -- The number of [compute streams](https://developer.download.nvidia.com/CUDA/training/StreamsAndConcurrencyWebinar.pdf) used to execute tasks on each device. Each stream can be viewed as a thread in a threadpool, with tasks in a given stream executing in order, but each stream executing independently of others. For small tasks this may need to be increased. In addition stream for compute tasks TiledArray also creates 2 dedicated streams for data transfers to/from each device. [Default=3]
+* `CUDA_VISIBLE_DEVICES`/`HIP_VISIBLE_DEVICES` -- These runtime environment variables are can be used to map CUDA/HIP devices, respectively, on a multi-device node to MPI ranks. It is usually the responsibility of the resource manager to control this mapping, thus normally it should not be needed. By default TiledArray will assign compute devices on a multidevice node round robin to each MPI rank.

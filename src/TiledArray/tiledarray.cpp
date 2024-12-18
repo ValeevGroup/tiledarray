@@ -6,9 +6,9 @@
 
 #include <madness/world/safempi.h>
 
-#ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/cuda/cublas.h>
-#include <TiledArray/external/cuda.h>
+#ifdef TILEDARRAY_HAS_DEVICE
+#include <TiledArray/device/blas.h>
+#include <TiledArray/external/device.h>
 #include <librett.h>
 #endif
 
@@ -16,34 +16,42 @@
 #include <ttg.h>
 #endif
 
+#ifdef IntelMKL_FAIR_DISPATCH
+extern "C" void intel_mkl_use_fair_dispatch();
+#endif
+
 #include <cerrno>
+#include <csignal>
 #include <cstdlib>
 
 namespace TiledArray {
 namespace {
 
-#ifdef TILEDARRAY_HAS_CUDA
+#ifdef TILEDARRAY_HAS_DEVICE
 /// initialize cuda environment
-inline void cuda_initialize() {
-  /// initialize cudaGlobal
-  cudaEnv::instance();
-  //
-  cuBLASHandlePool::handle();
+inline void device_initialize() {
+  /// initialize deviceEnv
+  deviceEnv::instance();
+#if defined(TILEDARRAY_HAS_DEVICE)
+  BLASQueuePool::initialize();
+#endif
   // initialize LibreTT
   librettInitialize();
 }
 
 /// finalize cuda environment
-inline void cuda_finalize() {
-  CudaSafeCall(cudaDeviceSynchronize());
+inline void device_finalize() {
+  DeviceSafeCall(device::deviceSynchronize());
   librettFinalize();
-  cublasDestroy(cuBLASHandlePool::handle());
-  delete &cuBLASHandlePool::handle();
-  // although TA::cudaEnv is a singleton, must explicitly delete it so
-  // that CUDA runtime is not finalized before the cudaEnv dtor is called
-  cudaEnv::instance().reset(nullptr);
-}
+#if defined(TILEDARRAY_HAS_DEVICE)
+  BLASQueuePool::finalize();
 #endif
+  // although TA::deviceEnv is a singleton, must explicitly delete it so
+  // that the device runtime is not finalized before the deviceEnv dtor is
+  // called
+  deviceEnv::instance().reset(nullptr);
+}
+#endif  // TILEDARRAY_HAS_DEVICE
 
 inline bool& initialized_madworld_accessor() {
   static bool flag = false;
@@ -59,28 +67,20 @@ inline bool& finalized_accessor() {
   return flag;
 }
 
+inline bool& quiet_accessor() {
+  static bool quiet = false;
+  return quiet;
+}
+
 }  // namespace
 }  // namespace TiledArray
 
-/// @return true if TiledArray (and, necessarily, MADWorld runtime) is in an
-/// initialized state
 bool TiledArray::initialized() { return initialized_accessor(); }
 
-/// @return true if TiledArray has been finalized at least once
 bool TiledArray::finalized() { return finalized_accessor(); }
 
-/// @name TiledArray initialization.
-///       These functions initialize TiledArray and (if needed) MADWorld
-///       runtime.
-/// @note the default World object is set to the object returned by these.
-/// @warning MADWorld can only be initialized/finalized once, hence if
-/// TiledArray initializes MADWorld
-///          it can also be initialized/finalized only once.
+bool TiledArray::initialized_to_be_quiet() { return quiet_accessor(); }
 
-/// @{
-
-/// @throw TiledArray::Exception if TiledArray initialized MADWorld and
-/// TiledArray::finalize() had been called
 TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
                                           const SafeMPI::Intracomm& comm,
                                           bool quiet) {
@@ -102,16 +102,28 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
                               ? madness::initialize(argc, argv, comm, quiet)
                               : *madness::World::find_instance(comm);
     TiledArray::set_default_world(default_world);
-#ifdef TILEDARRAY_HAS_CUDA
-    TiledArray::cuda_initialize();
+#ifdef TILEDARRAY_HAS_DEVICE
+    TiledArray::device_initialize();
+#endif
+#ifdef IntelMKL_FAIR_DISPATCH
+    intel_mkl_use_fair_dispatch();
 #endif
     TiledArray::max_threads = TiledArray::get_num_threads();
     TiledArray::set_num_threads(1);
     madness::print_meminfo_disable();
     initialized_accessor() = true;
+    quiet_accessor() = quiet;
 
-    // if have TTG initialize it also
+    // if have TTG, initialize it also
 #if TILEDARRAY_HAS_TTG
+    // MADNESS/PaRSEC creates PaRSEC context that uses MPI_COMM_SELF to avoid
+    // creation of a PaRSEC comm thread to be able to use TTG/PaRSEC need to
+    // tell PaRSEC context to use the full communicator
+    if (madness::ParsecRuntime::context()->nb_nodes != default_world.size()) {
+      auto default_world_comm = default_world.mpi.comm().Get_mpi_comm();
+      parsec_remote_dep_set_ctx(madness::ParsecRuntime::context(),
+                                (intptr_t)default_world_comm);
+    }
     ttg::initialize(argc, argv, -1, madness::ParsecRuntime::context());
 #endif
 
@@ -152,8 +164,6 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     throw Exception("TiledArray already initialized");
 }
 
-/// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized
-/// when TiledArray::initialize was called).
 void TiledArray::finalize() {
   // finalize in the reverse order of initialize
 #if TILEDARRAY_HAS_TTG
@@ -164,8 +174,8 @@ void TiledArray::finalize() {
   TiledArray::set_num_threads(TiledArray::max_threads);
   TiledArray::get_default_world().gop.fence();  // this should ensure no pending
                                                 // tasks using cuda allocators
-#ifdef TILEDARRAY_HAS_CUDA
-  TiledArray::cuda_finalize();
+#ifdef TILEDARRAY_HAS_DEVICE
+  TiledArray::device_finalize();
 #endif
   if (initialized_madworld()) {
     madness::finalize();
@@ -185,7 +195,17 @@ TiledArray::detail::Finalizer::~Finalizer() noexcept {
 
 TiledArray::detail::Finalizer TiledArray::scoped_finalizer() { return {}; }
 
-void TiledArray::ta_abort() { SafeMPI::COMM_WORLD.Abort(); }
+void TiledArray::ta_abort() {
+  // if have a custom signal handler for SIGABRT (i.e. we are running under a
+  // debugger) then call abort()
+  struct sigaction sa;
+  auto rc = sigaction(SIGABRT, NULL, &sa);
+  if (rc == 0 && sa.sa_handler != SIG_DFL) {
+    abort();
+  } else {
+    SafeMPI::COMM_WORLD.Abort();
+  }
+}
 
 void TiledArray::ta_abort(const std::string& m) {
   std::cerr << m << std::endl;

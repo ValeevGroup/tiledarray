@@ -52,13 +52,11 @@ namespace TiledArray::math::linalg::non_distributed {
  */
 template <typename Array>
 auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
-  using numeric_type = typename detail::array_traits<Array>::numeric_type;
+  using scalar_type = typename detail::array_traits<Array>::scalar_type;
   World& world = A.world();
   auto A_eig = detail::make_matrix(A);
-  std::vector<numeric_type> evals;
-  if (world.rank() == 0) {
-    linalg::rank_local::heig(A_eig, evals);
-  }
+  std::vector<scalar_type> evals;
+  TA_LAPACK_ON_RANK_ZERO(heig, world, A_eig, evals);
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
   if (evec_trange.rank() == 0) evec_trange = A.trange();
@@ -93,15 +91,13 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
 template <typename ArrayA, typename ArrayB, typename EVecType = ArrayA>
 auto heig(const ArrayA& A, const ArrayB& B,
           TiledRange evec_trange = TiledRange()) {
-  using numeric_type = typename detail::array_traits<ArrayA>::numeric_type;
+  using scalar_type = typename detail::array_traits<ArrayA>::scalar_type;
   (void)detail::array_traits<ArrayB>{};
   World& world = A.world();
   auto A_eig = detail::make_matrix(A);
   auto B_eig = detail::make_matrix(B);
-  std::vector<numeric_type> evals;
-  if (world.rank() == 0) {
-    linalg::rank_local::heig(A_eig, B_eig, evals);
-  }
+  std::vector<scalar_type> evals;
+  TA_LAPACK_ON_RANK_ZERO(heig, world, A_eig, B_eig, evals);
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
   if (evec_trange.rank() == 0) evec_trange = A.trange();

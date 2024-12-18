@@ -60,7 +60,7 @@ namespace TiledArray::math {
 // clang-format on
 template <typename D, typename F>
 struct ConjugateGradientSolver {
-  typedef typename D::element_type value_type;
+  typedef typename D::numeric_type value_type;
 
   /// \param a object of type F
   /// \param b RHS

@@ -76,7 +76,20 @@
 
 /* Define if TiledArray configured with CUDA support */
 #cmakedefine TILEDARRAY_HAS_CUDA @TILEDARRAY_HAS_CUDA@
-#cmakedefine TILEDARRAY_CHECK_CUDA_ERROR @TILEDARRAY_CHECK_CUDA_ERROR@
+
+/* Define if TiledArray configured with HIP support */
+#cmakedefine TILEDARRAY_HAS_HIP @TILEDARRAY_HAS_HIP@
+
+// Umpire and LibreTT limited to 1 device runtime at a time, so is TA
+#if defined(TILEDARRAY_HAS_HIP)
+#  define TILEDARRAY_HAS_DEVICE 1
+#  define TILEDARRAY_DEVICE_RUNTIME HIP
+#  define TILEDARRAY_DEVICE_RUNTIME_STR "HIP"
+#elif defined(TILEDARRAY_HAS_CUDA)
+#  define TILEDARRAY_HAS_DEVICE 1
+#  define TILEDARRAY_DEVICE_RUNTIME CUDA
+#  define TILEDARRAY_DEVICE_RUNTIME_STR "CUDA"
+#endif
 
 /* Is TA::Tensor memory profiling enabled? */
 #cmakedefine TA_TENSOR_MEM_PROFILE 1
@@ -100,6 +113,8 @@
 #endif  // !defined(TILEDARRAY_HAS_BTAS)
 #if defined(TILEDARRAY_HAS_BTAS) && defined(BTAS_HAS_INTEL_MKL)
 #  define TILEDARRAY_HAS_INTEL_MKL
+/* use fair dispatch in Intel MKL? */
+#cmakedefine IntelMKL_FAIR_DISPATCH
 #endif
 
 /* Add macro TILEDARRAY_FORCE_INLINE which does as the name implies. */
@@ -160,6 +175,9 @@
 /* Enables logging of TiledArray tile ops */
 #cmakedefine TA_ENABLE_TILE_OPS_LOGGING 1
 #define TA_TILE_OPS_LOG_LEVEL 0@TA_TILE_OPS_LOG_LEVEL@
+
+/* Enables collection of communication statistics for global objects (DistEval and DistributedStorage) */
+#cmakedefine TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE 1
 
 /* ----------- pragma helpers ---------------*/
 #define TILEDARRAY_PRAGMA(x) _Pragma(#x)

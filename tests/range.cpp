@@ -19,9 +19,7 @@
 
 #include <TiledArray/util/eigen.h>
 #include <boost/range/combine.hpp>
-#ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
-#endif
 
 #include <numeric>
 #include <sstream>
@@ -65,15 +63,37 @@ BOOST_FIXTURE_TEST_SUITE(range_suite, RangeFixture, TA_UT_LABEL_SERIAL)
 BOOST_AUTO_TEST_CASE(dimension_accessor) {
   BOOST_CHECK_EQUAL_COLLECTIONS(r.lobound_data(), r.lobound_data() + r.rank(),
                                 start.begin(), start.end());  // check start()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.lobound().begin(), r.lobound().end(),
+                                start.begin(), start.end());  // check start()
+  BOOST_CHECK_EQUAL(r.lobound(), start);                      // check start()
+  BOOST_CHECK_EQUAL(r.lobound(),
+                    (Index{start.begin(), start.end()}));  // check finish()
   BOOST_CHECK_EQUAL_COLLECTIONS(r.upbound_data(), r.upbound_data() + r.rank(),
                                 finish.begin(),
                                 finish.end());  // check finish()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.upbound().begin(), r.upbound().end(),
+                                finish.begin(),
+                                finish.end());  // check finish()
+  BOOST_CHECK_EQUAL(r.upbound(), finish);       // check finish()
+  BOOST_CHECK_EQUAL(r.upbound(),
+                    (Index{finish.begin(), finish.end()}));  // check finish()
   BOOST_CHECK_EQUAL_COLLECTIONS(r.extent_data(), r.extent_data() + r.rank(),
                                 size.begin(), size.end());  // check size()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.extent().begin(), r.extent().end(),
+                                size.begin(), size.end());  // check size()
+  BOOST_CHECK_EQUAL(r.extent(), size);                      // check size()
+  BOOST_CHECK_EQUAL(r.extent(),
+                    (Index{size.begin(), size.end()}));  // check size()
   BOOST_CHECK_EQUAL_COLLECTIONS(r.stride_data(), r.stride_data() + r.rank(),
                                 weight.begin(),
                                 weight.end());  // check weight()
-  BOOST_CHECK_EQUAL(r.volume(), volume);        // check volume()
+  BOOST_CHECK_EQUAL_COLLECTIONS(r.stride().begin(), r.stride().end(),
+                                weight.begin(),
+                                weight.end());  // check weight()
+  BOOST_CHECK_EQUAL(r.stride(), weight);        // check weight()
+  BOOST_CHECK_EQUAL(r.stride(),
+                    (Index{weight.begin(), weight.end()}));  // check weight()
+  BOOST_CHECK_EQUAL(r.volume(), volume);                     // check volume()
   for (size_t d = 0; d != r.rank(); ++d) {
     auto range_d = r.dim(d);
     BOOST_CHECK_EQUAL(range_d.first, start[d]);
@@ -147,10 +167,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_REQUIRE_NO_THROW(Range r2(p2, f2));  // uses index containers
   BOOST_REQUIRE_NO_THROW(
       Range r(boost::combine(p2, f2)));  // uses zipped range of p2 and f2
-#ifdef TILEDARRAY_HAS_RANGEV3
   BOOST_REQUIRE_NO_THROW(
       Range r(ranges::views::zip(p2, f2)));  // uses zipped range of p2 and f2
-#endif
 
   BOOST_CHECK_THROW(Range r2(f2, p2), Exception);  // lobound > upbound
   Range r2(p2, f2);
@@ -168,11 +186,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
   Range should_be_copy_of_r2(
       boost::combine(p2, f2));  // uses zipped range of p2 and f2
   BOOST_CHECK_EQUAL(r2, should_be_copy_of_r2);
-#ifdef TILEDARRAY_HAS_RANGEV3
   Range should_be_another_copy_of_r2(
       ranges::views::zip(p2, f2));  // uses zipped range of p2 and f2
   BOOST_CHECK_EQUAL(r2, should_be_another_copy_of_r2);
-#endif
 
   // test the rest of bound-based ctors
   {
@@ -221,10 +237,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
     // uses zipped bounds
     Range r7(boost::combine(std::vector{0, 1, 2}, std::array{4, 6, 8}));
     BOOST_CHECK_EQUAL(ref, r7);
-#ifdef TILEDARRAY_HAS_RANGEV3
-//    Range r8(ranges::views::zip(std::array{0, 1, 2}, std::vector{4, 6, 8}));
-//    BOOST_CHECK_EQUAL(ref, r8);
-#endif
+    //    Range r8(ranges::views::zip(std::array{0, 1, 2}, std::vector{4, 6,
+    //    8})); BOOST_CHECK_EQUAL(ref, r8);
 
     // zipped bounds with Eigen vectors
     {
@@ -256,11 +270,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
       Range r14(boost::combine(iv({0, 1, 2}), iv(iv({0, 1, 2}) + iv(4, 5, 6))));
       BOOST_CHECK_EQUAL(ref, r14);
 
-#ifdef TILEDARRAY_HAS_RANGEV3
-// this requires Eigen ~3.4 (3.3.90 docs suggest it should be sufficient)
-//    Range r15(ranges::views::zip(iv(0, 1, 2), iv(4, 6, 8)));
-//    BOOST_CHECK_EQUAL(ref, r15);
-#endif
+      // this requires Eigen ~3.4 (3.3.90 docs suggest it should be sufficient)
+      //    Range r15(ranges::views::zip(iv(0, 1, 2), iv(4, 6, 8)));
+      //    BOOST_CHECK_EQUAL(ref, r15);
     }
 
     // container::svector as bounds
@@ -322,8 +334,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
     BOOST_CHECK_EQUAL(r2.volume(), 48);
   }
 #else   // TA_SIGNED_1INDEX_TYPE
-  BOOST_REQUIRE_THROW(Range r2({{-1, 1}, {-2, 2}, {0, 6}}),
-                      TiledArray::Exception);
+  BOOST_REQUIRE_TA_ASSERT(Range r2({{-1, 1}, {-2, 2}, {0, 6}}),
+                          TiledArray::Exception);
 #endif  // TA_SIGNED_1INDEX_TYPE
 
   // Copy Constructor
@@ -495,6 +507,9 @@ BOOST_AUTO_TEST_CASE(permutation) {
   BOOST_CHECK_EQUAL_COLLECTIONS(r3.stride_data(), r3.stride_data() + r3.rank(),
                                 r2.stride_data(), r2.stride_data() + r2.rank());
   BOOST_CHECK_EQUAL(r3, r2);
+
+  // using null Permutation is allowed
+  BOOST_CHECK_EQUAL(Range(Permutation{}, r1), r1);
 }
 
 BOOST_AUTO_TEST_CASE(include) {
@@ -678,13 +693,13 @@ BOOST_AUTO_TEST_CASE(serialization) {
       2 * (sizeof(Range) + sizeof(std::size_t) * (4 * GlobalFixture::dim + 1));
   unsigned char* buf = new unsigned char[buf_size];
   madness::archive::BufferOutputArchive oar(buf, buf_size);
-  oar& r;
+  oar & r;
   std::size_t nbyte = oar.size();
   oar.close();
 
   Range rs;
   madness::archive::BufferInputArchive iar(buf, nbyte);
-  iar& rs;
+  iar & rs;
   iar.close();
 
   delete[] buf;

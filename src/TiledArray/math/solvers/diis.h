@@ -82,7 +82,7 @@ namespace TiledArray::math {
 template <typename D>
 class DIIS {
  public:
-  typedef typename D::element_type value_type;
+  typedef typename D::numeric_type value_type;
   typedef typename TiledArray::detail::scalar_t<value_type> scalar_type;
   typedef Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic,
                         Eigen::RowMajor>

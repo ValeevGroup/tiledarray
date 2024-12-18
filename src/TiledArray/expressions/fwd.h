@@ -28,7 +28,6 @@
 
 #include <type_traits>
 
-
 namespace TiledArray::expressions {
 
 template <typename>
@@ -68,6 +67,6 @@ class ScalTsrExpr;
 template <typename, typename, typename>
 class ScalTsrEngine;
 
-}  // namespace TiledArray
+}  // namespace TiledArray::expressions
 
 #endif  // TILEDARRAY_EXPRESSIONS_FWD_H__INCLUDED

@@ -34,6 +34,8 @@ set(executable ta_test)
 set(ta_test_src_files  ta_test.cpp
     range1.cpp
     range.cpp
+    block_range.cpp
+    type_traits.cpp
     tensor.cpp
     tensor_of_tensor.cpp
     tensor_tensor_view.cpp
@@ -99,14 +101,24 @@ set(ta_test_src_files  ta_test.cpp
     einsum.cpp
     linalg.cpp
     cp.cpp
+    btas.cpp
 )
 
-if(CUDA_FOUND)
-    list(APPEND ta_test_src_files librett.cpp expressions_cuda_um.cpp tensor_um.cpp)
+if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
+  list(APPEND ta_test_src_files librett.cpp expressions_device_um.cpp tensor_um.cpp)
+endif()
+
+# if using C++20 must use Boost 1.74 or later:
+# - https://en.cppreference.com/w/cpp/io/basic_ostream/operator_ltlt2
+# - https://github.com/boostorg/test/commit/db6b98c72783351e0acd3c558691323a7a103ba9
+if (CMAKE_CXX_STANDARD GREATER_EQUAL 20 AND DEFINED Boost_VERSION)
+  if (Boost_VERSION VERSION_LESS 1.74.0)
+     message(FATAL_ERROR "Boost 1.74 or later required to build TA unit tests when using C++20 or higher")
+  endif()
 endif()
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
-if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE)
+if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT TILEDARRAY_HAS_CUDA AND FALSE)
   add_ta_executable(${executable} "${ta_test_src_files}" "MADworld;${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
   if (LAPACK_INCLUDE_DIRS)
@@ -121,6 +133,10 @@ if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE
 else()
   add_ta_executable(${executable} "${ta_test_src_files}" "tiledarray")
 endif()
+# if Boost is modularized, need to explicitly state that we need Boost::test module
+if (Boost_IS_MODULARIZED)
+  target_link_libraries(${executable} PRIVATE Boost::unit_test_framework)
+endif()
 # Add include directories and compiler flags for ta_test
 target_include_directories(${executable} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -133,15 +149,13 @@ target_include_directories(${executable} PRIVATE
 #      is too late to do this here; must set TA_ERROR=throw if want to run unit tests
 target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
     MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
-# optional dependencies
-if (TARGET range-v3::range-v3)
-  target_link_libraries(${executable} PRIVATE range-v3::range-v3)
-  target_compile_definitions(${executable} PRIVATE TILEDARRAY_HAS_RANGEV3=1)
-endif (TARGET range-v3::range-v3)
 
 # Add targets
 add_test(tiledarray/unit/build "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
 set_tests_properties(tiledarray/unit/build PROPERTIES FIXTURES_SETUP TA_UNIT_TESTS_EXEC)
+
+# N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
+set(TA_UNIT_TESTS_ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1")
 
 # Add a test(s)
 if(ENABLE_MPI)
@@ -155,22 +169,19 @@ if(ENABLE_MPI)
         $<TARGET_FILE:${executable}> --log_level=unit_scope ${${executable}_np_${p}_args}
         ${MPIEXEC_POSTFLAGS}
       )
-    # N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
+    if (p GREATER 1)
+      set(TA_UNIT_TESTS_ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT};TA_UT_DISTRIBUTED=1")
+    endif()
     set_tests_properties(tiledarray/unit/run-np-${p}
             PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
-            ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1"
+            ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT}"
             )
-
-    if (p GREATER 1)
-      set_tests_properties(tiledarray/unit/run-np-${p} PROPERTIES ENVIRONMENT TA_UT_DISTRIBUTED=1)
-    endif()
   endforeach(p)
 else()
   add_test(NAME tiledarray/unit/run-np-1
            COMMAND ${executable})
-  # N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
   set_tests_properties(tiledarray/unit/run-np-1
           PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
-          ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1"
+          ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT}"
           )
 endif()
