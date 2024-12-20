@@ -420,8 +420,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
   using ResultTensor = typename ArrayC::value_type;
   using ResultShape = typename ArrayC::shape_type;
 
-  auto const& tnsrExprA = A;
-  auto const& tnsrExprB = B;
+  auto const &tnsrExprA = A;
+  auto const &tnsrExprB = B;
 
   auto a = std::get<0>(Einsum::idx(A));
   auto b = std::get<0>(Einsum::idx(B));
@@ -489,12 +489,12 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
     auto sum_tot_2_tos = [](auto const &tot) {
       using tot_t = std::remove_reference_t<decltype(tot)>;
-      typename tot_t::value_type result(
-          tot.range(), [tot](auto &&ix) {
-            if (!tot(ix).empty())
-              return tot(ix).sum();
-            else return typename tot_t::numeric_type{};
-          });
+      typename tot_t::value_type result(tot.range(), [tot](auto &&ix) {
+        if (!tot(ix).empty())
+          return tot(ix).sum();
+        else
+          return typename tot_t::numeric_type{};
+      });
       return result;
     };
 

@@ -419,7 +419,9 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
 
   auto volume = result.total_size();
   for (decltype(volume) ord = 0; ord < volume; ++ord) {
-    if constexpr (is_tensor_of_tensor_v<TR, Ts...>)
+    if constexpr (is_tensor_of_tensor_v<TR>)
+      if (result.data()[ord].range().volume() == 0) continue;
+    if constexpr (is_tensor_of_tensor_v<Ts...>)
       if (((tensors.data()[ord].range().volume() == 0) || ...)) continue;
     if constexpr (std::is_invocable_r_v<void, Op, typename TR::value_type&,
                                         typename Ts::value_type...>)
@@ -997,8 +999,9 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
 
   auto result = identity;
   for (std::remove_cv_t<decltype(volume)> ord = 0ul; ord < volume; ++ord) {
-    if (tensor1.data()[ord].range().volume() == 0
-        || ((tensors.data()[ord].range().volume() == 0) || ...)) continue;
+    if (tensor1.data()[ord].range().volume() == 0 ||
+        ((tensors.data()[ord].range().volume() == 0) || ...))
+      continue;
     auto temp = tensor_reduce(reduce_op, join_op, identity, tensor1.data()[ord],
                               tensors.data()[ord]...);
     join_op(result, temp);
