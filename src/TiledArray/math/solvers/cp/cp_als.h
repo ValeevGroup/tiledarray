@@ -69,6 +69,7 @@ class CP_ALS : public CP<Tile, Policy> {
     first_gemm_dim_last.pop_back();
 
     this->norm_reference = norm2(tref);
+    this->norm_ref_sq = this->norm_reference * this->norm_reference;
   }
 
  protected:

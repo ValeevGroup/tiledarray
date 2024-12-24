@@ -91,7 +91,7 @@ class CP {
   /// \returns the fit: \f$ 1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
   double compute_rank(size_t rank, size_t rank_block_size = 0,
                       bool build_rank = false, double epsilonALS = 1e-3,
-                      bool verbose = false) {
+                      bool verbose = false, int niters = 100) {
     rank_block_size = (rank_block_size == 0 ? rank : rank_block_size);
     double epsilon = 1.0;
     fit_tol = epsilonALS;
@@ -101,13 +101,13 @@ class CP {
       do {
         rank_trange = TiledRange1::make_uniform(cur_rank, rank_block_size);
         build_guess(cur_rank, rank_trange);
-        ALS(cur_rank, 100, verbose);
+        ALS(cur_rank, niters, verbose);
         ++cur_rank;
       } while (cur_rank < rank);
     } else {
       rank_trange = TiledRange1::make_uniform(rank, rank_block_size);
       build_guess(rank, rank_trange);
-      ALS(rank, 100, verbose);
+      ALS(rank, niters, verbose);
     }
     return epsilon;
   }
@@ -185,7 +185,8 @@ class CP {
       final_fit,          // The final fit of the ALS
                           // optimization at fixed rank.
       fit_tol,            // Tolerance for the ALS solver
-      norm_reference;     // used in determining the CP fit.
+      norm_reference,     // used in determining the CP fit.
+      norm_ref_sq;
   std::size_t converged_num =
       0;  // How many times the ALS solver
           // has changed less than the tolerance in a row
@@ -370,16 +371,16 @@ class CP {
       for (size_t i = 1; i < ndim - 1; ++i, ++gram_ptr) {
         W("r,rp") *= (*gram_ptr)("r,rp");
       }
-      auto result = sqrt(W("r,rp").dot(
-          (unNormalized_Factor("r,n") * unNormalized_Factor("rp,n"))));
+      auto result = W("r,rp").dot(
+          (unNormalized_Factor("r,n") * unNormalized_Factor("rp,n")));
       // not sure why need to fence here, but hang periodically without it
       W.world().gop.fence();
       return result;
     };
     // compute the error in the loss function and find the fit
     const auto norm_cp = factor_norm();  // ||T_CP||_2
-    const auto squared_norm_error = norm_reference * norm_reference +
-                                    norm_cp * norm_cp -
+    const auto squared_norm_error = norm_ref_sq +
+                                    norm_cp -
                                     2.0 * ref_dot_cp;  // ||T - T_CP||_2^2
     // N.B. squared_norm_error is very noisy
     // TA_ASSERT(squared_norm_error >= - 1e-8);
