@@ -66,6 +66,13 @@ public:
    this->norm_reference = sqrt(this->norm_ref_sq);
  }
 
+ // This will just assume you've done the correct thing. If you haven't
+ // an error will be thrown somewhere else.
+ void set_factor_matrices(std::vector<DistArray<Tile, Policy>> & factors){
+   cp_factors = factors;
+   factors_set = true;
+ }
+
 protected:
  const DistArray<Tile, Policy>& ref_orb_a, ref_orb_b, ref_core;
  madness::World& world;
@@ -73,6 +80,7 @@ protected:
  std::vector<DistArray<Tile, Policy>> THC_times_CPD;
  TiledRange1 rank_trange1;
  size_t size_of_core;
+ bool factors_set = false;
 
  /// This function constructs the initial CP factor matrices
  /// stores them in CP::cp_factors vector.
@@ -95,7 +103,9 @@ protected:
      cp_factors.emplace_back(this->construct_random_factor(
          world, rank, ref_orb_b.trange().elements_range().extent(0),
          rank_trange, ref_orb_b.trange().data()[0]));
-   } else {
+   } else if(factors_set) {
+     // Do nothing and don't throw an error.
+   }else {
      TA_EXCEPTION("Currently no implementation to increase or change rank");
    }
 
