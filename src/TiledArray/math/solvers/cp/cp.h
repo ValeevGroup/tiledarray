@@ -37,6 +37,56 @@ static inline char intToAlphabet(int i) { return static_cast<char>('a' + i); }
 
 }  // namespace detail
 
+/// normalizes "columns" (aka rows) of an updated factor matrix
+
+/// rows of factor matrices produced by least-squares are not unit
+/// normalized. This takes each row and makes it unit normalized,
+/// with inverse of the normalization factor stored in this->lambda
+/// \param[in,out] factor in: unnormalized factor matrix, out:
+/// normalized factor matrix
+template<typename Array>
+void normalize_factor(Array& factor, Array & lambda) {
+  using Tile = typename Array::value_type;
+  auto& world = factor.world();
+  // this is what the code should look like, but expressions::einsum seems to
+  // be buggy lambda contains squared norms of rows
+  lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
+
+  // element-wise square root to convert squared norms to norms
+  TiledArray::foreach_inplace(
+      lambda,
+      [](Tile& tile) {
+        auto lo = tile.range().lobound_data();
+        auto up = tile.range().upbound_data();
+        for (auto R = lo[0]; R < up[0]; ++R) {
+          const auto norm_squared_RR = tile({R});
+          using std::sqrt;
+          tile({R}) = sqrt(norm_squared_RR);
+        }
+      },
+      /* fence = */ true);
+  lambda.truncate();
+  lambda.make_replicated();
+  auto lambda_eig = array_to_eigen(lambda);
+
+  TiledArray::foreach_inplace(
+      factor,
+      [&lambda_eig](Tile& tile) {
+        auto lo = tile.range().lobound_data();
+        auto up = tile.range().upbound_data();
+        for (auto R = lo[0]; R < up[0]; ++R) {
+          const auto lambda_R = lambda_eig(R, 0);
+          if (lambda_R < 1e-12) continue;
+          auto scale_by = 1.0 / lambda_R;
+          for (auto N = lo[1]; N < up[1]; ++N) {
+            tile(R, N) *= scale_by;
+          }
+        }
+      },
+      /* fence = */ true);
+  factor.truncate();
+}
+
 /**
  * This is a base class for the canonical polyadic (CP)
  * decomposition solver. The decomposition, in general,
@@ -140,10 +190,14 @@ class CP {
     return epsilon;
   }
 
-  std::vector<Array> get_factor_matrices() {
+  std::vector<Array> get_factor_matrices(bool with_lambda = false) {
     TA_ASSERT(!cp_factors.empty(),
               "CP factor matrices have not been computed)");
     auto result = cp_factors;
+    if(with_lambda){
+      result.emplace_back(lambda);
+      return result;
+    }
     result.pop_back();
     result.emplace_back(unNormalized_Factor);
     return result;
