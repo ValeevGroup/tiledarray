@@ -57,12 +57,27 @@ public:
  // for now I am going to assume an order-4 THC but later this will be used for
  // arbitrary order.
  CP_THC_ALS(const DistArray<Tile, Policy>& tref1, const DistArray<Tile, Policy>& tref2, const DistArray<Tile, Policy>& tref3)
-     : CP<Tile, Policy>(2 * rank(tref3)), ref_orb_a(tref1), ref_orb_b(tref2), ref_core(tref3), world(tref1.world()) {
+     : CP<Tile, Policy>(2 * rank(tref3)), ref_orb_a(tref1), ref_orb_b(tref2), ref_core(tref3), world(tref1.world()),
+        ref_orb_c(tref1), ref_orb_d(tref2) {
 
    DistArray<Tile, Policy> pr, pq;
    pr("r,rp") = (ref_orb_a("a,r") * ref_orb_a("a,rp")) * (ref_orb_b("i,r") * ref_orb_b("i,rp"));
    pq("p,q") = ref_core("p,r") * pr("r,rp") * ref_core("q,rp");
    this->norm_ref_sq = pq("r,rp").dot(pr("r,rp")).get();
+   this->norm_reference = sqrt(this->norm_ref_sq);
+   symmetric = true;
+ }
+
+ CP_THC_ALS(const DistArray<Tile, Policy>& tref1, const DistArray<Tile, Policy>& tref2, const DistArray<Tile, Policy>& core,
+            const DistArray<Tile, Policy>& tref3, const DistArray<Tile, Policy>& tref4)
+     : CP<Tile, Policy>(2 * rank(tref3)), ref_orb_a(tref1), ref_orb_b(tref2), ref_core(core), world(tref1.world()),
+       ref_orb_c(tref3), ref_orb_d(tref4) {
+   DistArray<Tile, Policy> pr, pq;
+   // I need two things that are r_{ai} x r_{ab} which I am calling p x q
+   pr("p,r") = ((ref_orb_a("a,p") * ref_orb_a("a,r")) * (ref_orb_b("i,p") * ref_orb_b("i,r")));
+   pq("p,q") = pr("p,r") * ref_core("r,q");
+   pr("p,q") = ref_core("p,r") * ((ref_orb_c("b,r") * ref_orb_c("b,q")) * (ref_orb_d("j,r") * ref_orb_d("j,q")));
+   this->norm_ref_sq = pq("p,q").dot(pr("p,q")).get();
    this->norm_reference = sqrt(this->norm_ref_sq);
  }
 
@@ -74,13 +89,14 @@ public:
  }
 
 protected:
- const DistArray<Tile, Policy>& ref_orb_a, ref_orb_b, ref_core;
+ const DistArray<Tile, Policy>& ref_orb_a, ref_orb_b, ref_core, ref_orb_c, ref_orb_d;
  madness::World& world;
  std::vector<typename Tile::value_type> lambda;
  std::vector<DistArray<Tile, Policy>> THC_times_CPD;
  TiledRange1 rank_trange1;
  size_t size_of_core;
  bool factors_set = false;
+ bool symmetric = false;
 
  /// This function constructs the initial CP factor matrices
  /// stores them in CP::cp_factors vector.
@@ -98,11 +114,11 @@ protected:
          world, rank, ref_orb_b.trange().elements_range().extent(0),
          rank_trange, ref_orb_b.trange().data()[0]));
      cp_factors.emplace_back(this->construct_random_factor(
-         world, rank, ref_orb_a.trange().elements_range().extent(0),
-         rank_trange, ref_orb_a.trange().data()[0]));
+         world, rank, ref_orb_c.trange().elements_range().extent(0),
+         rank_trange, ref_orb_c.trange().data()[0]));
      cp_factors.emplace_back(this->construct_random_factor(
-         world, rank, ref_orb_b.trange().elements_range().extent(0),
-         rank_trange, ref_orb_b.trange().data()[0]));
+         world, rank, ref_orb_d.trange().elements_range().extent(0),
+         rank_trange, ref_orb_d.trange().data()[0]));
    } else if(factors_set) {
      // Do nothing and don't throw an error.
    }else {
@@ -130,9 +146,9 @@ protected:
        ++ptr;
      }
      DistArray<Tile, Policy> pq;
-     pq("p,q") = ref_orb_a("a,p") * cp_factors[2]("q,a");
+     pq("p,q") = ref_orb_c("a,p") * cp_factors[2]("q,a");
      THC_times_CPD.emplace_back(pq);
-     pq("p,q") *= ref_orb_b("b,p") * cp_factors[3]("q,b");
+     pq("p,q") *= ref_orb_d("b,p") * cp_factors[3]("q,b");
      pq.truncate();
      THC_times_CPD.emplace_back(pq);
 
@@ -277,8 +293,8 @@ protected:
      DistArray<Tile, Policy> An;
      env("p,q") = ref_core("r,p") * THC_times_CPD[0]("r,q");
 
-     pq("p,q") = ref_orb_b("b,p") * cp_factors[3]("q,b");
-     An("q,a") = (pq("p,q") *  env("p,q")) *  ref_orb_a("a,p");
+     pq("p,q") = ref_orb_d("b,p") * cp_factors[3]("q,b");
+     An("q,a") = (pq("p,q") *  env("p,q")) *  ref_orb_c("a,p");
 
      // TODO check to see if the Cholesky will fail. If it does
      // use SVD
@@ -292,7 +308,7 @@ protected:
      this->normalize_factor(An);
      cp_factors[2] = An;
      this->partial_grammian[2]("r,rp") = An("r,n") * An("rp,n");
-     pq("p,q") = ref_orb_a("a,p") * An("q,a");
+     pq("p,q") = ref_orb_c("a,p") * An("q,a");
      THC_times_CPD[1] = pq;
    }
 
@@ -301,7 +317,7 @@ protected:
    {
      DistArray<Tile, Policy> Bn;
      Bn = DistArray<Tile, Policy>();
-     Bn("q,b") = (pq("p,q") * env("p,q")) * ref_orb_b("b,p");
+     Bn("q,b") = (pq("p,q") * env("p,q")) * ref_orb_d("b,p");
 
      this->MTtKRP = Bn;
 
@@ -315,7 +331,7 @@ protected:
      this->normalize_factor(Bn);
      cp_factors[3] = Bn;
      this->partial_grammian[3]("r,rp") = Bn("r,n") * Bn("rp,n");
-     THC_times_CPD[1]("p,q") *= ref_orb_b("b,p") * Bn("q,b");
+     THC_times_CPD[1]("p,q") *= ref_orb_d("b,p") * Bn("q,b");
    }
  }
 };
