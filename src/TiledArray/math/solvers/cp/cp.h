@@ -159,7 +159,7 @@ class CP {
       build_guess(rank, rank_trange);
       ALS(rank, niters, verbose);
     }
-    return epsilon;
+    return this->final_fit;
   }
 
   /// This function computes the CP decomposition with an
