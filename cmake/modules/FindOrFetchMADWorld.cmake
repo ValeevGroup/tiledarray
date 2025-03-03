@@ -41,13 +41,15 @@ if (NOT TARGET MADworld)
 
   # look for C and MPI here to make troubleshooting easier and be able to override defaults for MADNESS
   enable_language(C)
-  find_package(MPI REQUIRED COMPONENTS C CXX)
+  find_package(MPI REQUIRED COMPONENTS C)
 
+  set(FETCHCONTENT_QUIET FALSE)
   include(FetchContent)
   FetchContent_Declare(
           MADNESS
-	      GIT_REPOSITORY https://github.com/m-a-d-n-e-s-s/madness.git
+	  GIT_REPOSITORY https://github.com/m-a-d-n-e-s-s/madness.git
           GIT_TAG ${TA_TRACKED_MADNESS_TAG}
+	  GIT_PROGRESS TRUE
   )
   FetchContent_MakeAvailable(MADNESS)
   FetchContent_GetProperties(MADNESS
