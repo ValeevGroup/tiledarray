@@ -410,6 +410,12 @@ template <DeNest DeNestFlag = DeNest::False, typename ArrayA_, typename ArrayB_,
 auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             std::tuple<Einsum::Index<std::string>, Indices...> cs,
             World &world) {
+  // hotfix: process all preceding tasks before entering this code with many
+  // blocking calls
+  // TODO figure out why having free threads left after blocking MPI split
+  //  still not enough to ensure progress
+  world.gop.fence();
+
   using ArrayA = std::remove_cv_t<ArrayA_>;
   using ArrayB = std::remove_cv_t<ArrayB_>;
 
