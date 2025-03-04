@@ -41,7 +41,7 @@ if (NOT TARGET MADworld)
 
   # look for C and MPI here to make troubleshooting easier and be able to override defaults for MADNESS
   enable_language(C)
-  find_package(MPI REQUIRED COMPONENTS C)
+  find_package(MPI REQUIRED COMPONENTS C CXX)
 
   set(FETCHCONTENT_QUIET FALSE)
   include(FetchContent)
