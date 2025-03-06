@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_EINSUM_TILEDARRAY_H__INCLUDED
 #define TILEDARRAY_EINSUM_TILEDARRAY_H__INCLUDED
 
+#include "TiledArray/conversions/make_array.h"
 #include "TiledArray/dist_array.h"
 #include "TiledArray/einsum/index.h"
 #include "TiledArray/einsum/range.h"
