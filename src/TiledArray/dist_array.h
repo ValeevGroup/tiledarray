@@ -487,7 +487,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// initialized using the `op` function/functor, which transforms
   /// each tile in `other` using `op`
   /// \param other The array to be copied
-  template <typename OtherTile, typename Op>
+  template <typename OtherTile, typename Op,
+            typename = std::enable_if_t<
+                !std::is_same_v<detail::remove_cvr_t<Op>, TiledRange>>>
   DistArray(const DistArray<OtherTile, Policy>& other, Op&& op) : pimpl_() {
     *this = foreach<Tile>(other, std::forward<Op>(op));
   }
