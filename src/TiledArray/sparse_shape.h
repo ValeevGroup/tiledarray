@@ -509,6 +509,17 @@ class SparseShape {
     return tile_norms_[i] < my_threshold_;
   }
 
+  /// Check that a tile is zero
+
+  /// \tparam Integer an integer type
+  /// \param i the index
+  /// \return true if tile at position \p i is zero
+  template <typename Integer>
+  std::enable_if_t<std::is_integral_v<Integer>, bool> is_zero(
+      const std::initializer_list<Integer>& i) const {
+    return this->is_zero<std::initializer_list<Integer>>(i);
+  }
+
   /// Check density
 
   /// \return true
