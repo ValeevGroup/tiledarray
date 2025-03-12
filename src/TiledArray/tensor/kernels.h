@@ -261,6 +261,7 @@ inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
     return std::forward<Op>(op)(tensor1, tensors...);
   } else {
     static_assert(detail::is_nested_tensor_v<TR, T1, Ts...>);
+    TA_ASSERT(!empty(tensor1, tensors...));
     return TiledArray::detail::transform<TR>()(std::forward<Op>(op), tensor1,
                                                tensors...);
   }

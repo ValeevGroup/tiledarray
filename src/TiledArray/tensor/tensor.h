@@ -437,12 +437,13 @@ class Tensor {
     }
   }
 
-  /// Copy and modify the data from \c other
+  /// "Element-wise" unary transform of \c other
 
   /// \tparam T1 A tensor type
-  /// \tparam Op An element-wise operation type
+  /// \tparam Op A unary callable
   /// \param other The tensor argument
-  /// \param op The element-wise operation
+  /// \param op Unary operation that can be invoked on elements of \p other ;
+  ///        if it is not, it will be "threaded" over \p other via `tensor_op`
   template <typename T1, typename Op,
             typename std::enable_if_t<
                 is_tensor<T1>::value &&
@@ -452,13 +453,15 @@ class Tensor {
     detail::tensor_init(op, *this, other);
   }
 
-  /// Copy, modify, and permute the data from \c other
+  /// "Element-wise" unary transform of \c other fused with permutation
 
+  /// equivalent, but more efficient, than `Tensor(other, op).permute(perm)`
   /// \tparam T1 A tensor type
-  /// \tparam Op An element-wise operation type
+  /// \tparam Op A unary callable
   /// \tparam Perm A permutation type
   /// \param other The tensor argument
-  /// \param op The element-wise operation
+  /// \param op Unary operation that can be invoked as` op(other[i]))`;
+  ///        if it is not, it will be "threaded" over \p other via `tensor_op`
   template <
       typename T1, typename Op, typename Perm,
       typename std::enable_if_t<is_tensor<T1>::value &&
@@ -480,14 +483,15 @@ class Tensor {
     }
   }
 
-  /// Copy and modify the data from \c left, and \c right
+  /// "Element-wise" binary transform of \c {left,right}
 
   /// \tparam T1 A tensor type
   /// \tparam T2 A tensor type
-  /// \tparam Op An element-wise operation type
+  /// \tparam Op A binary callable
   /// \param left The left-hand tensor argument
   /// \param right The right-hand tensor argument
-  /// \param op The element-wise operation
+  /// \param op Binary operation that can be invoked as `op(left[i],right[i]))`;
+  ///        if it is not, it will be "threaded" over \p other via `tensor_op`
   template <typename T1, typename T2, typename Op,
             typename = std::enable_if_t<detail::is_nested_tensor_v<T1, T2>>>
   Tensor(const T1& left, const T2& right, Op&& op)
@@ -495,15 +499,16 @@ class Tensor {
     detail::tensor_init(op, *this, left, right);
   }
 
-  /// Copy, modify, and permute the data from \c left, and \c right
+  /// "Element-wise" binary transform of \c {left,right} fused with permutation
 
   /// \tparam T1 A tensor type
   /// \tparam T2 A tensor type
-  /// \tparam Op An element-wise operation type
+  /// \tparam Op A binary callable
   /// \tparam Perm A permutation tile
   /// \param left The left-hand tensor argument
   /// \param right The right-hand tensor argument
-  /// \param op The element-wise operation
+  /// \param op Binary operation that can be invoked as `op(left[i],right[i]))`;
+  ///        if it is not, it will be "threaded" over \p other via `tensor_op`
   /// \param perm The permutation that will be applied to the arguments
   template <
       typename T1, typename T2, typename Op, typename Perm,
@@ -1579,7 +1584,9 @@ class Tensor {
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor scale(const Scalar factor) const {
-    if (range().volume() == 0) return *this;
+    // early exit for empty this
+    if (empty()) return *this;
+
     return unary([factor](const value_type& a) -> decltype(auto) {
       using namespace TiledArray::detail;
       return a * factor;
@@ -1598,8 +1605,11 @@ class Tensor {
             typename = std::enable_if_t<detail::is_numeric_v<Scalar> &&
                                         detail::is_permutation_v<Perm>>>
   Tensor scale(const Scalar factor, const Perm& perm) const {
+    // early exit for empty this
+    if (empty()) return *this;
+
     return unary(
-        [factor](const numeric_type a) -> numeric_type {
+        [factor](const value_type& a) -> decltype(auto) {
           using namespace TiledArray::detail;
           return a * factor;
         },
@@ -1614,6 +1624,9 @@ class Tensor {
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& scale_to(const Scalar factor) {
+    // early exit for empty this
+    if (empty()) return *this;
+
     return inplace_unary(
         [factor](value_type& MADNESS_RESTRICT res) { res *= factor; });
   }
@@ -1629,7 +1642,9 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor add(const Right& right) const& {
-    if (right.empty()) return *this;
+    // early exit for empty this
+    if (empty()) return *this;
+
     return binary(
         right,
         [](const value_type& l, const value_t<Right>& r) -> decltype(l + r) {
@@ -1733,8 +1748,11 @@ class Tensor {
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c value
   Tensor add(const numeric_type value) const {
+    // early exit for empty this
+    if (empty()) return *this;
+
     return unary(
-        [value](const numeric_type a) -> numeric_type { return a + value; });
+        [value](const value_type& a) -> numeric_type { return a + value; });
   }
 
   /// Add a constant to a permuted copy of this tensor
@@ -1747,8 +1765,11 @@ class Tensor {
   template <typename Perm,
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor add(const numeric_type value, const Perm& perm) const {
+    // early exit for empty this
+    if (empty()) return *this;
+
     return unary(
-        [value](const numeric_type a) -> numeric_type { return a + value; },
+        [value](const value_type& a) -> decltype(auto) { return a + value; },
         perm);
   }
 
@@ -1760,10 +1781,14 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor& add_to(const Right& right) {
+    // early exit for empty right
     if (right.empty()) return *this;
+
+    // early exit for empty right AND this
     if (empty()) {
       *this = Tensor{right.range(), value_type{}};
     }
+
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right> r) { l += r; });
   }
