@@ -431,8 +431,7 @@ class Tensor {
         auto volume = total_size();
         for (decltype(volume) i = 0; i < volume; ++i) {
           auto& el = *(data() + i);
-          if (!el.empty())
-            el = p(el, inner_perm);
+          if (!el.empty()) el = p(el, inner_perm);
         }
       }
     }
@@ -1633,10 +1632,19 @@ class Tensor {
     if (right.empty()) return *this;
     return binary(
         right,
-        [](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
+        [](const value_type& l, const value_t<Right>& r) -> decltype(l + r) {
           if constexpr (detail::is_tensor_v<value_type>) {
-            if (l.empty() && r.empty())
-              return value_type{};
+            if (l.empty()) {
+              if (r.empty())
+                return {};
+              else
+                return r;
+            } else {
+              if (r.empty())
+                return l;
+              else
+                return l + r;
+            }
           }
           return l + r;
         });
@@ -1799,8 +1807,23 @@ class Tensor {
                 detail::tensors_have_equal_nested_rank_v<Tensor, Right>>>
   Tensor subt(const Right& right) const {
     return binary(
-        right, [](const value_type& l, const value_type& r) -> decltype(auto) {
-          return l - r;
+        right,
+        [](const value_type& l, const value_t<Right>& r) -> decltype(l - r) {
+          if constexpr (detail::is_tensor_v<value_type>) {
+            if (l.empty()) {
+              if (r.empty())
+                return {};
+              else
+                return -r;
+            } else {
+              if (r.empty())
+                return l;
+              else
+                return l - r;
+            }
+          } else {
+            return l - r;
+          }
         });
   }
 
@@ -1936,13 +1959,14 @@ class Tensor {
             typename std::enable_if<detail::is_nested_tensor_v<Right>>::type* =
                 nullptr>
   decltype(auto) mult(const Right& right) const {
-
-    auto mult_op =[](const value_type& l, const value_t<Right>& r) -> decltype(auto) {
+    auto mult_op = [](const value_type& l,
+                      const value_t<Right>& r) -> decltype(auto) {
       return l * r;
     };
 
     if (empty() || right.empty()) {
-      using res_t = decltype(std::declval<Tensor>().binary(std::declval<Right>(), mult_op));
+      using res_t = decltype(std::declval<Tensor>().binary(
+          std::declval<Right>(), mult_op));
       return res_t{};
     }
 
