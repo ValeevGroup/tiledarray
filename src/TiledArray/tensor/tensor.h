@@ -43,33 +43,41 @@ namespace detail {
 template <typename T, typename A>
 struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
 
-template <
-    typename T, typename S,
-    typename = std::enable_if_t<
-        detail::is_nested_tensor_v<T, detail::remove_cvr_t<S>> &&
-        detail::is_range_v<T> && detail::is_range_v<detail::remove_cvr_t<S>>>>
-T clone_or_cast(S&& s) {
-  if constexpr (std::is_same_v<T, detail::remove_cvr_t<S>>)
-    return s.clone();
-  else {
+template <typename To, typename From,
+          typename = std::enable_if_t<
+              detail::is_nested_tensor_v<To, detail::remove_cvr_t<From>>>>
+To clone_or_cast(From&& f) {
+  if constexpr (std::is_same_v<To, detail::remove_cvr_t<From>>)
+    return f.clone();
+  else if constexpr (detail::is_convertible_v<From, To>) {
+    return static_cast<To>(std::forward<From>(f));
+  } else if constexpr (detail::is_range_v<To> &&
+                       detail::is_range_v<detail::remove_cvr_t<From>>) {
     using std::begin;
     using std::data;
     using std::end;
 
-    T t(s.range());
-    if constexpr (detail::is_contiguous_tensor_v<detail::remove_cvr_t<S>>) {
-      if constexpr (detail::is_contiguous_tensor_v<T>) {
-        std::copy(data(s), data(s) + s.range().volume(), data(t));
+    To t(f.range());
+    if constexpr (detail::is_contiguous_tensor_v<detail::remove_cvr_t<From>>) {
+      const auto n = f.range().volume();
+      if constexpr (detail::is_contiguous_tensor_v<To>) {
+        std::copy(data(f), data(f) + n, data(t));
       } else {
-        std::copy(data(s), data(s) + s.range().volume(), begin(t));
+        std::copy(data(f), data(f) + n, begin(t));
       }
     } else {
-      if constexpr (detail::is_contiguous_tensor_v<T>) {
-        std::copy(begin(s), end(s), data(t));
+      if constexpr (detail::is_contiguous_tensor_v<To>) {
+        std::copy(begin(f), end(f), data(t));
       } else
-        std::copy(begin(s), end(s), begin(t));
+        std::copy(begin(f), end(f), begin(t));
     }
     return t;
+  } else {
+    static_assert(
+        false,
+        "clone_or_cast<To,From>: could not figure out how to convert From to "
+        "To, either overload of a member function of Tensor is missing or From "
+        "need to provide a conversion operator to To");
   }
 }
 
@@ -1554,8 +1562,21 @@ class Tensor {
   /// \c op(*this[i])
   /// \throw TiledArray::Exception When this tensor is empty.
   template <typename Op>
-  Tensor unary(Op&& op) const {
+  Tensor unary(Op&& op) const& {
     return Tensor(*this, op);
+  }
+
+  /// Use a unary, element wise operation to construct a new tensor
+
+  /// \tparam Op The unary operation type
+  /// \param op The unary element-wise operation
+  /// \return A tensor where element \c i of the new tensor is equal to
+  /// \c op(*this[i])
+  /// \throw TiledArray::Exception When this tensor is empty.
+  template <typename Op>
+  Tensor unary(Op&& op) && {
+    inplace_unary(std::forward<Op>(op));
+    return std::move(*this);
   }
 
   /// Use a unary, element wise operation to construct a new, permuted tensor
@@ -1613,7 +1634,7 @@ class Tensor {
   /// \c factor
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
-  Tensor scale(const Scalar factor) const {
+  Tensor scale(const Scalar factor) const& {
     // early exit for empty this
     if (empty()) return *this;
 
@@ -1621,6 +1642,19 @@ class Tensor {
       using namespace TiledArray::detail;
       return a * factor;
     });
+  }
+
+  /// Construct a scaled copy of this tensor
+
+  /// \tparam Scalar A scalar type
+  /// \param factor The scaling factor
+  /// \return A new tensor where the elements of this tensor are scaled by
+  /// \c factor
+  template <typename Scalar, typename std::enable_if<
+                                 detail::is_numeric_v<Scalar>>::type* = nullptr>
+  Tensor scale(const Scalar factor) && {
+    scale_to(factor);
+    return std::move(*this);
   }
 
   /// Construct a scaled and permuted copy of this tensor
@@ -1670,8 +1704,7 @@ class Tensor {
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other
   template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value &&
-                                    detail::is_range_v<Right>>::type* = nullptr>
+            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor add(const Right& right) const& {
     // early exit for empty right
     if (right.empty()) return this->clone();
@@ -1706,8 +1739,7 @@ class Tensor {
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other
   template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value &&
-                                    detail::is_range_v<Right>>::type* = nullptr>
+            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor add(const Right& right) && {
     add_to(right);
     return std::move(*this);
@@ -1806,8 +1838,7 @@ class Tensor {
   /// \param right The tensor that will be added to this tensor
   /// \return A reference to this tensor
   template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value &&
-                                    detail::is_range_v<Right>>::type* = nullptr>
+            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor& add_to(const Right& right) {
     // early exit for empty right
     if (right.empty()) return *this;
@@ -1843,7 +1874,9 @@ class Tensor {
 
   /// \param value The constant to be added
   /// \return A reference to this tensor
-  Tensor& add_to(const numeric_type value) {
+  template <typename Scalar,
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
+  Tensor& add_to(const Scalar value) {
     return inplace_unary(
         [value](numeric_type& MADNESS_RESTRICT res) { res += value; });
   }
