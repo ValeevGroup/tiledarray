@@ -297,21 +297,21 @@ EigenSparseTile<T, TagType> add(const EigenSparseTile<T, TagType>& arg1,
 }
 
 //// dense_result[i] = dense_arg1[i] + sparse_arg2[i]
-// template <typename T, typename TagType>
-// TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
-//                           const EigenSparseTile<T, TagType>& arg2) {
-//   TA_ASSERT(arg1.range() == arg2.range());
-//
-//   // this could be done better ...
-//   return TiledArray::add(arg1, static_cast<TiledArray::Tensor<T>>(arg2));
-// }
-//
+template <typename T, typename TagType>
+TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
+                          const EigenSparseTile<T, TagType>& arg2) {
+  TA_ASSERT(arg1.range() == arg2.range());
+
+  // this could be done better ...
+  return TiledArray::add(arg1, static_cast<TiledArray::Tensor<T>>(arg2));
+}
+
 //// dense_result[i] = sparse_arg1[i] + dense_arg2[i]
-// template <typename T, typename TagType>
-// TiledArray::Tensor<T> add(const EigenSparseTile<T, TagType>& arg1,
-//                           const TiledArray::Tensor<T>& arg2) {
-//   return TiledArray::add(arg2, static_cast<TiledArray::Tensor<T>>(arg1));
-// }
+template <typename T, typename TagType>
+TiledArray::Tensor<T> add(const EigenSparseTile<T, TagType>& arg1,
+                          const TiledArray::Tensor<T>& arg2) {
+  return TiledArray::add(arg2, static_cast<TiledArray::Tensor<T>>(arg1));
+}
 
 // dense_result[perm ^ i] = dense_arg1[i] + sparse_arg2[i]
 template <
