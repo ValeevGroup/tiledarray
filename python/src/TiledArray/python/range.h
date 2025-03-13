@@ -55,14 +55,14 @@ namespace range {
     return r.upbound();
   }
 
-  inline py::list slice(const Range &r) {
+  inline auto slice(const Range &r) {
     py::list s;
     for (size_t i = 0; i < ndim(r); ++i) {
       s.append(
         py::slice(start(r)[i], stop(r)[i], 1)
       );
     }
-    return s;
+    return py::tuple(s);
   }
 
   inline py::str str(const Range &r) {
