@@ -487,7 +487,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// initialized using the `op` function/functor, which transforms
   /// each tile in `other` using `op`
   /// \param other The array to be copied
-  template <typename OtherTile, typename Op>
+  template <typename OtherTile, typename Op,
+            typename = std::enable_if_t<
+                !std::is_same_v<detail::remove_cvr_t<Op>, TiledRange>>>
   DistArray(const DistArray<OtherTile, Policy>& other, Op&& op) : pimpl_() {
     *this = foreach<Tile>(other, std::forward<Op>(op));
   }
@@ -1876,39 +1878,6 @@ auto squared_norm(const DistArray<Tile, Policy>& a) {
 template <typename Tile, typename Policy>
 auto norm2(const DistArray<Tile, Policy>& a) {
   return std::sqrt(squared_norm(a));
-}
-
-template <typename Array, typename Tiles>
-Array make_array(World& world, const detail::trange_t<Array>& tiled_range,
-                 Tiles begin, Tiles end, bool replicated) {
-  Array array;
-  using Tuple = std::remove_reference_t<decltype(*begin)>;
-  using Index = std::tuple_element_t<0, Tuple>;
-  using shape_type = typename Array::shape_type;
-
-  std::shared_ptr<typename Array::pmap_interface> pmap;
-  if (replicated) {
-    size_t ntiles = tiled_range.tiles_range().volume();
-    pmap = std::make_shared<detail::ReplicatedPmap>(world, ntiles);
-  }
-
-  if constexpr (shape_type::is_dense()) {
-    array = Array(world, tiled_range, pmap);
-  } else {
-    std::vector<std::pair<Index, float>> tile_norms;
-    for (Tiles it = begin; it != end; ++it) {
-      auto [index, tile] = *it;
-      tile_norms.push_back({index, tile.norm()});
-    }
-    shape_type shape(world, tile_norms, tiled_range);
-    array = Array(world, tiled_range, shape, pmap);
-  }
-  for (Tiles it = begin; it != end; ++it) {
-    auto [index, tile] = *it;
-    if (array.is_zero(index)) continue;
-    array.set(index, tile);
-  }
-  return array;
 }
 
 template <typename T, typename P>

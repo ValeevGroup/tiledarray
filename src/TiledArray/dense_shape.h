@@ -89,6 +89,17 @@ class DenseShape {
     return false;
   }
 
+  /// Check that a tile is zero
+
+  /// \tparam Integer an integer type
+  /// \param i the index
+  /// \return false
+  template <typename Integer>
+  std::enable_if_t<std::is_integral_v<Integer>, bool> is_zero(
+      const std::initializer_list<Integer>& i) const {
+    return false;
+  }
+
   /// Check density
 
   /// \return true

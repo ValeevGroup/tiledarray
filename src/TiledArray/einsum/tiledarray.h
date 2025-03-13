@@ -1,6 +1,7 @@
 #ifndef TILEDARRAY_EINSUM_TILEDARRAY_H__INCLUDED
 #define TILEDARRAY_EINSUM_TILEDARRAY_H__INCLUDED
 
+#include "TiledArray/conversions/make_array.h"
 #include "TiledArray/dist_array.h"
 #include "TiledArray/einsum/index.h"
 #include "TiledArray/einsum/range.h"
@@ -410,6 +411,12 @@ template <DeNest DeNestFlag = DeNest::False, typename ArrayA_, typename ArrayB_,
 auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             std::tuple<Einsum::Index<std::string>, Indices...> cs,
             World &world) {
+  // hotfix: process all preceding tasks before entering this code with many
+  // blocking calls
+  // TODO figure out why having free threads left after blocking MPI split
+  //  still not enough to ensure progress
+  world.gop.fence();
+
   using ArrayA = std::remove_cv_t<ArrayA_>;
   using ArrayB = std::remove_cv_t<ArrayB_>;
 
@@ -739,7 +746,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     for (Index h : H.tiles) {
       auto &[A, B] = AB;
       auto own = A.own(h) || B.own(h);
-      auto comm = world.mpi.comm().Split(own, world.rank());
+      auto comm = madness::blocking_invoke(&SafeMPI::Intracomm::Split,
+                                           world.mpi.comm(), own, world.rank());
       worlds.push_back(std::make_unique<World>(comm));
       auto &owners = worlds.back();
       if (!own) continue;
