@@ -744,4 +744,13 @@ BOOST_AUTO_TEST_CASE(rebind) {
   static_assert(std::is_same_v<TiledArray::detail::real_t<TensorZ>, TensorD>);
 }
 
+BOOST_AUTO_TEST_CASE(print) {
+  BOOST_REQUIRE_NO_THROW(std::cout << t);
+  // std::wcout << t;
+  decltype(t) tb(t.range(), decltype(t)::nbatches{2});
+  rand_fill(1, tb.total_size(), tb.data());
+  BOOST_REQUIRE_NO_THROW(std::cout << tb);
+  // std::wcout << tb;
+}
+
 BOOST_AUTO_TEST_SUITE_END()

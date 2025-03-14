@@ -327,13 +327,26 @@ class Tensor {
 #endif
   }
 
+  struct nbatches {
+    template <typename Int,
+              typename = std::enable_if_t<std::is_integral_v<Int>>>
+    nbatches(Int n) : n(n) {}
+    template <typename Int,
+              typename = std::enable_if_t<std::is_integral_v<Int>>>
+    nbatches& operator=(Int n) {
+      this->n = n;
+    }
+
+    size_type n = 1;
+  };
+
   /// Construct a tensor with a range equal to \c range. The data is
   /// default-initialized (which, for `T` with trivial default constructor,
   /// means data is uninitialized).
   /// \param range The range of the tensor
   /// \param nbatch The number of batches (default is 1)
-  explicit Tensor(const range_type& range, size_type nbatch = 1)
-      : Tensor(range, nbatch, default_construct{true}) {}
+  explicit Tensor(const range_type& range, nbatches nb = 1)
+      : Tensor(range, nb.n, default_construct{true}) {}
 
   /// Construct a tensor of tensor values, setting all elements to the same
   /// value
