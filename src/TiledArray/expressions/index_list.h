@@ -340,7 +340,9 @@ inline IndexList operator*(const ::TiledArray::Permutation& p,
 }
 
 /// ostream IndexList output operator.
-inline std::ostream& operator<<(std::ostream& out, const IndexList& v) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& out, const IndexList& v) {
   out << "(";
   std::size_t d;
   std::size_t n = v.size() - 1;
@@ -791,8 +793,9 @@ inline BipartiteIndexList operator*(const ::TiledArray::Permutation& p,
 /// \param[in,out] out the stream that \c v will be written to.
 /// \param[in] v The BipartiteIndexList instance to insert into the stream.
 /// \return \c out will be returned after adding \c v to it.
-inline std::ostream& operator<<(std::ostream& out,
-                                const BipartiteIndexList& v) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& out, const BipartiteIndexList& v) {
   const std::string str = "(" + static_cast<std::string>(v) + ")";
   return out << str;
 }

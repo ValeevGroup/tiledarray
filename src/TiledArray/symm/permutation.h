@@ -134,8 +134,9 @@ class Permutation {
     }
     return output;
   }
-  friend inline std::ostream& operator<<(std::ostream& output,
-                                         const Permutation& p);
+  template <typename Char, typename CharTraits>
+  friend inline std::basic_ostream<Char, CharTraits>& operator<<(
+      std::basic_ostream<Char, CharTraits>& output, const Permutation& p);
 
   /// Validate permutation specified in one-line form as an iterator range
   /// \return \c true if each element of \c [first,last) is non-negative and
@@ -436,7 +437,7 @@ class Permutation {
   /// \param[in,out] ar The serialization archive
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& p_;
+    ar & p_;
   }
 
 };  // class Permutation
@@ -478,7 +479,9 @@ inline bool operator<(const Permutation& p1, const Permutation& p2) {
 /// \param[out] output The output stream
 /// \param[in] p The permutation to be added to the output stream
 /// \return The output stream
-inline std::ostream& operator<<(std::ostream& output, const Permutation& p) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& output, const Permutation& p) {
   output << "{";
   Permutation::print_map(output, p.data());
   output << "}";

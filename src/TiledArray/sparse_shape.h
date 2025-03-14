@@ -1734,8 +1734,9 @@ typename SparseShape<T>::value_type SparseShape<T>::threshold_ =
 /// \param os The output stream
 /// \param shape the SparseShape<T> object
 /// \return A reference to the output stream
-template <typename T>
-inline std::ostream& operator<<(std::ostream& os, const SparseShape<T>& shape) {
+template <typename Char, typename CharTraits, typename T>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const SparseShape<T>& shape) {
   os << "SparseShape<" << typeid(T).name() << ">:" << std::endl
      << shape.data() << std::endl;
   return os;

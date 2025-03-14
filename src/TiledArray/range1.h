@@ -215,7 +215,9 @@ inline void swap(Range1& r0, Range1& r1) {  // no throw
 }
 
 /// Range1 ostream operator
-inline std::ostream& operator<<(std::ostream& out, const Range1& rng) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& out, const Range1& rng) {
   out << "[ " << rng.first << ", " << rng.second << " )";
   return out;
 }

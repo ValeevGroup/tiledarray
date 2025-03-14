@@ -464,16 +464,16 @@ class ValArray : private SizeArray<T> {
             typename = std::enable_if_t<madness::is_input_archive_v<Archive>>>
   void serialize(Archive& ar) {
     size_t sz = 0;
-    ar& sz;
+    ar & sz;
     init(sz);
     ar& madness::archive::wrap(data(), size());
   }
 
 };  // class ValArray
 
-template <typename T>
-inline std::ostream& operator<<(std::ostream& os,
-                                const ValArray<T>& val_array) {
+template <typename Char, typename CharTraits, typename T>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const ValArray<T>& val_array) {
   print_array(os, val_array);
   return os;
 }

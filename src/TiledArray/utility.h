@@ -44,8 +44,9 @@ namespace detail {
 /// \param out A standard output stream
 /// \param a The array-like container to be printed
 /// \param n The number of elements in the array.
-template <typename A>
-inline void print_array(std::ostream& out, const A& a, const std::size_t n) {
+template <typename Char, typename CharTraits, typename A>
+inline void print_array(std::basic_ostream<Char, CharTraits>& out, const A& a,
+                        const std::size_t n) {
   out << "[";
   for (std::size_t i = 0; i < n; ++i) {
     out << a[i];
@@ -59,8 +60,8 @@ inline void print_array(std::ostream& out, const A& a, const std::size_t n) {
 /// \tparam A The array container type
 /// \param out A standard output stream
 /// \param a The array-like container to be printed
-template <typename A>
-inline void print_array(std::ostream& out, const A& a) {
+template <typename Char, typename CharTraits, typename A>
+inline void print_array(std::basic_ostream<Char, CharTraits>& out, const A& a) {
   using std::size;
   print_array(out, a, size(a));
 }

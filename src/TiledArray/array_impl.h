@@ -129,8 +129,9 @@ bool operator!=(const TileReference<Impl>& a, const TileReference<Impl>& b) {
 }
 
 /// redirect operator to std::ostream for TileReference objects
-template <typename Impl>
-std::ostream& operator<<(std::ostream& os, const TileReference<Impl>& a) {
+template <typename Char, typename CharTraits, typename Impl>
+std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const TileReference<Impl>& a) {
   os << a.get();
   return os;
 }
@@ -192,8 +193,10 @@ bool operator!=(const TileConstReference<Impl>& a,
 }
 
 /// redirect operator to std::ostream for TileConstReference objects
-template <typename Impl>
-std::ostream& operator<<(std::ostream& os, const TileConstReference<Impl>& a) {
+template <typename Char, typename CharTraits, typename Impl>
+std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os,
+    const TileConstReference<Impl>& a) {
   os << a.get();
   return os;
 }

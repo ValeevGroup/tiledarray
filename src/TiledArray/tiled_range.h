@@ -440,7 +440,9 @@ inline bool operator!=(const TiledRange& r1, const TiledRange& r2) {
   return !operator==(r1, r2);
 }
 
-inline std::ostream& operator<<(std::ostream& out, const TiledRange& rng) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& out, const TiledRange& rng) {
   out << "("
       << " tiles = " << rng.tiles_range()
       << ", elements = " << rng.elements_range() << " )";

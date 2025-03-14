@@ -30,6 +30,7 @@
 
 #include <TiledArray/tensor/tensor.h>
 
+#include <TiledArray/tensor/print.h>
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tensor/tensor_map.h>
 
@@ -56,27 +57,45 @@ using TensorConstView =
 /// \param os The output stream
 /// \param t The tensor to be output
 /// \return A reference to the output stream
-template <typename T, typename std::enable_if<detail::is_tensor<T>::value &&
-                                              detail::is_contiguous_tensor<
-                                                  T>::value>::type* = nullptr>
-inline std::ostream& operator<<(std::ostream& os, const T& t) {
-  os << t.range() << " { ";
+template <
+    typename Char, typename CharTraits, typename T,
+    typename std::enable_if<detail::is_nested_tensor_v<T> &&
+                            detail::is_contiguous_tensor_v<T>>::type* = nullptr>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const T& t) {
+  os << t.range() << " {\n";
   const auto n = t.range().volume();
   std::size_t offset = 0ul;
-  const auto more_than_1_batch = t.nbatch() > 1;
-  for (auto b = 0ul; b != t.nbatch(); ++b) {
+  std::size_t nbatch = 1;
+  if constexpr (detail::has_member_function_nbatch_anyreturn_v<T>)
+    nbatch = t.nbatch();
+  const auto more_than_1_batch = nbatch > 1;
+  for (auto b = 0ul; b != nbatch; ++b) {
     if (more_than_1_batch) {
-      os << "[batch " << b << "]{ ";
+      os << "  [batch " << b << "]{\n";
     }
-    for (auto ord = 0ul; ord < n; ++ord) {
-      os << t.data()[offset + ord] << " ";
+    if constexpr (detail::is_tensor_v<T>) {  // tensor of scalars
+      detail::NDArrayPrinter{}.print(
+          t.data() + offset, t.range().rank(), t.range().extent_data(),
+          t.range().stride_data(), os, more_than_1_batch ? 4 : 2);
+    } else {  // tensor of tensors, need to annotate each element by its index
+      for (auto&& idx : t.range()) {  // Loop over inner tensors
+        const auto& inner_t = *(t.data() + offset + t.range().ordinal(idx));
+        os << "  " << idx << ":";
+        detail::NDArrayPrinter{}.print(inner_t.data(), inner_t.range().rank(),
+                                       inner_t.range().extent_data(),
+                                       inner_t.range().stride_data(), os,
+                                       more_than_1_batch ? 6 : 4);
+        os << "\n";
+      }
     }
     if (more_than_1_batch) {
-      os << "} ";
+      os << "\n  }";
+      if (b + 1 != nbatch) os << "\n";  // not last batch
     }
     offset += n;
   }
-  os << "}";
+  os << "\n}\n";
 
   return os;
 }
@@ -88,10 +107,12 @@ inline std::ostream& operator<<(std::ostream& os, const T& t) {
 /// \param os The output stream
 /// \param t The tensor to be output
 /// \return A reference to the output stream
-template <typename T, typename std::enable_if<detail::is_tensor<T>::value &&
-                                              !detail::is_contiguous_tensor<
-                                                  T>::value>::type* = nullptr>
-inline std::ostream& operator<<(std::ostream& os, const T& t) {
+template <typename Char, typename CharTraits, typename T,
+          typename std::enable_if<
+              detail::is_tensor<T>::value &&
+              !detail::is_contiguous_tensor<T>::value>::type* = nullptr>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const T& t) {
   const auto stride = inner_size(t);
   const auto volume = t.range().volume();
 
@@ -106,20 +127,8 @@ inline std::ostream& operator<<(std::ostream& os, const T& t) {
   for (decltype(t.range().volume()) i = 0ul; i < volume; i += stride)
     tensor_print_range(t.data() + t.range().ordinal(i));
 
-  os << "}";
+  os << "}\n";
 
-  return os;
-}
-
-template <typename T,
-          typename = std::enable_if_t<detail::is_tensor_of_tensor_v<T>>>
-inline std::ostream& operator<<(std::ostream& os, const T& t) {
-  os << t.range() << " {" << std::endl;  // Outer tensor's range
-  for (auto idx : t.range()) {           // Loop over inner tensors
-    const auto& inner_t = t(idx);
-    os << "  " << idx << ":" << inner_t << std::endl;
-  }
-  os << "}";  // End outer tensor
   return os;
 }
 

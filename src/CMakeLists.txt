@@ -162,6 +162,9 @@ TiledArray/tensor/complex.h
 TiledArray/tensor/kernels.h
 TiledArray/tensor/operators.h
 TiledArray/tensor/permute.h
+TiledArray/tensor/print.cpp
+TiledArray/tensor/print.ipp
+TiledArray/tensor/print.h
 TiledArray/tensor/shift_wrapper.h
 TiledArray/tensor/tensor.h
 TiledArray/tensor/tensor_interface.h

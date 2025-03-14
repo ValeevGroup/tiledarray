@@ -36,7 +36,9 @@ namespace TiledArray {
 class Permutation;
 
 bool operator==(const Permutation&, const Permutation&);
-std::ostream& operator<<(std::ostream&, const Permutation&);
+template <typename Char, typename CharTraits>
+std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>&, const Permutation&);
 template <typename T, std::size_t N>
 inline std::array<T, N> operator*(const Permutation&, const std::array<T, N>&);
 template <typename T, std::size_t N>
@@ -475,7 +477,9 @@ inline bool operator<(const Permutation& p1, const Permutation& p2) {
 /// \param[out] output The output stream
 /// \param[in] p The permutation to be added to the output stream
 /// \return The output stream
-inline std::ostream& operator<<(std::ostream& output, const Permutation& p) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& output, const Permutation& p) {
   std::size_t n = p.size();
   output << "{";
   for (unsigned int dim = 0; dim < n - 1; ++dim)

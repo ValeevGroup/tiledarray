@@ -32,7 +32,7 @@ namespace TiledArray {
 
 // Tensor arithmetic operators
 
-/// Tensor plus operator
+/// Tensor plus Tensor operator
 
 /// Add two tensors
 /// \tparam T1 The left-hand tensor type
@@ -47,9 +47,37 @@ inline decltype(auto) operator+(T1&& left, T2&& right) {
   return add(std::forward<T1>(left), std::forward<T2>(right));
 }
 
-/// Tensor minus operator
+/// Tensor plus number operator
 
-/// Subtract two tensors
+/// Adds a number to a tensor
+/// \tparam T1 A tensor type
+/// \param tensor The tensor argument
+/// \param number The number argument
+/// \return A tensor where element \c i is equal to <tt>tensor[i] + number</tt>
+template <typename T1, typename = std::enable_if_t<detail::is_nested_tensor_v<
+                           detail::remove_cvr_t<T1>>>>
+inline decltype(auto) operator+(
+    T1&& tensor, detail::numeric_t<detail::remove_cvr_t<T1>> number) {
+  return std::forward<T1>(tensor).add(number);
+}
+
+/// Number plus Tensor operator
+
+/// Adds a number to a tensor
+/// \tparam T1 A tensor type
+/// \param number The number argument
+/// \param tensor The tensor argument
+/// \return A tensor where element \c i is equal to <tt>tensor[i] + number</tt>
+template <typename T1, typename = std::enable_if_t<detail::is_nested_tensor_v<
+                           detail::remove_cvr_t<T1>>>>
+inline decltype(auto) operator+(
+    detail::numeric_t<detail::remove_cvr_t<T1>> number, T1&& tensor) {
+  return std::forward<T1>(tensor).add(number);
+}
+
+/// Tensor minus Tensor operator
+
+/// Subtracts two tensors
 /// \tparam T1 The left-hand tensor type
 /// \tparam T2 The right-hand tensor type
 /// \param left The left-hand tensor argument
@@ -62,7 +90,21 @@ inline decltype(auto) operator-(T1&& left, T2&& right) {
   return subt(std::forward<T1>(left), std::forward<T2>(right));
 }
 
-/// Tensor multiplication operator
+/// Tensor minus number operator
+
+/// Subtracts a number from a tensor
+/// \tparam T1 A tensor type
+/// \param tensor The tensor argument
+/// \param number The number argument
+/// \return A tensor where element \c i is equal to <tt>tensor[i] - number</tt>
+template <typename T1, typename = std::enable_if_t<detail::is_nested_tensor_v<
+                           detail::remove_cvr_t<T1>>>>
+inline decltype(auto) operator-(
+    T1&& tensor, detail::numeric_t<detail::remove_cvr_t<T1>> number) {
+  return std::forward<T1>(tensor).subt(number);
+}
+
+/// Element-wise multiplication operator for Tensors
 
 /// Element-wise multiplication of two tensors
 /// \tparam T1 The left-hand tensor type

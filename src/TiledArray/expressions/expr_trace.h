@@ -122,8 +122,8 @@ class ExprTraceTarget {
 /// \param os The output stream for the expression trace
 /// \param tsr The tensor that will be the target of the expression
 /// \return The expression trace object
-template <typename A, bool Alias>
-inline ExprTraceTarget operator<<(std::ostream& os,
+template <typename Char, typename CharTraits, typename A, bool Alias>
+inline ExprTraceTarget operator<<(std::basic_ostream<Char, CharTraits>& os,
                                   const TsrExpr<A, Alias>& tsr) {
   return ExprTraceTarget(os, tsr.annotation());
 }

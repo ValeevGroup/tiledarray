@@ -63,7 +63,9 @@ struct TileOpsLogger : public Singleton<TileOpsLogger<T>> {
     return *this;
   }
 
-  TileOpsLogger& operator<<(std::ostream& (*func)(std::ostream&)) {
+  template <typename Char, typename CharTraits>
+  TileOpsLogger& operator<<(std::basic_ostream<Char, CharTraits>& (*func)(
+      std::basic_ostream<Char, CharTraits>&)) {
     *log << func;
     return *this;
   }

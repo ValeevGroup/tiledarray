@@ -481,7 +481,9 @@ class TiledRange1 {
     }
   }
 
-  friend std::ostream& operator<<(std::ostream&, const TiledRange1&);
+  template <typename Char, typename CharTraits>
+  friend std::basic_ostream<Char, CharTraits>& operator<<(
+      std::basic_ostream<Char, CharTraits>&, const TiledRange1&);
 
   // TiledRange1 data
   range_type range_;           ///< the range of tile indices
@@ -511,7 +513,9 @@ inline bool operator!=(const TiledRange1& r1, const TiledRange1& r2) {
 }
 
 /// TiledRange1 ostream operator
-inline std::ostream& operator<<(std::ostream& out, const TiledRange1& rng) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& out, const TiledRange1& rng) {
   out << "( tiles = " << rng.tiles_range()
       << ", elements = " << rng.elements_range() << " )";
   return out;

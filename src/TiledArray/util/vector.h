@@ -126,9 +126,9 @@ decltype(auto) operator-(const boost::container::small_vector<T1, N1>& v1,
 namespace TiledArray {
 
 /// Vector output stream operator
-template <typename T, typename A>
-inline std::ostream& operator<<(std::ostream& os,
-                                const std::vector<T, A>& vec) {
+template <typename Char, typename CharTraits, typename T, typename A>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const std::vector<T, A>& vec) {
   TiledArray::detail::print_array(os, vec);
   return os;
 }
@@ -139,9 +139,10 @@ namespace boost {
 namespace container {
 
 /// Vector output stream operator
-template <typename T, std::size_t N>
-inline std::ostream& operator<<(
-    std::ostream& os, const boost::container::small_vector<T, N>& vec) {
+template <typename Char, typename CharTraits, typename T, std::size_t N>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os,
+    const boost::container::small_vector<T, N>& vec) {
   TiledArray::detail::print_array(os, vec);
   return os;
 }
