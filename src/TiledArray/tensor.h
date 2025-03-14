@@ -57,10 +57,10 @@ using TensorConstView =
 /// \param os The output stream
 /// \param t The tensor to be output
 /// \return A reference to the output stream
-template <typename Char, typename CharTraits, typename T,
-          typename std::enable_if<
-              detail::is_tensor<T>::value &&
-              detail::is_contiguous_tensor<T>::value>::type* = nullptr>
+template <
+    typename Char, typename CharTraits, typename T,
+    typename std::enable_if<detail::is_nested_tensor_v<T> &&
+                            detail::is_contiguous_tensor_v<T>>::type* = nullptr>
 inline std::basic_ostream<Char, CharTraits>& operator<<(
     std::basic_ostream<Char, CharTraits>& os, const T& t) {
   os << t.range() << " {\n";
@@ -74,9 +74,21 @@ inline std::basic_ostream<Char, CharTraits>& operator<<(
     if (more_than_1_batch) {
       os << "  [batch " << b << "]{\n";
     }
-    detail::NDArrayPrinter{}.print(
-        t.data() + offset, t.range().rank(), t.range().extent_data(),
-        t.range().stride_data(), os, more_than_1_batch ? 4 : 2);
+    if constexpr (detail::is_tensor_v<T>) {  // tensor of scalars
+      detail::NDArrayPrinter{}.print(
+          t.data() + offset, t.range().rank(), t.range().extent_data(),
+          t.range().stride_data(), os, more_than_1_batch ? 4 : 2);
+    } else {  // tensor of tensors, need to annotate each element by its index
+      for (auto&& idx : t.range()) {  // Loop over inner tensors
+        const auto& inner_t = *(t.data() + offset + t.range().ordinal(idx));
+        os << "  " << idx << ":";
+        detail::NDArrayPrinter{}.print(inner_t.data(), inner_t.range().rank(),
+                                       inner_t.range().extent_data(),
+                                       inner_t.range().stride_data(), os,
+                                       more_than_1_batch ? 6 : 4);
+        os << "\n";
+      }
+    }
     if (more_than_1_batch) {
       os << "\n  }";
       if (b + 1 != nbatch) os << "\n";  // not last batch
@@ -117,19 +129,6 @@ inline std::basic_ostream<Char, CharTraits>& operator<<(
 
   os << "}\n";
 
-  return os;
-}
-
-template <typename Char, typename CharTraits, typename T,
-          typename = std::enable_if_t<detail::is_tensor_of_tensor_v<T>>>
-inline std::basic_ostream<Char, CharTraits>& operator<<(
-    std::basic_ostream<Char, CharTraits>& os, const T& t) {
-  os << t.range() << " {\n";    // Outer tensor's range
-  for (auto idx : t.range()) {  // Loop over inner tensors
-    const auto& inner_t = t(idx);
-    os << "  " << idx << ":" << inner_t << "\n";
-  }
-  os << "}\n";  // End outer tensor
   return os;
 }
 
