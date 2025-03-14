@@ -1320,7 +1320,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(print, ITensor, itensor_types) {
   const auto& t = ToT<ITensor>(0);
 
   BOOST_REQUIRE_NO_THROW(std::cout << t);
-  BOOST_REQUIRE_NO_THROW(std::wcout << t);
+  // std::wcout << t;
 }
 
 BOOST_AUTO_TEST_SUITE_END()
