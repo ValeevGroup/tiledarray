@@ -74,7 +74,7 @@ To clone_or_cast(From&& f) {
     return t;
   } else {
     static_assert(
-        false,
+        !std::is_void_v<To>,
         "clone_or_cast<To,From>: could not figure out how to convert From to "
         "To, either overload of a member function of Tensor is missing or From "
         "need to provide a conversion operator to To");
