@@ -1721,8 +1721,9 @@ inline decltype(auto) inner_product(const Tile<Left>& left,
 /// \param os The output stream
 /// \param tile The tile to be printed
 /// \return The modified output stream
-template <typename T>
-inline std::ostream& operator<<(std::ostream& os, const Tile<T>& tile) {
+template <typename Char, typename CharTraits, typename T>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const Tile<T>& tile) {
   os << tile.tensor();
   return os;
 }

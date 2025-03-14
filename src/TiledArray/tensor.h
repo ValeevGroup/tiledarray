@@ -61,6 +61,12 @@ template <typename T, typename std::enable_if<detail::is_tensor<T>::value &&
                                                   T>::value>::type* = nullptr>
 inline std::ostream& operator<<(std::ostream& os, const T& t) {
   os << t.range() << " { ";
+template <typename Char, typename CharTraits, typename T,
+          typename std::enable_if<
+              detail::is_tensor<T>::value &&
+              detail::is_contiguous_tensor<T>::value>::type* = nullptr>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const T& t) {
   const auto n = t.range().volume();
   std::size_t offset = 0ul;
   const auto more_than_1_batch = t.nbatch() > 1;
@@ -88,10 +94,12 @@ inline std::ostream& operator<<(std::ostream& os, const T& t) {
 /// \param os The output stream
 /// \param t The tensor to be output
 /// \return A reference to the output stream
-template <typename T, typename std::enable_if<detail::is_tensor<T>::value &&
-                                              !detail::is_contiguous_tensor<
-                                                  T>::value>::type* = nullptr>
-inline std::ostream& operator<<(std::ostream& os, const T& t) {
+template <typename Char, typename CharTraits, typename T,
+          typename std::enable_if<
+              detail::is_tensor<T>::value &&
+              !detail::is_contiguous_tensor<T>::value>::type* = nullptr>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const T& t) {
   const auto stride = inner_size(t);
   const auto volume = t.range().volume();
 
@@ -111,11 +119,13 @@ inline std::ostream& operator<<(std::ostream& os, const T& t) {
   return os;
 }
 
-template <typename T,
+template <typename Char, typename CharTraits, typename T,
           typename = std::enable_if_t<detail::is_tensor_of_tensor_v<T>>>
 inline std::ostream& operator<<(std::ostream& os, const T& t) {
   os << t.range() << " {" << std::endl;  // Outer tensor's range
   for (auto idx : t.range()) {           // Loop over inner tensors
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const T& t) {
     const auto& inner_t = t(idx);
     os << "  " << idx << ":" << inner_t << std::endl;
   }
