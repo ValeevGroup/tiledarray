@@ -31,6 +31,14 @@ const TensorFixture::range_type TensorFixture::r = make_range(81);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_suite, TensorFixture, TA_UT_LABEL_SERIAL)
 
+BOOST_AUTO_TEST_CASE(anatomy) {
+  // Tensor = Range + nbatch + shared_ptr to data
+  BOOST_CHECK(sizeof(TensorD) == sizeof(Range) + sizeof(size_t) +
+                                     sizeof(std::shared_ptr<double[]>));
+  // std::wcout << "sizeof(TensorD) = " << sizeof(TensorD) << " sizeof(TensorI)
+  // = " << sizeof(TensorN) << std::endl;
+}
+
 BOOST_AUTO_TEST_CASE(default_constructor) {
   // check constructor
   BOOST_REQUIRE_NO_THROW(TensorN x);
