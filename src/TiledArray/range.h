@@ -1332,6 +1332,12 @@ inline std::basic_ostream<Char, CharTraits>& operator<<(
   return os;
 }
 
+/// creates a string using operator<<(basic_ostream,Range)
+
+/// \param r a Range
+/// \return string representation of \p r
+std::string to_string(const Range& r);
+
 /// Test the two ranges are congruent
 
 /// This function tests that the rank and extent of

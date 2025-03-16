@@ -208,6 +208,7 @@ TiledArray/util/vector.h
 set(TILEDARRAY_SOURCE_FILES
         TiledArray/array_impl.cpp
         TiledArray/dist_array.cpp
+        TiledArray/range.cpp
         TiledArray/sparse_shape.cpp
         TiledArray/tensor_impl.cpp
         TiledArray/tiledarray.cpp
