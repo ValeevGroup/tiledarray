@@ -133,7 +133,6 @@ TiledArray/expressions/index_list.h
 TiledArray/external/btas.h
 TiledArray/external/madness.h
 TiledArray/external/umpire.h
-TiledArray/host/env.cpp
 TiledArray/host/env.h
 TiledArray/math/blas.h
 TiledArray/math/gemm_helper.h
@@ -162,7 +161,6 @@ TiledArray/tensor/complex.h
 TiledArray/tensor/kernels.h
 TiledArray/tensor/operators.h
 TiledArray/tensor/permute.h
-TiledArray/tensor/print.cpp
 TiledArray/tensor/print.ipp
 TiledArray/tensor/print.h
 TiledArray/tensor/shift_wrapper.h
@@ -207,11 +205,31 @@ TiledArray/util/time.h
 TiledArray/util/vector.h
 )
 
+set(TILEDARRAY_SOURCE_FILES
+        TiledArray/array_impl.cpp
+        TiledArray/dist_array.cpp
+        TiledArray/sparse_shape.cpp
+        TiledArray/tensor_impl.cpp
+        TiledArray/tiledarray.cpp
+        TiledArray/version.cpp
+        TiledArray/einsum/index.cpp
+        TiledArray/expressions/permopt.cpp
+        TiledArray/host/env.cpp
+        TiledArray/math/linalg/basic.cpp
+        TiledArray/math/linalg/rank-local.cpp
+        TiledArray/tensor/print.cpp
+        TiledArray/tensor/tensor.cpp
+        TiledArray/util/backtrace.cpp
+        TiledArray/util/bug.cpp
+        TiledArray/util/ptr_registry.cpp
+        TiledArray/util/random.cpp
+        TiledArray/util/threads.cpp
+)
+
 if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
   list(APPEND TILEDARRAY_HEADER_FILES
           TiledArray/external/device.h
           TiledArray/external/librett.h
-          TiledArray/device/blas.cpp
           TiledArray/device/blas.h
           TiledArray/device/btas.h
           TiledArray/device/btas_um_tensor.h
@@ -222,7 +240,11 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
           TiledArray/device/kernel/thrust/reduce_kernel.h
           TiledArray/device/platform.h
           TiledArray/device/thrust.h
-          TiledArray/device/um_storage.h)
+          TiledArray/device/um_storage.h
+  )
+  list(APPEND TILEDARRAY_SOURCE_FILES
+          TiledArray/device/blas.cpp
+  )
   if(TILEDARRAY_HAS_CUDA)
     list(APPEND TILEDARRAY_HEADER_FILES
        TiledArray/external/cuda.h
@@ -230,24 +252,6 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
   endif(TILEDARRAY_HAS_CUDA)
 endif(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
 
-set(TILEDARRAY_SOURCE_FILES
-TiledArray/tiledarray.cpp
-TiledArray/tensor/tensor.cpp
-TiledArray/sparse_shape.cpp
-TiledArray/tensor_impl.cpp
-TiledArray/array_impl.cpp
-TiledArray/dist_array.cpp
-TiledArray/version.cpp
-TiledArray/einsum/index.cpp
-TiledArray/expressions/permopt.cpp
-TiledArray/math/linalg/basic.cpp
-TiledArray/math/linalg/rank-local.cpp
-TiledArray/util/backtrace.cpp
-TiledArray/util/bug.cpp
-TiledArray/util/ptr_registry.cpp
-TiledArray/util/random.cpp
-TiledArray/util/threads.cpp
-)
 # feed TILEDARRAY_GIT_REVISION and TILEDARRAY_GIT_DESCRIPTION to TiledArray/version.cpp only to avoid recompiling everything
 set_source_files_properties(
         TiledArray/version.cpp
