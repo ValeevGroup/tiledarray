@@ -88,8 +88,9 @@ To clone_or_cast(From&& f) {
 /// A contiguous row-major tensor with __shallow-copy__ semantics.
 /// As of TiledArray 1.1 Tensor represents a batch of tensors with same Range
 /// (the default batch size = 1).
-/// \tparam T the value type of this tensor
-/// \tparam A The allocator type for the data
+/// \tparam T The value type of this tensor
+/// \tparam A The allocator type for the data; only default-constructible
+/// allocators are supported to save space
 template <typename T, typename Allocator>
 class Tensor {
   // meaningful error if T& is not assignable, see
@@ -97,6 +98,11 @@ class Tensor {
   static_assert(std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
                 "Tensor<T,Allocator>: T must be an assignable type (e.g. "
                 "cannot be const)");
+  // default-constructible Allocator allows to reduce the size of default Tensor
+  // and minimize the overhead of null elements in Tensor<Tensor<T>>
+  static_assert(
+      std::is_default_constructible_v<Allocator>,
+      "Tensor<T,Allocator>: only default-constructible Allocator is supported");
 
 #ifdef TA_TENSOR_MEM_TRACE
   template <typename... Ts>
