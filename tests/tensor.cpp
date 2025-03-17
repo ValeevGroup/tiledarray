@@ -302,18 +302,36 @@ BOOST_AUTO_TEST_CASE(binary_perm_constructor) {
 }
 
 BOOST_AUTO_TEST_CASE(clone) {
-  // check default constructor
+  // clone non-default-constructed
   TensorN tc;
   BOOST_CHECK(tc.empty());
   BOOST_REQUIRE_NO_THROW(tc = t.clone());
-
   BOOST_CHECK_EQUAL(tc.empty(), t.empty());
-
-  // Check that range data is correct.
   BOOST_CHECK_NE(tc.data(), t.data());
   BOOST_CHECK_EQUAL(tc.size(), t.size());
   BOOST_CHECK_EQUAL(tc.range(), t.range());
   BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
+
+  // clone default-constructed tensor
+  {
+    TensorN tnull;
+    BOOST_REQUIRE_NO_THROW(tc = tnull.clone());
+    BOOST_CHECK_EQUAL(tc.empty(), tnull.empty());
+  }
+
+  // clone rvalue (e.g. temporary) tensor = move
+  {
+    TensorN t2 = t.clone();
+    const auto t2_data = t2.data();
+    BOOST_REQUIRE_NO_THROW(tc = std::move(t2).clone());
+    BOOST_CHECK(t2.empty());  // t2 is moved-from state
+    BOOST_CHECK(!tc.empty());
+    BOOST_CHECK_NE(tc.data(), t.data());
+    BOOST_CHECK_EQUAL(tc.data(), t2_data);
+    BOOST_CHECK_EQUAL(tc.size(), t.size());
+    BOOST_CHECK_EQUAL(tc.range(), t.range());
+    BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
+  }
 }
 
 BOOST_AUTO_TEST_CASE(copy_assignment_operator) {

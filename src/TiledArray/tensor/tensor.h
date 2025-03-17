@@ -48,7 +48,7 @@ template <typename To, typename From,
               detail::is_nested_tensor_v<To, detail::remove_cvr_t<From>>>>
 To clone_or_cast(From&& f) {
   if constexpr (std::is_same_v<To, detail::remove_cvr_t<From>>)
-    return f.clone();
+    return std::forward<From>(f).clone();
   else if constexpr (detail::is_convertible_v<From, To>) {
     return static_cast<To>(std::forward<From>(f));
   } else if constexpr (detail::is_range_v<To> &&
@@ -647,7 +647,7 @@ class Tensor {
   }
 
   /// @return a deep copy of `*this`
-  Tensor clone() const {
+  Tensor clone() const& {
     Tensor result;
     if (data_) {
       if constexpr (detail::is_tensor_of_tensor_v<Tensor>) {
@@ -664,6 +664,11 @@ class Tensor {
     }
     return result;
   }
+
+  /// cloning an rvalue ref forwards the contents of this
+  /// @return a deep copy of `*this`
+  /// @post this is in a moved-from state
+  Tensor clone() && { return std::move(*this); }
 
   template <typename T1,
             typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
