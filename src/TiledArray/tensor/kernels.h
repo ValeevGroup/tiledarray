@@ -911,20 +911,25 @@ template <
                         std::decay_t<T1>, std::decay_t<Ts>...>>* = nullptr>
 auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Identity&& identity,
                    const T1& tensor1, const Ts&... tensors) {
-  TA_ASSERT(!empty(tensor1, tensors...));
-  TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
-
-  const auto volume = [&tensor1]() {
-    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
-      return tensor1.total_size();
-    else
-      return tensor1.size();
-  }();
-
   auto init = std::forward<Identity>(identity);
-  math::reduce_op(std::forward<ReduceOp>(reduce_op),
-                  std::forward<JoinOp>(join_op), init, volume, init,
-                  tensor1.data(), tensors.data()...);
+
+  // early exit if any tensors are empty
+  // WARNING some operations make sense with empty arguments (e.g. max), but not
+  // supported for now since this is only used for multiply (`*`)
+  if (!empty(tensor1, tensors...)) {
+    TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
+
+    const auto volume = [&tensor1]() {
+      if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
+        return tensor1.total_size();
+      else
+        return tensor1.size();
+    }();
+
+    math::reduce_op(std::forward<ReduceOp>(reduce_op),
+                    std::forward<JoinOp>(join_op), init, volume, init,
+                    tensor1.data(), tensors.data()...);
+  }
 
   return init;
 }
@@ -996,9 +1001,6 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
 
   auto result = identity;
   for (std::remove_cv_t<decltype(volume)> ord = 0ul; ord < volume; ++ord) {
-    if (tensor1.data()[ord].range().volume() == 0 ||
-        ((tensors.data()[ord].range().volume() == 0) || ...))
-      continue;
     auto temp = tensor_reduce(reduce_op, join_op, identity, tensor1.data()[ord],
                               tensors.data()[ord]...);
     join_op(result, temp);
