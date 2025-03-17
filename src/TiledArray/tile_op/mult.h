@@ -130,11 +130,12 @@ class Mult {
   result_type eval(left_type& first, const right_type& second) const {
     if (!element_op_) {
       using TiledArray::mult_to;
-      return mult_to(first, second);
+      return mult_to(std::move(first), second);
     } else {
       // TODO figure out why this does not compiles!!!
-      //      using TiledArray::inplace_binary;
-      //      return inplace_binary(first, second, element_op_);
+      //            using TiledArray::inplace_binary;
+      //            return inplace_binary(std::move(first), second,
+      //            element_op_);
       using TiledArray::binary;
       return binary(first, second, element_op_);
     }
@@ -145,7 +146,7 @@ class Mult {
   result_type eval(const left_type& first, right_type& second) const {
     if (!element_op_) {
       using TiledArray::mult_to;
-      return mult_to(second, first);
+      return mult_to(std::move(second), first);
     } else {  // WARNING: element_op_ might be noncommuting, so can't swap first
               // and second! for GEMM could optimize, but can't introspect
               // element_op_
@@ -340,14 +341,14 @@ class ScalMult {
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   result_type eval(left_type& first, const right_type& second) const {
     using TiledArray::mult_to;
-    return mult_to(first, second, factor_);
+    return mult_to(std::move(first), second, factor_);
   }
 
   template <bool LC, bool RC,
             typename std::enable_if<!LC && RC>::type* = nullptr>
   result_type eval(const left_type& first, right_type& second) const {
     using TiledArray::mult_to;
-    return mult_to(second, first, factor_);
+    return mult_to(std::move(second), first, factor_);
   }
 
   template <bool LC, bool RC, typename std::enable_if<!RC>::type* = nullptr>

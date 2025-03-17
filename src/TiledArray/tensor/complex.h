@@ -126,8 +126,9 @@ class ComplexConjugate {
     return ComplexConjugate<S>(-factor_);
   }
 
-  friend std::ostream& operator<<(std::ostream& os,
-                                  const ComplexConjugate<S>& cc) {
+  template <typename Char, typename CharTraits>
+  friend std::basic_ostream<Char, CharTraits>& operator<<(
+      std::basic_ostream<Char, CharTraits>& os, const ComplexConjugate<S>& cc) {
     os << "conj()] [" << cc.factor_;
     return os;
   }
@@ -157,8 +158,10 @@ class ComplexConjugate<void> {
 
   inline ComplexConjugate<ComplexNegTag> operator-() const;
 
-  friend std::ostream& operator<<(std::ostream& os,
-                                  const ComplexConjugate<void>& cc) {
+  template <typename Char, typename CharTraits>
+  friend std::basic_ostream<Char, CharTraits>& operator<<(
+      std::basic_ostream<Char, CharTraits>& os,
+      const ComplexConjugate<void>& cc) {
     os << "conj()";
     return os;
   }
@@ -173,8 +176,10 @@ class ComplexConjugate<ComplexNegTag> {
  public:
   inline ComplexConjugate<void> operator-() const;
 
-  friend std::ostream& operator<<(std::ostream& os,
-                                  const ComplexConjugate<ComplexNegTag>& cc) {
+  template <typename Char, typename CharTraits>
+  friend std::basic_ostream<Char, CharTraits>& operator<<(
+      std::basic_ostream<Char, CharTraits>& os,
+      const ComplexConjugate<ComplexNegTag>& cc) {
     os << "conj()] [-1";
     return os;
   }

@@ -279,10 +279,9 @@ class ContEngine : public BinaryEngine<Derived> {
             outer_size(left_indices_), outer_size(right_indices_),
             (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}));
       } else {
-
         auto make_total_perm = [this]() -> BipartitePermutation {
-          if (this->product_type() != TensorProduct::Contraction
-              || this->implicit_permute_inner_)
+          if (this->product_type() != TensorProduct::Contraction ||
+              this->implicit_permute_inner_)
             return this->implicit_permute_outer_
                        ? BipartitePermutation()
                        : BipartitePermutation(outer(this->perm_));
@@ -299,11 +298,9 @@ class ContEngine : public BinaryEngine<Derived> {
         auto total_perm = make_total_perm();
 
         // factor_ is absorbed into inner_tile_nonreturn_op_
-        op_ = op_type(
-            left_op, right_op, scalar_type(1), outer_size(indices_),
-            outer_size(left_indices_), outer_size(right_indices_),
-            total_perm,
-            this->element_nonreturn_op_);
+        op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
+                      outer_size(left_indices_), outer_size(right_indices_),
+                      total_perm, this->element_nonreturn_op_);
       }
       trange_ = ContEngine_::make_trange(outer_perm);
       shape_ = ContEngine_::make_shape(outer_perm);
@@ -314,10 +311,9 @@ class ContEngine : public BinaryEngine<Derived> {
         op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_));
       } else {
-
         auto make_total_perm = [this]() -> BipartitePermutation {
-          if (this->product_type() != TensorProduct::Contraction
-              || this->implicit_permute_inner_)
+          if (this->product_type() != TensorProduct::Contraction ||
+              this->implicit_permute_inner_)
             return {};
 
           // Here,
@@ -547,7 +543,7 @@ class ContEngine : public BinaryEngine<Derived> {
                             inner_size(this->right_indices_));
           this->element_nonreturn_op_ =
               [contrreduce_op, permute_inner = this->product_type() !=
-                                                   TensorProduct::Contraction](
+                                               TensorProduct::Contraction](
                   result_tile_element_type& result,
                   const left_tile_element_type& left,
                   const right_tile_element_type& right) {
@@ -582,11 +578,11 @@ class ContEngine : public BinaryEngine<Derived> {
                 [mult_op, outer_prod](result_tile_element_type& result,
                                       const left_tile_element_type& left,
                                       const right_tile_element_type& right) {
+                  TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
+                            outer_prod == TensorProduct::Contraction);
                   if (outer_prod == TensorProduct::Hadamard)
                     result = mult_op(left, right);
-                  else {
-                    TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
-                              outer_prod == TensorProduct::Contraction);
+                  else {  // outer_prod == TensorProduct::Contraction
                     // there is currently no fused MultAdd ternary Op, only Add
                     // and Mult thus implement this as 2 separate steps
                     // TODO optimize by implementing (ternary) MultAdd
@@ -677,6 +673,7 @@ class ContEngine : public BinaryEngine<Derived> {
                   const left_tile_element_type& left,
                   const right_tile_element_type& right) {
                 if (outer_prod == TensorProduct::Contraction) {
+                  // TODO implement X-permuting AXPY
                   if (empty(result))
                     result = scal_op(left, right);
                   else {
