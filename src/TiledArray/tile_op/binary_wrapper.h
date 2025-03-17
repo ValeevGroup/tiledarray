@@ -275,7 +275,8 @@ class BinaryWrapper {
         [this](L&& l, madness::future_to_ref_t<decltype(eval_right)> r) {
           return BinaryWrapper_::operator()(std::forward<L>(l), r);
         };
-    return detail::invoke(continuation, std::forward<L>(left), eval_right);
+    return detail::invoke(continuation, std::forward<L>(left),
+                          std::move(eval_right));
   }
 
   /// Evaluate two lazy-array tiles
@@ -296,7 +297,9 @@ class BinaryWrapper {
     auto eval_left = invoke_cast(std::forward<L>(left));
     auto eval_right = invoke_cast(std::forward<R>(right));
 
-    if (perm_) return detail::invoke(op_, eval_left, eval_right, perm_);
+    if (perm_)
+      return detail::invoke(op_, std::move(eval_left), std::move(eval_right),
+                            perm_);
 
     auto op_left = [this](eval_t<L>& _left, eval_t<R>& _right) {
       return op_.consume_left(_left, _right);
@@ -310,7 +313,7 @@ class BinaryWrapper {
     if (is_consumable_tile<eval_t<R>>::value && right.is_consumable())
       return detail::invoke(op_right, eval_left, eval_right);
 
-    return detail::invoke(op_, eval_left, eval_right);
+    return detail::invoke(op_, std::move(eval_left), std::move(eval_right));
   }
 
   template <
@@ -327,7 +330,7 @@ class BinaryWrapper {
     if (is_consumable_tile<eval_t<L>>::value && left.is_consumable())
       return op_.consume_left(eval_left, std::forward<R>(right));
 
-    return op_(eval_left, std::forward<R>(right));
+    return op_(std::move(eval_left), std::forward<R>(right));
   }
 
   template <
@@ -344,7 +347,7 @@ class BinaryWrapper {
     if (is_consumable_tile<eval_t<L>>::value && left.is_consumable())
       return op_.consume_left(eval_left, eval_right);
 
-    return op_(eval_left, eval_right);
+    return op_(std::move(eval_left), eval_right);
   }
 
   template <
