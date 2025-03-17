@@ -771,12 +771,16 @@ BOOST_AUTO_TEST_CASE(rebind) {
 }
 
 BOOST_AUTO_TEST_CASE(print) {
-  BOOST_REQUIRE_NO_THROW(std::cout << t);
-  // std::wcout << t;
+  std::ostringstream oss;
+  std::wostringstream woss;
+  BOOST_REQUIRE_NO_THROW(oss << t);
+  BOOST_REQUIRE_NO_THROW(woss << t);
+  // std::cout << t;
   decltype(t) tb(t.range(), decltype(t)::nbatches{2});
   rand_fill(1, tb.total_size(), tb.data());
-  BOOST_REQUIRE_NO_THROW(std::cout << tb);
-  // std::wcout << tb;
+  BOOST_REQUIRE_NO_THROW(oss << tb);
+  BOOST_REQUIRE_NO_THROW(woss << tb);
+  // std::cout << tb;
 }
 
 BOOST_AUTO_TEST_SUITE_END()
