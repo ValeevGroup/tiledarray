@@ -828,6 +828,9 @@ inline decltype(auto) shift(const Tile<Arg>& arg,
 template <typename Arg, typename Index,
           typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
 inline Tile<Arg>& shift_to(Tile<Arg>& arg, const Index& range_shift) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(arg.use_count() <= 1);
+#endif
   shift_to(arg.tensor(), range_shift);
   return arg;
 }
@@ -843,6 +846,9 @@ template <typename Arg, typename Index,
           typename = std::enable_if_t<std::is_integral_v<Index>>>
 inline Tile<Arg>& shift_to(Tile<Arg>& arg,
                            const std::initializer_list<Index>& range_shift) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(arg.use_count() <= 1);
+#endif
   shift_to(arg.tensor(), range_shift);
   return arg;
 }
@@ -955,6 +961,9 @@ inline decltype(auto) add(const Tile<Arg>& arg, const Scalar value,
 /// \return A tile that is equal to <tt>result[i] += arg[i]</tt>
 template <typename Result, typename Arg>
 inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   add_to(result.tensor(), arg.tensor());
   return result;
 }
@@ -973,6 +982,9 @@ template <
     typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg,
                             const Scalar factor) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   add_to(result.tensor(), arg.tensor(), factor);
   return result;
 }
@@ -988,6 +1000,9 @@ template <
     typename Result, typename Scalar,
     typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline Tile<Result>& add_to(Tile<Result>& result, const Scalar value) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   add_to(result.tensor(), value);
   return result;
 }
@@ -1096,6 +1111,9 @@ inline decltype(auto) subt(const Tile<Arg>& arg, const Scalar value,
 /// \return A tile that is equal to <tt>result[i] -= arg[i]</tt>
 template <typename Result, typename Arg>
 inline Tile<Result>& subt_to(Tile<Result>& result, const Tile<Arg>& arg) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   subt_to(result.tensor(), arg.tensor());
   return result;
 }
@@ -1113,6 +1131,9 @@ template <
     typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline Tile<Result>& subt_to(Tile<Result>& result, const Tile<Arg>& arg,
                              const Scalar factor) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   subt_to(result.tensor(), arg.tensor(), factor);
   return result;
 }
@@ -1127,6 +1148,9 @@ template <
     typename Result, typename Scalar,
     typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline Tile<Result>& subt_to(Tile<Result>& result, const Scalar value) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   subt_to(result.tensor(), value);
   return result;
 }
@@ -1205,6 +1229,9 @@ inline decltype(auto) mult(const Tile<Left>& left, const Tile<Right>& right,
 /// \return A tile that is equal to <tt>result *= arg</tt>
 template <typename Result, typename Arg>
 inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   mult_to(result.tensor(), arg.tensor());
   return result;
 }
@@ -1222,6 +1249,9 @@ template <
     typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg,
                              const Scalar factor) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   mult_to(result.tensor(), arg.tensor(), factor);
   return result;
 }
@@ -1282,6 +1312,9 @@ inline decltype(auto) binary(const Tile<Left>& left, const Tile<Right>& right,
 template <typename Left, typename Right, typename Op>
 inline Tile<Left>& inplace_binary(Tile<Left>& left, const Tile<Right>& right,
                                   Op&& op) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(left.use_count() <= 1);
+#endif
   inplace_binary(left.tensor(), right.tensor(), std::forward<Op>(op));
   return left;
 }
@@ -1328,6 +1361,9 @@ template <
     typename Result, typename Scalar,
     typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline Tile<Result>& scale_to(Tile<Result>& result, const Scalar factor) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   scale_to(result.tensor(), factor);
   return result;
 }
@@ -1367,6 +1403,9 @@ inline decltype(auto) neg(const Tile<Arg>& arg, const Perm& perm) {
 /// \note equivalent to @c scale_to(arg,-1)
 template <typename Result>
 inline Tile<Result>& neg_to(Tile<Result>& result) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   neg_to(result.tensor());
   return result;
 }
@@ -1435,6 +1474,9 @@ inline decltype(auto) conj(const Tile<Arg>& arg, const Scalar factor,
 /// \return A reference to `result`
 template <typename Result>
 inline Tile<Result>& conj_to(Tile<Result>& result) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   conj_to(result.tensor());
   return result;
 }
@@ -1450,6 +1492,9 @@ template <typename Result, typename Scalar,
           typename std::enable_if<
               TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline Tile<Result>& conj_to(Tile<Result>& result, const Scalar factor) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(result.use_count() <= 1);
+#endif
   conj_to(result.tensor(), factor);
   return result;
 }
@@ -1498,6 +1543,9 @@ inline decltype(auto) unary(const Tile<Arg>& arg, Op&& op, const Perm& perm) {
 // clang-format on
 template <typename Result, typename Op>
 inline Tile<Result>& inplace_unary(Tile<Result>& arg, Op&& op) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+  TA_ASSERT(arg.use_count() <= 1);
+#endif
   inplace_unary(arg.tensor(), std::forward<Op>(op));
   return arg;
 }

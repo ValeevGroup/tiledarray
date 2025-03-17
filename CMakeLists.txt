@@ -147,6 +147,9 @@ add_feature_info(TENSOR_MEM_TRACE TA_TENSOR_MEM_TRACE "instrumented tracing of T
 option(TA_TENSOR_MEM_PROFILE "Turn on instrumented profiling of TA::Tensor memory use" ${TA_TENSOR_MEM_TRACE})
 add_feature_info(TENSOR_MEM_PROFILE TA_TENSOR_MEM_PROFILE "instrumented profiling of TA::Tensor memory use")
 
+option(TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED "Turn on TA_ASSERT that no mutable operations occur on TA::{Tensor,Tile} objects that share data" OFF)
+add_feature_info(TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED "TA_ASSERT that no mutable operations occur on TA::{Tensor,Tile} objects that share data")
+
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
 option(TA_SIGNED_1INDEX_TYPE "Enables the use of signed 1-index coordinate type (OFF in 1.0.0-alpha.2 and older)" ON)

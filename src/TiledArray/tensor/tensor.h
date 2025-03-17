@@ -1450,6 +1450,11 @@ class Tensor {
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   Tensor& shift_to(const Index& bound_shift) {
+// although shift_to is currently fine on shared objects since ranges are
+// not shared, this will change in the future
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+    TA_ASSERT(data_.use_count() <= 1);
+#endif
     this->range_.inplace_shift(bound_shift);
     return *this;
   }
@@ -1462,6 +1467,11 @@ class Tensor {
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   Tensor& shift_to(const std::initializer_list<Integer>& bound_shift) {
+    // although shift_to is currently fine on shared objects since ranges are
+    // not shared, this will change in the future
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+    TA_ASSERT(data_.use_count() <= 1);
+#endif
     this->range_.template inplace_shift<std::initializer_list<Integer>>(
         bound_shift);
     return *this;
@@ -1574,6 +1584,9 @@ class Tensor {
             typename std::enable_if<detail::is_nested_tensor_v<Right>>::type* =
                 nullptr>
   Tensor& inplace_binary(const Right& right, Op&& op) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+    TA_ASSERT(data_.use_count() <= 1);
+#endif
     detail::inplace_tensor_op(op, *this, right);
     return *this;
   }
@@ -1644,6 +1657,9 @@ class Tensor {
   /// \throw TiledArray::Exception When this tensor is empty.
   template <typename Op>
   Tensor& inplace_unary(Op&& op) {
+#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
+    TA_ASSERT(data_.use_count() <= 1);
+#endif
     detail::inplace_tensor_op(op, *this);
     return *this;
   }
