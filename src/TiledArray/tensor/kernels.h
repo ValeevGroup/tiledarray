@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_TENSOR_KENERLS_H__INCLUDED
-#define TILEDARRAY_TENSOR_KENERLS_H__INCLUDED
+#ifndef TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
+#define TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
 
 #include <TiledArray/einsum/index.h>
 #include <TiledArray/math/gemm_helper.h>
@@ -1300,4 +1300,4 @@ auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
 }  // namespace detail
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_TENSOR_KENERLS_H__INCLUDED
+#endif  // TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
