@@ -32,12 +32,18 @@ namespace TiledArray {
  * @{
  */
 
-/// An N-dimensional shallow copy wrapper for tile objects
-
-/// \c Tile represents a block of an \c Array. The rank of the tile block is
-/// the same as the owning \c Array object. In order for a user defined tensor
-/// object to be used in TiledArray expressions, users must also define the
-/// following functions:
+/// An N-dimensional shallow-copy wrapper for Tensor-like types that, unlike
+/// Tensor, have deep-copy semantics. Like Tensor, Tile is
+/// default-constructible. The default constructor produced a Tile in
+/// null state (not referring to any tensor object). The name refers to its
+/// intended use as a tile of DistArray.
+///
+/// \tparam T a tensor type. It may provide a subset of the full operation
+/// set of Tensor, since only those operations that are actually used
+/// need to be defined. For full equivalence to Tensor \p T must define the
+/// following functions, either as members or as non-member functions (see the
+/// \ref NonIntrusiveTileInterface "non-intrusive tile interface"
+/// documentation for more details on the latter):
 /// \li \c add
 /// \li \c add_to (in-place add)
 /// \li \c subt
@@ -62,10 +68,7 @@ namespace TiledArray {
 /// \li \c abs_min
 /// \li \c abs_max
 /// \li \c dot
-/// as for the intrusive or non-instrusive interface. See the
-/// \ref NonIntrusiveTileInterface "non-intrusive tile interface"
-/// documentation for more details.
-/// \tparam T The tensor type used to represent tile data
+///
 template <typename T>
 class Tile {
  public:
@@ -171,7 +174,24 @@ class Tile {
 
   // State accessor ----------------------------------------------------------
 
+  /// \return true if this is null (default-constructed or
+  /// after reset()) OR if the referred object is in null state (i.e. if
+  /// `tensor().empty()` is true.
+  /// \note use use_count() to check if this is in a null state
   bool empty() const { return pimpl_ ? pimpl_->empty() : true; }
+
+  /// \return the number of Tile objects that refer to the same tensor
+  /// as this (if any); `0` is returned if this is in a null state
+  /// (default-constructed or
+  /// after reset()).
+  long use_count() const { return pimpl_.use_count(); }
+
+  // State operations --------------------------------------------------------
+
+  /// release the reference to the managed tensor, and delete it
+  /// if this is the last Tile object that refers to it.
+  /// \post this object is in a null state
+  void reset() { pimpl_.reset(); }
 
   // Tile accessor -----------------------------------------------------------
 
