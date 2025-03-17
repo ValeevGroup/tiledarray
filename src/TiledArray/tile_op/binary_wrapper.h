@@ -224,7 +224,8 @@ class BinaryWrapper {
                             madness::future_to_ref_t<decltype(eval_right)> r) {
       return BinaryWrapper_::operator()(l, r);
     };
-    return detail::invoke(continuation, eval_left, eval_right);
+    return detail::invoke(continuation, std::move(eval_left),
+                          std::move(eval_right));
   }
 
   /// Evaluate lazy and non-lazy tiles
@@ -249,7 +250,8 @@ class BinaryWrapper {
                                R&& r) {
       return BinaryWrapper_::operator()(l, std::forward<R>(r));
     };
-    return detail::invoke(continuation, eval_left, std::forward<R>(right));
+    return detail::invoke(continuation, std::move(eval_left),
+                          std::forward<R>(right));
   }
 
   /// Evaluate non-lazy and lazy tiles
