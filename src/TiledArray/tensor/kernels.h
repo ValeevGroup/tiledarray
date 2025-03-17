@@ -420,10 +420,6 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
 
   auto volume = result.total_size();
   for (decltype(volume) ord = 0; ord < volume; ++ord) {
-    if constexpr (is_tensor_of_tensor_v<TR>)
-      if (result.data()[ord].range().volume() == 0) continue;
-    if constexpr (is_tensor_of_tensor_v<Ts...>)
-      if (((tensors.data()[ord].range().volume() == 0) || ...)) continue;
     if constexpr (std::is_invocable_r_v<void, Op, typename TR::value_type&,
                                         typename Ts::value_type...>)
       op(result.data()[ord], tensors.data()[ord]...);
