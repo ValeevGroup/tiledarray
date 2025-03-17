@@ -840,37 +840,39 @@ inline decltype(auto) shift(const Tile<Arg>& arg,
 
 /// Shift the range of \c arg in place
 
-/// \tparam Arg The tensor argument type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Index An integral range type
 /// \param arg The tile argument to be shifted
 /// \param range_shift The offset to be applied to the argument range
 /// \return A copy of the tile with a new range
-template <typename Arg, typename Index,
-          typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-inline Tile<Arg>& shift_to(Tile<Arg>& arg, const Index& range_shift) {
+template <typename TileResult, typename Index,
+          typename = std::enable_if_t<detail::is_integral_range_v<Index> &&
+                                      detail::is_tile_v<TileResult>>>
+inline decltype(auto) shift_to(TileResult&& arg, const Index& range_shift) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(arg.use_count() <= 1);
 #endif
   shift_to(arg.tensor(), range_shift);
-  return arg;
+  return std::forward<TileResult>(arg);
 }
 
 /// Shift the range of \c arg in place
 
-/// \tparam Arg The tensor argument type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Index An integral type
 /// \param arg The tile argument to be shifted
 /// \param range_shift The offset to be applied to the argument range
 /// \return A copy of the tile with a new range
-template <typename Arg, typename Index,
-          typename = std::enable_if_t<std::is_integral_v<Index>>>
-inline Tile<Arg>& shift_to(Tile<Arg>& arg,
-                           const std::initializer_list<Index>& range_shift) {
+template <typename TileResult, typename Index>
+inline decltype(auto) shift_to(
+    TileResult&& arg, const std::initializer_list<Index>& range_shift,
+    std::enable_if_t<std::is_integral_v<Index> &&
+                     detail::is_tile_v<TileResult>>* = nullptr) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(arg.use_count() <= 1);
 #endif
   shift_to(arg.tensor(), range_shift);
-  return arg;
+  return std::forward<TileResult>(arg);
 }
 
 // Addition operations -------------------------------------------------------
@@ -974,23 +976,24 @@ inline decltype(auto) add(const Tile<Arg>& arg, const Scalar value,
 
 /// Add to the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Arg The argument tile type
 /// \param result The result tile
 /// \param arg The argument to be added to the result
 /// \return A tile that is equal to <tt>result[i] += arg[i]</tt>
-template <typename Result, typename Arg>
-inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg) {
+template <typename TileResult, typename Arg,
+          typename = std::enable_if_t<detail::is_tile_v<TileResult>>>
+inline decltype(auto) add_to(TileResult&& result, const Tile<Arg>& arg) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   add_to(result.tensor(), arg.tensor());
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 /// Add and scale to the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Arg The argument tile type
 /// \tparam Scalar A scalar type
 /// \param result The result tile
@@ -998,33 +1001,35 @@ inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg) {
 /// \param factor The scaling factor
 /// \return A tile that is equal to <tt>(result[i] += arg[i]) * factor</tt>
 template <
-    typename Result, typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Tile<Result>& add_to(Tile<Result>& result, const Tile<Arg>& arg,
-                            const Scalar factor) {
+    typename TileResult, typename Arg, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_tile_v<TileResult>>::type* = nullptr>
+inline decltype(auto) add_to(TileResult&& result, const Tile<Arg>& arg,
+                             const Scalar factor) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   add_to(result.tensor(), arg.tensor(), factor);
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 /// Add constant scalar to the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Scalar A scalar type
 /// \param result The result tile
 /// \param value The constant scalar to be added to \c result
 /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
 template <
-    typename Result, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Tile<Result>& add_to(Tile<Result>& result, const Scalar value) {
+    typename TileResult, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_tile_v<TileResult>>::type* = nullptr>
+inline decltype(auto) add_to(TileResult&& result, const Scalar value) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   add_to(result.tensor(), value);
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 // Subtraction ---------------------------------------------------------------
@@ -1124,55 +1129,58 @@ inline decltype(auto) subt(const Tile<Arg>& arg, const Scalar value,
 
 /// Subtract from the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Arg The argument tile type
 /// \param result The result tile
 /// \param arg The argument to be subtracted from the result
 /// \return A tile that is equal to <tt>result[i] -= arg[i]</tt>
-template <typename Result, typename Arg>
-inline Tile<Result>& subt_to(Tile<Result>& result, const Tile<Arg>& arg) {
+template <typename TileResult, typename Arg,
+          typename = std::enable_if_t<detail::is_tile_v<TileResult>>>
+inline decltype(auto) subt_to(TileResult&& result, const Tile<Arg>& arg) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   subt_to(result.tensor(), arg.tensor());
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 /// Subtract and scale from the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Arg The argument tile type
 /// \param result The result tile
 /// \param arg The argument to be subtracted from \c result
 /// \param factor The scaling factor
 /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
 template <
-    typename Result, typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Tile<Result>& subt_to(Tile<Result>& result, const Tile<Arg>& arg,
-                             const Scalar factor) {
+    typename TileResult, typename Arg, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_tile_v<TileResult>>::type* = nullptr>
+inline decltype(auto) subt_to(TileResult&& result, const Tile<Arg>& arg,
+                              const Scalar factor) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   subt_to(result.tensor(), arg.tensor(), factor);
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 /// Subtract constant scalar from the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \param result The result tile
 /// \param value The constant scalar to be subtracted from \c result
 /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
 template <
-    typename Result, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Tile<Result>& subt_to(Tile<Result>& result, const Scalar value) {
+    typename TileResult, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_type_v<TileResult>>::type* = nullptr>
+inline decltype(auto) subt_to(TileResult&& result, const Scalar value) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   subt_to(result.tensor(), value);
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 // Multiplication operations -------------------------------------------------
@@ -1242,38 +1250,40 @@ inline decltype(auto) mult(const Tile<Left>& left, const Tile<Right>& right,
 
 /// Multiply to the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Arg The argument tile type
 /// \param result The result tile  to be multiplied
 /// \param arg The argument to be multiplied by the result
 /// \return A tile that is equal to <tt>result *= arg</tt>
-template <typename Result, typename Arg>
-inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg) {
+template <typename TileResult, typename Arg,
+          typename = std::enable_if_t<detail::is_tile_v<TileResult>>>
+inline decltype(auto) mult_to(TileResult&& result, const Tile<Arg>& arg) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   mult_to(result.tensor(), arg.tensor());
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 /// Multiply and scale to the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Arg The argument tile type
 /// \param result The result tile to be multiplied
 /// \param arg The argument to be multiplied by \c result
 /// \param factor The scaling factor
 /// \return A tile that is equal to <tt>(result *= arg) *= factor</tt>
 template <
-    typename Result, typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg,
-                             const Scalar factor) {
+    typename TileResult, typename Arg, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_tile_v<TileResult>>::type* = nullptr>
+inline decltype(auto) mult_to(TileResult&& result, const Tile<Arg>& arg,
+                              const Scalar factor) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   mult_to(result.tensor(), arg.tensor(), factor);
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 // Generic element-wise binary operations
@@ -1373,19 +1383,20 @@ inline decltype(auto) scale(const Tile<Arg>& arg, const Scalar factor,
 
 /// Scale to the result tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \param result The result tile to be scaled
 /// \param factor The scaling factor
 /// \return A tile that is equal to <tt>result *= factor</tt>
 template <
-    typename Result, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Tile<Result>& scale_to(Tile<Result>& result, const Scalar factor) {
+    typename TileResult, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_tile_v<TileResult>>::type* = nullptr>
+inline decltype(auto) scale_to(TileResult&& result, const Scalar factor) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   scale_to(result.tensor(), factor);
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 // Negation operations -------------------------------------------------------
@@ -1417,17 +1428,19 @@ inline decltype(auto) neg(const Tile<Arg>& arg, const Perm& perm) {
 
 /// In-place negate tile
 
-/// \tparam Result The result tile type
+/// \tparam TileResult A Tile<> type instance
 /// \param result The result tile to be negated
 /// \return negated <tt>result</tt>
 /// \note equivalent to @c scale_to(arg,-1)
-template <typename Result>
-inline Tile<Result>& neg_to(Tile<Result>& result) {
+template <typename TileResult>
+inline decltype(auto) neg_to(
+    TileResult&& result,
+    std::enable_if_t<detail::is_tile_v<TileResult>>* = nullptr) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   neg_to(result.tensor());
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 // Complex conjugate operations ---------------------------------------------
@@ -1489,34 +1502,37 @@ inline decltype(auto) conj(const Tile<Arg>& arg, const Scalar factor,
 
 /// In-place complex conjugate a tile
 
-/// \tparam Result The tile type
+/// \tparam TileResult A Tile<> type instance
 /// \param result The tile to be conjugated
 /// \return A reference to `result`
-template <typename Result>
-inline Tile<Result>& conj_to(Tile<Result>& result) {
+template <typename TileResult>
+inline decltype(auto) conj_to(
+    TileResult&& result,
+    std::enable_if_t<detail::is_tile_v<TileResult>>* = nullptr) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   conj_to(result.tensor());
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 /// In-place complex conjugate and scale a tile
 
-/// \tparam Result The tile type
+/// \tparam TileResult A Tile<> type instance
 /// \tparam Scalar A scalar type
 /// \param result The tile to be conjugated
 /// \param factor The scaling factor
 /// \return A reference to `result`
-template <typename Result, typename Scalar,
-          typename std::enable_if<
-              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Tile<Result>& conj_to(Tile<Result>& result, const Scalar factor) {
+template <
+    typename TileResult, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar> &&
+                            detail::is_tile_v<TileResult>>::type* = nullptr>
+inline decltype(auto) conj_to(TileResult&& result, const Scalar factor) {
 #ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
   TA_ASSERT(result.use_count() <= 1);
 #endif
   conj_to(result.tensor(), factor);
-  return result;
+  return std::forward<TileResult>(result);
 }
 
 // Generic element-wise unary operations
