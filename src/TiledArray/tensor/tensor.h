@@ -1635,7 +1635,7 @@ class Tensor {
         detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
     if constexpr (!is_tot) {
-      if (empty()) return *this;
+      if (empty()) return {};
       if constexpr (is_bperm) {
         TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
         return Tensor(*this, op, outer(std::forward<Perm>(perm)));
@@ -1676,7 +1676,7 @@ class Tensor {
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor scale(const Scalar factor) const& {
     // early exit for empty this
-    if (empty()) return *this;
+    if (empty()) return {};
 
     return unary([factor](const value_type& a) {
       using namespace TiledArray::detail;
@@ -1710,7 +1710,7 @@ class Tensor {
                                         detail::is_permutation_v<Perm>>>
   Tensor scale(const Scalar factor, const Perm& perm) const {
     // early exit for empty this
-    if (empty()) return *this;
+    if (empty()) return {};
 
     return unary(
         [factor](const value_type& a) {
@@ -1851,7 +1851,7 @@ class Tensor {
   /// \c this and \c value
   Tensor add(const numeric_type value) const {
     // early exit for empty this
-    if (empty()) return *this;
+    if (empty()) return {};
 
     return unary([value](const value_type& a) { return a + value; });
   }
@@ -1867,7 +1867,7 @@ class Tensor {
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor add(const numeric_type value, const Perm& perm) const {
     // early exit for empty this
-    if (empty()) return *this;
+    if (empty()) return {};
 
     return unary([value](const value_type& a) { return a + value; }, perm);
   }
