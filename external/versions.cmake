@@ -34,3 +34,7 @@ set(TA_TRACKED_RANGEV3_PREVIOUS_TAG 2e0591c57fce2aca6073ad6e4fdc50d841827864)
 set(TA_TRACKED_TTG_URL https://github.com/TESSEorg/ttg)
 set(TA_TRACKED_TTG_TAG 3fe4a06dbf4b05091269488aab38223da1f8cb8e)
 set(TA_TRACKED_TTG_PREVIOUS_TAG 26da9b40872660b864794658d4fdeee1a95cb4d6)
+
+# oldest Boost we can tolerate ... old is fine but if Boost is missing build it requires something much younger
+# SeQuant requires at least 1.81, so go with that
+set(TA_OLDEST_BOOST_VERSION 1.81)
