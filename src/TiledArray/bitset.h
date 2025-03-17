@@ -613,8 +613,9 @@ Bitset<Block> operator^(Bitset<Block> left, const Bitset<Block>& right) {
   return left;
 }
 
-template <typename Block>
-std::ostream& operator<<(std::ostream& os, const Bitset<Block>& bitset) {
+template <typename Char, typename CharTraits, typename Block>
+std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const Bitset<Block>& bitset) {
   os << std::hex;
   for (long i = bitset.num_blocks() - 1l; i >= 0l; --i)
     os << std::setfill('0') << std::setw(sizeof(Block) * 2) << bitset.get()[i]

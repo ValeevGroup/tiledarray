@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_TENSOR_KENERLS_H__INCLUDED
-#define TILEDARRAY_TENSOR_KENERLS_H__INCLUDED
+#ifndef TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
+#define TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
 
 #include <TiledArray/einsum/index.h>
 #include <TiledArray/math/gemm_helper.h>
@@ -167,7 +167,7 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
       std::unique_ptr<T[]> data_copy;
       size_t tile_volume;
       if (twostep) {
-        tile_volume = C.range().volume();
+        tile_volume = C.total_size();
         data_copy = std::make_unique<T[]>(tile_volume);
         std::copy(C.data(), C.data() + tile_volume, data_copy.get());
       }
@@ -261,6 +261,7 @@ inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
     return std::forward<Op>(op)(tensor1, tensors...);
   } else {
     static_assert(detail::is_nested_tensor_v<TR, T1, Ts...>);
+    TA_ASSERT(!empty(tensor1, tensors...));
     return TiledArray::detail::transform<TR>()(std::forward<Op>(op), tensor1,
                                                tensors...);
   }
@@ -419,10 +420,6 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
 
   auto volume = result.total_size();
   for (decltype(volume) ord = 0; ord < volume; ++ord) {
-    if constexpr (is_tensor_of_tensor_v<TR>)
-      if (result.data()[ord].range().volume() == 0) continue;
-    if constexpr (is_tensor_of_tensor_v<Ts...>)
-      if (((tensors.data()[ord].range().volume() == 0) || ...)) continue;
     if constexpr (std::is_invocable_r_v<void, Op, typename TR::value_type&,
                                         typename Ts::value_type...>)
       op(result.data()[ord], tensors.data()[ord]...);
@@ -914,20 +911,25 @@ template <
                         std::decay_t<T1>, std::decay_t<Ts>...>>* = nullptr>
 auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Identity&& identity,
                    const T1& tensor1, const Ts&... tensors) {
-  TA_ASSERT(!empty(tensor1, tensors...));
-  TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
-
-  const auto volume = [&tensor1]() {
-    if constexpr (detail::has_total_size_v<T1>)
-      return tensor1.total_size();
-    else
-      return tensor1.size();
-  }();
-
   auto init = std::forward<Identity>(identity);
-  math::reduce_op(std::forward<ReduceOp>(reduce_op),
-                  std::forward<JoinOp>(join_op), init, volume, init,
-                  tensor1.data(), tensors.data()...);
+
+  // early exit if any tensors are empty
+  // WARNING some operations make sense with empty arguments (e.g. max), but not
+  // supported for now since this is only used for multiply (`*`)
+  if (!empty(tensor1, tensors...)) {
+    TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
+
+    const auto volume = [&tensor1]() {
+      if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
+        return tensor1.total_size();
+      else
+        return tensor1.size();
+    }();
+
+    math::reduce_op(std::forward<ReduceOp>(reduce_op),
+                    std::forward<JoinOp>(join_op), init, volume, init,
+                    tensor1.data(), tensors.data()...);
+  }
 
   return init;
 }
@@ -991,7 +993,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
   const auto volume = [&tensor1]() {
-    if constexpr (detail::has_total_size_v<T1>)
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
       return tensor1.total_size();
     else
       return tensor1.size();
@@ -999,9 +1001,6 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
 
   auto result = identity;
   for (std::remove_cv_t<decltype(volume)> ord = 0ul; ord < volume; ++ord) {
-    if (tensor1.data()[ord].range().volume() == 0 ||
-        ((tensors.data()[ord].range().volume() == 0) || ...))
-      continue;
     auto temp = tensor_reduce(reduce_op, join_op, identity, tensor1.data()[ord],
                               tensors.data()[ord]...);
     join_op(result, temp);
@@ -1041,7 +1040,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
   const auto volume = [&tensor1]() {
-    if constexpr (detail::has_total_size_v<T1>)
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
       return tensor1.total_size();
     else
       return tensor1.size();
@@ -1110,7 +1109,7 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   // remaining tensors
 
   const auto volume = [&tensor1]() {
-    if constexpr (detail::has_total_size_v<T1>)
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
       return tensor1.total_size();
     else
       return tensor1.size();
@@ -1301,4 +1300,4 @@ auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
 }  // namespace detail
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_TENSOR_KENERLS_H__INCLUDED
+#endif  // TILEDARRAY_TENSOR_KERNELS_H__INCLUDED

@@ -1321,7 +1321,9 @@ inline bool operator!=(const Range& r1, const Range& r2) {
 /// \param os The output stream that will be used to print \c r
 /// \param r The range to be printed
 /// \return A reference to the output stream
-inline std::ostream& operator<<(std::ostream& os, const Range& r) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const Range& r) {
   os << "[ ";
   detail::print_array(os, r.lobound_data(), r.rank());
   os << ", ";
@@ -1329,6 +1331,12 @@ inline std::ostream& operator<<(std::ostream& os, const Range& r) {
   os << " )";
   return os;
 }
+
+/// creates a string using operator<<(basic_ostream,Range)
+
+/// \param r a Range
+/// \return string representation of \p r
+std::string to_string(const Range& r);
 
 /// Test the two ranges are congruent
 

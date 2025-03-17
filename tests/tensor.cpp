@@ -31,6 +31,14 @@ const TensorFixture::range_type TensorFixture::r = make_range(81);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_suite, TensorFixture, TA_UT_LABEL_SERIAL)
 
+BOOST_AUTO_TEST_CASE(anatomy) {
+  // Tensor = Range + nbatch + shared_ptr to data
+  BOOST_CHECK(sizeof(TensorD) == sizeof(Range) + sizeof(size_t) +
+                                     sizeof(std::shared_ptr<double[]>));
+  // std::wcout << "sizeof(TensorD) = " << sizeof(TensorD) << " sizeof(TensorI)
+  // = " << sizeof(TensorN) << std::endl;
+}
+
 BOOST_AUTO_TEST_CASE(default_constructor) {
   // check constructor
   BOOST_REQUIRE_NO_THROW(TensorN x);
@@ -294,18 +302,36 @@ BOOST_AUTO_TEST_CASE(binary_perm_constructor) {
 }
 
 BOOST_AUTO_TEST_CASE(clone) {
-  // check default constructor
+  // clone non-default-constructed
   TensorN tc;
   BOOST_CHECK(tc.empty());
   BOOST_REQUIRE_NO_THROW(tc = t.clone());
-
   BOOST_CHECK_EQUAL(tc.empty(), t.empty());
-
-  // Check that range data is correct.
   BOOST_CHECK_NE(tc.data(), t.data());
   BOOST_CHECK_EQUAL(tc.size(), t.size());
   BOOST_CHECK_EQUAL(tc.range(), t.range());
   BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
+
+  // clone default-constructed tensor
+  {
+    TensorN tnull;
+    BOOST_REQUIRE_NO_THROW(tc = tnull.clone());
+    BOOST_CHECK_EQUAL(tc.empty(), tnull.empty());
+  }
+
+  // clone rvalue (e.g. temporary) tensor = move
+  {
+    TensorN t2 = t.clone();
+    const auto t2_data = t2.data();
+    BOOST_REQUIRE_NO_THROW(tc = std::move(t2).clone());
+    BOOST_CHECK(t2.empty());  // t2 is moved-from state
+    BOOST_CHECK(!tc.empty());
+    BOOST_CHECK_NE(tc.data(), t.data());
+    BOOST_CHECK_EQUAL(tc.data(), t2_data);
+    BOOST_CHECK_EQUAL(tc.size(), t.size());
+    BOOST_CHECK_EQUAL(tc.range(), t.range());
+    BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
+  }
 }
 
 BOOST_AUTO_TEST_CASE(copy_assignment_operator) {
@@ -742,6 +768,19 @@ BOOST_AUTO_TEST_CASE(rebind) {
   static_assert(
       std::is_same_v<TiledArray::detail::complex_t<TensorD>, TensorZ>);
   static_assert(std::is_same_v<TiledArray::detail::real_t<TensorZ>, TensorD>);
+}
+
+BOOST_AUTO_TEST_CASE(print) {
+  std::ostringstream oss;
+  std::wostringstream woss;
+  BOOST_REQUIRE_NO_THROW(oss << t);
+  BOOST_REQUIRE_NO_THROW(woss << t);
+  // std::cout << t;
+  decltype(t) tb(t.range(), decltype(t)::nbatches{2});
+  rand_fill(1, tb.total_size(), tb.data());
+  BOOST_REQUIRE_NO_THROW(oss << tb);
+  BOOST_REQUIRE_NO_THROW(woss << tb);
+  // std::cout << tb;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

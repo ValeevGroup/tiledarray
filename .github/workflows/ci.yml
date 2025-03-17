@@ -12,13 +12,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os : [ macos-latest, ubuntu-22.04 ]
+        os : [ macos-latest, ubuntu-24.04 ]
         build_type : [ Release, Debug ]
         task_backend: [ Pthreads, PaRSEC ]
         include:
-          - os: ubuntu-22.04
-            cc: /usr/bin/gcc-12
-            cxx: /usr/bin/g++-12
+          - os: ubuntu-24.04
+            cc: /usr/bin/gcc-14
+            cxx: /usr/bin/g++-14
           - os: macos-latest
             cc: clang
             cxx: clang++
@@ -36,12 +36,12 @@ jobs:
         -DMADNESS_TASK_BACKEND=${{ matrix.task_backend }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DMPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
-        -DCMAKE_PREFIX_PATH="/usr/local/opt/bison;/usr/local/opt/scalapack"
+        -DCMAKE_PREFIX_PATH="/usr/local/opt/bison;/usr/local/opt/scalapack;/usr/local/opt/boost"
         -DTA_ASSERT_POLICY=TA_ASSERT_THROW
         -DENABLE_SCALAPACK=ON
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Host system info
       shell: bash
@@ -55,19 +55,28 @@ jobs:
         echo "MPIEXEC=/opt/homebrew/bin/mpiexec" >> $GITHUB_ENV
 
     - name: Install prerequisites Ubuntu packages
-      if: ${{ matrix.os == 'ubuntu-22.04' }}
+      if: ${{ matrix.os == 'ubuntu-24.04' }}
       run: |
         wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
         sudo apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
         sudo apt-get update
-        sudo apt-get -y install ninja-build g++-12 liblapack-dev libboost-dev libboost-serialization-dev libboost-random-dev libeigen3-dev openmpi-bin libopenmpi-dev libtbb-dev ccache flex bison libscalapack-mpi-dev cmake doxygen
+        sudo apt-get -y install ninja-build g++-14 liblapack-dev libboost-dev libboost-serialization-dev libboost-random-dev libeigen3-dev openmpi-bin libopenmpi-dev libtbb-dev ccache flex bison libscalapack-mpi-dev cmake doxygen
         sudo ln -s /usr/lib/x86_64-linux-gnu/libscalapack-openmpi.so /usr/lib/x86_64-linux-gnu/libscalapack.so
         echo "MPIEXEC=/usr/bin/mpiexec" >> $GITHUB_ENV
 
-    - name: Setup ccache
-      uses: hendrikmuhs/ccache-action@v1.2
+    - name: Prepare ccache timestamp
+      id: ccache_cache_timestamp
+      shell: cmake -P {0}
+      run: |
+        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+        message("::set-output name=timestamp::${current_date}")
+    - name: Setup ccache cache files
+      uses: actions/cache@v4
       with:
-        key: ccache-${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.task_backend }}
+        path: ${{github.workspace}}/build/.ccache
+        key: ${{ matrix.config.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+        restore-keys: |
+          ${{ matrix.config.name }}-ccache-
 
     - name: "Configure build: ${{ env.BUILD_CONFIG }}"
       shell: bash

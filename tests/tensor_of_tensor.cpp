@@ -1316,4 +1316,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(rebind, ITensor, itensor_types) {
                                Tensor<TensorZ>>);
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(print, ITensor, itensor_types) {
+  const auto& t = ToT<ITensor>(0);
+
+  BOOST_REQUIRE_NO_THROW(std::cout << t);
+  // std::wcout << t;
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -97,6 +97,9 @@
 /* Is TA::Tensor memory tracing enabled? */
 #cmakedefine TA_TENSOR_MEM_TRACE 1
 
+/* TA_ASSERT that no mutable operations occur on TA::{Tensor,Tile} objects that share data? */
+#cmakedefine TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED 1
+
 /* Is TTG available? */
 #cmakedefine TILEDARRAY_HAS_TTG 1
 

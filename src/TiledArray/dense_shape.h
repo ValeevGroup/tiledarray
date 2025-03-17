@@ -408,7 +408,9 @@ constexpr inline bool is_replicated(World& world, const DenseShape& t) {
 /// \param os The output stream
 /// \param shape the DenseShape object
 /// \return A reference to the output stream
-inline std::ostream& operator<<(std::ostream& os, const DenseShape& shape) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const DenseShape& shape) {
   os << "DenseShape:" << std::endl;
   return os;
 }

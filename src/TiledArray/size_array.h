@@ -482,9 +482,9 @@ inline std::vector<T> operator*(const Permutation& perm,
   return result;
 }
 
-template <typename T>
-inline std::ostream& operator<<(std::ostream& os,
-                                const SizeArray<T>& size_array) {
+template <typename Char, typename CharTraits, typename T>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const SizeArray<T>& size_array) {
   print_array(os, size_array);
   return os;
 }

@@ -35,15 +35,15 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
 - [CMake](https://cmake.org/), version 3.15 or higher; if {CUDA,HIP} support is needed, CMake {3.18,3.21} or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org/), version 3.3.5 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
-- [Boost libraries](www.boost.org/), version 1.59 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
+- [Boost libraries](www.boost.org/), version 1.81 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20 and later.
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 1cfcb12647c768ccd83b098c64cda723e1275e49 . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag 62d57d9b1e0c733b4b547bc9cfdd07047159dbca . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag ef97ad1f0080da04f9592f03185c1a331cd5e001 .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag bd84a52766ab497dedc2f15f2162fb0eb7ec4653 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.

@@ -355,6 +355,10 @@ class AddTo {
     using TiledArray::add_to;
     return add_to(left, right);
   }
+  result_type&& operator()(left_type&& left, const right_type& right) const {
+    using TiledArray::add_to;
+    return add_to(std::move(left), right);
+  }
 };
 
 template <typename Result, typename Left, typename Right>
