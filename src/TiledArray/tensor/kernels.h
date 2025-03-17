@@ -919,7 +919,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Identity&& identity,
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
   const auto volume = [&tensor1]() {
-    if constexpr (detail::has_total_size_v<T1>)
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
       return tensor1.total_size();
     else
       return tensor1.size();
@@ -992,7 +992,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
   const auto volume = [&tensor1]() {
-    if constexpr (detail::has_total_size_v<T1>)
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
       return tensor1.total_size();
     else
       return tensor1.size();
@@ -1042,7 +1042,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
   const auto volume = [&tensor1]() {
-    if constexpr (detail::has_total_size_v<T1>)
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
       return tensor1.total_size();
     else
       return tensor1.size();
@@ -1111,7 +1111,7 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   // remaining tensors
 
   const auto volume = [&tensor1]() {
-    if constexpr (detail::has_total_size_v<T1>)
+    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
       return tensor1.total_size();
     else
       return tensor1.size();
