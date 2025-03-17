@@ -730,6 +730,26 @@ class Tile {
 
 };  // class Tile
 
+namespace detail {
+
+template <typename T>
+inline constexpr bool is_tile_v = false;
+
+template <typename T>
+inline constexpr bool is_tile_v<Tile<T>> = true;
+template <typename T>
+inline constexpr bool is_tile_v<const Tile<T>> = true;
+template <typename T>
+inline constexpr bool is_tile_v<Tile<T>&> = true;
+template <typename T>
+inline constexpr bool is_tile_v<const Tile<T>&> = true;
+template <typename T>
+inline constexpr bool is_tile_v<Tile<T>&&> = true;
+template <typename T>
+inline constexpr bool is_tile_v<const Tile<T>&&> = true;
+
+}  // namespace detail
+
 // The following functions define the non-intrusive interface used to apply
 // math operations to Tiles. These functions in turn use the non-intrusive
 // interface functions to evaluate tiles.
