@@ -2042,6 +2042,9 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor& subt_to(const Right& right) {
+    // early exit for empty right
+    if (right.empty()) return *this;
+
     return inplace_binary(
         right, [](auto& MADNESS_RESTRICT l, const auto& r) { l -= r; });
   }
@@ -2058,6 +2061,11 @@ class Tensor {
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& subt_to(const Right& right, const Scalar factor) {
+    // early exit for empty right
+    if (right.empty()) {
+      return this->scale_to(factor);
+    }
+
     return inplace_binary(right,
                           [factor](auto& MADNESS_RESTRICT l, const auto& r) {
                             (l -= r) *= factor;
