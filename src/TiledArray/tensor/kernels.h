@@ -167,7 +167,7 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
       std::unique_ptr<T[]> data_copy;
       size_t tile_volume;
       if (twostep) {
-        tile_volume = C.range().volume();
+        tile_volume = C.total_size();
         data_copy = std::make_unique<T[]>(tile_volume);
         std::copy(C.data(), C.data() + tile_volume, data_copy.get());
       }
