@@ -371,8 +371,13 @@ inline auto subt(const Arg& arg, const Scalar value, const Perm& perm) {
 /// \param result The result tile
 /// \param arg The argument to be subtracted from the result
 /// \return A tile that is equal to <tt>result[i] -= arg[i]</tt>
-template <typename Result, typename Arg>
+template <
+    typename Result, typename Arg,
+    typename = std::enable_if_t<
+        detail::has_member_function_subt_to_anyreturn_v<Result&&, const Arg&>>>
 inline decltype(auto) subt_to(Result&& result, const Arg& arg) {
+  static_assert(!std::is_const_v<std::remove_reference_t<Result>>,
+                "TA::subt_to(result, arg): result cannot be const");
   return std::forward<Result>(result).subt_to(arg);
 }
 
@@ -387,9 +392,14 @@ inline decltype(auto) subt_to(Result&& result, const Arg& arg) {
 /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
 template <
     typename Result, typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Result& subt_to(Result& result, const Arg& arg, const Scalar factor) {
-  return result.subt_to(arg, factor);
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::has_member_function_subt_to_anyreturn_v<
+                                Result&&, const Arg&, Scalar>>::type* = nullptr>
+inline decltype(auto) subt_to(Result&& result, const Arg& arg,
+                              const Scalar factor) {
+  static_assert(!std::is_const_v<std::remove_reference_t<Result>>,
+                "TA::subt_to(result,arg,factor): result cannot be const");
+  return std::forward<Result>(result).subt_to(arg, factor);
 }
 
 /// Subtract constant scalar from the result tile
@@ -401,9 +411,13 @@ inline Result& subt_to(Result& result, const Arg& arg, const Scalar factor) {
 /// \return A tile that is equal to <tt>(result -= arg) *= factor</tt>
 template <
     typename Result, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Result& subt_to(Result& result, const Scalar value) {
-  return result.subt_to(value);
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::has_member_function_subt_to_anyreturn_v<
+                                Result&&, Scalar>>::type* = nullptr>
+inline decltype(auto) subt_to(Result&& result, const Scalar value) {
+  static_assert(!std::is_const_v<std::remove_reference_t<Result>>,
+                "TA::subt_to(result,value): result cannot be const");
+  return std::forward<Result>(result).subt_to(value);
 }
 
 template <typename... T>
@@ -483,9 +497,12 @@ inline auto mult(const Left& left, const Right& right, const Scalar factor,
 /// \param result The result tile  to be multiplied
 /// \param arg The argument to be multiplied by the result
 /// \return A tile that is equal to <tt>result *= arg</tt>
-template <typename Result, typename Arg>
-inline Result& mult_to(Result& result, const Arg& arg) {
-  return result.mult_to(arg);
+template <
+    typename Result, typename Arg,
+    typename = std::enable_if_t<
+        detail::has_member_function_mult_to_anyreturn_v<Result&&, const Arg&>>>
+inline decltype(auto) mult_to(Result&& result, const Arg& arg) {
+  return std::forward<Result>(result).mult_to(arg);
 }
 
 /// Multiply and scale to the result tile
@@ -498,9 +515,12 @@ inline Result& mult_to(Result& result, const Arg& arg) {
 /// \param factor The scaling factor
 /// \return A tile that is equal to <tt>(result *= arg) *= factor</tt>
 template <typename Result, typename Arg, typename Scalar,
-          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline Result& mult_to(Result& result, const Arg& arg, const Scalar factor) {
-  return result.mult_to(arg, factor);
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                           detail::has_member_function_mult_to_anyreturn_v<
+                               Result&&, const Arg&, Scalar>>* = nullptr>
+inline decltype(auto) mult_to(Result&& result, const Arg& arg,
+                              const Scalar factor) {
+  return std::forward<Result>(result).mult_to(arg, factor);
 }
 
 template <typename... T>
@@ -559,9 +579,12 @@ inline decltype(auto) binary(const Left& left, const Right& right, Op&& op,
 /// \param op An element-wise operation
 /// \return reference to \p left
 // clang-format on
-template <typename Left, typename Right, typename Op>
-inline Left& inplace_binary(Left& left, const Right& right, Op&& op) {
-  return left.inplace_binary(right, std::forward<Op>(op));
+template <typename Left, typename Right, typename Op,
+          typename = std::enable_if_t<
+              detail::has_member_function_inplace_binary_anyreturn_v<
+                  Left&&, const Right&, Op&&>>>
+inline decltype(auto) inplace_binary(Left&& left, const Right& right, Op&& op) {
+  return std::forward<Left>(left).inplace_binary(right, std::forward<Op>(op));
 }
 
 template <typename... T>
@@ -604,9 +627,13 @@ inline auto neg(const Arg& arg, const Perm& perm) {
 /// \tparam Result The result tile type
 /// \param result The result tile to be negated
 /// \return Reference to \p result
-template <typename Result>
-inline Result& neg_to(Result& result) {
-  return result.neg_to();
+template <typename Result,
+          typename = std::enable_if_t<
+              detail::has_member_function_neg_to_anyreturn_v<Result&&>>>
+inline decltype(auto) neg_to(Result&& result) {
+  static_assert(!std::is_const_v<std::remove_reference_t<Result>>,
+                "TA::neg_to(result): result cannot be const");
+  return std::forward<Result>(result).neg_to();
 }
 
 template <typename... T>
@@ -674,9 +701,11 @@ inline auto conj(const Arg& arg, const Scalar factor, const Perm& perm) {
 /// \tparam Result The tile type
 /// \param result The tile to be conjugated
 /// \return A reference to `result`
-template <typename Result>
-inline Result& conj_to(Result& result) {
-  return result.conj_to();
+template <typename Result,
+          typename = std::enable_if_t<
+              detail::has_member_function_conj_to_anyreturn_v<Result&&>>>
+inline decltype(auto) conj_to(Result&& result) {
+  return std::forward<Result>(result).conj_to();
 }
 
 /// In-place complex conjugate and scale a tile
@@ -686,11 +715,13 @@ inline Result& conj_to(Result& result) {
 /// \param result The tile to be conjugated
 /// \param factor The scaling factor
 /// \return A reference to `result`
-template <typename Result, typename Scalar,
-          typename std::enable_if<
-              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline Result& conj_to(Result& result, const Scalar factor) {
-  return result.conj_to(factor);
+template <
+    typename Result, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar> &&
+                            detail::has_member_function_conj_to_anyreturn_v<
+                                Result&&>>::type* = nullptr>
+inline decltype(auto) conj_to(Result&& result, const Scalar factor) {
+  return std::forward<Result>(result).conj_to(factor);
 }
 
 template <typename... T>
@@ -741,9 +772,12 @@ inline decltype(auto) unary(const Arg& arg, Op&& op, const Perm& perm) {
 /// \param op An element-wise operation
 /// \return \c reference to \p arg
 // clang-format on
-template <typename Result, typename Op>
-inline Result& inplace_unary(Result& arg, Op&& op) {
-  return arg.inplace_unary(std::forward<Op>(op));
+template <
+    typename Result, typename Op,
+    typename = std::enable_if_t<
+        detail::has_member_function_inplace_unary_anyreturn_v<Result&&, Op&&>>>
+inline decltype(auto) inplace_unary(Result&& arg, Op&& op) {
+  return std::forward<Result>(arg).inplace_unary(std::forward<Op>(op));
 }
 
 template <typename... T>

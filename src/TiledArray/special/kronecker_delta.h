@@ -168,7 +168,11 @@ Tensor<T> mult(const KroneckerDeltaTile& arg1, const Tensor<T>& arg2,
 template <typename T>
 Tensor<T>& mult_to(Tensor<T>& result, const KroneckerDeltaTile& arg1) {
   abort();
-  return result;
+}
+
+template <typename T>
+Tensor<T>&& mult_to(Tensor<T>&& result, const KroneckerDeltaTile& arg1) {
+  abort();
 }
 
 // dense_result[i] = binary(dense_arg1[i], sparse_arg2[i], op)

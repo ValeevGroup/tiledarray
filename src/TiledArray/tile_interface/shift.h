@@ -65,10 +65,13 @@ inline auto shift(const Arg& arg,
 /// \param arg The tile argument to be shifted
 /// \param range_shift The offset to be applied to the argument range
 /// \return A copy of the tile with a new range
-template <typename Arg, typename Index,
-          typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-inline auto shift_to(Arg& arg, const Index& range_shift) {
-  return arg.shift_to(range_shift);
+template <
+    typename Arg, typename Index,
+    typename = std::enable_if_t<
+        detail::is_integral_range_v<Index> &&
+        detail::has_member_function_shift_to_anyreturn_v<Arg&&, const Index&>>>
+inline auto shift_to(Arg&& arg, const Index& range_shift) {
+  return std::forward<Arg>(arg).shift_to(range_shift);
 }
 
 /// Shift the range of \c arg in place
@@ -79,10 +82,13 @@ inline auto shift_to(Arg& arg, const Index& range_shift) {
 /// \param range_shift The offset to be applied to the argument range
 /// \return A copy of the tile with a new range
 template <typename Arg, typename Index,
-          typename = std::enable_if_t<std::is_integral_v<Index>>>
-inline auto shift_to(Arg& arg,
-                     const std::initializer_list<Index>& range_shift) {
-  return arg.shift_to(range_shift);
+          typename =
+              std::enable_if_t<std::is_integral_v<Index> &&
+                               detail::has_member_function_shift_to_anyreturn_v<
+                                   Arg&&, const std::initializer_list<Index>&>>>
+inline decltype(auto) shift_to(
+    Arg&& arg, const std::initializer_list<Index>& range_shift) {
+  return std::forward<Arg>(arg).shift_to(range_shift);
 }
 
 namespace tile_interface {
@@ -140,6 +146,10 @@ class ShiftTo {
   result_type operator()(argument_type& arg, const Index& range_shift) const {
     return shift_to(arg, range_shift);
   }
+  template <typename Index>
+  result_type operator()(argument_type&& arg, const Index& range_shift) const {
+    return shift_to(std::move(arg), range_shift);
+  }
 };
 
 template <typename Result, typename Arg>
@@ -157,6 +167,10 @@ class ShiftTo<Result, Arg,
   template <typename Index>
   result_type operator()(argument_type& arg, const Index& range_shift) const {
     return Cast_::operator()(shift_to(arg, range_shift));
+  }
+  template <typename Index>
+  result_type operator()(argument_type&& arg, const Index& range_shift) const {
+    return Cast_::operator()(shift_to(std::move(arg), range_shift));
   }
 };
 

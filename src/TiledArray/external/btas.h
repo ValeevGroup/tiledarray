@@ -255,6 +255,13 @@ inline btas::Tensor<T, Range, Storage>& shift_to(
   return arg;
 }
 
+template <typename T, typename Range, typename Storage, typename Index>
+inline btas::Tensor<T, Range, Storage>&& shift_to(
+    btas::Tensor<T, Range, Storage>&& arg, const Index& range_shift) {
+  const_cast<Range&>(arg.range()).inplace_shift(range_shift);
+  return std::move(arg);
+}
+
 /// result[i] = arg1[i] + arg2[i]
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> add(
@@ -388,6 +395,16 @@ inline btas::Tensor<T, Range, Storage>& subt_to(
   return result;
 }
 
+template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage>&& subt_to(
+    btas::Tensor<T, Range, Storage>&& result,
+    const btas::Tensor<T, Range, Storage>& arg) {
+  auto result_view = make_ti(result);
+  auto arg_view = make_ti(arg);
+  result_view.subt_to(arg_view);
+  return std::move(result);
+}
+
 template <typename T, typename Range, typename Storage, typename Scalar,
           typename std::enable_if<
               TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
@@ -398,6 +415,18 @@ inline btas::Tensor<T, Range, Storage>& subt_to(
   auto arg_view = make_ti(arg);
   result_view.subt_to(arg_view, factor);
   return result;
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline btas::Tensor<T, Range, Storage>&& subt_to(
+    btas::Tensor<T, Range, Storage>&& result,
+    const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  auto result_view = make_ti(result);
+  auto arg_view = make_ti(arg);
+  result_view.subt_to(arg_view, factor);
+  return std::move(result);
 }
 
 /// result[i] = arg1[i] * arg2[i]
@@ -460,6 +489,16 @@ inline btas::Tensor<T, Range, Storage>& mult_to(
   return result;
 }
 
+template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage>&& mult_to(
+    btas::Tensor<T, Range, Storage>&& result,
+    const btas::Tensor<T, Range, Storage>& arg) {
+  auto result_view = make_ti(result);
+  auto arg_view = make_ti(arg);
+  result_view.mult_to(arg_view);
+  return std::move(result);
+}
+
 /// result[i] *= arg[i] * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
           typename std::enable_if<
@@ -471,6 +510,18 @@ inline btas::Tensor<T, Range, Storage>& mult_to(
   auto arg_view = make_ti(arg);
   result_view.mult_to(arg_view, factor);
   return result;
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline btas::Tensor<T, Range, Storage>&& mult_to(
+    btas::Tensor<T, Range, Storage>&& result,
+    const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  auto result_view = make_ti(result);
+  auto arg_view = make_ti(arg);
+  result_view.mult_to(arg_view, factor);
+  return std::move(result);
 }
 
 // Generic element-wise binary operations
@@ -541,6 +592,14 @@ inline btas::Tensor<T, Range, Storage>& neg_to(
 }
 
 template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage>&& neg_to(
+    btas::Tensor<T, Range, Storage>&& result) {
+  auto result_view = make_ti(result);
+  result_view.neg_to();
+  return std::move(result);
+}
+
+template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> neg(
     const btas::Tensor<T, Range, Storage>& arg) {
   auto arg_view = make_ti(arg);
@@ -600,6 +659,14 @@ inline btas::Tensor<T, Range, Storage>& conj_to(
   return arg;
 }
 
+template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage>&& conj_to(
+    btas::Tensor<T, Range, Storage>&& arg) {
+  auto arg_view = make_ti(arg);
+  arg_view.conj_to();
+  return std::move(arg);
+}
+
 template <typename T, typename Range, typename Storage, typename Scalar,
           std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
 inline btas::Tensor<T, Range, Storage>& conj_to(
@@ -607,6 +674,15 @@ inline btas::Tensor<T, Range, Storage>& conj_to(
   auto arg_view = make_ti(arg);
   arg_view.conj_to(factor);
   return arg;
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage>&& conj_to(
+    btas::Tensor<T, Range, Storage>&& arg, const Scalar factor) {
+  auto arg_view = make_ti(arg);
+  arg_view.conj_to(factor);
+  return std::move(arg);
 }
 
 // Generic element-wise unary operations

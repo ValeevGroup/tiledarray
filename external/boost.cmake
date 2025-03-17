@@ -1,3 +1,18 @@
+# -*- mode: cmake -*-
+
+# update the Boost version that we can tolerate
+if (NOT DEFINED Boost_OLDEST_BOOST_VERSION)
+    set(Boost_OLDEST_BOOST_VERSION ${TA_OLDEST_BOOST_VERSION})
+else()
+    if (${Boost_OLDEST_BOOST_VERSION} VERSION_LESS ${TA_OLDEST_BOOST_VERSION})
+        if (DEFINED CACHE{Boost_OLDEST_BOOST_VERSION})
+            set(Boost_OLDEST_BOOST_VERSION "${TA_OLDEST_BOOST_VERSION}" CACHE STRING "Oldest Boost version to use" FORCE)
+        else()
+            set(Boost_OLDEST_BOOST_VERSION ${TA_OLDEST_BOOST_VERSION})
+        endif()
+    endif()
+endif()
+
 # Boost can be discovered by every (sub)package but only the top package can *build* it ...
 # in either case must declare the components used by TA
 set(required_components
