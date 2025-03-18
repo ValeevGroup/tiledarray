@@ -194,7 +194,7 @@ class TensorInterface {
   template <typename T1, typename std::enable_if<detail::is_nested_tensor<
                              T1>::value>::type* = nullptr>
   TensorInterface_& operator=(const T1& other) {
-    if constexpr (std::is_same_v<numeric_type, numeric_t<T1>>) {
+    if constexpr (std::is_same_v<value_type, value_t<T1>>) {
       TA_ASSERT(data_ != other.data());
     }
 
