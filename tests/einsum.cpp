@@ -25,7 +25,7 @@
 
 #include "TiledArray/expressions/contraction_helpers.h"
 
-BOOST_AUTO_TEST_SUITE(manual)
+BOOST_AUTO_TEST_SUITE(einsum_manual)
 
 namespace {
 using il_trange = std::initializer_list<std::initializer_list<size_t>>;
