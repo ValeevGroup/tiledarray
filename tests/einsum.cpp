@@ -243,11 +243,6 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
   BOOST_REQUIRE(check_manual_eval<ArrayToT>(
       "ijk;bc,j;d->kji;dcb", {{0, 1}, {0, 1}, {0, 1}}, {{0, 1}}, {2, 3}, {4}));
 
-  // debug
-  // i_2,i_3,i_1;a_1i_1i_2,a_4i_2i_3
-  //   * i_1,i_3,i_2;a_4i_2i_3,a_2i_1i_2
-  //   = i_1,i_2;a_1i_1i_2,a_2i_1i_2
-
   // H+C;C
   BOOST_REQUIRE(check_manual_eval<ArrayToT>(
       "jki;ad,ikj;db->ij;ab",                                  //
@@ -255,6 +250,22 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
       {{0, 1, 2, 3, 4}, {0, 1, 2, 3}, {0, 1, 2, 3, 4, 5, 6}},  //
       {3, 2},                                                  //
       {2, 4}));
+
+  // H+C;C
+  BOOST_REQUIRE(
+      check_manual_eval<ArrayToT>("ijk;mo,kji;no->ik;nm",             //
+                                  {{0, 3, 6}, {0, 1, 3}, {0, 2, 4}},  //
+                                  {{0, 2, 4}, {0, 1, 3}, {0, 3, 6}},  //
+                                  {3, 2},                             //
+                                  {4, 2}));
+
+  // H+C;C
+  BOOST_REQUIRE(
+      check_manual_eval<ArrayToT>("ijk;mo,ijk;no->ji;nm",             //
+                                  {{0, 2, 5}, {0, 1, 3}, {0, 3, 4}},  //
+                                  {{0, 2, 5}, {0, 1, 3}, {0, 3, 4}},  //
+                                  {4, 2},                             //
+                                  {3, 2}));
 }
 
 BOOST_AUTO_TEST_CASE(different_nested_ranks) {
