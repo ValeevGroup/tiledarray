@@ -614,22 +614,11 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     using Index = Einsum::Index<size_t>;
 
     // this will collect local tiles of C.array, to be used to rebuild C.array
-    std::vector<std::tuple<Index, ResultTensor>> C_local_tiles;
+    std::vector<std::pair<Index, ResultTensor>> C_local_tiles;
     auto build_C_array = [&]() {
-      if constexpr (!ResultShape::is_dense()) {
-        TiledRange tiled_range = TiledRange(range_map[c]);
-        std::vector<std::pair<Index, float>> tile_norms;
-        for (auto &[index, tile] : C_local_tiles) {
-          tile_norms.push_back({index, tile.norm()});
-        }
-        ResultShape shape(world, tile_norms, tiled_range);
-        C.array = ArrayC(world, TiledRange(range_map[c]), shape);
-      }
-
-      for (auto &[index, tile] : C_local_tiles) {
-        if (C.array.is_zero(index)) continue;
-        C.array.set(index, tile);
-      }
+      C.array = make_array<ArrayC>(world, TiledRange(range_map[c]),
+                                   C_local_tiles.begin(), C_local_tiles.end(),
+                                   /* replicated = */ false);
     };
 
     std::get<0>(AB).expr += inner.a;
