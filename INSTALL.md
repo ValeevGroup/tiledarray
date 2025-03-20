@@ -24,15 +24,14 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
 
 ## Prerequisites
 
-- C++ compiler with support for the [C++17 standard](http://www.iso.org/standard/68564.html), or a more recent standard. This includes the following compilers:
-  - [GNU C++](https://gcc.gnu.org/), version 7.0 or higher
-  - [Clang](https://clang.llvm.org/), version 5 or higher
-  - [Apple Clang](https://en.wikipedia.org/wiki/Xcode), version 9.3 or higher
-  - [Intel C++ compiler](https://software.intel.com/en-us/c-compilers), version 19 or higher
+- C++ compiler with support for the [C++20 standard](http://www.iso.org/standard/68564.html), or a more recent standard. This includes the following compilers:
+  - [GNU C++](https://gcc.gnu.org/), version 11 or higher
+  - [Clang](https://clang.llvm.org/), version 14 or higher
+  - [Apple Clang](https://en.wikipedia.org/wiki/Xcode), version 14 or higher
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
-- [CMake](https://cmake.org/), version 3.15 or higher; if {CUDA,HIP} support is needed, CMake {3.18,3.21} or higher is required.
+- [CMake](https://cmake.org/), version 3.21 or higher.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org/), version 3.3.5 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.81 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
@@ -66,14 +65,14 @@ Compiling BTAS requires the following prerequisites:
 Optional prerequisites:
 - for execution on GPGPUs:
   - device programming runtime:
-    - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on NVIDIA's CUDA-enabled accelerators. CUDA 11 or later is required.
+    - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on NVIDIA's CUDA-enabled accelerators. CUDA 12 or later is required.
     - [HIP/ROCm compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on AMD's ROCm-enabled accelerators. Note that TiledArray does not use ROCm directly but its C++ Heterogeneous-Compute Interface for Portability, `HIP`; although HIP can also be used to program CUDA-enabled devices, in TiledArray it is used only to program ROCm devices, hence ROCm and HIP will be used interchangeably.
   - [LibreTT](github.com/victor-anisimov/LibreTT) -- free tensor transpose library for CUDA, ROCm, and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) extended to provide thread-safety improvements (via github.com/ValeevGroup/cutt) and extended to non-CUDA platforms by [@victor-anisimov](github.com/victor-anisimov) (tag 6eed30d4dd2a5aa58840fe895dcffd80be7fbece).
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag 8c85866107f78a58403e20a2ae8e1f24c9852287).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
-  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 6397f52cf11c0dfd82a79698ee198a2fce515d81); pulls and builds the following additional prerequisite
-    - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS
+  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ wrapper for ScaLAPACK (tag 6397f52cf11c0dfd82a79698ee198a2fce515d81); pulls and builds the following additional prerequisite
+    - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ wrapper for BLACS
 - Python3 interpreter -- to test (optionally-built) Python bindings
 - [TTG](https://github.com/TESSEorg/ttg.git) -- C++ implementation of the Template Task Graph programming model for fine-grained flow-graph composition of distributed memory programs (tag 3fe4a06dbf4b05091269488aab38223da1f8cb8e).
 
@@ -186,7 +185,7 @@ Additional CMake variables are given below.
 * `CMAKE_BUILD_TYPE` -- Optimization/debug build type options include
   `Debug` (optimization off, debugging symbols and assersions on), `Release` (optimization on, debugging symbols and assertions off), `RelWithDebInfo` (optimization on, debugging symbols and assertions on) and `MinSizeRel` (same as `Release` but optimized for executable size). The default is empty build type. It is recommended that you set the build type explicitly.
 * `BUILD_SHARED_LIBS` -- Enable shared libraries. This option is only available if the platform supports shared libraries; if that's true and `TA_ASSUMES_ASLR_DISABLED` is `ON` (see below) the default is `ON`, otherwise the default is `OFF`.
-* `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `17` (default), and `20`.
+* `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `20` (default), and `23`.
 
 Most of these are best specified in a _toolchain file_. TiledArray is recommended to use the toolchains distributed via [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains). TiledArray by default downloads (via [the FetchContent CMake module](https://cmake.org/cmake/help/latest/module/FetchContent.html)) the VG CMake toolkit which makes the toolchains available without having to download the toolchain files manually. E.g., to use toolchain `x` from the VG CMake kit repository provide `-DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/x.cmake` to CMake when configuring TiledArray.
 
