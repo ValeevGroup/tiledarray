@@ -1158,7 +1158,7 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   return result;
 }
 
-/// plan for Tensor contractions of fixed topology
+/// plan for a binary Tensor contraction of fixed topology
 template <typename Annot, typename = std::enable_if_t<is_annotation_v<Annot>>>
 struct TensorContractionPlan {
   using Indices = Einsum::index::Index<typename Annot::value_type>;
@@ -1186,6 +1186,12 @@ struct TensorContractionPlan {
 
   const math::GemmHelper gemm_helper;
 
+  /// constructs plan for contraction C(aC) = A(aA) * B(aB). E.g.
+  /// `TensorContractionPlan("i,k", "k,j", "i,j")` constructs a plan
+  /// for matrix product.
+  /// \param aA einsum annotation for first argument (A)
+  /// \param aB einsum annotation for second argument (B)
+  /// \param aC einsum annotation for the result (C)
   TensorContractionPlan(Annot const& aA, Annot const& aB, Annot const& aC)
       : A(aA),
         B(aB),
@@ -1207,12 +1213,10 @@ struct TensorContractionPlan {
   }
 };
 
-/// contracts 2 tensors, with 1 plan construction per call. Thus this is
-/// inefficient; plan should be constructed separately and then used to for
-/// multiple calls (see the variant of this function that takes a plan as an
-/// argument)
+/// contracts 2 tensors using the given contraction \p plan .
 /// @internal TODO constrain ResultTensorAllocator type so that non-sensical
 /// Allocators are prohibited
+/// @return result of the contraction
 template <typename ResultTensorAllocator = void, typename TensorA,
           typename TensorB, typename Annot,
           typename = std::enable_if_t<is_tensor_v<TensorA, TensorB> &&
@@ -1300,6 +1304,12 @@ struct TensorHadamardPlan {
 
   const bool no_perm, perm_to_c, perm_a, perm_b;
 
+  /// constructs plan for generalized hadamard product C(aC) = A(aA) * B(aB).
+  /// E.g. `TensorHadamardPlan("i,j", "i,j", "j,i")` constructs a plan
+  /// for product C(j,i) = A(i,j) B (i,j)
+  /// \param aA einsum annotation for first argument (A)
+  /// \param aB einsum annotation for second argument (B)
+  /// \param aC einsum annotation for the result (C)
   TensorHadamardPlan(Annot const& aA, Annot const& aB, Annot const& aC)
       : A(aA),
         B(aB),
