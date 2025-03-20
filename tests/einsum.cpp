@@ -25,7 +25,7 @@
 
 #include "TiledArray/expressions/contraction_helpers.h"
 
-BOOST_AUTO_TEST_SUITE(manual)
+BOOST_AUTO_TEST_SUITE(einsum_manual)
 
 namespace {
 using il_trange = std::initializer_list<std::initializer_list<size_t>>;
@@ -216,18 +216,20 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
                                             {4, 3}));
 
   // H+C;H
-  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;mn,ijk;nm->ij;mn",    //
-                                            {{0, 2}, {0, 3}, {0, 2}},  //
-                                            {{0, 2}, {0, 3}, {0, 2}},  //
-                                            {2, 2},                    //
-                                            {2, 2}));
+  BOOST_REQUIRE(
+      check_manual_eval<ArrayToT>("jki;mn,ijk;nm->ij;mn",             //
+                                  {{0, 2, 3}, {0, 3, 5}, {0, 1, 3}},  //
+                                  {{0, 1, 3}, {0, 2, 3}, {0, 3, 5}},  //
+                                  {3, 2},                             //
+                                  {2, 3}));
 
   // H+C;C
-  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;mo,ijk;no->ij;nm",    //
-                                            {{0, 2}, {0, 3}, {0, 2}},  //
-                                            {{0, 2}, {0, 3}, {0, 2}},  //
-                                            {3, 2},                    //
-                                            {3, 2}));
+  BOOST_REQUIRE(
+      check_manual_eval<ArrayToT>("ijk;mo,kji;no->ij;nm",             //
+                                  {{0, 1, 3}, {0, 2, 3}, {0, 3, 5}},  //
+                                  {{0, 3, 5}, {0, 2, 3}, {0, 1, 3}},  //
+                                  {3, 2},                             //
+                                  {4, 2}));
 
   // H+C;C
   BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;m,ijk;n->ij;nm",      //
@@ -240,6 +242,30 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
   // H;C(op)
   BOOST_REQUIRE(check_manual_eval<ArrayToT>(
       "ijk;bc,j;d->kji;dcb", {{0, 1}, {0, 1}, {0, 1}}, {{0, 1}}, {2, 3}, {4}));
+
+  // H+C;C
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>(
+      "jki;ad,ikj;db->ij;ab",                                  //
+      {{0, 1, 2, 3, 4, 5, 6}, {0, 1, 2, 3}, {0, 1, 2, 3, 4}},  //
+      {{0, 1, 2, 3, 4}, {0, 1, 2, 3}, {0, 1, 2, 3, 4, 5, 6}},  //
+      {3, 2},                                                  //
+      {2, 4}));
+
+  // H+C;C
+  BOOST_REQUIRE(
+      check_manual_eval<ArrayToT>("ijk;mo,kji;no->ik;nm",             //
+                                  {{0, 3, 6}, {0, 1, 3}, {0, 2, 4}},  //
+                                  {{0, 2, 4}, {0, 1, 3}, {0, 3, 6}},  //
+                                  {3, 2},                             //
+                                  {4, 2}));
+
+  // H+C;C
+  BOOST_REQUIRE(
+      check_manual_eval<ArrayToT>("ijk;mo,ijk;no->ji;nm",             //
+                                  {{0, 2, 5}, {0, 1, 3}, {0, 3, 4}},  //
+                                  {{0, 2, 5}, {0, 1, 3}, {0, 3, 4}},  //
+                                  {4, 2},                             //
+                                  {3, 2}));
 }
 
 BOOST_AUTO_TEST_CASE(different_nested_ranks) {

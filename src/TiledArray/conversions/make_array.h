@@ -242,7 +242,7 @@ inline Array make_array(World& world, const detail::trange_t<Array>& trange,
                            op);
 }
 
-/// a make_array variant that uses a sequence of tiles
+/// a make_array variant that uses a sequence of {tile_index,tile} pairs
 /// to construct a DistArray with default pmap
 template <typename Array, typename Tiles>
 Array make_array(World& world, const detail::trange_t<Array>& tiled_range,
