@@ -240,6 +240,23 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
   // H;C(op)
   BOOST_REQUIRE(check_manual_eval<ArrayToT>(
       "ijk;bc,j;d->kji;dcb", {{0, 1}, {0, 1}, {0, 1}}, {{0, 1}}, {2, 3}, {4}));
+
+  // H+C;C
+  BOOST_REQUIRE(
+      check_manual_eval<ArrayToT>("ijk;mo,kji;no->ik;nm",             //
+                                  {{0, 3, 6}, {0, 1, 3}, {0, 2, 4}},  //
+                                  {{0, 2, 4}, {0, 1, 3}, {0, 3, 6}},  //
+                                  {3, 2},                             //
+                                  {4, 2}));
+
+  // H+C;C
+  BOOST_REQUIRE(
+      check_manual_eval<ArrayToT>("ijk;mo,ijk;no->ji;nm",             //
+                                  {{0, 2, 5}, {0, 1, 3}, {0, 3, 4}},  //
+                                  {{0, 2, 5}, {0, 1, 3}, {0, 3, 4}},  //
+                                  {4, 2},                             //
+                                  {3, 2}));
+
 }
 
 BOOST_AUTO_TEST_CASE(different_nested_ranks) {
