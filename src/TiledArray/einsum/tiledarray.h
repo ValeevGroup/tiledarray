@@ -686,7 +686,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       auto pa = A.permutation;
       auto pb = B.permutation;
       for (Index h : H.tiles) {
-        if (!C.array.is_local(h)) continue;
+        auto const pc = C.permutation;
+        auto const c = apply(pc, h);
+        if (!C.array.is_local(c)) continue;
         size_t batch = 1;
         for (size_t i = 0; i < h.size(); ++i) {
           batch *= H.batch[i].at(h[i]);
@@ -743,8 +745,6 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         }
         // data is stored as h1 h2 ... but all modes folded as 1 batch dim
         // first reshape to h = (h1 h2 ...)
-        auto pc = C.permutation;
-        auto c = apply(pc, h);
         // n.b. can't just use shape = C.array.trange().tile(h)
         auto shape = apply_inverse(pc, C.array.trange().tile(c));
         tile = tile.reshape(shape);
