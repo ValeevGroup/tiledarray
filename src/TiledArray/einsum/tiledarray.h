@@ -648,6 +648,41 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         tiles *= Range(range_map[idx].tiles_range());
       }
 
+      // the inner product can be either hadamard or a contraction
+      using TensorT = typename decltype(A.array)::value_type::value_type;
+      static_assert(
+          std::is_same_v<TensorT,
+                         typename decltype(A.array)::value_type::value_type>);
+      constexpr bool is_tot = detail::is_tensor_v<TensorT>;
+      auto element_hadamard_op =
+          (is_tot && inner.h)
+              ? std::make_optional(
+                    [&inner, plan = detail::TensorHadamardPlan(inner.A, inner.B,
+                                                               inner.C)](
+                        auto const &l, auto const &r) -> TensorT {
+                      if (l.empty() || r.empty()) return TensorT{};
+                      return detail::tensor_hadamard(l, r, plan);
+                    })
+              : std::nullopt;
+      auto element_contract_op =
+          (is_tot && !inner.h)
+              ? std::make_optional(
+                    [&inner, plan = detail::TensorContractionPlan(
+                                 inner.A, inner.B, inner.C)](
+                        auto const &l, auto const &r) -> TensorT {
+                      if (l.empty() || r.empty()) return TensorT{};
+                      return detail::tensor_contract(l, r, plan);
+                    })
+              : std::nullopt;
+      auto element_product_op = [&inner, &element_hadamard_op,
+                                 &element_contract_op](
+                                    auto const &l, auto const &r) -> TensorT {
+        TA_ASSERT(inner.h ? element_hadamard_op.has_value()
+                          : element_contract_op.has_value());
+        return inner.h ? element_hadamard_op.value()(l, r)
+                       : element_contract_op.value()(l, r);
+      };
+
       auto pa = A.permutation;
       auto pb = B.permutation;
       for (Index h : H.tiles) {
@@ -682,16 +717,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
               auto &el = tile({k});
               using TensorT = std::remove_reference_t<decltype(el)>;
 
-              auto mult_op = [&inner](auto const &l, auto const &r) -> TensorT {
-                if (l.empty() || r.empty()) return TensorT{};
-                return inner.h ? TA::detail::tensor_hadamard(l, inner.A, r,
-                                                             inner.B, inner.C)
-                               : TA::detail::tensor_contract(l, inner.A, r,
-                                                             inner.B, inner.C);
-              };
-
               for (auto i = 0; i < vol; ++i)
-                el.add_to(mult_op(aik.data()[i], bik.data()[i]));
+                el.add_to(element_product_op(aik.data()[i], bik.data()[i]));
 
             } else if constexpr (!AreArraySame<ArrayA, ArrayB>) {
               auto aik = ai.batch(k);
