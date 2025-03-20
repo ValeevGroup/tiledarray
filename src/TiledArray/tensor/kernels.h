@@ -1164,13 +1164,13 @@ struct TensorContractionPlan {
   using Indices = Einsum::index::Index<typename Annot::value_type>;
   using Permutation = Einsum::index::Permutation;
 
-  Indices  //
-      A,   // indices of A
-      B,   // indices of B
-      C,   // indices of C (target indices)
-      h,   // Hadamard indices (aA intersection aB intersection aC)
-      e,   // external indices (aA symmetric difference aB)
-      i;   // internal indices ((aA intersection aB) set difference aC)
+  const Indices  //
+      A,         // indices of A
+      B,         // indices of B
+      C,         // indices of C (target indices)
+      h,         // Hadamard indices (aA intersection aB intersection aC)
+      e,         // external indices (aA symmetric difference aB)
+      i;         // internal indices ((aA intersection aB) set difference aC)
 
   struct {
     Indices A, B, C;
@@ -1280,48 +1280,74 @@ auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
   return tensor_contract<ResultTensorAllocator>(A, B, plan);
 }
 
-template <typename TensorA, typename TensorB, typename Annot,
-          typename = std::enable_if_t<is_tensor_v<TensorA, TensorB> &&
-                                      is_annotation_v<Annot>>>
-auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
-                     Annot const& aB, Annot const& aC) {
-  using ::Einsum::index::Permutation;
-  using ::Einsum::index::permutation;
-  using Indices = ::Einsum::index::Index<typename Annot::value_type>;
+/// plan for Tensor contractions of fixed topology
+template <typename Annot, typename = std::enable_if_t<is_annotation_v<Annot>>>
+struct TensorHadamardPlan {
+  using Indices = Einsum::index::Index<typename Annot::value_type>;
+  using Permutation = Einsum::index::Permutation;
+
+  const Indices  //
+      A,         // indices of A
+      B,         // indices of B
+      C;         // indices of C (target indices)
 
   struct {
     Permutation  //
         AB,      // permutes A to B
         AC,      // permutes A to C
         BC;      // permutes B to C
-  } const perm{permutation(Indices(aA), Indices(aB)),
-               permutation(Indices(aA), Indices(aC)),
-               permutation(Indices(aB), Indices(aC))};
+  } const perm;
 
-  struct {
-    bool no_perm, perm_to_c, perm_a, perm_b;
-  } const do_this{
-      perm.AB.is_identity() && perm.AC.is_identity() && perm.BC.is_identity(),
-      perm.AB.is_identity(),  //
-      perm.BC.is_identity(),  //
-      perm.AC.is_identity()};
+  const bool no_perm, perm_to_c, perm_a, perm_b;
 
-  if (do_this.no_perm) {
+  TensorHadamardPlan(Annot const& aA, Annot const& aB, Annot const& aC)
+      : A(aA),
+        B(aB),
+        C(aC),
+        perm{Einsum::index::permutation(A, B), Einsum::index::permutation(A, C),
+             Einsum::index::permutation(B, C)},
+        no_perm(perm.AB.is_identity() && perm.AC.is_identity() &&
+                perm.BC.is_identity()),
+        perm_to_c(perm.AB.is_identity()),
+        perm_a(perm.BC.is_identity()),  //
+        perm_b(perm.AC.is_identity()) {}
+};
+
+template <typename TensorA, typename TensorB, typename Annot,
+          typename = std::enable_if_t<is_tensor_v<TensorA, TensorB> &&
+                                      is_annotation_v<Annot>>>
+auto tensor_hadamard(TensorA const& A, TensorB const& B,
+                     const TensorHadamardPlan<Annot>& plan) {
+  // Check that the ranks of the tensors match that of the annotation.
+  TA_ASSERT(A.range().rank() == plan.A.size());
+  TA_ASSERT(B.range().rank() == plan.B.size());
+
+  if (plan.no_perm) {
     return A.mult(B);
-  } else if (do_this.perm_to_c) {
-    return A.mult(B, perm.AC);
-  } else if (do_this.perm_a) {
-    auto pA = A.permute(perm.AC);
+  } else if (plan.perm_to_c) {
+    return A.mult(B, plan.perm.AC);
+  } else if (plan.perm_a) {
+    auto pA = A.permute(plan.perm.AC);
     pA.mult_to(B);
     return pA;
-  } else if (do_this.perm_b) {
-    auto pB = B.permute(perm.BC);
+  } else if (plan.perm_b) {
+    auto pB = B.permute(plan.perm.BC);
     pB.mult_to(A);
     return pB;
   } else {
-    auto pA = A.permute(perm.AC);
-    return pA.mult_to(B.permute(perm.BC));
+    auto pA = A.permute(plan.perm.AC);
+    return pA.mult_to(B.permute(plan.perm.BC));
   }
+}
+
+template <typename TensorA, typename TensorB, typename Annot,
+          typename = std::enable_if_t<is_tensor_v<TensorA, TensorB> &&
+                                      is_annotation_v<Annot>>>
+auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
+                     Annot const& aB, Annot const& aC) {
+  TensorHadamardPlan<Annot> plan(aA, aB, aC);
+
+  return tensor_hadamard(A, B, plan);
 }
 
 }  // namespace detail
