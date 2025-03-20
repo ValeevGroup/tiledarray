@@ -66,7 +66,7 @@ An object that specifies the structure of DistArray. E.g. it could be represente
 
 ## Implementation
 
-TiledArray is a library written in standard C++ using features available in the 2017 ISO standard (commonly known as C++17). To use TiledArray it is necessary to `#include` header `tiledarray.h`. imports most TiledArray features into namespace `TiledArray`. For convenience, namespace alias `TA` is also provided. Although the alias can be disabled by defining the `TILEDARRAY_DISABLE_NAMESPACE_TA` preprocessor variable, all examples will assume that the `TA` alias is not disabled.
+TiledArray is a library written in standard C++ using features available in the 2020 ISO standard (commonly known as C++20). To use TiledArray it is necessary to `#include` header `tiledarray.h`. imports most TiledArray features into namespace `TiledArray`. For convenience, namespace alias `TA` is also provided. Although the alias can be disabled by defining the `TILEDARRAY_DISABLE_NAMESPACE_TA` preprocessor variable, all examples will assume that the `TA` alias is not disabled.
 
 P.S. It sometimes may be possible to reduce source code couplings by importing only _forwarding_ declarations. This is done by `#include`ing header `tiledarray_fwd.h`.
 
