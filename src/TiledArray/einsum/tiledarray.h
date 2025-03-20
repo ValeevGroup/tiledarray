@@ -702,11 +702,17 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             }
           }
         }
+        // data is stored as h1 h2 ... but all modes folded as 1 batch dim
+        // first reshape to h = (h1 h2 ...)
         auto pc = C.permutation;
-        auto shape = apply_inverse(pc, C.array.trange().tile(h));
+        auto c = apply(pc, h);
+        // n.b. can't just use shape = C.array.trange().tile(h)
+        auto shape = apply_inverse(pc, C.array.trange().tile(c));
         tile = tile.reshape(shape);
+        // then permute to target C layout c = (c1 c2 ...)
         if (pc) tile = tile.permute(pc);
-        C.array.set(h, tile);
+        // and move to C
+        C.array.set(c, tile);
       }
       return C.array;
     }
