@@ -600,6 +600,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     std::invoke(update_perm_and_indices, std::get<0>(AB));
     std::invoke(update_perm_and_indices, std::get<1>(AB));
 
+    // construct result, with "dense" DistArray; the array will be
+    // reconstructred from local tiles later
     ArrayTerm<ArrayC> C = {ArrayC(world, TiledRange(range_map[c])), c};
     for (auto idx : e) {
       C.tiles *= Range(range_map[idx].tiles_range());
@@ -608,6 +610,27 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       C.permutation = permutation(h + e, C.idx);
     }
     C.expr = e;
+
+    using Index = Einsum::Index<size_t>;
+
+    // this will collect local tiles of C.array, to be used to rebuild C.array
+    std::vector<std::tuple<Index, ResultTensor>> C_local_tiles;
+    auto build_C_array = [&]() {
+      if constexpr (!ResultShape::is_dense()) {
+        TiledRange tiled_range = TiledRange(range_map[c]);
+        std::vector<std::pair<Index, float>> tile_norms;
+        for (auto &[index, tile] : C_local_tiles) {
+          tile_norms.push_back({index, tile.norm()});
+        }
+        ResultShape shape(world, tile_norms, tiled_range);
+        C.array = ArrayC(world, TiledRange(range_map[c]), shape);
+      }
+
+      for (auto &[index, tile] : C_local_tiles) {
+        if (C.array.is_zero(index)) continue;
+        C.array.set(index, tile);
+      }
+    };
 
     std::get<0>(AB).expr += inner.a;
     std::get<1>(AB).expr += inner.b;
@@ -627,15 +650,15 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       }
     }
 
-    using Index = Einsum::Index<size_t>;
-
     if (!e) {  // hadamard reduction
+
       auto &[A, B] = AB;
       TiledRange trange(range_map[i]);
       RangeProduct tiles;
       for (auto idx : i) {
         tiles *= Range(range_map[idx].tiles_range());
       }
+
       auto pa = A.permutation;
       auto pb = B.permutation;
       for (Index h : H.tiles) {
@@ -711,11 +734,14 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         tile = tile.reshape(shape);
         // then permute to target C layout c = (c1 c2 ...)
         if (pc) tile = tile.permute(pc);
-        // and move to C
-        C.array.set(c, tile);
+        // and move to C_local_tiles
+        C_local_tiles.emplace_back(std::move(c), std::move(tile));
       }
+
+      build_C_array();
+
       return C.array;
-    }
+    }  // end: hadamard reduction
 
     // generalized contraction
 
@@ -746,7 +772,6 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     std::invoke(update_tr, std::get<1>(AB));
 
     std::vector<std::shared_ptr<World>> worlds;
-    std::vector<std::tuple<Index, ResultTensor>> local_tiles;
 
     // iterates over tiles of hadamard indices
     for (Index h : H.tiles) {
@@ -804,26 +829,13 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         shape = apply_inverse(P, shape);
         tile = tile.reshape(shape);
         if (P) tile = tile.permute(P);
-        local_tiles.push_back({c, tile});
+        C_local_tiles.emplace_back(std::move(c), std::move(tile));
       }
       // mark for lazy deletion
       C.ei = ArrayC();
     }
 
-    if constexpr (!ResultShape::is_dense()) {
-      TiledRange tiled_range = TiledRange(range_map[c]);
-      std::vector<std::pair<Index, float>> tile_norms;
-      for (auto &[index, tile] : local_tiles) {
-        tile_norms.push_back({index, tile.norm()});
-      }
-      ResultShape shape(world, tile_norms, tiled_range);
-      C.array = ArrayC(world, TiledRange(range_map[c]), shape);
-    }
-
-    for (auto &[index, tile] : local_tiles) {
-      if (C.array.is_zero(index)) continue;
-      C.array.set(index, tile);
-    }
+    build_C_array();
 
     for (auto &w : worlds) {
       w->gop.fence();
