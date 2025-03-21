@@ -24,7 +24,7 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
+cmake_minimum_required (VERSION 3.21.0) # for HIP/ROCm
 
 # Set TiledArray version =======================================================
 
@@ -264,17 +264,13 @@ vgkit_cmake_git_metadata()
 ##########################
 # Check compiler features
 ##########################
-# need C++17, insist on strict standard
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ ISO Standard version")
-if (NOT(CMAKE_CXX_STANDARD EQUAL 17 OR CMAKE_CXX_STANDARD EQUAL 20))
-  message(FATAL_ERROR "C++ 2017 ISO Standard or higher is required to compile TiledArray")
-endif()
-# C++20 is only configurable via compile features with cmake 3.12 and older
-if (CMAKE_CXX_STANDARD EQUAL 20 AND CMAKE_VERSION VERSION_LESS 3.12.0)
-    cmake_minimum_required (VERSION 3.12.0)
+# need C++20, insist on strict standard
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ ISO Standard version")
+if (CMAKE_CXX_STANDARD LESS 20)
+  message(FATAL_ERROR "C++ 2020 ISO Standard or higher is required to compile TiledArray")
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL  "Whether to use extensions of C++  ISO Standard version")
+set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL  "Whether to use extensions of C++ ISO Standard version")
 # Check type support
 include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE LANGUAGE CXX)

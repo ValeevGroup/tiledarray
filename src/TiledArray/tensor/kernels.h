@@ -1158,69 +1158,82 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   return result;
 }
 
-///
-/// todo: constraint ResultTensorAllocator type so that non-sensical Allocators
-/// are prohibited
-///
+/// plan for a binary Tensor contraction of fixed topology
+template <typename Annot, typename = std::enable_if_t<is_annotation_v<Annot>>>
+struct TensorContractionPlan {
+  using Indices = Einsum::index::Index<typename Annot::value_type>;
+  using Permutation = Einsum::index::Permutation;
+
+  const Indices  //
+      A,         // indices of A
+      B,         // indices of B
+      C,         // indices of C (target indices)
+      h,         // Hadamard indices (aA intersection aB intersection aC)
+      e,         // external indices (aA symmetric difference aB)
+      i;         // internal indices ((aA intersection aB) set difference aC)
+
+  struct {
+    Indices A, B, C;
+  } const blas_layout;
+
+  struct {
+    Permutation A, B, C;
+  } const perm;
+
+  struct {
+    bool A, B, C;
+  } const do_perm;
+
+  const math::GemmHelper gemm_helper;
+
+  /// constructs plan for contraction C(aC) = A(aA) * B(aB). E.g.
+  /// `TensorContractionPlan("i,k", "k,j", "i,j")` constructs a plan
+  /// for matrix product.
+  /// \param aA einsum annotation for first argument (A)
+  /// \param aB einsum annotation for second argument (B)
+  /// \param aC einsum annotation for the result (C)
+  TensorContractionPlan(Annot const& aA, Annot const& aB, Annot const& aC)
+      : A(aA),
+        B(aB),
+        C(aC),
+        h(A & B & C),
+        e(A ^ B),
+        i((A & B) - h),
+        blas_layout{(A - B) | i, i | (B - A), e},
+        perm{Einsum::index::permutation(A, blas_layout.A),
+             Einsum::index::permutation(B, blas_layout.B),
+             Einsum::index::permutation(C, blas_layout.C)},
+        do_perm{A != blas_layout.A, B != blas_layout.B, C != blas_layout.C},
+        gemm_helper{blas::Op::NoTrans, blas::Op::NoTrans,
+                    static_cast<unsigned int>(e.size()),
+                    static_cast<unsigned int>(A.size()),
+                    static_cast<unsigned int>(B.size())} {
+    TA_ASSERT(!h && "Hadamard indices not supported");
+    TA_ASSERT(e && "Dot product not supported");
+  }
+};
+
+/// contracts 2 tensors using the given contraction \p plan .
+/// @internal TODO constrain ResultTensorAllocator type so that non-sensical
+/// Allocators are prohibited
+/// @return result of the contraction
 template <typename ResultTensorAllocator = void, typename TensorA,
           typename TensorB, typename Annot,
           typename = std::enable_if_t<is_tensor_v<TensorA, TensorB> &&
                                       is_annotation_v<Annot>>>
-auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
-                     Annot const& aB, Annot const& aC) {
+auto tensor_contract(TensorA const& A, TensorB const& B,
+                     const TensorContractionPlan<Annot>& plan) {
   using Result = result_tensor_t<std::multiplies<>, TensorA, TensorB,
                                  ResultTensorAllocator>;
 
-  using Indices = ::Einsum::index::Index<typename Annot::value_type>;
-  using Permutation = ::Einsum::index::Permutation;
-  using ::Einsum::index::permutation;
-
   // Check that the ranks of the tensors match that of the annotation.
-  TA_ASSERT(A.range().rank() == aA.size());
-  TA_ASSERT(B.range().rank() == aB.size());
-
-  struct {
-    Indices  //
-        A,   // indices of A
-        B,   // indices of B
-        C,   // indices of C (target indices)
-        h,   // Hadamard indices (aA intersection aB intersection aC)
-        e,   // external indices (aA symmetric difference aB)
-        i;   // internal indices ((aA intersection aB) set difference aC)
-  } const indices{aA,
-                  aB,
-                  aC,
-                  (indices.A & indices.B & indices.C),
-                  (indices.A ^ indices.B),
-                  ((indices.A & indices.B) - indices.h)};
-
-  TA_ASSERT(!indices.h && "Hadamard indices not supported");
-  TA_ASSERT(indices.e && "Dot product not supported");
-
-  struct {
-    Indices A, B, C;
-  } const blas_layout{(indices.A - indices.B) | indices.i,
-                      indices.i | (indices.B - indices.A), indices.e};
-
-  struct {
-    Permutation A, B, C;
-  } const perm{permutation(indices.A, blas_layout.A),
-               permutation(indices.B, blas_layout.B),
-               permutation(indices.C, blas_layout.C)};
-
-  struct {
-    bool A, B, C;
-  } const do_perm{indices.A != blas_layout.A, indices.B != blas_layout.B,
-                  indices.C != blas_layout.C};
-
-  math::GemmHelper gemm_helper{blas::Op::NoTrans, blas::Op::NoTrans,
-                               static_cast<unsigned int>(indices.e.size()),
-                               static_cast<unsigned int>(indices.A.size()),
-                               static_cast<unsigned int>(indices.B.size())};
+  TA_ASSERT(A.range().rank() == plan.A.size());
+  TA_ASSERT(B.range().rank() == plan.B.size());
 
   // initialize result with the correct extents
   Result result;
   {
+    using Indices = Einsum::index::Index<typename Annot::value_type>;
     using Index = typename Indices::value_type;
     using Extent = std::remove_cv_t<
         typename decltype(std::declval<Range>().extent())::value_type>;
@@ -1230,12 +1243,12 @@ auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
     // Note that whether the contracting indices have matching extents is
     // implicitly checked here by the pipe(|) operator on ExtentMap.
 
-    ExtentMap extent = (ExtentMap{indices.A, A.range().extent()} |
-                        ExtentMap{indices.B, B.range().extent()});
+    ExtentMap extent = (ExtentMap{plan.A, A.range().extent()} |
+                        ExtentMap{plan.B, B.range().extent()});
 
     container::vector<Extent> rng;
-    rng.reserve(indices.e.size());
-    for (auto&& ix : indices.e) {
+    rng.reserve(plan.e.size());
+    for (auto&& ix : plan.e) {
       // assuming ix _exists_ in extent
       rng.emplace_back(extent[ix]);
     }
@@ -1245,12 +1258,96 @@ auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
   using Numeric = typename Result::numeric_type;
 
   // call gemm
-  gemm(Numeric{1},                         //
-       do_perm.A ? A.permute(perm.A) : A,  //
-       do_perm.B ? B.permute(perm.B) : B,  //
-       Numeric{0}, result, gemm_helper);
+  gemm(Numeric{1},                                   //
+       plan.do_perm.A ? A.permute(plan.perm.A) : A,  //
+       plan.do_perm.B ? B.permute(plan.perm.B) : B,  //
+       Numeric{0}, result, plan.gemm_helper);
 
-  return do_perm.C ? result.permute(perm.C.inv()) : result;
+  return plan.do_perm.C ? result.permute(plan.perm.C.inv()) : result;
+}
+
+/// contracts 2 tensors, with 1 plan construction per call.
+/// Thus this is inefficient; plan should be constructed separately and then
+/// used to for multiple calls (see the variant of this function that
+/// takes a plan as an argument).
+template <typename ResultTensorAllocator = void, typename TensorA,
+          typename TensorB, typename Annot,
+          typename = std::enable_if_t<is_tensor_v<TensorA, TensorB> &&
+                                      is_annotation_v<Annot>>>
+auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
+                     Annot const& aB, Annot const& aC) {
+  using Result = result_tensor_t<std::multiplies<>, TensorA, TensorB,
+                                 ResultTensorAllocator>;
+
+  TensorContractionPlan plan(aA, aB, aC);
+
+  return tensor_contract<ResultTensorAllocator>(A, B, plan);
+}
+
+/// plan for Tensor contractions of fixed topology
+template <typename Annot, typename = std::enable_if_t<is_annotation_v<Annot>>>
+struct TensorHadamardPlan {
+  using Indices = Einsum::index::Index<typename Annot::value_type>;
+  using Permutation = Einsum::index::Permutation;
+
+  const Indices  //
+      A,         // indices of A
+      B,         // indices of B
+      C;         // indices of C (target indices)
+
+  struct {
+    Permutation  //
+        AB,      // permutes A to B
+        AC,      // permutes A to C
+        BC;      // permutes B to C
+  } const perm;
+
+  const bool no_perm, perm_to_c, perm_a, perm_b;
+
+  /// constructs plan for generalized hadamard product C(aC) = A(aA) * B(aB).
+  /// E.g. `TensorHadamardPlan("i,j", "i,j", "j,i")` constructs a plan
+  /// for product C(j,i) = A(i,j) B (i,j)
+  /// \param aA einsum annotation for first argument (A)
+  /// \param aB einsum annotation for second argument (B)
+  /// \param aC einsum annotation for the result (C)
+  TensorHadamardPlan(Annot const& aA, Annot const& aB, Annot const& aC)
+      : A(aA),
+        B(aB),
+        C(aC),
+        perm{Einsum::index::permutation(A, B), Einsum::index::permutation(A, C),
+             Einsum::index::permutation(B, C)},
+        no_perm(perm.AB.is_identity() && perm.AC.is_identity() &&
+                perm.BC.is_identity()),
+        perm_to_c(perm.AB.is_identity()),
+        perm_a(perm.BC.is_identity()),  //
+        perm_b(perm.AC.is_identity()) {}
+};
+
+template <typename TensorA, typename TensorB, typename Annot,
+          typename = std::enable_if_t<is_tensor_v<TensorA, TensorB> &&
+                                      is_annotation_v<Annot>>>
+auto tensor_hadamard(TensorA const& A, TensorB const& B,
+                     const TensorHadamardPlan<Annot>& plan) {
+  // Check that the ranks of the tensors match that of the annotation.
+  TA_ASSERT(A.range().rank() == plan.A.size());
+  TA_ASSERT(B.range().rank() == plan.B.size());
+
+  if (plan.no_perm) {
+    return A.mult(B);
+  } else if (plan.perm_to_c) {
+    return A.mult(B, plan.perm.AC);
+  } else if (plan.perm_a) {
+    auto pA = A.permute(plan.perm.AC);
+    pA.mult_to(B);
+    return pA;
+  } else if (plan.perm_b) {
+    auto pB = B.permute(plan.perm.BC);
+    pB.mult_to(A);
+    return pB;
+  } else {
+    auto pA = A.permute(plan.perm.AC);
+    return pA.mult_to(B.permute(plan.perm.BC));
+  }
 }
 
 template <typename TensorA, typename TensorB, typename Annot,
@@ -1258,43 +1355,9 @@ template <typename TensorA, typename TensorB, typename Annot,
                                       is_annotation_v<Annot>>>
 auto tensor_hadamard(TensorA const& A, Annot const& aA, TensorB const& B,
                      Annot const& aB, Annot const& aC) {
-  using ::Einsum::index::Permutation;
-  using ::Einsum::index::permutation;
-  using Indices = ::Einsum::index::Index<typename Annot::value_type>;
+  TensorHadamardPlan<Annot> plan(aA, aB, aC);
 
-  struct {
-    Permutation  //
-        AB,      // permutes A to B
-        AC,      // permutes A to C
-        BC;      // permutes B to C
-  } const perm{permutation(Indices(aA), Indices(aB)),
-               permutation(Indices(aA), Indices(aC)),
-               permutation(Indices(aB), Indices(aC))};
-
-  struct {
-    bool no_perm, perm_to_c, perm_a, perm_b;
-  } const do_this{
-      perm.AB.is_identity() && perm.AC.is_identity() && perm.BC.is_identity(),
-      perm.AB.is_identity(),  //
-      perm.BC.is_identity(),  //
-      perm.AC.is_identity()};
-
-  if (do_this.no_perm) {
-    return A.mult(B);
-  } else if (do_this.perm_to_c) {
-    return A.mult(B, perm.AC);
-  } else if (do_this.perm_a) {
-    auto pA = A.permute(perm.AC);
-    pA.mult_to(B);
-    return pA;
-  } else if (do_this.perm_b) {
-    auto pB = B.permute(perm.BC);
-    pB.mult_to(A);
-    return pB;
-  } else {
-    auto pA = A.permute(perm.AC);
-    return pA.mult_to(B.permute(perm.BC));
-  }
+  return tensor_hadamard(A, B, plan);
 }
 
 }  // namespace detail
