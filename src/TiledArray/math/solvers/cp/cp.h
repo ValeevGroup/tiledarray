@@ -314,7 +314,7 @@ class CP {
     // MtKRP);
     try {
       MtKRP = math::linalg::cholesky_solve(W, MtKRP);
-    } catch (std::runtime_error& ex) {
+    } catch (std::exception& ex){
       // if W is near-singular try LU instead of Cholesky
       if (std::string(ex.what()).find("lapack::posv failed") !=
           std::string::npos) {
