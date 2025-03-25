@@ -1918,7 +1918,7 @@ class Tensor {
             typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
   Tensor& add_to(const Scalar value) {
     return inplace_unary(
-        [value](numeric_type& MADNESS_RESTRICT res) { res += value; });
+        [value](value_type& MADNESS_RESTRICT res) { res += value; });
   }
 
   // Subtraction operations
@@ -2240,7 +2240,7 @@ class Tensor {
     // early exit for empty this
     if (empty()) return *this;
 
-    return inplace_unary([](numeric_type& MADNESS_RESTRICT l) { l = -l; });
+    return inplace_unary([](value_type& MADNESS_RESTRICT l) { l = -l; });
   }
 
   /// Create a complex conjugated copy of this tensor
