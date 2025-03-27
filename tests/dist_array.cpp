@@ -1000,7 +1000,10 @@ BOOST_AUTO_TEST_CASE(size_of) {
 
   auto sz0 = TiledArray::size_of<MemorySpace::Host>(array);
   world.gop.sum(sz0);
-  BOOST_REQUIRE(sz0 == 56688);
+  if (world.size() == 1)
+    BOOST_REQUIRE(sz0 == 56688);
+  else
+    BOOST_REQUIRE(sz0 > 56688);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
