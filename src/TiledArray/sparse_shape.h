@@ -28,6 +28,7 @@
 
 #include <TiledArray/fwd.h>
 
+#include <TiledArray/platform.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/tensor/shift_wrapper.h>
 #include <TiledArray/tensor/tensor_interface.h>
@@ -1721,12 +1722,20 @@ class SparseShape {
     return cast_abs_factor;
   }
 
+  template <MemorySpace S, typename T_>
+  friend std::size_t size_of(const SparseShape<T_>& shape);
+
 };  // class SparseShape
 
 // Static member initialization
 template <typename T>
 typename SparseShape<T>::value_type SparseShape<T>::threshold_ =
     std::numeric_limits<T>::epsilon();
+
+template <MemorySpace S, typename T>
+std::size_t size_of(const SparseShape<T>& shape) {
+  return size_of<S>(shape.tile_norms_);
+}
 
 /// Add the shape to an output stream
 

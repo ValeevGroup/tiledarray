@@ -944,4 +944,63 @@ BOOST_AUTO_TEST_CASE(reduction) {
   BOOST_REQUIRE(array_norm = std::sqrt(TA::dot(array, array)));
 }
 
+BOOST_AUTO_TEST_CASE(size_of) {
+  using Numeric = double;
+  using T = Tensor<Numeric>;
+  using ToT = Tensor<T>;
+  using Policy = SparsePolicy;
+  using ArrayToT = DistArray<ToT, Policy>;
+
+  auto unit_T = [](Range const& rng) { return T(rng, Numeric{1}); };
+
+  auto unit_ToT = [unit_T](Range const& rngo, Range const& rngi) {
+    return ToT(rngo, unit_T(rngi));
+  };
+
+  size_t constexpr nrows = 3;
+  size_t constexpr ncols = 4;
+  TiledRange const trange({{0, 2, 5, 7}, {0, 5, 7, 10, 12}});
+  TA_ASSERT(trange.tiles_range().extent().at(0) == nrows &&
+                trange.tiles_range().extent().at(1) == ncols,
+            "Following code depends on this condition.");
+
+  // this Range is used to construct all inner tensors of the tile with
+  // tile index @c tix.
+  auto inner_dims = [nrows, ncols](Range::index_type const& tix) -> Range {
+    static std::array<size_t, nrows> const rows{7, 8, 9};
+    static std::array<size_t, ncols> const cols{7, 8, 9, 10};
+
+    TA_ASSERT(tix.size() == 2, "Only rank-2 tensor expected.");
+    return Range({rows[tix.at(0) % nrows], cols[tix.at(1) % ncols]});
+  };
+
+  // let's make all 'diagonal' tiles zero
+  auto zero_tile = [](Range::index_type const& tix) -> bool {
+    return tix.at(0) == tix.at(1);
+  };
+
+  auto make_tile = [inner_dims,  //
+                    zero_tile,   //
+                    &trange,     //
+                    unit_ToT](auto& tile, auto const& rng) {
+    auto&& tix = trange.element_to_tile(rng.lobound());
+    if (zero_tile(tix))
+      return 0.;
+    else {
+      tile = unit_ToT(rng, inner_dims(tix));
+      return tile.norm();
+    }
+  };
+
+  auto& world = get_default_world();
+
+  // all non-zero inner tensors of this ToT array are unit (ie all
+  // inner tensors' elements are 1.)
+  auto array = make_array<ArrayToT>(world, trange, make_tile);
+
+  auto sz0 = TiledArray::size_of<MemorySpace::Host>(array);
+  world.gop.sum(sz0);
+  BOOST_REQUIRE(sz0 == 56688);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

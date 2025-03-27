@@ -24,6 +24,7 @@
 
 #include "TiledArray/external/umpire.h"
 #include "TiledArray/host/env.h"
+#include "TiledArray/platform.h"
 
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
@@ -2775,6 +2776,30 @@ class Tensor {
 #endif
 
 };  // class Tensor
+
+/// \return the number of bytes used by \p t in memory space
+/// `S`
+/// \warning footprint of Range is approximated, will not be exact for
+/// tensor orders highers than `TA_MAX_SOO_RANK_METADATA`
+template <MemorySpace S, typename T, typename A>
+std::size_t size_of(const Tensor<T, A>& t) {
+  std::size_t result = 0;
+  if constexpr (S == MemorySpace::Host) {
+    result += sizeof(t);
+  }
+  if (allocates_memory_space<S>(A{})) {
+    if (!t.empty()) {
+      if constexpr (is_constexpr_size_of_v<S, Tensor<T, A>>) {
+        result += t.size() * sizeof(T);
+      } else {
+        result += std::accumulate(
+            t.begin(), t.end(), std::size_t{0},
+            [](const std::size_t s, const T& t) { return s + size_of<S>(t); });
+      }
+    }
+  }
+  return result;
+}
 
 #ifdef TA_TENSOR_MEM_TRACE
 template <typename T, typename A>
