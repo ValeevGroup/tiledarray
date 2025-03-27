@@ -31,7 +31,7 @@
 #include <btas/array_adaptor.h>
 #include <btas/varray/varray.h>
 
-#include <TiledArray/device/platform.h>
+#include <TiledArray/platform.h>
 #include <TiledArray/utility.h>
 
 #include <madness/world/archive.h>

@@ -37,9 +37,9 @@
 
 #include <TiledArray/device/kernel/mult_kernel.h>
 #include <TiledArray/device/kernel/reduce_kernel.h>
-#include <TiledArray/device/platform.h>
 #include <TiledArray/device/um_storage.h>
 #include <TiledArray/math/gemm_helper.h>
+#include <TiledArray/platform.h>
 
 namespace TiledArray {
 
