@@ -2779,17 +2779,21 @@ class Tensor {
 
 /// \return the number of bytes used by \p t in memory space
 /// `S`
-/// \warning footprint of Range is approximated, will not be exact for
-/// tensor orders highers than `TA_MAX_SOO_RANK_METADATA`
 template <MemorySpace S, typename T, typename A>
 std::size_t size_of(const Tensor<T, A>& t) {
   std::size_t result = 0;
   if constexpr (S == MemorySpace::Host) {
     result += sizeof(t);
   }
+  // correct for optional dynamic allocation of Range
+  if constexpr (S == MemorySpace::Host) {
+    result -= sizeof(Range);
+  }
+  result += size_of<S>(t.range());
+
   if (allocates_memory_space<S>(A{})) {
     if (!t.empty()) {
-      if constexpr (is_constexpr_size_of_v<S, Tensor<T, A>>) {
+      if constexpr (is_constexpr_size_of_v<S, T>) {
         result += t.size() * sizeof(T);
       } else {
         result += std::accumulate(

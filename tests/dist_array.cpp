@@ -1000,10 +1000,11 @@ BOOST_AUTO_TEST_CASE(size_of) {
 
   auto sz0 = TiledArray::size_of<MemorySpace::Host>(array);
   world.gop.sum(sz0);
-  if (world.size() == 1)
-    BOOST_REQUIRE(sz0 == 56688);
-  else
-    BOOST_REQUIRE(sz0 > 56688);
+  const auto sz0_expected =
+      /* size on 1 rank */ 56728 +
+      /* size of shape on ranks 1 ... N-1 */ (world.size() - 1) *
+          TiledArray::size_of<MemorySpace::Host>(array.shape());
+  BOOST_REQUIRE(sz0 == sz0_expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

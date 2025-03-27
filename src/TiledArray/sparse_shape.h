@@ -1734,7 +1734,19 @@ typename SparseShape<T>::value_type SparseShape<T>::threshold_ =
 
 template <MemorySpace S, typename T>
 std::size_t size_of(const SparseShape<T>& shape) {
-  return size_of<S>(shape.tile_norms_);
+  std::size_t sz = 0;
+  if constexpr (S == MemorySpace::Host) {
+    sz += sizeof(shape);
+  }
+  // account for dynamically-allocated content
+  if constexpr (S == MemorySpace::Host) {
+    sz -= sizeof(shape.tile_norms_);
+  }
+  sz += size_of<S>(shape.tile_norms_);
+  if (shape.tile_norms_unscaled_) {
+    sz += size_of<S>(*(shape.tile_norms_unscaled_));
+  }
+  return sz;
 }
 
 /// Add the shape to an output stream
