@@ -27,7 +27,10 @@
 #define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 
 #include <TiledArray/config.h>
+
+#include <TiledArray/platform.h>
 #include <TiledArray/type_traits.h>
+
 #include <cstdint>
 
 namespace madness {
@@ -390,6 +393,11 @@ class DenseShape {
   inline static value_type threshold_ =
       std::numeric_limits<value_type>::epsilon();
 };  // class DenseShape
+
+template <MemorySpace S>
+std::size_t size_of(const DenseShape& shape) {
+  return sizeof(shape);
+}
 
 constexpr inline bool operator==(const DenseShape& a, const DenseShape& b) {
   return true;

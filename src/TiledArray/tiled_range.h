@@ -398,6 +398,24 @@ class TiledRange {
   range_type elements_range_;  ///< Range of element indices
   Ranges ranges_;  ///< tiled (1d) range, aka TiledRange1, for each mode
                    ///< `*this` is a direct product of these tilings
+
+  template <MemorySpace S>
+  friend constexpr std::size_t size_of(const TiledRange& r) {
+    std::size_t sz = 0;
+    if constexpr (S == MemorySpace::Host) {
+      sz += sizeof(r);
+    }
+    // correct for optional dynamic allocation of range_ and elements_range_
+    if constexpr (S == MemorySpace::Host) {
+      sz -= sizeof(r.range_);
+      sz -= sizeof(r.elements_range_);
+      sz -= sizeof(r.ranges_);
+    }
+    sz += size_of<S>(r.range_);
+    sz += size_of<S>(r.elements_range_);
+    sz += size_of<S>(r.ranges_);
+    return sz;
+  }
 };
 
 /// TiledRange permutation operator.

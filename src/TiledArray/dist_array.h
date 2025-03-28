@@ -1743,6 +1743,20 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
 };  // class DistArray
 
+/// \return the approximate number of bytes used by \p t in this rank's
+/// memory space `S`
+/// \note this does not account for the TiledRange and some other metadata
+template <MemorySpace S, typename Tile, typename Policy>
+std::size_t size_of(const DistArray<Tile, Policy>& da) {
+  std::size_t result = 0;
+  result += size_of<S>(da.shape());
+  // add up local tile's contributions
+  for (const auto& tile_ref : da) {
+    result += size_of<S>(tile_ref.get());
+  }
+  return result;
+}
+
 #ifndef TILEDARRAY_HEADER_ONLY
 
 extern template class DistArray<Tensor<double>, DensePolicy>;
