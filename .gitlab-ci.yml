@@ -14,11 +14,11 @@ variables:
     TA_ASSERT_POLICY=TA_ASSERT_THROW
     TA_UT_CTEST_TIMEOUT=3000
     ${TA_PYTHON}
-    ${ENABLE_CUDA}
+    ${TA_CUDA}
     CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda
     ${BLA_VENDOR}
     ${BLA_THREADS}
-    ${ENABLE_SCALAPACK}
+    ${TA_SCALAPACK}
 
 before_script:
   # NB: if CMAKE_BUILD_PARALLEL_LEVEL is not set (i.e. using shared runner), use 1 to ensure we have enough memory
@@ -42,7 +42,7 @@ ubuntu:
   image: valeevgroup/${IMAGE}
   variables:
     TA_PYTHON : "TA_PYTHON=ON"
-    ENABLE_SCALAPACK : "ENABLE_SCALAPACK=OFF"
+    TA_SCALAPACK : "TA_SCALAPACK=OFF"
   script:
     - ./ci/.build-project
         --build ./build
@@ -69,7 +69,7 @@ ubuntu:
         CXX: [ g++ ]
         BUILD_TYPE : [ "RelWithDebInfo" ]
         TA_PYTHON : [ "TA_PYTHON=OFF" ]
-        ENABLE_CUDA : [ "ENABLE_CUDA=ON" ]
+        TA_CUDA : [ "TA_CUDA=ON" ]
         TA_TARGETS : [ "tiledarray examples-tiledarray check_serial-tiledarray" ]
         RUNNER_TAGS: [ cuda ]
 
