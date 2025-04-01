@@ -107,14 +107,14 @@ class Subt {
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   static result_type eval(left_type& first, const right_type& second) {
     using TiledArray::subt_to;
-    return subt_to(first, second);
+    return subt_to(std::move(first), second);
   }
 
   template <bool LC, bool RC,
             typename std::enable_if<!LC && RC>::type* = nullptr>
   static result_type eval(const left_type& first, right_type& second) {
     using TiledArray::subt_to;
-    return subt_to(second, first, -1);
+    return subt_to(std::move(second), first, -1);
   }
 
   template <bool LC, bool RC, typename std::enable_if<!RC>::type* = nullptr>
@@ -126,7 +126,7 @@ class Subt {
   template <bool LC, bool RC, typename std::enable_if<RC>::type* = nullptr>
   static result_type eval(ZeroTensor, right_type& second) {
     using TiledArray::neg_to;
-    return neg_to(second);
+    return neg_to(std::move(second));
   }
 
   template <bool LC, bool RC, typename std::enable_if<!LC>::type* = nullptr>
@@ -293,14 +293,14 @@ class ScalSubt {
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   result_type eval(left_type& first, const right_type& second) const {
     using TiledArray::subt_to;
-    return subt_to(first, second, factor_);
+    return subt_to(std::move(first), second, factor_);
   }
 
   template <bool LC, bool RC,
             typename std::enable_if<!LC && RC>::type* = nullptr>
   result_type eval(const left_type& first, right_type& second) const {
     using TiledArray::subt_to;
-    return subt_to(second, first, -factor_);
+    return subt_to(std::move(second), first, -factor_);
   }
 
   template <bool LC, bool RC, typename std::enable_if<!RC>::type* = nullptr>
@@ -312,7 +312,7 @@ class ScalSubt {
   template <bool LC, bool RC, typename std::enable_if<RC>::type* = nullptr>
   result_type eval(ZeroTensor, right_type& second) const {
     using TiledArray::scale_to;
-    return scale_to(second, -factor_);
+    return scale_to(std::move(second), -factor_);
   }
 
   template <bool LC, bool RC, typename std::enable_if<!LC>::type* = nullptr>
@@ -324,7 +324,7 @@ class ScalSubt {
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   result_type eval(left_type& first, ZeroTensor) const {
     using TiledArray::scale_to;
-    return scale_to(first, factor_);
+    return scale_to(std::move(first), factor_);
   }
 
  public:

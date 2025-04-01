@@ -45,6 +45,7 @@
 #include <TiledArray/utility.h>
 #include <madness/world/archive.h>
 #include "TiledArray/error.h"
+#include "TiledArray/platform.h"
 
 namespace TiledArray {
 
@@ -54,6 +55,66 @@ template <typename T>
 using vector = std::vector<T>;
 template <typename T, std::size_t N = TA_MAX_SOO_RANK_METADATA>
 using svector = boost::container::small_vector<T, N>;
+
+}  // namespace container
+
+// size_of etc.
+
+template <MemorySpace S, typename T, typename A>
+constexpr std::size_t size_of(const std::vector<T, A>& t) {
+  std::size_t sz = 0;
+  if constexpr (S == MemorySpace::Host) {
+    sz += sizeof(t);
+  }
+  if constexpr (allocates_memory_space<S>(t.get_allocator())) {
+    if constexpr (is_constexpr_size_of_v<S, T>) {
+      sz += sizeof(T) * t.capacity();
+    } else {
+      sz += std::accumulate(
+          t.begin(), t.end(), std::size_t{0},
+          [](const std::size_t s, const T& t) { return s + size_of<S>(t); });
+      sz += (t.capacity() - t.size()) * sizeof(T);
+    }
+  }
+  return sz;
+}
+
+template <MemorySpace S, typename T, typename VoidAlloc, typename Options>
+constexpr bool allocates_memory_space(
+    const boost::container::small_vector_allocator<T, VoidAlloc, Options>& a) {
+  return S == MemorySpace::Host;
+}
+
+template <MemorySpace S, typename T, std::size_t N, typename A>
+constexpr std::size_t size_of(
+    const boost::container::small_vector<T, N, A>& t) {
+  std::size_t sz = 0;
+  if constexpr (S == MemorySpace::Host) {
+    sz += sizeof(t);
+  }
+  if (allocates_memory_space<S>(t.get_allocator())) {
+    std::size_t data_sz = 0;
+    if constexpr (is_constexpr_size_of_v<S, T>) {
+      data_sz += sizeof(T) * t.capacity();
+    } else {
+      data_sz += std::accumulate(
+          t.begin(), t.end(), std::size_t{0},
+          [](const std::size_t s, const T& t) { return s + size_of<S>(t); });
+      data_sz += (t.capacity() - t.size()) * sizeof(T);
+    }
+    if (t.capacity() > N ||
+        S != MemorySpace::Host) {  // dynamically allocated buffer => account
+                                   // for tne entirety of data_sz
+      sz += data_sz;
+    } else {  // data in internal buffer => account for the
+              // dynamically-allocated part of data_sz
+      sz += (data_sz - t.capacity() * sizeof(T));
+    }
+  }
+  return sz;
+}
+
+namespace container {
 
 template <typename Range>
 std::enable_if_t<detail::is_integral_range_v<Range> &&
@@ -126,9 +187,9 @@ decltype(auto) operator-(const boost::container::small_vector<T1, N1>& v1,
 namespace TiledArray {
 
 /// Vector output stream operator
-template <typename T, typename A>
-inline std::ostream& operator<<(std::ostream& os,
-                                const std::vector<T, A>& vec) {
+template <typename Char, typename CharTraits, typename T, typename A>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const std::vector<T, A>& vec) {
   TiledArray::detail::print_array(os, vec);
   return os;
 }
@@ -139,9 +200,10 @@ namespace boost {
 namespace container {
 
 /// Vector output stream operator
-template <typename T, std::size_t N>
-inline std::ostream& operator<<(
-    std::ostream& os, const boost::container::small_vector<T, N>& vec) {
+template <typename Char, typename CharTraits, typename T, std::size_t N>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os,
+    const boost::container::small_vector<T, N>& vec) {
   TiledArray::detail::print_array(os, vec);
   return os;
 }

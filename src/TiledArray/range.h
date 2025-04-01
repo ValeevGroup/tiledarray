@@ -21,6 +21,7 @@
 #define TILEDARRAY_RANGE_H__INCLUDED
 
 #include <TiledArray/permutation.h>
+#include <TiledArray/platform.h>
 #include <TiledArray/range1.h>
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/size_array.h>
@@ -1247,6 +1248,20 @@ class Range {
     return ordinal(last) - ordinal(first);
   }
 
+  template <MemorySpace S>
+  friend constexpr std::size_t size_of(const Range& r) {
+    std::size_t sz = 0;
+    if constexpr (S == MemorySpace::Host) {
+      sz += sizeof(r);
+    }
+    // correct for optional dynamic allocation of datavec_
+    if constexpr (S == MemorySpace::Host) {
+      sz -= sizeof(r.datavec_);
+    }
+    sz += size_of<S>(r.datavec_);
+    return sz;
+  }
+
 };  // class Range
 
 // lift Range::index_type and Range::index_view_type into user-land
@@ -1321,7 +1336,9 @@ inline bool operator!=(const Range& r1, const Range& r2) {
 /// \param os The output stream that will be used to print \c r
 /// \param r The range to be printed
 /// \return A reference to the output stream
-inline std::ostream& operator<<(std::ostream& os, const Range& r) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const Range& r) {
   os << "[ ";
   detail::print_array(os, r.lobound_data(), r.rank());
   os << ", ";
@@ -1329,6 +1346,12 @@ inline std::ostream& operator<<(std::ostream& os, const Range& r) {
   os << " )";
   return os;
 }
+
+/// creates a string using operator<<(basic_ostream,Range)
+
+/// \param r a Range
+/// \return string representation of \p r
+std::string to_string(const Range& r);
 
 /// Test the two ranges are congruent
 

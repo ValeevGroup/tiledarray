@@ -27,7 +27,10 @@
 #define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 
 #include <TiledArray/config.h>
+
+#include <TiledArray/platform.h>
 #include <TiledArray/type_traits.h>
+
 #include <cstdint>
 
 namespace madness {
@@ -86,6 +89,17 @@ class DenseShape {
   /// \return false
   template <typename Index>
   static constexpr bool is_zero(const Index&) {
+    return false;
+  }
+
+  /// Check that a tile is zero
+
+  /// \tparam Integer an integer type
+  /// \param i the index
+  /// \return false
+  template <typename Integer>
+  std::enable_if_t<std::is_integral_v<Integer>, bool> is_zero(
+      const std::initializer_list<Integer>& i) const {
     return false;
   }
 
@@ -380,6 +394,11 @@ class DenseShape {
       std::numeric_limits<value_type>::epsilon();
 };  // class DenseShape
 
+template <MemorySpace S>
+std::size_t size_of(const DenseShape& shape) {
+  return sizeof(shape);
+}
+
 constexpr inline bool operator==(const DenseShape& a, const DenseShape& b) {
   return true;
 }
@@ -397,7 +416,9 @@ constexpr inline bool is_replicated(World& world, const DenseShape& t) {
 /// \param os The output stream
 /// \param shape the DenseShape object
 /// \return A reference to the output stream
-inline std::ostream& operator<<(std::ostream& os, const DenseShape& shape) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const DenseShape& shape) {
   os << "DenseShape:" << std::endl;
   return os;
 }

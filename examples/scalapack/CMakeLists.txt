@@ -24,7 +24,7 @@
 
 # Create example executable
 
-if(ENABLE_SCALAPACK)
+if(TA_SCALAPACK)
 
 foreach(_exec conversion evp)
 
@@ -35,4 +35,4 @@ foreach(_exec conversion evp)
 
 endforeach()
 
-endif(ENABLE_SCALAPACK)
+endif(TA_SCALAPACK)

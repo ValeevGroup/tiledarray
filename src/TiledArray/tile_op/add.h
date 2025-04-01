@@ -109,14 +109,14 @@ class Add {
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   static result_type eval(left_type& first, const right_type& second) {
     using TiledArray::add_to;
-    return add_to(first, second);
+    return add_to(std::move(first), second);
   }
 
   template <bool LC, bool RC,
             typename std::enable_if<!LC && RC>::type* = nullptr>
   static result_type eval(const left_type& first, right_type& second) {
     using TiledArray::add_to;
-    return add_to(second, first);
+    return add_to(std::move(second), first);
   }
 
   template <bool LC, bool RC, typename std::enable_if<!RC>::type* = nullptr>
@@ -296,14 +296,14 @@ class ScalAdd {
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   result_type eval(left_type& first, const right_type& second) const {
     using TiledArray::add_to;
-    return add_to(first, second, factor_);
+    return add_to(std::move(first), second, factor_);
   }
 
   template <bool LC, bool RC,
             typename std::enable_if<!LC && RC>::type* = nullptr>
   result_type eval(const left_type& first, right_type& second) const {
     using TiledArray::add_to;
-    return add_to(second, first, factor_);
+    return add_to(std::move(second), first, factor_);
   }
 
   template <bool LC, bool RC, typename std::enable_if<!RC>::type* = nullptr>
@@ -315,7 +315,7 @@ class ScalAdd {
   template <bool LC, bool RC, typename std::enable_if<RC>::type* = nullptr>
   result_type eval(const ZeroTensor&, right_type& second) const {
     using TiledArray::scale_to;
-    return scale_to(second, factor_);
+    return scale_to(std::move(second), factor_);
   }
 
   template <bool LC, bool RC, typename std::enable_if<!LC>::type* = nullptr>
@@ -327,7 +327,7 @@ class ScalAdd {
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   result_type eval(left_type& first, const ZeroTensor&) const {
     using TiledArray::scale_to;
-    return scale_to(first, factor_);
+    return scale_to(std::move(first), factor_);
   }
 
  public:

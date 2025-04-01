@@ -245,8 +245,9 @@ inline bool operator<(const PermutationGroup& p1, const PermutationGroup& p2) {
 /// \param[out] output The output stream
 /// \param[in] p The permutation group to be added to the output stream
 /// \return The output stream
-inline std::ostream& operator<<(std::ostream& output,
-                                const PermutationGroup& p) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& output, const PermutationGroup& p) {
   output << "{";
   for (auto i = p.cbegin(); i != p.cend();) {
     output << *i;

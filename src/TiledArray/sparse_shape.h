@@ -28,6 +28,7 @@
 
 #include <TiledArray/fwd.h>
 
+#include <TiledArray/platform.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/tensor/shift_wrapper.h>
 #include <TiledArray/tensor/tensor_interface.h>
@@ -507,6 +508,17 @@ class SparseShape {
   bool is_zero(const Index& i) const {
     TA_ASSERT(!tile_norms_.empty());
     return tile_norms_[i] < my_threshold_;
+  }
+
+  /// Check that a tile is zero
+
+  /// \tparam Integer an integer type
+  /// \param i the index
+  /// \return true if tile at position \p i is zero
+  template <typename Integer>
+  std::enable_if_t<std::is_integral_v<Integer>, bool> is_zero(
+      const std::initializer_list<Integer>& i) const {
+    return this->is_zero<std::initializer_list<Integer>>(i);
   }
 
   /// Check density
@@ -1710,6 +1722,9 @@ class SparseShape {
     return cast_abs_factor;
   }
 
+  template <MemorySpace S, typename T_>
+  friend std::size_t size_of(const SparseShape<T_>& shape);
+
 };  // class SparseShape
 
 // Static member initialization
@@ -1717,14 +1732,32 @@ template <typename T>
 typename SparseShape<T>::value_type SparseShape<T>::threshold_ =
     std::numeric_limits<T>::epsilon();
 
+template <MemorySpace S, typename T>
+std::size_t size_of(const SparseShape<T>& shape) {
+  std::size_t sz = 0;
+  if constexpr (S == MemorySpace::Host) {
+    sz += sizeof(shape);
+  }
+  // account for dynamically-allocated content
+  if constexpr (S == MemorySpace::Host) {
+    sz -= sizeof(shape.tile_norms_);
+  }
+  sz += size_of<S>(shape.tile_norms_);
+  if (shape.tile_norms_unscaled_) {
+    sz += size_of<S>(*(shape.tile_norms_unscaled_));
+  }
+  return sz;
+}
+
 /// Add the shape to an output stream
 
 /// \tparam T the numeric type supporting the type of \c shape
 /// \param os The output stream
 /// \param shape the SparseShape<T> object
 /// \return A reference to the output stream
-template <typename T>
-inline std::ostream& operator<<(std::ostream& os, const SparseShape<T>& shape) {
+template <typename Char, typename CharTraits, typename T>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const SparseShape<T>& shape) {
   os << "SparseShape<" << typeid(T).name() << ">:" << std::endl
      << shape.data() << std::endl;
   return os;

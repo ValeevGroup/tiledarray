@@ -82,15 +82,13 @@ class Shift {
   template <bool C, typename = typename std::enable_if<C>::type>
   auto eval(argument_type& arg) const {
     TiledArray::ShiftTo<result_type, argument_type> shift_to;
-    shift_to(arg, range_shift_);
-    return arg;
+    return shift_to(std::move(arg), range_shift_);
   }
 
   template <bool C, typename = typename std::enable_if<C>::type>
   auto eval(argument_type&& arg) const {
     TiledArray::ShiftTo<result_type, argument_type> shift_to;
-    shift_to(arg, range_shift_);
-    return arg;
+    return shift_to(std::move(arg), range_shift_);
   }
 
  public:
@@ -182,7 +180,7 @@ class ScalShift {
     using TiledArray::scale;
     using TiledArray::shift_to;
     result_type result = scale(arg, factor_, perm);
-    return shift_to(result, range_shift_);
+    return shift_to(std::move(result), range_shift_);
   }
 
   // Non-permuting tile evaluation functions
@@ -195,16 +193,14 @@ class ScalShift {
     using TiledArray::scale;
     using TiledArray::shift_to;
     result_type result = scale(arg, factor_);
-    return shift_to(result, range_shift_);
+    return shift_to(std::move(result), range_shift_);
   }
 
   template <bool C>
   typename std::enable_if<C, result_type>::type eval(argument_type& arg) const {
     using TiledArray::scale_to;
     using TiledArray::shift_to;
-    scale_to(arg, factor_);
-    shift_to(arg, range_shift_);
-    return arg;
+    return shift_to(scale_to(std::move(arg), factor_), range_shift_);
   }
 
  public:

@@ -24,7 +24,7 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
+cmake_minimum_required (VERSION 3.21.0) # for HIP/ROCm
 
 # Set TiledArray version =======================================================
 
@@ -117,20 +117,17 @@ set(MPI_CXX_SKIP_MPICXX TRUE CACHE BOOL "MPI_CXX_SKIP_MPICXX")
 option(ENABLE_MPI "Enable MPI" ON)
 add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-memory parallel programs")
 
-option(ENABLE_SCALAPACK "Enable ScaLAPACK Bindings in TiledArray" OFF)
-add_feature_info(ScaLAPACK ENABLE_SCALAPACK "ScaLAPACK provides distributed linear algebra")
+option(TA_SCALAPACK "Enable ScaLAPACK Bindings in TiledArray" OFF)
+add_feature_info(ScaLAPACK TA_SCALAPACK "ScaLAPACK provides distributed linear algebra")
 
-option(ENABLE_WFN91_LINALG_DISCOVERY_KIT "Use linear algebra discovery kit from github.com/wavefunction91 [recommended]" ON)
-add_feature_info(WFN91LinearAlgebraDiscoveryKit ENABLE_WFN91_LINALG_DISCOVERY_KIT "Linear algebra discovery kit from github.com/wavefunction91 supports many more corner cases than the default CMake modules and/or ICL's BLAS++/LAPACK++ modules")
+option(TA_LINALG_DISCOVERY_KIT "Use linear algebra discovery kit from github.com/wavefunction91 [recommended]" ON)
+add_feature_info(WFN91LinearAlgebraDiscoveryKit TA_LINALG_DISCOVERY_KIT "Linear algebra discovery kit from github.com/wavefunction91 supports many more corner cases than the default CMake modules and/or ICL's BLAS++/LAPACK++ modules")
 
-redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" OFF)
-add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks (TBB) supports programming shared-memory systems")
+option(TA_CUDA "Enables use of NVIDIA CUDA-supported hardware (such as NVIDIA GPUs) by TiledArray" OFF)
+add_feature_info(CUDA TA_CUDA "Use of NVIDIA CUDA-supported hardware by TiledArray")
 
-option(ENABLE_CUDA "Enable use of CUDA with TiledArray" OFF)
-add_feature_info(CUDA ENABLE_CUDA "NVIDIA CUDA support for GPU")
-
-option(ENABLE_HIP "Enable use of HIP with TiledArray" OFF)
-add_feature_info(HIP ENABLE_HIP "AMD HIP/ROCm support for GPU")
+option(TA_HIP "Enables use of AMD HIP-supported hardware (such as AMD GPUs) by TiledArray" OFF)
+add_feature_info(HIP TA_HIP "Use of AMD HIP-supported hardware by TiledArray")
 
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
 add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
@@ -146,6 +143,9 @@ add_feature_info(TENSOR_MEM_TRACE TA_TENSOR_MEM_TRACE "instrumented tracing of T
 
 option(TA_TENSOR_MEM_PROFILE "Turn on instrumented profiling of TA::Tensor memory use" ${TA_TENSOR_MEM_TRACE})
 add_feature_info(TENSOR_MEM_PROFILE TA_TENSOR_MEM_PROFILE "instrumented profiling of TA::Tensor memory use")
+
+option(TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED "Turn on TA_ASSERT that no mutable operations occur on TA::{Tensor,Tile} objects that share data" OFF)
+add_feature_info(TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED "TA_ASSERT that no mutable operations occur on TA::{Tensor,Tile} objects that share data")
 
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
@@ -261,17 +261,13 @@ vgkit_cmake_git_metadata()
 ##########################
 # Check compiler features
 ##########################
-# need C++17, insist on strict standard
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ ISO Standard version")
-if (NOT(CMAKE_CXX_STANDARD EQUAL 17 OR CMAKE_CXX_STANDARD EQUAL 20))
-  message(FATAL_ERROR "C++ 2017 ISO Standard or higher is required to compile TiledArray")
-endif()
-# C++20 is only configurable via compile features with cmake 3.12 and older
-if (CMAKE_CXX_STANDARD EQUAL 20 AND CMAKE_VERSION VERSION_LESS 3.12.0)
-    cmake_minimum_required (VERSION 3.12.0)
+# need C++20, insist on strict standard
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ ISO Standard version")
+if (CMAKE_CXX_STANDARD LESS 20)
+  message(FATAL_ERROR "C++ 2020 ISO Standard or higher is required to compile TiledArray")
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL  "Whether to use extensions of C++  ISO Standard version")
+set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL  "Whether to use extensions of C++ ISO Standard version")
 # Check type support
 include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE LANGUAGE CXX)
@@ -311,10 +307,10 @@ endif(CCACHE)
 
 # required deps:
 # 1. derive runtime (CUDA/HIP/...) first since others may depend on it
-if(ENABLE_CUDA)
+if(TA_CUDA)
   include(external/cuda.cmake)
 endif()
-if(ENABLE_HIP)
+if(TA_HIP)
   include(external/hip.cmake)
 endif()
 include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchRangeV3.cmake)
@@ -335,14 +331,14 @@ include(external/umpire.cmake)
 # - yes => Invoke first to configure the correct libraries config and run modules to find BLAS/LAPACK/ScaLAPACK(if needed)
 # - no  => BLAS/LAPACK will be discovered by BLAS++/LAPACK++ (loaded by BTAS) which use standard CMake modules or
 #          their custom modules; if needed, ScaLAPACK will be discovered by BLACS++
-if (ENABLE_WFN91_LINALG_DISCOVERY_KIT)
+if (TA_LINALG_DISCOVERY_KIT)
   include(FetchWfn91LinAlgModules)
   include(FindLinalg)
-endif(ENABLE_WFN91_LINALG_DISCOVERY_KIT)
+endif(TA_LINALG_DISCOVERY_KIT)
 # Boost is to be discovered by the top cmake project, and every (sub)project needs to make sure it has all of its targets
 include(external/boost.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBTAS.cmake)
-if(ENABLE_SCALAPACK)
+if(TA_SCALAPACK)
   include(external/scalapackpp.cmake)
 endif()
 

@@ -32,7 +32,7 @@ namespace TiledArray {
 
 // Tensor arithmetic operators
 
-/// Tensor plus operator
+/// Tensor plus Tensor operator
 
 /// Add two tensors
 /// \tparam T1 The left-hand tensor type
@@ -47,9 +47,37 @@ inline decltype(auto) operator+(T1&& left, T2&& right) {
   return add(std::forward<T1>(left), std::forward<T2>(right));
 }
 
-/// Tensor minus operator
+/// Tensor plus number operator
 
-/// Subtract two tensors
+/// Adds a number to a tensor
+/// \tparam T1 A tensor type
+/// \param tensor The tensor argument
+/// \param number The number argument
+/// \return A tensor where element \c i is equal to <tt>tensor[i] + number</tt>
+template <typename T1, typename = std::enable_if_t<detail::is_nested_tensor_v<
+                           detail::remove_cvr_t<T1>>>>
+inline decltype(auto) operator+(
+    T1&& tensor, detail::numeric_t<detail::remove_cvr_t<T1>> number) {
+  return std::forward<T1>(tensor).add(number);
+}
+
+/// Number plus Tensor operator
+
+/// Adds a number to a tensor
+/// \tparam T1 A tensor type
+/// \param number The number argument
+/// \param tensor The tensor argument
+/// \return A tensor where element \c i is equal to <tt>tensor[i] + number</tt>
+template <typename T1, typename = std::enable_if_t<detail::is_nested_tensor_v<
+                           detail::remove_cvr_t<T1>>>>
+inline decltype(auto) operator+(
+    detail::numeric_t<detail::remove_cvr_t<T1>> number, T1&& tensor) {
+  return std::forward<T1>(tensor).add(number);
+}
+
+/// Tensor minus Tensor operator
+
+/// Subtracts two tensors
 /// \tparam T1 The left-hand tensor type
 /// \tparam T2 The right-hand tensor type
 /// \param left The left-hand tensor argument
@@ -62,7 +90,21 @@ inline decltype(auto) operator-(T1&& left, T2&& right) {
   return subt(std::forward<T1>(left), std::forward<T2>(right));
 }
 
-/// Tensor multiplication operator
+/// Tensor minus number operator
+
+/// Subtracts a number from a tensor
+/// \tparam T1 A tensor type
+/// \param tensor The tensor argument
+/// \param number The number argument
+/// \return A tensor where element \c i is equal to <tt>tensor[i] - number</tt>
+template <typename T1, typename = std::enable_if_t<detail::is_nested_tensor_v<
+                           detail::remove_cvr_t<T1>>>>
+inline decltype(auto) operator-(
+    T1&& tensor, detail::numeric_t<detail::remove_cvr_t<T1>> number) {
+  return std::forward<T1>(tensor).subt(number);
+}
+
+/// Element-wise multiplication operator for Tensors
 
 /// Element-wise multiplication of two tensors
 /// \tparam T1 The left-hand tensor type
@@ -236,6 +278,88 @@ template <typename T, typename N,
               detail::is_numeric_v<N>>::type* = nullptr>
 inline decltype(auto) operator*=(T&& left, N right) {
   return scale_to(std::forward<T>(left), right);
+}
+
+/// Tensor output operator
+
+/// Output tensor \c t to the output stream, \c os .
+/// \tparam T The tensor type
+/// \param os The output stream
+/// \param t The tensor to be output
+/// \return A reference to the output stream
+template <
+    typename Char, typename CharTraits, typename T,
+    typename std::enable_if<detail::is_nested_tensor_v<T> &&
+                            detail::is_contiguous_tensor_v<T>>::type* = nullptr>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const T& t) {
+  os << t.range() << " {\n";
+  const auto n = t.range().volume();
+  std::size_t offset = 0ul;
+  std::size_t nbatch = 1;
+  if constexpr (detail::has_member_function_nbatch_anyreturn_v<T>)
+    nbatch = t.nbatch();
+  const auto more_than_1_batch = nbatch > 1;
+  for (auto b = 0ul; b != nbatch; ++b) {
+    if (more_than_1_batch) {
+      os << "  [batch " << b << "]{\n";
+    }
+    if constexpr (detail::is_tensor_v<T>) {  // tensor of scalars
+      detail::NDArrayPrinter{}.print(
+          t.data() + offset, t.range().rank(), t.range().extent_data(),
+          t.range().stride_data(), os, more_than_1_batch ? 4 : 2);
+    } else {  // tensor of tensors, need to annotate each element by its index
+      for (auto&& idx : t.range()) {  // Loop over inner tensors
+        const auto& inner_t = *(t.data() + offset + t.range().ordinal(idx));
+        os << "  " << idx << ":";
+        detail::NDArrayPrinter{}.print(inner_t.data(), inner_t.range().rank(),
+                                       inner_t.range().extent_data(),
+                                       inner_t.range().stride_data(), os,
+                                       more_than_1_batch ? 6 : 4);
+        os << "\n";
+      }
+    }
+    if (more_than_1_batch) {
+      os << "\n  }";
+      if (b + 1 != nbatch) os << "\n";  // not last batch
+    }
+    offset += n;
+  }
+  os << "\n}\n";
+
+  return os;
+}
+
+/// Tensor output operator
+
+/// Output tensor \c t to the output stream, \c os .
+/// \tparam T The tensor type
+/// \param os The output stream
+/// \param t The tensor to be output
+/// \return A reference to the output stream
+template <typename Char, typename CharTraits, typename T,
+          typename std::enable_if<
+              detail::is_tensor<T>::value &&
+              !detail::is_contiguous_tensor<T>::value>::type* = nullptr>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& os, const T& t) {
+  const auto stride = inner_size(t);
+  const auto volume = t.range().volume();
+
+  auto tensor_print_range =
+      [&os, stride](typename T::const_pointer MADNESS_RESTRICT const t_data) {
+        for (decltype(t.range().volume()) i = 0ul; i < stride; ++i)
+          os << t_data[i] << " ";
+      };
+
+  os << t.range() << " { ";
+
+  for (decltype(t.range().volume()) i = 0ul; i < volume; i += stride)
+    tensor_print_range(t.data() + t.range().ordinal(i));
+
+  os << "}\n";
+
+  return os;
 }
 
 }  // namespace TiledArray

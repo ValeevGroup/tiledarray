@@ -79,7 +79,7 @@ class Scal {
   template <bool C, typename std::enable_if<C>::type* = nullptr>
   result_type eval(argument_type& arg) const {
     using TiledArray::scale_to;
-    return scale_to(arg, factor_);
+    return scale_to(std::move(arg), factor_);
   }
 
  public:

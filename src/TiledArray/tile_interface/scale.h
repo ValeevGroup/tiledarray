@@ -76,9 +76,13 @@ inline auto scale(const Arg& arg, const Scalar factor, const Perm& perm) {
 /// \param factor The scaling factor
 /// \return A tile that is equal to <tt>result *= factor</tt>
 template <typename Result, typename Scalar,
-          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline Result& scale_to(Result& result, const Scalar factor) {
-  return result.scale_to(factor);
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                           detail::has_member_function_scale_to_anyreturn_v<
+                               Result&&, Scalar>>* = nullptr>
+inline decltype(auto) scale_to(Result&& result, const Scalar factor) {
+  static_assert(!std::is_const_v<std::remove_reference_t<Result>>,
+                "TA::scale_to(result,factor): result cannot be const");
+  return std::forward<Result>(result).scale_to(factor);
 }
 
 namespace tile_interface {

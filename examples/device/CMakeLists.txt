@@ -23,7 +23,7 @@
 #
 
 
-if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_HIP)
+if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
     foreach(_exec device_task ta_dense_device ta_cc_abcd_device ta_vector_device ta_reduce_device)
 

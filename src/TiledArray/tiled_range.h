@@ -398,6 +398,24 @@ class TiledRange {
   range_type elements_range_;  ///< Range of element indices
   Ranges ranges_;  ///< tiled (1d) range, aka TiledRange1, for each mode
                    ///< `*this` is a direct product of these tilings
+
+  template <MemorySpace S>
+  friend constexpr std::size_t size_of(const TiledRange& r) {
+    std::size_t sz = 0;
+    if constexpr (S == MemorySpace::Host) {
+      sz += sizeof(r);
+    }
+    // correct for optional dynamic allocation of range_ and elements_range_
+    if constexpr (S == MemorySpace::Host) {
+      sz -= sizeof(r.range_);
+      sz -= sizeof(r.elements_range_);
+      sz -= sizeof(r.ranges_);
+    }
+    sz += size_of<S>(r.range_);
+    sz += size_of<S>(r.elements_range_);
+    sz += size_of<S>(r.ranges_);
+    return sz;
+  }
 };
 
 /// TiledRange permutation operator.
@@ -440,7 +458,9 @@ inline bool operator!=(const TiledRange& r1, const TiledRange& r2) {
   return !operator==(r1, r2);
 }
 
-inline std::ostream& operator<<(std::ostream& out, const TiledRange& rng) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& out, const TiledRange& rng) {
   out << "("
       << " tiles = " << rng.tiles_range()
       << ", elements = " << rng.elements_range() << " )";

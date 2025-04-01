@@ -23,6 +23,7 @@
 #include <TiledArray/config.h>
 
 #include <TiledArray/error.h>
+#include <TiledArray/platform.h>
 #include <TiledArray/range1.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/utility.h>
@@ -481,7 +482,9 @@ class TiledRange1 {
     }
   }
 
-  friend std::ostream& operator<<(std::ostream&, const TiledRange1&);
+  template <typename Char, typename CharTraits>
+  friend std::basic_ostream<Char, CharTraits>& operator<<(
+      std::basic_ostream<Char, CharTraits>&, const TiledRange1&);
 
   // TiledRange1 data
   range_type range_;           ///< the range of tile indices
@@ -490,6 +493,27 @@ class TiledRange1 {
       tiles_ranges_;  ///< ranges of each tile (NO GAPS between tiles)
   mutable std::shared_ptr<const index1_type[]>
       elem2tile_;  ///< maps element index to tile index (memoized data).
+
+  template <MemorySpace S>
+  friend constexpr std::size_t size_of(const TiledRange1& r) {
+    std::size_t sz = 0;
+    if constexpr (S == MemorySpace::Host) {
+      sz += sizeof(r);
+    }
+    // correct for optional dynamic allocation of range_ and elements_range_
+    if constexpr (S == MemorySpace::Host) {
+      sz -= sizeof(r.range_);
+      sz -= sizeof(r.elements_range_);
+      sz -= sizeof(r.tiles_ranges_);
+    }
+    sz += size_of<S>(r.range_);
+    sz += size_of<S>(r.elements_range_);
+    sz += size_of<S>(r.tiles_ranges_);
+    if (r.elem2tile_) {
+      sz += r.elements_range_.extent() * sizeof(index1_type);
+    }
+    return sz;
+  }
 
 };  // class TiledRange1
 
@@ -511,7 +535,9 @@ inline bool operator!=(const TiledRange1& r1, const TiledRange1& r2) {
 }
 
 /// TiledRange1 ostream operator
-inline std::ostream& operator<<(std::ostream& out, const TiledRange1& rng) {
+template <typename Char, typename CharTraits>
+inline std::basic_ostream<Char, CharTraits>& operator<<(
+    std::basic_ostream<Char, CharTraits>& out, const TiledRange1& rng) {
   out << "( tiles = " << rng.tiles_range()
       << ", elements = " << rng.elements_range() << " )";
   return out;
