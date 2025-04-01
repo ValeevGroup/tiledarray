@@ -57,7 +57,7 @@ public:
  // for now I am going to assume an order-4 THC but later this will be used for
  // arbitrary order.
  CP_THC_ALS(const DistArray<Tile, Policy>& tref1, const DistArray<Tile, Policy>& tref2, const DistArray<Tile, Policy>& tref3)
-     : CP<Tile, Policy>(2 * rank(tref3)), ref_orb_a(tref1), ref_orb_b(tref2), ref_core(tref3), world(tref1.world()),
+     : CP<Tile, Policy>(2 * rank(tref3)), ref_orb_a(tref1), ref_orb_b(tref2), ref_core(tref3), world(get_default_world()),
         ref_orb_c(tref1), ref_orb_d(tref2) {
 
    DistArray<Tile, Policy> pr, pq;
@@ -70,7 +70,7 @@ public:
 
  CP_THC_ALS(const DistArray<Tile, Policy>& tref1, const DistArray<Tile, Policy>& tref2, const DistArray<Tile, Policy>& core,
             const DistArray<Tile, Policy>& tref3, const DistArray<Tile, Policy>& tref4)
-     : CP<Tile, Policy>(2 * rank(tref3)), ref_orb_a(tref1), ref_orb_b(tref2), ref_core(core), world(tref1.world()),
+     : CP<Tile, Policy>(2 * rank(tref3)), ref_orb_a(tref1), ref_orb_b(tref2), ref_core(core), world(get_default_world()),
        ref_orb_c(tref3), ref_orb_d(tref4) {
    DistArray<Tile, Policy> pr, pq;
    // I need two things that are r_{ai} x r_{ab} which I am calling p x q
