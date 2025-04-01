@@ -42,6 +42,10 @@ template <typename T>
 void cholesky_lsolve(Op transpose, Matrix<T> &A, Matrix<T> &X);
 
 template <typename T>
+void qr_solve(Matrix<T> &A, Matrix<T> &B,
+              const TiledArray::detail::real_t<T> cond = 1e8);
+
+template <typename T>
 void heig(Matrix<T> &A, std::vector<TiledArray::detail::real_t<T>> &W);
 
 template <typename T>
