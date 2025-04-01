@@ -27,7 +27,7 @@ export CUDA_GCC_DIR=/sw/summit/gcc/7.4.0
 
 cmake ../../tiledarray \
 -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/olcf-summit-gcc-essl.cmake \
--DENABLE_CUDA=ON \
+-DTA_CUDA=ON \
 -DCMAKE_CUDA_HOST_COMPILER=${CUDA_GCC_DIR}/bin/g++ \
 -DCUDAToolkit_ROOT=/sw/summit/cuda/10.1.243 \
 -DENABLE_TBB=OFF \

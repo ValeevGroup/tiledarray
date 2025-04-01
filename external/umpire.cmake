@@ -113,7 +113,7 @@ else()
              -DUMPIRE_ENABLE_FILESYSTEM=OFF)
     endif()
 
-    if (ENABLE_CUDA)
+    if (TA_CUDA)
         list(APPEND UMPIRE_CMAKE_ARGS
                 -DENABLE_CUDA=ON
                 -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
@@ -134,8 +134,8 @@ else()
         if (DEFINED CUDA_TOOLKIT_ROOT_DIR)
             list(APPEND UMPIRE_CMAKE_ARGS "-DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}")
         endif()
-    endif(ENABLE_CUDA)
-    if (ENABLE_HIP)
+    endif(TA_CUDA)
+    if (TA_HIP)
         list(APPEND UMPIRE_CMAKE_ARGS
                 -DENABLE_HIP=ON
                 -DCMAKE_HIP_COMPILER=${CMAKE_HIP_COMPILER}
@@ -145,7 +145,7 @@ else()
         if (DEFINED CMAKE_HIP_ARCHITECTURES)
             list(APPEND UMPIRE_CMAKE_ARGS "-DCMAKE_HIP_ARCHITECTURES=${CMAKE_HIP_ARCHITECTURES}")
         endif(DEFINED CMAKE_HIP_ARCHITECTURES)
-    endif(ENABLE_HIP)
+    endif(TA_HIP)
     if (CMAKE_TOOLCHAIN_FILE)
         set(UMPIRE_CMAKE_ARGS "${UMPIRE_CMAKE_ARGS}"
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"

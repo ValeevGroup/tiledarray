@@ -200,8 +200,8 @@ ASLR is a standard technique for increasing platform security implemented by the
 * `CMAKE_POSITION_INDEPENDENT_CODE` -- This standard CMake variable controls whether targets are compiled by default as position-independent code or not. If `BUILD_SHARED_LIBS=OFF` need to set this to `ON` if want to use the TiledArray libraries to build shared libraries or position-independent executables.
 
 To make things more concrete, consider the following 2 scenarios:
-* Platform with ASLR disabled -- set `TA_ASSUMES_ASLR_DISABLED=ON` to set the defaults correctly and enable the ASLR check. `BUILD_SHARED_LIBS` can be set to `ON` (to produce shared TA/MADworld libraries, e.g., to minimize the executable size) or to `OFF` to produce static libraries. If the TA+MADworld static libraries will be linked into shared libraries set `CMAKE_POSITION_INDEPENDENT_CODE=ON`, otherwise `CMAKE_POSITION_INDEPENDENT_CODE` will be set to OFF for maximum efficiency of function calls.
-* Platform with ASLR enabled -- this is the default. Setting `BUILD_SHARED_LIBS=ON` in this scenario will produce executables that can only be safely used with 1 MPI rank, thus `BUILD_SHARED_LIBS` will be defaulted to OFF (i.e. TA+MADworld libraries will be built as static libraries). `CMAKE_POSITION_INDEPENDENT_CODE` is by default set to `ON`, thus TA+MADworld libraries can be linked into position-independent executables safely. TA+MADworld libraries can also be linked into a shared library, provided that *ALL* code using TA+MADworld is part of the *SAME* shared library. E.g. to link TA+MADworld into a Python module compile TA+MADworld libraries and their dependents as static libraries (with `CMAKE_POSITION_INDEPENDENT_CODE=ON`) and link them all together into a single module (same logic applies to shared libraries using TA+MADworld).
+* Platform with ASLR disabled -- set `TA_ASSUMES_ASLR_DISABLED=ON` to set the defaults correctly and enable the ASLR check. `BUILD_SHARED_LIBS` can be set to `ON` (to produce shared TA/MADworld libraries, e.g., to minimize the executable size) or to `OFF` to produce static libraries. If the TA+MADworld static libraries will be linked into shared libraries set `CMAKE_POSITION_INDEPENDENT_CODE=ON`, otherwise `CMAKE_POSITION_INDEPENDENT_CODE` will be set to `OFF` for maximum efficiency of function calls.
+* Platform with ASLR enabled -- this is the default. Setting `BUILD_SHARED_LIBS=ON` in this scenario will produce executables that can only be safely used with 1 MPI rank, thus `BUILD_SHARED_LIBS` will be defaulted to `OFF` (i.e. TA+MADworld libraries will be built as static libraries). `CMAKE_POSITION_INDEPENDENT_CODE` is by default set to `ON`, thus TA+MADworld libraries can be linked into position-independent executables safely. TA+MADworld libraries can also be linked into a shared library, provided that *ALL* code using TA+MADworld is part of the *SAME* shared library. E.g. to link TA+MADworld into a Python module compile TA+MADworld libraries and their dependents as static libraries (with `CMAKE_POSITION_INDEPENDENT_CODE=ON`) and link them all together into a single module (same logic applies to shared libraries using TA+MADworld).
 
 ## MPI
 
@@ -212,7 +212,7 @@ following CMake cache variables:
 * MPI_C_COMPILER -- The MPI C compiler wrapper
 * MPI_CXX_COMPILER -- The MPI C++ compiler wrapper
 
-You can build TiledArray without MPI support by setting ENABLE_MPI to OFF.
+You can build TiledArray without MPI support by setting `ENABLE_MPI` to `OFF`.
 Though we strongly recommend compiling with MPI even if you do not intend
 to use TiledArray in a distributed memory environment. Note, if you
 build MADNESS yourself, you must also configure MADNESS with `ENABLE_MPI=OFF`
@@ -236,7 +236,7 @@ as needed.
 As of version 1.0 TiledArray also provides a direct (non-iterative) linear solvers API
 implemented using LAPACK and (optionally) ScaLAPACK. Therefore LAPACK is now a mandatory
 prerequisite of TiledArray. The use of ScaLAPACK can be enabled by setting CMake cache
-variable `ENABLE_SCALAPACK` to `ON`.
+variable `TA_SCALAPACK` to `ON`.
 
 Robust discovery of linear algebra libraries, and _especially_ their distributed-memory
 variants, is a complex process. Unfortunately even for serial/shared-memory linear
@@ -245,7 +245,7 @@ algebra libraries only basic scenarios are supported by the standard CMake modul
 [LAPACK](https://cmake.org/cmake/help/latest/module/FindLAPACK.html)).
 There are several discovery mechanisms available for robust discovery of linear
 algebra in TA:
-- By specifying the `BLAS_LIBRARIES`, `LAPACK_LIBRARIES`, and (if `ENABLE_SCALAPACK` is on)
+- By specifying the `BLAS_LIBRARIES`, `LAPACK_LIBRARIES`, and (if `TA_SCALAPACK` is on)
   `ScaLAPACK_LIBRARIES` CMake cache variables via CMake command line or via a toolchain.
   Doing this overrides all other mechanisms of discovery described below and is recommended
   if the discovery fails for some reason. To help with setting these variables for specific
@@ -270,7 +270,7 @@ algebra in TA:
     - `Accelerate`: Apple's Accelerate framework
     - `FLAME`: (LAPACK-only) [libFLAME](https://www.cs.utexas.edu/~flame/web/libFLAME.html)
     *N.B.* These differ from the recognized values of the `BLA_VENDOR` variable used by the [BLAS+LAPACK CMake modules](https://cmake.org/cmake/help/latest/module/FindBLAS.html).
-- If the use of the NWChemEx kit is disabled by setting CMake cache variable `ENABLE_WFN91_LINALG_DISCOVERY_KIT` to `OFF`
+- If the use of the NWChemEx kit is disabled by setting CMake cache variable `TA_LINALG_DISCOVERY_KIT` to `OFF`
   BLAS/LAPACK are imported transitively via the BLAS++/LAPACK++ libraries (which are themselves
   imported transitively via the BTAS library). Under the most common scenario, where TiledArray
   will configure and compile BTAS dependency and its BLAS++/LAPACK++ prerequisites from source
@@ -329,9 +329,9 @@ Also note that even if OpenMP or TBB backends are used, TiledArray will be defau
 
 Support for execution on NVIDIA and AMD GPGPUs is controlled by the following variables:
 
-* `ENABLE_CUDA`  -- Set to `ON` to turn on CUDA support. [Default=OFF].
+* `TA_CUDA`  -- Set to `ON` to turn on CUDA support. [Default=OFF].
 * `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers used to be notorious for only being able to use specific C++ host compilers, but support for more recent C++ host compilers has improved. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
-* `ENABLE_HIP`  -- Set to `ON` to turn on HIP/ROCm support. [Default=OFF].
+* `TA_HIP`  -- Set to `ON` to turn on HIP/ROCm support. [Default=OFF].
 * `LIBRETT_INSTALL_DIR` -- the installation prefix of the pre-installed LibreTT library. This should not be normally needed; it is strongly recommended to let TiledArray build and install LibreTT.
 * `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library. This should not be normally needed; it is strongly recommended to let TiledArray build and install Umpire.
 
@@ -367,12 +367,10 @@ the correct revision of MADNESS.
 The following CMake options may be used to modify build behavior or find MADNESS:
 
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
-* `ENABLE_SCALAPACK` -- Enable the use of ScaLAPACK bindings [Default=OFF]
 * `ENABLE_TBB` -- Enable the use of TBB when building MADNESS [Default=ON]
 * `ENABLE_GPERFTOOLS` -- Enable the use of gperftools when building MADNESS [Default=OFF]
 * `ENABLE_TCMALLOC_MINIMAL` -- Enable the use of gperftool's tcmalloc_minimal library only (the rest of gperftools is skipped) when building MADNESS [Default=OFF]
 * `ENABLE_LIBUNWIND` -- Force the discovery of libunwind library when building MADNESS [Default=OFF]
-* `ENABLE_WFN91_LINALG_DISCOVERY_KIT` -- Enable the use of NWChemEx's linear algebra discovery [Default=ON]
 * `MADNESS_SOURCE_DIR` -- Path to the MADNESS source directory
 * `MADNESS_BINARY_DIR` -- Path to the MADNESS build directory
 * `MADNESS_URL` -- Path to the MADNESS repository [Default=MADNESS git repository]
