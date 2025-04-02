@@ -783,4 +783,32 @@ BOOST_AUTO_TEST_CASE(print) {
   // std::cout << tb;
 }
 
+BOOST_AUTO_TEST_CASE(size_of) {
+  auto sz0h = TiledArray::size_of<TiledArray::MemorySpace::Host>(TensorN{});
+  BOOST_REQUIRE(sz0h == sizeof(TensorN));
+
+  auto sz0d = TiledArray::size_of<TiledArray::MemorySpace::Device>(TensorN{});
+  BOOST_REQUIRE(sz0d == 0);
+
+  auto sz0um =
+      TiledArray::size_of<TiledArray::MemorySpace::Device_UM>(TensorN{});
+  BOOST_REQUIRE(sz0um == 0);
+
+  auto sz1 = TiledArray::size_of<TiledArray::MemorySpace::Host>(
+      TensorZ(Range(2, 3, 4)));
+  BOOST_REQUIRE(sz1 ==
+                sizeof(TensorZ) + 2 * 3 * 4 * sizeof(TensorZ::value_type));
+
+  using TTD = Tensor<Tensor<double>>;
+  auto sz2 =
+      TiledArray::size_of<TiledArray::MemorySpace::Host>(TTD(Range(2, 3, 4)));
+  BOOST_REQUIRE(sz2 == sizeof(TTD) + 2 * 3 * 4 * sizeof(TTD::value_type));
+
+  TTD ttd(Range(2, 3, 4));
+  ttd(0, 0, 0) = TensorD(Range(5, 6));
+  auto sz3 = TiledArray::size_of<TiledArray::MemorySpace::Host>(ttd);
+  BOOST_REQUIRE(sz3 == sizeof(TTD) + 2 * 3 * 4 * sizeof(TTD::value_type) +
+                           5 * 6 * sizeof(TTD::value_type::value_type));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

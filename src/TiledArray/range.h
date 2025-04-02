@@ -21,6 +21,7 @@
 #define TILEDARRAY_RANGE_H__INCLUDED
 
 #include <TiledArray/permutation.h>
+#include <TiledArray/platform.h>
 #include <TiledArray/range1.h>
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/size_array.h>
@@ -1245,6 +1246,20 @@ class Range {
     TA_ASSERT(includes(first));
     TA_ASSERT(includes(last));
     return ordinal(last) - ordinal(first);
+  }
+
+  template <MemorySpace S>
+  friend constexpr std::size_t size_of(const Range& r) {
+    std::size_t sz = 0;
+    if constexpr (S == MemorySpace::Host) {
+      sz += sizeof(r);
+    }
+    // correct for optional dynamic allocation of datavec_
+    if constexpr (S == MemorySpace::Host) {
+      sz -= sizeof(r.datavec_);
+    }
+    sz += size_of<S>(r.datavec_);
+    return sz;
   }
 
 };  // class Range

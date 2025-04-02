@@ -44,7 +44,7 @@ bool initialized_to_be_quiet();
 ///       initialization:
 ///       | Environment Variable | Default| Description |
 ///       |----------------------|--------|-------------|
-///       | `TA_LINALG_BACKEND`  | none   | If set, chooses the linear algebra backend to use; valid values are `scalapack` (distributed library ScaLAPACK, only available if configured with `ENABLE_SCALAPACK=ON`), `lapack` (non-distributed library LAPACK, always available), and `ttg` (experimental [TTG](https://github.com/TESSEorg/TTG) backend, only implements Cholesky); the default is to choose best available backend automatically (recommended) |
+///       | `TA_LINALG_BACKEND`  | none   | If set, chooses the linear algebra backend to use; valid values are `scalapack` (distributed library ScaLAPACK, only available if configured with `TA_SCALAPACK=ON`), `lapack` (non-distributed library LAPACK, always available), and `ttg` (experimental [TTG](https://github.com/TESSEorg/TTG) backend, only implements Cholesky); the default is to choose best available backend automatically (recommended) |
 ///       | `TA_LINALG_DISTRIBUTED_MINSIZE`  | 4194304 | Unless `TA_LINALG_BACKEND` is set, this controls the minimum matrix size (#rows times #columns) for which the distributed backend if chosen when selecting the best available backend |
 /// @warning MADWorld can only be initialized/finalized once, hence if
 ///          TiledArray initializes MADWorld

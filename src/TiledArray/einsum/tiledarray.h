@@ -10,6 +10,8 @@
 #include "TiledArray/tiled_range.h"
 #include "TiledArray/tiled_range1.h"
 
+#include <madness/world/thread.h>
+
 namespace TiledArray {
 enum struct DeNest { True, False };
 }

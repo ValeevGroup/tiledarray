@@ -26,6 +26,7 @@
 #include <boost/iterator/iterator_facade.hpp>
 
 #include <TiledArray/error.h>
+#include <TiledArray/platform.h>
 
 namespace TiledArray {
 
@@ -138,7 +139,7 @@ struct Range1 {
     /// \brief dereferences this iterator
     /// \return const reference to the current index
     const auto& dereference() const { return v; }
-  };
+  };  // class Iterator
   friend class Iterator;
 
   typedef Iterator const_iterator;  ///< Iterator type
@@ -200,6 +201,15 @@ struct Range1 {
                 std::decay_t<Archive>>>::type* = nullptr>
   void serialize(Archive& ar) const {
     ar & first & second;
+  }
+
+  template <MemorySpace S>
+  friend constexpr std::size_t size_of(const Range1& r) {
+    std::size_t sz = 0;
+    if constexpr (S == MemorySpace::Host) {
+      sz += sizeof(r);
+    }
+    return sz;
   }
 };
 

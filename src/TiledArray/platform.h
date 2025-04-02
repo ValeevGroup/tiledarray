@@ -21,8 +21,12 @@
  *
  */
 
-#ifndef TILEDARRAY_DEVICE_PLATFORM_H__INCLUDED
-#define TILEDARRAY_DEVICE_PLATFORM_H__INCLUDED
+#ifndef TILEDARRAY_PLATFORM_H__INCLUDED
+#define TILEDARRAY_PLATFORM_H__INCLUDED
+
+#include <TiledArray/fwd.h>
+
+#include <TiledArray/type_traits.h>
 
 namespace TiledArray {
 
@@ -54,6 +58,40 @@ constexpr bool overlap(MemorySpace space1, MemorySpace space2) {
   return (space1 & space2) != MemorySpace::Null;
 }
 
+// customization point: is_constexpr_size_of_v<S,T> reports whether
+// size_of<S>(T) is the same for all T
+template <MemorySpace S, typename T>
+inline constexpr bool is_constexpr_size_of_v = detail::is_numeric_v<T>;
+
+// customization point: size_of<S>(O) -> std::size_t reports the number of
+// bytes occupied by O in S
+template <MemorySpace S, typename T,
+          typename = std::enable_if_t<is_constexpr_size_of_v<S, T>>>
+constexpr std::size_t size_of(const T& t) {
+  return sizeof(T);
+}
+
+// customization point: allocates_memory_space<S>(A) -> bool reports whether
+// allocator A allocates memory in space S
+template <MemorySpace S, typename T>
+constexpr bool allocates_memory_space(const std::allocator<T>& a) {
+  return S == MemorySpace::Host;
+}
+template <MemorySpace S, typename T>
+constexpr bool allocates_memory_space(const Eigen::aligned_allocator<T>& a) {
+  return S == MemorySpace::Host;
+}
+template <MemorySpace S, typename T>
+constexpr bool allocates_memory_space(const host_allocator<T>& a) {
+  return S == MemorySpace::Host;
+}
+#ifdef TILEDARRAY_HAS_DEVICE
+template <MemorySpace S, typename T>
+constexpr bool allocates_memory_space(const device_um_allocator<T>& a) {
+  return S == MemorySpace::Device_UM;
+}
+#endif
+
 /// enumerates the execution spaces
 enum class ExecutionSpace { Host, Device };
 
@@ -62,4 +100,4 @@ enum class ExecutionSpace { Host, Device };
 
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_DEVICE_PLATFORM_H__INCLUDED
+#endif  // TILEDARRAY_PLATFORM_H__INCLUDED

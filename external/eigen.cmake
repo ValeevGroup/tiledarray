@@ -6,11 +6,11 @@ include(AppendFlags)
 
 # if CUDA is enabled (assuming CUDA version is 9 or 10) need Eigen 3.3.7
 # see https://gitlab.com/libeigen/eigen/issues/1491
-if (ENABLE_CUDA)
+if (TA_CUDA)
   set(_tiledarray_required_eigen_version 3.3.7)
-else(ENABLE_CUDA)
+else(TA_CUDA)
   set(_tiledarray_required_eigen_version ${TA_TRACKED_EIGEN_VERSION})
-endif(ENABLE_CUDA)
+endif(TA_CUDA)
 
 # Check for existing Eigen
 # prefer CMake-configured-and-installed instance

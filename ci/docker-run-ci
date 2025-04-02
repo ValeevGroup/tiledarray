@@ -2,7 +2,7 @@
 
 # build project via docker run, eg
 # usage: docker-run-ci [ VAR=VALUE ... ] [ target ... ]
-# example: ./ci/docker-run-ci TA_PYTHON=OFF ENABLE_CUDA=ON all check
+# example: ./ci/docker-run-ci TA_PYTHON=OFF TA_CUDA=ON all check
 
 project=$(basename $PWD)
 image=valeevgroup/ubuntu:${VALEEVGROUP_UBUNTU_TAG:-latest}

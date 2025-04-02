@@ -31,14 +31,14 @@ jobs:
       CCACHE_COMPRESS : true
       CCACHE_COMPRESSLEVEL : 6
       OMPI_MCA_btl_vader_single_copy_mechanism : none
-      PARSEC_MCA_runtime_bind_threads : 0
+      PARSEC_MCA_bind_threads : 0
       BUILD_CONFIG : >
         -DMADNESS_TASK_BACKEND=${{ matrix.task_backend }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DMPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
         -DCMAKE_PREFIX_PATH="/usr/local/opt/bison;/usr/local/opt/scalapack;/usr/local/opt/boost"
         -DTA_ASSERT_POLICY=TA_ASSERT_THROW
-        -DENABLE_SCALAPACK=ON
+        -DTA_SCALAPACK=ON
 
     steps:
     - uses: actions/checkout@v4

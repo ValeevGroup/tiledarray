@@ -38,6 +38,7 @@ TiledArray/error.h
 TiledArray/initialize.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
+TiledArray/platform.h
 TiledArray/proc_grid.h
 TiledArray/range.h
 TiledArray/range1.h
@@ -239,7 +240,6 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
           TiledArray/device/kernel/reduce_kernel.h
           TiledArray/device/kernel/thrust/mult_kernel.h
           TiledArray/device/kernel/thrust/reduce_kernel.h
-          TiledArray/device/platform.h
           TiledArray/device/thrust.h
           TiledArray/device/um_storage.h
   )
