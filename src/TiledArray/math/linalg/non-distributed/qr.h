@@ -34,6 +34,22 @@ auto householder_qr(const ArrayV& V, TiledRange q_trange = TiledRange(),
   }
 }
 
+template <typename ArrayA, typename ArrayB, typename T = ArrayB::numeric_type>
+auto qr_solve(const ArrayA& A, const ArrayB& B,
+              const TiledArray::detail::real_t<T> cond = 1e8,
+              TiledRange x_trange = TiledRange()) {
+  (void)detail::array_traits<ArrayB>{};
+  auto& world = B.world();
+  auto A_eig = detail::make_matrix(A);
+  auto B_eig = detail::make_matrix(B);
+  TA_LAPACK_ON_RANK_ZERO(qr_solve, world, A_eig, B_eig, cond);
+  world.gop.broadcast_serializable(A_eig, 0);
+  world.gop.broadcast_serializable(B_eig, 0);
+  if (x_trange.rank() == 0) x_trange = B.trange();
+  auto X = eigen_to_array<ArrayB>(world, x_trange, B_eig);
+  return X;
+}
+
 }  // namespace TiledArray::math::linalg::non_distributed
 
 #endif
