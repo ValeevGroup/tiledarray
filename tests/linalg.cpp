@@ -753,6 +753,39 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
   GlobalFixture::world->gop.fence();
 }
 
+BOOST_AUTO_TEST_CASE(qr_solve) {
+  GlobalFixture::world->gop.fence();
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double>>(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto iden = non_dist::qr_solve(ref_ta, ref_ta);
+
+  BOOST_CHECK(iden.trange() == ref_ta.trange());
+
+  TA::foreach_inplace(iden, [](TA::Tensor<double>& tile) {
+    auto range = tile.range();
+    auto lo = range.lobound_data();
+    auto up = range.upbound_data();
+    for (auto m = lo[0]; m < up[0]; ++m)
+      for (auto n = lo[1]; n < up[1]; ++n)
+        if (m == n) {
+          tile(m, n) -= 1.;
+        }
+  });
+
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
+  double norm = iden("i,j").norm(*GlobalFixture::world).get();
+
+  BOOST_CHECK_SMALL(norm, epsilon);
+  GlobalFixture::world->gop.fence();
+}
+
 BOOST_AUTO_TEST_CASE(lu_solve) {
   GlobalFixture::world->gop.fence();
 
