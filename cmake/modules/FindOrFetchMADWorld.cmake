@@ -47,9 +47,9 @@ if (NOT TARGET MADworld)
   include(FetchContent)
   FetchContent_Declare(
           MADNESS
-	  GIT_REPOSITORY https://github.com/m-a-d-n-e-s-s/madness.git
+	      GIT_REPOSITORY "${TA_TRACKED_MADNESS_URL}"
           GIT_TAG ${TA_TRACKED_MADNESS_TAG}
-	  GIT_PROGRESS TRUE
+          GIT_PROGRESS TRUE
   )
   FetchContent_MakeAvailable(MADNESS)
   FetchContent_GetProperties(MADNESS
