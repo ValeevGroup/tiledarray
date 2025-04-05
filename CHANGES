@@ -3,9 +3,203 @@
 
 Following is a brief summary of changes made in each release of TiledArray.
 
-- XX-Month-YYYY: 1.0.1
-  - Travis CI switched to Ubuntu Focal
-  - fixed serialization of arrays that were used in expressions or copied (issue #225)
+- 10-November-2024: 1.1.0
+  - Andrey's revamp of generic algebra by @evaleev in #226
+  - Generic solver interface by @evaleev in #222
+  - Fix eigen MD5 hash 05b1f7511c93980c385ebe11bd3c93fa --> b9e98a200d245… by @powellsr in #228
+  - support for arrays of tensors (aka nested tensors, or tensors-of-tensors) by @evaleev in #223
+  - Feature/gitlab ci by @asadchev in #231
+  - Asadchev/refactor/math by @asadchev in #230
+  - Asadchev/refactor/lapack by @asadchev in #232
+  - small Ranges on stack by @evaleev in #233
+  - default TA_ERROR to throw if building unit tests by @evaleev in #234
+  - Asadchev/refactor/unit tests by @asadchev in #239
+  - converted to C++ BLAS/LAPACK interface by @evaleev in #237
+  - scalapack usable with distarrays of btas (and other) Tiles. by @evaleev in #241
+  - blaspp_headers to btas by @evaleev in #242
+  - APPLE does not imply x86_64 on Apple ARM hardware by @evaleev in #244
+  - kmp5VT [Feature] Round Robin pmap by @kmp5VT in #235
+  - Fix CMake Boost discovery by @asadchev in #245
+  - send notification from travis builds to VG slack by @evaleev in #246
+  - build from-source-dependencies before building TA by @evaleev in #249
+  - Asadchev/feature/gitlab cuda build by @asadchev in #250
+  - Asadchev/feature/GitHub actions ci by @asadchev in #253
+  - Update README.md for TA::TiledRange1 by @bimalgaudel in #257
+  - Evaleev/update/btas by @evaleev in #260
+  - Refactor TA_ASSERT by @asadchev in #259
+  - numeric_type trait for Eigen matrices not needed since Eigen 3.3 by @evaleev in #264
+  - Fix inconsistencies in rank-local SVD wrapper by @wavefunction91 in #263
+  - Fixes #265 by @ryanmrichard in #266
+  - Evaleev/fix/nonintrusive solver adaptors by @evaleev in #270
+  - Evaleev/fix/make ta range by @evaleev in #273
+  - update travis clang to 11 by @evaleev in #274
+  - SparseShape ctor taking scaled norms zeroes out values below threshold by @evaleev in #275
+  - Kmp5/feature/btas update by @kmp5VT in #272
+  - [cmake] use wfn91's linear algebra discovery modules by @evaleev in #254
+  - Range avoids serializes rank only once by @evaleev in #276
+  - cuda callback is prebuf-aware by @evaleev in #277
+  - Updates for revised madness serialization by @evaleev in #279
+  - Evaleev/fix/tensorimpl distributed ctor by @evaleev in #278
+  - DistArray::lazy_deleter waits for delayed sets by @evaleev in #280
+  - set CUDA vars before calling enable_language(CUDA) + misc cleanup by @evaleev in #283
+  - DistArray::set can properly avoid copies (unless setting remote data)… by @evaleev in #284
+  - Bump ScaLAPACK++ by @wavefunction91 in #287
+  - removed residual uses of TA_DEFAULT_ERROR by @evaleev in #289
+  - Fix the path for MADNESS config.h by @keceli in #293
+  - Bug fix fill_random() method by @bimalgaudel in #295
+  - Functions to change taskq wait policy by @asadchev in #294
+  - Tensor fwddecl "moved" to fwd.h by @evaleev in #296
+  - introduced umpire host allocator by @evaleev in #297
+  - clang does not like vector_il/matrix_il/etc. ... by @evaleev in #298
+  - Bumped BTAS tag to use most recent linalgpp by @evaleev in #299
+  - Build deps, if not found, via FetchContent, NOT ExternalProject by @evaleev in #300
+  - follow-up to failed ExternalProject elimination by @evaleev in #302
+  - run unit tests with raised log_level by @evaleev in #303
+  - Asadchev/feature/einsum by @evaleev in #285
+  - [cmake] bump MADNESS tag by @evaleev in #304
+  - umpire: skip std::filesystem if using old gcc by @evaleev in #306
+  - installation fixes by @evaleev in #307
+  - [cmake] BTAS fixes by @evaleev in #308
+  - foreach works with ShareReductionMethod::Union by @evaleev in #310
+  - bump umpire to v6+ by @evaleev in #311
+  - Add QR Implementations by @wavefunction91 in #316
+  - PaRSEC in MADNESS CI by @therault in #301
+  - Change ExternalProject prefixes to always match the FetchContent location by @awild82 in #315
+  - eigen {matrix,vector}_to_array UT needs to replicate the data... by @evaleev in #319
+  - block tsr expression assignments fix by @evaleev in #318
+  - DistArray conversion to/fro Eigen::Tensor by @evaleev in #320
+  - TiledArray/tensor.h: must #include <TiledArray/tile_op/tile_interface.h> by @evaleev in #321
+  - SparseShape maintains its own sparse threshold by @evaleev in #322
+  - Bump VG cmake kit tag by @evaleev in #323
+  - moved FindOrFetchScaLAPACK to vg cmake kit + bump vg cmake kit and BT… by @evaleev in #326
+  - moar small_vector by @evaleev in #328
+  - wrong operator[] used in Index::indexof() by @evaleev in #329
+  - fix einsum permutes by @evaleev in #331
+  - bump VG's cmake kit tag to allow the use of LAPACK_CXX_COMPILE_OPTIONS by @evaleev in #334
+  - Evaleev/fix/dox by @evaleev in #336
+  - [ci] dox fixes + introduced VALEEVGROUP_UBUNTU_TAG envvar to control … by @evaleev in #337
+  - Fix type signature bug(?) by @bimalgaudel in #338
+  - bump BTAS tag + make imported Boost targets IMPORTED_GLOBAL ... regim… by @evaleev in #339
+  - Fix parallel compilation on Umpire by @wavefunction91 in #340
+  - std::result_of -> std::invoke_result by @evaleev in #341
+  - TiledArray_{UMPIRE,CUTT} targets usable from the build tree at configure time by @evaleev in #342
+  - allow extended character set in annotations by @evaleev in #343
+  - Asadchev/feature/eigen einsum by @asadchev in #344
+  - Einsum hadamard reduction, eg c('h') = a('hi')*b('hi') by @asadchev in #346
+  - [followup] allow extended character set in annotations by @evaleev in #347
+  - const-correct serialize methods by @evaleev in #349
+  - fix: linalgpp compile noise by @evaleev in #351
+  - LibreTT integration into TiledArray by @victor-anisimov in #352
+  - Distributed einsum by @asadchev in #348
+  - Asadchev/feature/einsum ta sparse by @asadchev in #356
+  - Asadchev/bug/ta einsum permute by @asadchev in #361
+  - fix distarray lifetime in init_tiles and assignment by @evaleev in #360
+  - discover/fetch TTG + use for cholesky_linv by @evaleev in #355
+  - #include linalg/basic.h from top-level solver-specific headers also by @evaleev in #363
+  - Asadchev/feature/einsum replicated by @asadchev in #362
+  - suppress warning re std::complex return by C-linkage LAPACK functions by @evaleev in #367
+  - update vg_cmake_kit by @evaleev in #368
+  - enable cuda unit tests by @evaleev in #354
+  - cutt -> librett by @evaleev in #353
+  - TILEDARRAY_REVISION is now a runtime constant returned by TA::revision() by @evaleev in #370
+  - switch from git revision to description by @evaleev in #371
+  - Evaleev/fix/umpire allocators lifetime by @evaleev in #372
+  - Evaleev/feature/tensor memory profile and trace by @evaleev in #373
+  - fixes for C++20 by @evaleev in #374
+  - Expr::set_shape is a no-op with null shape by @evaleev in #375
+  - bump MAD tag to reduce C++20 noise by @evaleev in #376
+  - Evaleev/fixup/tensor empty by @evaleev in #377
+  - Asadchev/feature/einsum ta dot by @asadchev in #369
+  - enable scalapack for github actions by @evaleev in #378
+  - relax constraints on allowed characters in annotations, can use unico… by @evaleev in #379
+  - *TsrExpr manages lifetime of the array object referred by the bound variable by @evaleev in #380
+  - [cmake] use CMAKE_{C,CXX}COMPILER_LAUNCHER instead of RULE_LAUNCH{COMPILE,LINK} by @evaleev in #381
+  - umpire allocator fixes by @evaleev in #382
+  - update FindOrFetchBoost by @evaleev in #383
+  - TA Tensor memory trace by @evaleev in #384
+  - [Umpire] thread-safety provided by umpire_allocator_impl by @evaleev in #385
+  - [cmake] globalize Boost targets imported by TA only by @evaleev in #386
+  - [python] can load with initialized MPI by @evaleev in #388
+  - Evaleev/feature/concat by @evaleev in #389
+  - fix sparse shape threshold by @evaleev in #392
+  - [WIP] some einsum tests fail by @evaleev in #391
+  - reentrant TA::rand() by @evaleev in #394
+  - disambiguate rank 1 index vs ordinal accessors by @evaleev in #393
+  - Kmp5/feature/cp by @kmp5VT in #335
+  - TiledRange1::make_uniform uses @kmp5's implementation by @evaleev in #395
+  - complex ta dense asymm by @evaleev in #397
+  - pull in MADWorld fixes to control #threads when running over PaRSEC by @evaleev in #398
+  - cleanup complex API by @evaleev in #399
+  - extend device API for complex types by @evaleev in #400
+  - paper demo by @evaleev in #401
+  - bumps MADNESS tag to pull in PR 471 by @evaleev in #403
+  - bump MAD tag to use master PaRSEC backend + associated TTG bump by @evaleev in #406
+  - misc CUDA fixes/improvements by @evaleev in #409
+  - ToT*T: round 1 by @evaleev in #405
+  - [cmake] bump VG cmake kit to bump lapackpp tags by @evaleev in #411
+  - Fix make_array when target shape is rank-1 by @wavefunction91 in #414
+  - Various CMake + ENABLE_CUDA Fixes by @wavefunction91 in #415
+  - Fix CUDA compilation with Cray Wrappers by @wavefunction91 in #416
+  - CMake: Use GNUInstallDirs variables instead of hard-coded paths by @topazus in #404
+  - implements initial HIP/ROCm support by @evaleev in #418
+  - loosen equality tolerance in um_expressions_suite/dot_permute by @evaleev in #424
+  - fix stream handling in multi-op device tasks by @evaleev in #421
+  - [ci] update path to OneAPI MKL vars.sh script by @evaleev in #425
+  - Fix INSTALL paths by @wavefunction91 in #426
+  - [unit] set MAD_NUM_THREADS when running w >1 rank by @evaleev in #431
+  - [cmake] bump VG kit, BTAS, and MADNESS tags by @evaleev in #429
+  - tiny step towards supporting T*ToT in expr by @bimalgaudel in #433
+  - disable throw tests unless assert policy throws by @evaleev in #434
+  - bump pybind11 version to VG/v2.11 by @evaleev in #436
+  - [cmake] for cmake v3.28 set policy CMP0146 to OLD by @evaleev in #439
+  - Create proper target when installed Umpire is provided by @devreal in #440
+  - einsum support for generalized product involving tensor-of-tensor and regular tensor by @bimalgaudel in #437
+  - patch Umpire to be able to shut down its' I/O cleanly by @evaleev in #441
+  - modularized boost by @evaleev in #443
+  - bump MAD tag to pull in m-a-d-n-e-s-s/madness#520 ... by @evaleev in #444
+  - fix Tensor(range, elemop) ctor to use placement-new instead of (move) assignment by @evaleev in #446
+  - better support for zero-volume ranges by @evaleev in #447
+  - allows to use fair dispatch in Intel MKL by @evaleev in #448
+  - cleanup gemm examples by @evaleev in #449
+  - ExternalProject_Add avoids touching install directory at configure time by @evaleev in #450
+  - This branch implements tensor contraction between inner tensors and their reduction along an outer tensor's mode. by @bimalgaudel in #442
+  - Implements support for more corner cases involving ToT times T. by @bimalgaudel in #451
+  - solver adaptors for eigen matrix block by @evaleev in #453
+  - bump MADNESS tag to pull in m-a-d-n-e-s-s/madness#539 by @evaleev in #454
+  - [ci] send most of the CI jobs to SaaS runners by @evaleev in #456
+  - C++20 build fixes by @evaleev in #455
+  - Update the volume(DistArray<Tile,Policy>) function. by @bimalgaudel in #457
+  - upgrade umpire to v2024.02.1 by @evaleev in #458
+  - Generalize TA::squared_norm by @bimalgaudel in #459
+  - Gaudel/feature/tot support for linalg func by @bimalgaudel in #461
+  - Tests and fixes one more corner case of ToT x ToT evaluation. by @bimalgaudel in #460
+  - gemm examples support nonuniform tiling by @evaleev in #462
+  - SVD computes full sets of vectors, not partial by @evaleev in #464
+  - concat(arrays) can handle zero-volume arrays by @evaleev in #465
+  - can change DistArray's trange (retile + more) by @evaleev in #466
+  - singleToDoublePrecPerfRatio hip device property does not exist before… by @powellsr in #467
+  - [cmake] pull in most recent {blas,lapack}pp by @evaleev in #468
+  - introduced make_uniform(Range1,tilesize) by @evaleev in #469
+  - misc mixups for Frontier by @evaleev in #470
+  - device::Env::initialize: use correct page sizes for Umpire allocators by @evaleev in #472
+  - array<->eigen conversions + assignment to block expressions work with arrays/expressions with nonzero lobound/base by @evaleev in #471
+  - host allocator is serializable by @evaleev in #476
+  - better btas::Tensor interoperation with TA tensorials by @evaleev in #477
+  - use ccache correctly by @evaleev in #478
+  - [ci] build ta_test as part of "Build" step by @evaleev in #479
+  - BTAS pr 179 by @evaleev in #480
+  - [cmake] Umpire #913 by @evaleev in #481
+  - Update CMakeLists.txt by @JonathonMisiewicz in #482
+  - Update umpire.cmake by @JonathonMisiewicz in #483
+  - bump MAD tag to pull in #550 by @evaleev in #485
+  - fix synchronization in collective DistArray initializations/transformations by @evaleev in #484
+  - nvToolsExt -> nvtx3 by @evaleev in #487
+  - availability of CUDA/HIP does not mean they should be used by @evaleev in #489
+  - Make sure namespace device is always closed by @devreal in #490
+  - TA::retile support for DistArray with tensor-of-tensors tiles by @bimalgaudel in #474
+  - Hush compiler warning and fix typos by @ajay-mk in #493
+  - Support non-zero ToTs with some zero inner Ts by @bimalgaudel in #492
+  - Powellsr/fix/debug attach handling by @powellsr in #473
 
 - 16-November-2020: 1.0.0
   - resolved issue 77: negative indices are supported, use signed 1-index type by default (this brings TA::Range
