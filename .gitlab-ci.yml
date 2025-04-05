@@ -68,7 +68,7 @@ ubuntu:
       metrics: build/metrics.txt
   parallel:
     matrix:
-      - IMAGE : [ "ubuntu:22.04" ]
+      - IMAGE : [ "ubuntu:24.04" ]
         CXX: [ g++ ]
         BUILD_TYPE : [ "RelWithDebInfo" ]
         TA_PYTHON : [ "TA_PYTHON=OFF" ]
