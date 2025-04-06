@@ -19,6 +19,7 @@ variables:
     ${BLA_VENDOR}
     ${BLA_THREADS}
     ${TA_SCALAPACK}
+    TA_TRACKED_MADNESS_URL=/root/github/madness
 
 before_script:
   # NB: if CMAKE_BUILD_PARALLEL_LEVEL is not set (i.e. using shared runner), use 1 to ensure we have enough memory
@@ -33,6 +34,8 @@ before_script:
   - ccache -p
   # zero out the ccache statistics
   - ccache -z
+  # update local copy of GH:madness
+  - git fetch /root/github/madness
 
 ubuntu:
   stage: build
