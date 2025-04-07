@@ -41,9 +41,11 @@ struct TensorFixture {
   typedef TensorN::range_type::index_view_type index_view_type;
   typedef TensorN::range_type range_type;
 
-  static const range_type r;
+  const range_type r;
 
-  TensorFixture() : t(r) { rand_fill(18, t.size(), t.data()); }
+  TensorFixture() : r(make_range(81)), t(r) {
+    rand_fill(18, t.size(), t.data());
+  }
 
   ~TensorFixture() {}
 

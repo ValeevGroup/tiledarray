@@ -32,9 +32,11 @@ struct TensorUMFixture {
   typedef TensorN::range_type::index_view_type* index_view_type;
   typedef TensorN::range_type range_type;
 
-  static const range_type r;
+  const range_type r;
 
-  TensorUMFixture() : t(r) { rand_fill(18, t.size(), t.data()); }
+  TensorUMFixture() : r(make_range(81)), t(r) {
+    rand_fill(18, t.size(), t.data());
+  }
 
   ~TensorUMFixture() {}
 
@@ -84,8 +86,6 @@ struct TensorUMFixture {
 
   TensorN t;
 };
-
-const TensorUMFixture::range_type TensorUMFixture::r = make_range(81);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_um_suite, TensorUMFixture, TA_UT_LABEL_SERIAL)
 
