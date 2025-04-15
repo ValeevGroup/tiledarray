@@ -1,7 +1,6 @@
 #include <tiledarray.h>
 #include <random>
 #include "TiledArray/config.h"
-//#include "range_fixture.h"
 #include "unit_test_config.h"
 
 #include "TiledArray/math/linalg/non-distributed/cholesky.h"
@@ -469,18 +468,10 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [evals, evecs] = non_dist::heig(ref_ta);
+  auto [evals, evecs] = heig(ref_ta);
   auto [evals_non_dist, evecs_non_dist] = non_dist::heig(ref_ta);
-  // auto evals = heig( ref_ta );
 
   BOOST_CHECK(evecs.trange() == ref_ta.trange());
-
-  // check eigenvectors against non_dist only, for now ...
-  decltype(evecs) evecs_error;
-  evecs_error("i,j") = evecs_non_dist("i,j") - evecs("i,j");
-  // TODO need to fix phases of the eigenvectors to be able to compare ...
-  // BOOST_CHECK_SMALL(evecs_error("i,j").norm().get(),
-  //                  N * N * std::numeric_limits<double>::epsilon());
 
   // Check eigenvalue correctness
   double tol = N * N * std::numeric_limits<double>::epsilon();
@@ -488,6 +479,22 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
     BOOST_CHECK_SMALL(std::abs(evals_non_dist[i] - exact_evals[i]), tol);
   }
+
+  // check eigenvectors by reconstruction
+  auto reconstruction_check = [&](const auto& s, const auto& U,
+                                  const auto str) {
+    using Array = TA::TArray<double>;
+    auto S =
+        TA::diagonal_array<Array>(U.world(), U.trange(), s.begin(), s.end());
+    Array err;
+    err("i,j") = U("i,k") * S("k,l") * U("j,l").conj() - ref_ta("i,j");
+    auto err_l2 = TA::norm2(err);
+    const double epsilon = N * N * std::numeric_limits<double>::epsilon();
+    BOOST_CHECK(err_l2 < epsilon);
+    // std::cout << str << " ||U s U† - A||_2 = " << err_l2 << std::endl;
+  };
+  reconstruction_check(evals, evecs, "heig");
+  reconstruction_check(evals_non_dist, evecs_non_dist, "non_dist::heig");
 
   GlobalFixture::world->gop.fence();
 }
