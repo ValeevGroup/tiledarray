@@ -50,9 +50,12 @@ void NDArrayPrinter::printArray(const T* data, const std::size_t order,
 
   for (size_t i = 0; i < extents[level]; ++i) {
     if (level == order - 1) {
+      auto value = data[offset + i * strides[level]];
+      if constexpr (std::is_floating_point_v<decltype(value)>) {
+        value = std::abs(value) < (0.5 / (std::pow(10, precision))) ? 0 : value;
+      }
       // At the deepest level, print the actual values
-      os << std::fixed << std::setprecision(precision) << std::setw(width) << std::setfill(Char(' '))
-         << data[offset + i * strides[level]];
+      os << std::fixed << std::setprecision(precision) << std::setw(width) << std::setfill(Char(' ')) << value;
       if (i < extents[level] - 1) {
         os << ", ";
       }
