@@ -33,6 +33,33 @@ namespace TiledArray {
 
 namespace detail {
 
+class NumberRounder {
+ public:
+  NumberRounder(int precision) noexcept : precision_{precision} {}
+
+  [[nodiscard]] auto round(std::floating_point auto val) const noexcept {
+    return std::abs(val) <
+                   (0.5 * std::pow(static_cast<decltype(val)>(10), -precision_))
+               ? 0
+               : val;
+  }
+
+  template <typename T>
+    requires detail::is_complex_v<T> && std::floating_point<typename T::value_type>
+  [[nodiscard]] auto round(T const& val) const noexcept {
+    using std::imag;
+    using std::real;
+    return T{round(real(val)), round(imag(val))};
+  }
+
+  template <typename T>
+  requires (!(std::floating_point<T> || detail::is_complex_v<T>))
+  [[nodiscard]] auto round(T const& val) const noexcept { return val; }
+
+ private:
+  int precision_;
+};
+
 // Class to print n-dimensional arrays in NumPy style but with curly braces
 template <typename T, typename Index, typename Char, typename CharTraits>
 void NDArrayPrinter::printArray(const T* data, const std::size_t order,
@@ -48,12 +75,11 @@ void NDArrayPrinter::printArray(const T* data, const std::size_t order,
     os << std::basic_string<Char, CharTraits>(extra_indentation, ' ');
   os << "{";
 
+  auto rounder = NumberRounder{precision};
+
   for (size_t i = 0; i < extents[level]; ++i) {
     if (level == order - 1) {
-      auto value = data[offset + i * strides[level]];
-      if constexpr (std::is_floating_point_v<decltype(value)>) {
-        value = std::abs(value) < (0.5 / (std::pow(10, precision))) ? 0 : value;
-      }
+      auto value = rounder.round(data[offset + i * strides[level]]);
       // At the deepest level, print the actual values
       os << std::fixed << std::setprecision(precision) << std::setw(width) << std::setfill(Char(' ')) << value;
       if (i < extents[level] - 1) {
