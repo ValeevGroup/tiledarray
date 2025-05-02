@@ -40,11 +40,44 @@ namespace detail {
 class NDArrayPrinter {
  public:
   NDArrayPrinter(int width = 10, int precision = 6)
-      : width(width), precision(precision) {}
+      : width(width),
+        precision(precision),
+        truncate_(0.5 * std::pow(10., -precision)) {}
 
  private:
   int width = 10;
   int precision = 10;
+
+  /// truncates (=sets to zero) small floating-point numbers
+  class FloatTruncate {
+   public:
+    /// truncates numbers smaller than @p threshold
+    FloatTruncate(double threshold) noexcept : threshold_{threshold} {}
+
+    [[nodiscard]] auto operator()(std::floating_point auto val) const noexcept {
+      return std::abs(val) < threshold_ ? decltype(val){0} : val;
+    }
+
+    template <typename T>
+      requires detail::is_complex_v<T> &&
+               std::floating_point<typename T::value_type>
+    [[nodiscard]] auto operator()(T const& val) const noexcept {
+      using std::imag;
+      using std::real;
+      return T{(*this)(real(val)), (*this)(imag(val))};
+    }
+
+    template <typename T>
+      requires(!(std::floating_point<T> || detail::is_complex_v<T>))
+    [[nodiscard]] auto operator()(T const& val) const noexcept {
+      return val;
+    }
+
+   private:
+    double threshold_;
+  };
+
+  FloatTruncate truncate_;
 
   // Helper function to recursively print the array
   template <typename T, typename Index = Range1::index1_type,
