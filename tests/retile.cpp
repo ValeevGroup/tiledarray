@@ -72,15 +72,19 @@ BOOST_AUTO_TEST_CASE(retile_more) {
   auto arr_target0 = TA::retile(arr_source0, tr_target);
 
   auto get_elem = [](auto const& arr, auto const& eix) {
+    using element_type = std::decay_t<decltype(arr)>::element_type;
     auto tix = arr.trange().element_to_tile(eix);
-    auto&& tile = arr.find(tix).get(false);
-    return tile(eix);
+    if (arr.is_zero(tix))
+      return element_type{};
+    else {
+      auto&& tile = arr.find(tix).get(false);
+      return tile(eix);
+    }
   };
 
   for (auto&& eix : elem_rng) {
     auto tix = arr_source0.trange().element_to_tile(eix);
-    BOOST_REQUIRE(arr_source0.is_zero(tix) == arr_target0.is_zero(tix));
-    if (arr_source0.is_zero(tix)) continue;
+    auto target_tix = arr_target0.trange().element_to_tile(eix);
     BOOST_REQUIRE(get_elem(arr_source0, eix) == get_elem(arr_target0, eix));
   }
 
@@ -96,8 +100,6 @@ BOOST_AUTO_TEST_CASE(retile_more) {
 
   for (auto&& eix : elem_rng) {
     auto tix = arr_source.trange().element_to_tile(eix);
-    BOOST_REQUIRE(arr_source.is_zero(tix) == arr_target.is_zero(tix));
-    if (arr_source.is_zero(tix)) continue;
     BOOST_REQUIRE(get_elem(arr_source, eix) == get_elem(arr_target, eix));
   }
 }
