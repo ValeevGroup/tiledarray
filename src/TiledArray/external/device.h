@@ -29,7 +29,7 @@
 #include <optional>
 #include <vector>
 
-#include <TiledArray/config.h>
+#include <TiledArray/fwd.h>
 
 #if defined(TILEDARRAY_HAS_HIP)
 #include <hip/hip_runtime.h>
@@ -49,7 +49,10 @@
 #include <TiledArray/error.h>
 #include <TiledArray/initialize.h>
 
-#include <TiledArray/external/umpire.h>
+#include <umpire_cxx_allocator.hpp>
+
+#include <umpire/strategy/QuickPool.hpp>
+#include <umpire/strategy/SizeLimiter.hpp>
 
 namespace TiledArray::detail {
 
@@ -908,16 +911,16 @@ device::Stream stream_for(const Range& range) {
 namespace detail {
 
 inline umpire::Allocator& get_um_allocator::operator()() {
-  return deviceEnv::instance()->um_allocator();
+  return TiledArray::device::Env::instance()->um_allocator();
 }
 
 inline umpire::Allocator& get_pinned_allocator::operator()() {
-  return deviceEnv::instance()->pinned_allocator();
+  return TiledArray::device::Env::instance()->pinned_allocator();
 }
 
 #endif  // TILEDARRAY_HAS_DEVICE
 
-}  // namespace detail
+}  // namespace device
 
 #ifdef TILEDARRAY_HAS_CUDA
 namespace nvidia {

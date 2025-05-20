@@ -35,7 +35,7 @@ class aligned_allocator;
 }  // namespace Eigen
 
 // fwddecl host_allocator
-namespace TiledArray {
+namespace umpire {
 namespace detail {
 struct get_host_allocator;
 struct NullLock;
@@ -44,10 +44,18 @@ class MutexLock;
 }  // namespace detail
 
 template <class T, class StaticLock, typename UmpireAllocatorAccessor>
-class umpire_based_allocator;
+class allocator;
 
 template <typename T, typename A = std::allocator<T>>
 class default_init_allocator;
+
+};  // namespace umpire
+
+// fwddecl host_allocator
+namespace TiledArray {
+namespace detail {
+struct get_host_allocator;
+}  // namespace detail
 
 namespace host {
 class Env;
@@ -56,10 +64,9 @@ using hostEnv = host::Env;
 
 /// pooled thread-safe host memory allocator
 template <typename T>
-using host_allocator =
-    default_init_allocator<T,
-                           umpire_based_allocator<T, detail::MutexLock<hostEnv>,
-                                                  detail::get_host_allocator>>;
+using host_allocator = umpire::default_init_allocator<
+    T, umpire::allocator<T, umpire::detail::MutexLock<hostEnv>,
+                         detail::get_host_allocator>>;
 }  // namespace TiledArray
 
 namespace madness {
@@ -112,15 +119,15 @@ struct get_pinned_allocator;
 
 /// pooled thread-safe unified memory (UM) allocator for device computing
 template <typename T>
-using device_um_allocator = default_init_allocator<
-    T, umpire_based_allocator<T, detail::MutexLock<deviceEnv>,
-                              detail::get_um_allocator>>;
+using device_um_allocator = umpire::default_init_allocator<
+    T, umpire::allocator<T, umpire::detail::MutexLock<deviceEnv>,
+                         detail::get_um_allocator>>;
 
 /// pooled thread-safe pinned host memory allocator for device computing
 template <typename T>
-using device_pinned_allocator = default_init_allocator<
-    T, umpire_based_allocator<T, detail::MutexLock<deviceEnv>,
-                              detail::get_pinned_allocator>>;
+using device_pinned_allocator = umpire::default_init_allocator<
+    T, umpire::allocator<T, umpire::detail::MutexLock<deviceEnv>,
+                         detail::get_pinned_allocator>>;
 
 /// \brief a vector that lives in UM, with most operations
 /// implemented on the CPU

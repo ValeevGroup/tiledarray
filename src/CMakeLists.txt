@@ -133,7 +133,6 @@ TiledArray/expressions/unary_expr.h
 TiledArray/expressions/index_list.h
 TiledArray/external/btas.h
 TiledArray/external/madness.h
-TiledArray/external/umpire.h
 TiledArray/host/env.h
 TiledArray/math/blas.h
 TiledArray/math/gemm_helper.h
@@ -262,7 +261,7 @@ set_source_files_properties(
 
 # the list of libraries on which TiledArray depends on, will be cached later
 # when FetchContent umpire: set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers umpire)
-set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers TiledArray_UMPIRE range-v3::range-v3)
+set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers umpire-cxx-allocator range-v3::range-v3)
 
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
