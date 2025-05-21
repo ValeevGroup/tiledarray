@@ -45,11 +45,6 @@ message(STATUS "CMAKE Implicit Include Directories: ${CMAKE_CUDA_IMPLICIT_INCLUD
 message(STATUS "CMAKE Implicit Link Directories: ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}")
 
 ##
-## Umpire
-##
-include(external/umpire.cmake)
-
-##
 ## LibreTT
 ##
 include(external/librett.cmake)

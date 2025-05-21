@@ -22,7 +22,6 @@
 
 #include "TiledArray/config.h"
 
-#include "TiledArray/external/umpire.h"
 #include "TiledArray/host/env.h"
 #include "TiledArray/platform.h"
 
@@ -35,6 +34,8 @@
 #include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/util/logger.h"
 #include "TiledArray/util/ptr_registry.h"
+
+#include <umpire_cxx_allocator.hpp>
 
 namespace TiledArray {
 

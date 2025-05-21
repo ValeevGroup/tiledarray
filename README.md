@@ -99,7 +99,7 @@ $ cmake --build build
 $ cmake --build build --target install
 ```
 Here `<toolchain-file-for-your-platform>` is the appropriate toolchain file from [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains); an alternative is
-to provide your own toolchain file. On some standard platforms (e.g. MacOS) the toolchain file can be skipped.
+to provide your own toolchain file. On most standard platforms (e.g. Ubuntu, MacOS) the toolchain file can be skipped.
 
 The detailed instructions can be found in [INSTALL.md](https://github.com/ValeevGroup/tiledarray/blob/master/INSTALL.md).
 

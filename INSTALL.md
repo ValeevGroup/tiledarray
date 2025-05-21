@@ -2,16 +2,32 @@
 
 ## Synopsis
 
-```.cpp
-$ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
-$ cd tiledarray
-$ cmake -B build \
-    -D CMAKE_INSTALL_PREFIX=/path/to/tiledarray/install \
-    -D CMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/<toolchain-file-for-your-platform>.cmake \
-    .
-$ cmake --build build
-(recommended, but optional): $ cmake --build build --target check
-$ cmake --build build --target install
+Building and installing:
+```c++
+$ git clone https://github.com/ValeevGroup/tiledarray.git
+$ cmake -S tiledarray -B tiledarray/build \
+    -D CMAKE_INSTALL_PREFIX=/path/to/tiledarray/install
+(recommended, but optional): $ cmake --build tiledarray/build --target check
+$ cmake --build tiledarray/build --target install
+```
+After this TA can be consumed from another project's CMake harness:
+```cmake
+find_package(tiledarray CONFIG REQUIRED)
+target_link_libraries(your_executable_or_library_target PUBLIC tiledarray)
+```
+
+Or simply build TiledArray from source within another project's CMake harness:
+```cmake
+find_package(tiledarray CONFIG)
+if (NOT TARGET tiledarray)
+  cmake_minimum_required(VERSION 3.14.0)  # for FetchContent_MakeAvailable
+  include(FetchContent)
+  FetchContent_Declare(tiledarray
+          GIT_REPOSITORY      https://github.com/ValeevGroup/tiledarray
+  )
+  FetchContent_MakeAvailable(tiledarray)
+endif()
+target_link_libraries(your_executable_or_library_target PUBLIC tiledarray)
 ```
 
 ## Introduction
@@ -40,22 +56,21 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20 and later.
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 62d57d9b1e0c733b4b547bc9cfdd07047159dbca . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS) -- a generic dense local tensor framework. If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 8abd78b8a304a88b951449d8cb127f5a91f27721 .
-  Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness) -- a multiresolution numerical calculus framework,
+  TiledArray only uses its distributed task-based programming model ("MADworld")
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
-  A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/master/INSTALL_CMake);
-  it also also contains detailed
-  MADNESS compilation instructions.
+  A detailed list of MADNESS dependencies can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/master/INSTALL_CMake);
+  it also also contains detailed MADNESS compilation instructions.
+- [Umpire C++ allocator](github.com/ValeevGroup/umpire-cxx-allocator) -- a C++ allocator for [LLNL/Umpire](https://github.com/LLNL/Umpire), a portable memory manager. *It is recommended to let TiledArray build the Umpire C++ allocator and Umpire itself from source.*
 
 Compiling MADNESS requires the following prerequisites:
   - An implementation of Message Passing Interface version 2 or 3, with support
     for `MPI_THREAD_MULTIPLE`.
-  - (optional)
-    Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb) or
-    an [open-source](https://www.threadingbuildingblocks.org/) form
+  - (recommended)
+    [PaRSEC](https://github.com/ICLDisco/parsec) -- a distributed programming model used for local task scheduling in MADNESS.
 
 Compiling BTAS requires the following prerequisites:
   - [blaspp](https://bitbucket.org/icl/blaspp.git) -- C++ API for BLAS
@@ -68,10 +83,9 @@ Optional prerequisites:
     - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on NVIDIA's CUDA-enabled accelerators. CUDA 12 or later is required.
     - [HIP/ROCm compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on AMD's ROCm-enabled accelerators. Note that TiledArray does not use ROCm directly but its C++ Heterogeneous-Compute Interface for Portability, `HIP`; although HIP can also be used to program CUDA-enabled devices, in TiledArray it is used only to program ROCm devices, hence ROCm and HIP will be used interchangeably.
   - [LibreTT](github.com/victor-anisimov/LibreTT) -- free tensor transpose library for CUDA, ROCm, and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) extended to provide thread-safety improvements (via github.com/ValeevGroup/cutt) and extended to non-CUDA platforms by [@victor-anisimov](github.com/victor-anisimov) (tag 6eed30d4dd2a5aa58840fe895dcffd80be7fbece).
-  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag 8c85866107f78a58403e20a2ae8e1f24c9852287).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
-  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ wrapper for ScaLAPACK (tag 6397f52cf11c0dfd82a79698ee198a2fce515d81); pulls and builds the following additional prerequisite
+  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ wrapper for ScaLAPACK; pulls and builds the following additional prerequisite
     - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ wrapper for BLACS
 - Python3 interpreter -- to test (optionally-built) Python bindings
 - [TTG](https://github.com/TESSEorg/ttg.git) -- C++ implementation of the Template Task Graph programming model for fine-grained flow-graph composition of distributed memory programs (tag 3fe4a06dbf4b05091269488aab38223da1f8cb8e).
