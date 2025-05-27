@@ -1,7 +1,6 @@
 #include <tiledarray.h>
 #include <random>
 #include "TiledArray/config.h"
-//#include "range_fixture.h"
 #include "unit_test_config.h"
 
 #include "TiledArray/math/linalg/non-distributed/cholesky.h"
@@ -469,18 +468,10 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [evals, evecs] = non_dist::heig(ref_ta);
+  auto [evals, evecs] = heig(ref_ta);
   auto [evals_non_dist, evecs_non_dist] = non_dist::heig(ref_ta);
-  // auto evals = heig( ref_ta );
 
   BOOST_CHECK(evecs.trange() == ref_ta.trange());
-
-  // check eigenvectors against non_dist only, for now ...
-  decltype(evecs) evecs_error;
-  evecs_error("i,j") = evecs_non_dist("i,j") - evecs("i,j");
-  // TODO need to fix phases of the eigenvectors to be able to compare ...
-  // BOOST_CHECK_SMALL(evecs_error("i,j").norm().get(),
-  //                  N * N * std::numeric_limits<double>::epsilon());
 
   // Check eigenvalue correctness
   double tol = N * N * std::numeric_limits<double>::epsilon();
@@ -488,6 +479,22 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
     BOOST_CHECK_SMALL(std::abs(evals_non_dist[i] - exact_evals[i]), tol);
   }
+
+  // check eigenvectors by reconstruction
+  auto reconstruction_check = [&](const auto& s, const auto& U,
+                                  const auto str) {
+    using Array = TA::TArray<double>;
+    auto S =
+        TA::diagonal_array<Array>(U.world(), U.trange(), s.begin(), s.end());
+    Array err;
+    err("i,j") = U("i,k") * S("k,l") * U("j,l").conj() - ref_ta("i,j");
+    auto err_l2 = TA::norm2(err);
+    const double epsilon = N * N * std::numeric_limits<double>::epsilon();
+    BOOST_CHECK(err_l2 < epsilon);
+    // std::cout << str << " ||U s U† - A||_2 = " << err_l2 << std::endl;
+  };
+  reconstruction_check(evals, evecs, "heig");
+  reconstruction_check(evals_non_dist, evecs_non_dist, "non_dist::heig");
 
   GlobalFixture::world->gop.fence();
 }
@@ -576,7 +583,7 @@ BOOST_AUTO_TEST_CASE(cholesky) {
         return this->make_ta_reference(t, range);
       });
 
-  auto L = non_dist::cholesky(A);
+  auto L = TiledArray::cholesky(A);
 
   BOOST_CHECK(L.trange() == A.trange());
 
@@ -729,7 +736,7 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
       });
 
   // Should produce X = L**H
-  auto [L, X] = non_dist::cholesky_lsolve(TA::NoTranspose, A, A);
+  auto [L, X] = TiledArray::cholesky_lsolve(TA::NoTranspose, A, A);
   BOOST_CHECK(X.trange() == A.trange());
   BOOST_CHECK(L.trange() == A.trange());
 
@@ -797,7 +804,7 @@ BOOST_AUTO_TEST_CASE(lu_solve) {
         return this->make_ta_reference(t, range);
       });
 
-  auto iden = non_dist::lu_solve(ref_ta, ref_ta);
+  auto iden = TiledArray::lu_solve(ref_ta, ref_ta);
 
   BOOST_CHECK(iden.trange() == ref_ta.trange());
 
@@ -834,7 +841,7 @@ BOOST_AUTO_TEST_CASE(lu_inv) {
 
   TA::TArray<double> iden(*GlobalFixture::world, trange);
 
-  auto Ainv = non_dist::lu_inv(ref_ta);
+  auto Ainv = TiledArray::lu_inv(ref_ta);
   iden("i,j") = Ainv("i,k") * ref_ta("k,j");
 
   BOOST_CHECK(iden.trange() == ref_ta.trange());
@@ -871,7 +878,7 @@ BOOST_AUTO_TEST_CASE(svd_values_only) {
         return this->make_ta_reference(t, range);
       });
 
-  auto S = non_dist::svd<TA::SVD::ValuesOnly>(ref_ta, trange, trange);
+  auto S = svd<TA::SVD::ValuesOnly>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -895,7 +902,7 @@ BOOST_AUTO_TEST_CASE(svd_leftvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, U] = non_dist::svd<TA::SVD::LeftVectors>(ref_ta, trange, trange);
+  auto [S, U] = svd<TA::SVD::LeftVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -919,7 +926,7 @@ BOOST_AUTO_TEST_CASE(svd_rightvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, VT] = non_dist::svd<TA::SVD::RightVectors>(ref_ta, trange, trange);
+  auto [S, VT] = svd<TA::SVD::RightVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -943,7 +950,7 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, U, VT] = non_dist::svd<TA::SVD::AllVectors>(ref_ta, trange, trange);
+  auto [S, U, VT] = svd<TA::SVD::AllVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -985,7 +992,7 @@ void householder_qr_test(const ArrayT& A, double tol) {
                               : non_dist::householder_qr<false>(A);
 #else
   static_assert(not use_scalapack);
-  auto [Q, R] = non_dist::householder_qr<false>(A);
+  auto [Q, R] = householder_qr<false>(A);
 #endif
 
   // Check reconstruction error
@@ -1046,7 +1053,7 @@ template <typename ArrayT>
 void cholesky_qr_q_only_test(const ArrayT& A, double tol) {
   using value_type = typename ArrayT::element_type;
 
-  auto Q = TiledArray::math::linalg::cholesky_qr<true>(A);
+  auto Q = TiledArray::cholesky_qr<true>(A);
 
   // Make sure the Q is orthogonal at least
   TA::TArray<double> Iden;
@@ -1059,7 +1066,7 @@ void cholesky_qr_q_only_test(const ArrayT& A, double tol) {
 
 template <typename ArrayT>
 void cholesky_qr_test(const ArrayT& A, double tol) {
-  auto [Q, R] = TiledArray::math::linalg::cholesky_qr<false>(A);
+  auto [Q, R] = TiledArray::cholesky_qr<false>(A);
 
   // Check reconstruction error
   TA::TArray<double> QR_ERROR;

@@ -1,7 +1,7 @@
 # for each dependency track both current and previous id (the variable for the latter must contain PREVIOUS)
 # to be able to auto-update them
 
-set(TA_TRACKED_VGCMAKEKIT_TAG 72bb8f049e68443e817ce7299f0d1dabfaf01b7e)
+set(TA_TRACKED_VGCMAKEKIT_TAG 6ecd3689f3d33d4426b47f8b68ba81b0efb7c80b)
 
 # N.B. may need to update INSTALL.md manually with the CUDA-specific version
 set(TA_TRACKED_EIGEN_VERSION 3.3.5)
@@ -12,8 +12,8 @@ set(TA_INSTALL_EIGEN_URL_HASH SHA256=b4c198460eba6f28d34894e3a5710998818515104d6
 set(TA_INSTALL_EIGEN_PREVIOUS_URL_HASH MD5=b9e98a200d2455f06db9c661c5610496)
 
 set(TA_TRACKED_MADNESS_URL https://github.com/m-a-d-n-e-s-s/madness.git CACHE STRING "GIT_REPOSITORY for cloning MADNESS source")
-set(TA_TRACKED_MADNESS_TAG bd84a52766ab497dedc2f15f2162fb0eb7ec4653 CACHE STRING "GIT_TAG (branch or hash) for cloning MADNESS")
-set(TA_TRACKED_MADNESS_PREVIOUS_TAG ef97ad1f0080da04f9592f03185c1a331cd5e001)
+set(TA_TRACKED_MADNESS_TAG 8abd78b8a304a88b951449d8cb127f5a91f27721 CACHE STRING "GIT_TAG (branch or hash) for cloning MADNESS")
+set(TA_TRACKED_MADNESS_PREVIOUS_TAG bd84a52766ab497dedc2f15f2162fb0eb7ec4653)
 set(TA_TRACKED_MADNESS_VERSION 0.10.1)
 set(TA_TRACKED_MADNESS_PREVIOUS_VERSION 0.10.1)
 
