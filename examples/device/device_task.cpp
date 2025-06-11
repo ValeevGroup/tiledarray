@@ -9,8 +9,8 @@
 #include <tiledarray.h>
 
 using value_type = double;
-using tensor_type = TA::btasUMTensorVarray<value_type>;
-using tile_type = TA::Tile<tensor_type>;
+using tensor_type = TiledArray::btasUMTensorVarray<value_type>;
+using tile_type = TiledArray::Tile<tensor_type>;
 
 /// verify the elements in tile is equal to value
 void verify(const tile_type& tile, value_type value, std::size_t index) {
@@ -34,7 +34,7 @@ tile_type scale(const tile_type& arg, value_type a,
   using Storage = typename tile_type::tensor_type::storage_type;
   Storage result_storage;
   auto result_range = arg.range();
-  make_device_storage(result_storage, arg.size(), stream);
+  TiledArray::make_device_storage(result_storage, arg.size(), stream);
 
   typename tile_type::tensor_type result(std::move(result_range),
                                          std::move(result_storage));
@@ -42,10 +42,11 @@ tile_type scale(const tile_type& arg, value_type a,
   /// copy the original Tensor
   auto& queue = TiledArray::BLASQueuePool::queue(stream);
 
-  blas::copy(result.size(), arg.data(), 1, device_data(result.storage()), 1,
-             queue);
+  blas::copy(result.size(), arg.data(), 1,
+             TiledArray::device_data(result.storage()), 1, queue);
 
-  blas::scal(result.size(), a, device_data(result.storage()), 1, queue);
+  blas::scal(result.size(), a, TiledArray::device_data(result.storage()), 1,
+             queue);
 
   //  std::stringstream stream_str;
   //  stream_str << stream;

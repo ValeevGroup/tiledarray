@@ -21,11 +21,6 @@ foreach (library hipblas;rocthrust)
 endforeach()
 
 ##
-## Umpire
-##
-include(external/umpire.cmake)
-
-##
 ## LibreTT
 ##
 include(external/librett.cmake)

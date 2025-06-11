@@ -38,9 +38,6 @@ if(NOT TARGET MADworld)
   include( CMakeFindDependencyMacro )
   find_dependency(MADNESS 0.10.1 CONFIG REQUIRED COMPONENTS world PATHS "${MADNESS_CONFIG_DIR}" NO_DEFAULT_PATH)
 endif()
-if(NOT TARGET tiledarray)
-  include("${CMAKE_CURRENT_LIST_DIR}/tiledarray-targets.cmake")
-endif()
 
 # if TA is a CUDA-dependent library it needs CUDA to link properly ... unfortunately CMake is not able to do this correctly
 # see https://gitlab.kitware.com/cmake/cmake/issues/18614
@@ -66,13 +63,22 @@ if(TILEDARRAY_HAS_CUDA)
     INTERFACE_LINK_LIBRARIES "${_ta_interface_libs}")
 endif()
 
-set(TILEDARRAY_HAS_SCALAPACK "@ENABLE_SCALAPACK@" )
-if(TILEDARRAY_HAS_SCALAPACK)
+set(TA_SCALAPACK "@TA_SCALAPACK@" )
+if(TA_SCALAPACK)
   include( CMakeFindDependencyMacro )
   get_filename_component(blacspp_DIR "@blacspp_CONFIG@" DIRECTORY)
   find_dependency( blacspp CONFIG REQUIRED HINTS "${blacspp_DIR}" )
   get_filename_component(scalapackpp_DIR "@scalapackpp_CONFIG@" DIRECTORY)
   find_dependency( scalapackpp CONFIG REQUIRED HINTS "${scalapackpp_DIR}" )
+endif()
+
+if (NOT TARGET umpire-cxx-allocator)
+  get_filename_component(umpire-cxx-allocator_DIR "@umpire-cxx-allocator_CONFIG@" DIRECTORY)
+  find_dependency(umpire-cxx-allocator 1.0.0 QUIET CONFIG REQUIRED HINTS "${umpire-cxx-allocator_DIR}")
+endif()
+
+if(NOT TARGET tiledarray)
+  include("${CMAKE_CURRENT_LIST_DIR}/tiledarray-targets.cmake")
 endif()
 
 # Set the tiledarray compiled library target

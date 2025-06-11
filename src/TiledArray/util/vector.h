@@ -39,13 +39,15 @@
 #define BOOST_CONTAINER_USE_STD_EXCEPTIONS 1
 #endif
 
-#include <vector>
 #include "TiledArray/config.h"
 
 #include <TiledArray/utility.h>
 #include <madness/world/archive.h>
 #include "TiledArray/error.h"
 #include "TiledArray/platform.h"
+
+#include <numeric>
+#include <vector>
 
 namespace TiledArray {
 

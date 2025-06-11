@@ -320,10 +320,9 @@ if (TA_TTG)
 endif(TA_TTG)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
-# the FetchContent-based version will not work due to BLT target name conflicts
-# include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchUmpire.cmake)
-# use the ExternalProject-based version
-include(external/umpire.cmake)
+
+include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchUmpireCXXAllocator.cmake)
+add_dependencies(External-tiledarray vrg-build-external-projects)
 
 ###### discover linear algebra
 

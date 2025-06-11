@@ -50,9 +50,9 @@ void NDArrayPrinter::printArray(const T* data, const std::size_t order,
 
   for (size_t i = 0; i < extents[level]; ++i) {
     if (level == order - 1) {
+      auto value = truncate_(data[offset + i * strides[level]]);
       // At the deepest level, print the actual values
-      os << std::fixed << std::setprecision(precision) << std::setw(width) << std::setfill(Char(' '))
-         << data[offset + i * strides[level]];
+      os << std::fixed << std::setprecision(precision) << std::setw(width) << std::setfill(Char(' ')) << value;
       if (i < extents[level] - 1) {
         os << ", ";
       }
