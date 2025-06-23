@@ -62,7 +62,7 @@ class cpu_cuda_vector {
 
   size_type size() const {
     if (on_host()) return host_vec_.size();
-    if (on_device()) return device_vec_.size();
+    else return device_vec_.size();
   }
 
   void resize(size_type new_size) {
