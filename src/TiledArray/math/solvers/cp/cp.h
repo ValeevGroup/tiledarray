@@ -44,8 +44,8 @@ static inline char intToAlphabet(int i) { return static_cast<char>('a' + i); }
 /// with inverse of the normalization factor stored in this->lambda
 /// \param[in,out] factor in: unnormalized factor matrix, out:
 /// normalized factor matrix
-template<typename Array>
-void normalize_factor(Array& factor, Array & lambda) {
+template <typename Array>
+void normalize_factor(Array& factor, Array& lambda) {
   using Tile = typename Array::value_type;
   auto& world = factor.world();
   // this is what the code should look like, but expressions::einsum seems to
@@ -194,7 +194,7 @@ class CP {
     TA_ASSERT(!cp_factors.empty(),
               "CP factor matrices have not been computed)");
     auto result = cp_factors;
-    if(with_lambda){
+    if (with_lambda) {
       result.emplace_back(lambda);
       return result;
     }
@@ -314,7 +314,7 @@ class CP {
     // MtKRP);
     try {
       MtKRP = math::linalg::cholesky_solve(W, MtKRP);
-    } catch (std::exception& ex){
+    } catch (std::exception& ex) {
       // if W is near-singular try LU instead of Cholesky
       if (std::string(ex.what()).find("lapack::posv failed") !=
           std::string::npos) {
@@ -433,9 +433,8 @@ class CP {
     };
     // compute the error in the loss function and find the fit
     const auto norm_cp = factor_norm();  // ||T_CP||_2
-    const auto squared_norm_error = norm_ref_sq +
-                                    norm_cp -
-                                    2.0 * ref_dot_cp;  // ||T - T_CP||_2^2
+    const auto squared_norm_error =
+        norm_ref_sq + norm_cp - 2.0 * ref_dot_cp;  // ||T - T_CP||_2^2
     // N.B. squared_norm_error is very noisy
     // TA_ASSERT(squared_norm_error >= - 1e-8);
     const auto norm_error = sqrt(abs(squared_norm_error));
