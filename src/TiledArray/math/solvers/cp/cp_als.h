@@ -72,7 +72,7 @@ class CP_ALS : public CP<Tile, Policy> {
     this->norm_ref_sq = this->norm_reference * this->norm_reference;
   }
 
-  void set_factor_matrices(std::vector<DistArray<Tile, Policy>> & factors){
+  void set_factor_matrices(std::vector<DistArray<Tile, Policy>>& factors) {
     cp_factors = factors;
     factors_set = true;
   }
@@ -100,10 +100,9 @@ class CP_ALS : public CP<Tile, Policy> {
             rank_trange, reference.trange().data()[i]);
         cp_factors.emplace_back(factor);
       }
-    }else if(factors_set){
+    } else if (factors_set) {
       // Do nothing and don't throw an error.
-    }
-    else {
+    } else {
       TA_EXCEPTION("Currently no implementation to increase or change rank");
     }
 
