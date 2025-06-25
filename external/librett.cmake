@@ -24,7 +24,6 @@ else()
 
     # set source and build path for LibreTT in the TiledArray project
     set(EXTERNAL_SOURCE_DIR   ${FETCHCONTENT_BASE_DIR}/librett-src)
-    # librett only supports in source build
     set(EXTERNAL_BUILD_DIR  ${FETCHCONTENT_BASE_DIR}/librett-build)
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
@@ -176,7 +175,7 @@ set_target_properties(TiledArray_LIBRETT
         INTERFACE_INCLUDE_DIRECTORIES
         "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:${_LIBRETT_INSTALL_DIR}/include>"
         INTERFACE_LINK_LIBRARIES
-        "$<BUILD_INTERFACE:${LIBRETT_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_LIBRETT_INSTALL_DIR}/lib/librett.${LIBRETT_DEFAULT_LIBRARY_SUFFIX}>"
+        "$<BUILD_INTERFACE:${LIBRETT_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_LIBRETT_INSTALL_DIR}/lib/librett${LIBRETT_DEFAULT_LIBRARY_SUFFIX}>"
         INTERFACE_LINK_OPTIONS
         "LINKER:-rpath,${EXTERNAL_BUILD_DIR}/src"
         )
