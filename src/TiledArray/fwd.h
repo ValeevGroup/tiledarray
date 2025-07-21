@@ -142,6 +142,10 @@ template <typename T, typename Range = TiledArray::Range>
 using btasUMTensorVarray =
     ::btas::Tensor<T, Range, TiledArray::device_um_btas_varray<T>>;
 
+/// TA::Tensor with UM storage
+template <typename T>
+using UMTensorType = TiledArray::Tensor<T, TiledArray::device_um_allocator<T>>;
+
 #endif  // TILEDARRAY_HAS_DEVICE
 
 template <typename>
