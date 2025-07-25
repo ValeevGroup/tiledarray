@@ -565,10 +565,9 @@ typename btasUMTensorVarray<T, Range>::value_type abs_min(
 }
 
 /// to host for UM Array
-template <typename UMTensor, typename Policy>
-void to_host(
-    TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
-  auto to_host = [](TiledArray::Tile<UMTensor> &tile) {
+template <typename UMT, typename Policy>
+void to_host(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
+  auto to_host = [](TiledArray::Tile<UMT> &tile) {
     auto stream = device::stream_for(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
@@ -591,10 +590,9 @@ void to_host(
 };
 
 /// to device for UM Array
-template <typename UMTensor, typename Policy>
-void to_device(
-    TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
-  auto to_device = [](TiledArray::Tile<UMTensor> &tile) {
+template <typename UMT, typename Policy>
+void to_device(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
+  auto to_device = [](TiledArray::Tile<UMT> &tile) {
     auto stream = device::stream_for(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
@@ -617,12 +615,11 @@ void to_device(
 };
 
 /// convert array from UMTensor to TiledArray::Tensor
-template <typename UMTensor, typename TATensor, typename Policy>
-typename std::enable_if<!std::is_same<UMTensor, TATensor>::value,
+template <typename UMT, typename TATensor, typename Policy>
+typename std::enable_if<!std::is_same<UMT, TATensor>::value,
                         TiledArray::DistArray<TATensor, Policy>>::type
-um_tensor_to_ta_tensor(
-    const TiledArray::DistArray<UMTensor, Policy> &um_array) {
-  const auto convert_tile_memcpy = [](const UMTensor &tile) {
+um_tensor_to_ta_tensor(const TiledArray::DistArray<UMT, Policy> &um_array) {
+  const auto convert_tile_memcpy = [](const UMT &tile) {
     TATensor result(tile.tensor().range());
 
     auto stream = device::stream_for(result.range());
@@ -635,7 +632,7 @@ um_tensor_to_ta_tensor(
     return result;
   };
 
-  const auto convert_tile_um = [](const UMTensor &tile) {
+  const auto convert_tile_um = [](const UMT &tile) {
     TATensor result(tile.tensor().range());
     using std::begin;
     const auto n = tile.tensor().size();
@@ -661,21 +658,20 @@ um_tensor_to_ta_tensor(
 }
 
 /// no-op if UMTensor is the same type as TATensor type
-template <typename UMTensor, typename TATensor, typename Policy>
-typename std::enable_if<std::is_same<UMTensor, TATensor>::value,
-                        TiledArray::DistArray<UMTensor, Policy>>::type
-um_tensor_to_ta_tensor(
-    const TiledArray::DistArray<UMTensor, Policy> &um_array) {
+template <typename UMT, typename TATensor, typename Policy>
+typename std::enable_if<std::is_same<UMT, TATensor>::value,
+                        TiledArray::DistArray<UMT, Policy>>::type
+um_tensor_to_ta_tensor(const TiledArray::DistArray<UMT, Policy> &um_array) {
   return um_array;
 }
 
 /// convert array from TiledArray::Tensor to UMTensor
-template <typename UMTensor, typename TATensor, typename Policy>
-typename std::enable_if<!std::is_same<UMTensor, TATensor>::value,
-                        TiledArray::DistArray<UMTensor, Policy>>::type
+template <typename UMT, typename TATensor, typename Policy>
+typename std::enable_if<!std::is_same<UMT, TATensor>::value,
+                        TiledArray::DistArray<UMT, Policy>>::type
 ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
   using inT = typename TATensor::value_type;
-  using outT = typename UMTensor::value_type;
+  using outT = typename UMT::value_type;
   // check if element conversion is necessary
   constexpr bool T_conversion = !std::is_same_v<inT, outT>;
 
@@ -683,7 +679,7 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
   auto convert_tile_um = [](const TATensor &tile) {
     /// UMTensor must be wrapped into TA::Tile
 
-    using Tensor = typename UMTensor::tensor_type;
+    using Tensor = typename UMT::tensor_type;
     typename Tensor::storage_type storage(tile.range().area());
 
     Tensor result(tile.range(), std::move(storage));
@@ -703,7 +699,7 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
     return TiledArray::Tile<Tensor>(std::move(result));
   };
 
-  TiledArray::DistArray<UMTensor, Policy> um_array;
+  TiledArray::DistArray<UMT, Policy> um_array;
   if constexpr (T_conversion) {
     um_array = to_new_tile_type(array, convert_tile_um);
   } else {
@@ -715,7 +711,7 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
     auto convert_tile_memcpy = [](const TATensor &tile) {
       /// UMTensor must be wrapped into TA::Tile
 
-      using Tensor = typename UMTensor::tensor_type;
+      using Tensor = typename UMT::tensor_type;
 
       auto stream = device::stream_for(tile.range());
       typename Tensor::storage_type storage;
@@ -745,10 +741,10 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
 }
 
 /// no-op if array is the same as return type
-template <typename UMTensor, typename TATensor, typename Policy>
-typename std::enable_if<std::is_same<UMTensor, TATensor>::value,
-                        TiledArray::DistArray<UMTensor, Policy>>::type
-ta_tensor_to_um_tensor(const TiledArray::DistArray<UMTensor, Policy> &array) {
+template <typename UMT, typename TATensor, typename Policy>
+typename std::enable_if<std::is_same<UMT, TATensor>::value,
+                        TiledArray::DistArray<UMT, Policy>>::type
+ta_tensor_to_um_tensor(const TiledArray::DistArray<UMT, Policy> &array) {
   return array;
 }
 

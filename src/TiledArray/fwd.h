@@ -144,7 +144,7 @@ using btasUMTensorVarray =
 
 /// TA::Tensor with UM storage
 template <typename T>
-using UMTensorType = TiledArray::Tensor<T, TiledArray::device_um_allocator<T>>;
+using UMTensor = TiledArray::Tensor<T, TiledArray::device_um_allocator<T>>;
 
 #endif  // TILEDARRAY_HAS_DEVICE
 

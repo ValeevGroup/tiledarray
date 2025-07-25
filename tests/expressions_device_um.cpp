@@ -35,8 +35,8 @@
 using namespace TiledArray;
 
 struct UMExpressionsFixture : public TiledRangeFixture {
-  using UMTensor = TA::Tile<btasUMTensorVarray<double>>;
-  using TArrayUMD = TiledArray::DistArray<UMTensor, TA::DensePolicy>;
+  using UMT = TA::Tile<btasUMTensorVarray<double>>;
+  using TArrayUMD = TiledArray::DistArray<UMT, TA::DensePolicy>;
 
   UMExpressionsFixture()
       : a(*GlobalFixture::world, tr),
@@ -69,13 +69,12 @@ struct UMExpressionsFixture : public TiledRangeFixture {
     t = GlobalFixture::world->drand();
   }
 
-  static UMTensor permute_task(const UMTensor& tensor,
-                               const Permutation& perm) {
+  static UMT permute_task(const UMT& tensor, const Permutation& perm) {
     return perm * tensor;
   }
 
-  static UMTensor permute_fn(const madness::Future<UMTensor>& tensor_f,
-                             const Permutation& perm) {
+  static UMT permute_fn(const madness::Future<UMT>& tensor_f,
+                        const Permutation& perm) {
     return madness::add_device_task(*GlobalFixture::world, permute_task,
                                     tensor_f, perm)
         .get();
