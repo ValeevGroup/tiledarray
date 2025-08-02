@@ -29,6 +29,7 @@
 #ifdef TILEDARRAY_HAS_DEVICE
 
 #include <TiledArray/device/blas.h>
+#include <TiledArray/device/device_array_ops.h>
 #include <TiledArray/device/kernel/mult_kernel.h>
 #include <TiledArray/device/kernel/reduce_kernel.h>
 #include <TiledArray/device/um_storage.h>
@@ -686,51 +687,6 @@ typename Tensor::value_type abs_min(const Tensor &arg) {
       device::absmin_kernel(detail::device_data(arg), arg.size(), stream);
   device::sync_madness_task_with(stream);
   return result;
-}
-
-/// Array-level to_device and to_host operations
-template <typename UMT, typename Policy>
-void to_device(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
-  auto to_device_fn = [](TiledArray::Tile<UMT> &tile) {
-    auto stream = device::stream_for(tile.range());
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
-        tile.tensor(), stream);
-  };
-
-  auto &world = um_array.world();
-  auto start = um_array.pmap()->begin();
-  auto end = um_array.pmap()->end();
-
-  for (; start != end; ++start) {
-    if (!um_array.is_zero(*start)) {
-      world.taskq.add(to_device_fn, um_array.find(*start));
-    }
-  }
-
-  world.gop.fence();
-  DeviceSafeCall(device::deviceSynchronize());
-}
-
-template <typename UMT, typename Policy>
-void to_host(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
-  auto to_host_fn = [](TiledArray::Tile<UMT> &tile) {
-    auto stream = device::stream_for(tile.range());
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
-        tile.tensor().storage(), stream);
-  };
-
-  auto &world = um_array.world();
-  auto start = um_array.pmap()->begin();
-  auto end = um_array.pmap()->end();
-
-  for (; start != end; ++start) {
-    if (!um_array.is_zero(*start)) {
-      world.taskq.add(to_host_fn, um_array.find(*start));
-    }
-  }
-
-  world.gop.fence();
-  DeviceSafeCall(device::deviceSynchronize());
 }
 
 }  // namespace TiledArray

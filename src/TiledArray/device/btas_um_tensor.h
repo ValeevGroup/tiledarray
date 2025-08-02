@@ -34,6 +34,7 @@
 
 #include <TiledArray/device/blas.h>
 #include <TiledArray/device/btas.h>
+#include <TiledArray/device/device_array_ops.h>
 #include <TiledArray/device/um_storage.h>
 #include <TiledArray/external/librett.h>
 #include <TiledArray/tile.h>
@@ -563,56 +564,6 @@ typename btasUMTensorVarray<T, Range>::value_type abs_min(
   detail::to_device(arg);
   return device::btas::absmin(arg);
 }
-
-/// to host for UM Array
-template <typename UMT, typename Policy>
-void to_host(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
-  auto to_host = [](TiledArray::Tile<UMT> &tile) {
-    auto stream = device::stream_for(tile.range());
-
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
-        tile.tensor().storage(), stream);
-  };
-
-  auto &world = um_array.world();
-
-  auto start = um_array.pmap()->begin();
-  auto end = um_array.pmap()->end();
-
-  for (; start != end; ++start) {
-    if (!um_array.is_zero(*start)) {
-      world.taskq.add(to_host, um_array.find(*start));
-    }
-  }
-
-  world.gop.fence();
-  DeviceSafeCall(device::deviceSynchronize());
-};
-
-/// to device for UM Array
-template <typename UMT, typename Policy>
-void to_device(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
-  auto to_device = [](TiledArray::Tile<UMT> &tile) {
-    auto stream = device::stream_for(tile.range());
-
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
-        tile.tensor().storage(), stream);
-  };
-
-  auto &world = um_array.world();
-
-  auto start = um_array.pmap()->begin();
-  auto end = um_array.pmap()->end();
-
-  for (; start != end; ++start) {
-    if (!um_array.is_zero(*start)) {
-      world.taskq.add(to_device, um_array.find(*start));
-    }
-  }
-
-  world.gop.fence();
-  DeviceSafeCall(device::deviceSynchronize());
-};
 
 /// convert array from UMTensor to TiledArray::Tensor
 template <typename UMT, typename TATensor, typename Policy>

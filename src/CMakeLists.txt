@@ -234,6 +234,8 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
           TiledArray/device/blas.h
           TiledArray/device/btas.h
           TiledArray/device/btas_um_tensor.h
+          TiledArray/device/um_tensor.h
+          TiledArray/device/device_array_ops.h
           TiledArray/device/device_task_fn.h
           TiledArray/device/kernel/mult_kernel.h
           TiledArray/device/kernel/reduce_kernel.h
