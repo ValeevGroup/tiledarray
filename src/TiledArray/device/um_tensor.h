@@ -696,37 +696,27 @@ namespace madness {
 namespace archive {
 
 template <class Archive, typename T>
-struct ArchiveSerializeImpl<Archive, TiledArray::UMTensor<T>> {
-  /// \tparam Archive A MADNESS archive type
-  /// \param[out] ar An input/output archive
-  /// \param[in,out] t The UMTensor to serialize/deserialize
-  static inline void serialize(const Archive &ar, TiledArray::UMTensor<T> &t) {
-    bool empty = t.empty();
-    auto range = t.range();
+struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
+  static inline void load(const Archive &ar, TiledArray::UMTensor<T> &t) {
+    TiledArray::Range range{};
+    ar & range;
 
-    ar & empty;
-    if (!empty) {
-      ar & range;
-
-      if constexpr (madness::is_input_archive_v<Archive>) {  // input
-        t = TiledArray::UMTensor<T>(std::move(range));
-        auto stream = TiledArray::device::stream_for(t.range());
-        TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
-            t, stream);
-        TiledArray::device::sync_madness_task_with(stream);
-      } else {  // output
-        auto stream = TiledArray::device::stream_for(t.range());
-        TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
-            t, stream);
-        TiledArray::device::sync_madness_task_with(stream);
-      }
-
+    if (range.volume() > 0) {
+      t = TiledArray::UMTensor<T>(std::move(range));
       ar &madness::archive::wrap(t.data(), t.size());
-
     } else {
-      if constexpr (madness::is_input_archive_v<Archive>) {
-        t = TiledArray::UMTensor<T>{};
-      }
+      t = TiledArray::UMTensor<T>{};
+    }
+  }
+};
+
+template <class Archive, typename T>
+struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
+  static inline void store(const Archive &ar,
+                           const TiledArray::UMTensor<T> &t) {
+    ar & t.range();
+    if (t.range().volume() > 0) {
+      ar &madness::archive::wrap(t.data(), t.size());
     }
   }
 };
