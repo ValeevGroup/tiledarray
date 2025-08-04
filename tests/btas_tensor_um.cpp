@@ -87,7 +87,8 @@ struct TensorUMFixture {
   TensorN t;
 };
 
-BOOST_FIXTURE_TEST_SUITE(tensor_um_suite, TensorUMFixture, TA_UT_LABEL_SERIAL)
+BOOST_FIXTURE_TEST_SUITE(btas_tensor_um_suite, TensorUMFixture,
+                         TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   // check constructor
