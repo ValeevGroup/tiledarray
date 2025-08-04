@@ -36,7 +36,7 @@ struct TensorUMFixture {
 
   const range_type r;
 
-  TensorUMFixture() : r(make_range(81)), t(r) {
+  TensorUMFixture() : r(make_range(81)), t(r, TensorN::nbatches{1}) {
     rand_fill(18, t.size(), t.data());
   }
 
