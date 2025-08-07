@@ -21,6 +21,7 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
+#include <TiledArray/tensor/tensor.h>
 #include <TiledArray/device/um_tensor.h>
 
 namespace TiledArray {

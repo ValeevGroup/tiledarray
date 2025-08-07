@@ -37,6 +37,8 @@
 
 #include <umpire_cxx_allocator.hpp>
 
+#include <concepts>
+
 namespace TiledArray {
 
 namespace detail {
@@ -97,7 +99,7 @@ template <typename T, typename Allocator>
 class Tensor {
   // meaningful error if T& is not assignable, see
   // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=48101
-  static_assert(std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
+  static_assert(std::is_assignable_v<std::add_lvalue_reference_t<T>, T>,
                 "Tensor<T,Allocator>: T must be an assignable type (e.g. "
                 "cannot be const)");
   // default-constructible Allocator allows to reduce the size of default Tensor
@@ -183,7 +185,7 @@ class Tensor {
 
   Tensor(const range_type& range, size_t nbatch, bool default_construct)
       : range_(range), nbatch_(nbatch) {
-    size_t size = range_.volume() * nbatch;
+    const size_t size = range_.volume() * nbatch;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
     // default construct elements of data only if can have any effect ...
@@ -310,7 +312,7 @@ class Tensor {
   ///                      on return \p other is in empty (null) but not
   ///                      necessarily default state
   /// \post `other.empty()`
-  Tensor(Tensor&& other)
+  Tensor(Tensor&& other) noexcept
       : range_(std::move(other.range_)),
         nbatch_(std::move(other.nbatch_)),
         data_(std::move(other.data_)) {
@@ -336,12 +338,10 @@ class Tensor {
   }
 
   struct nbatches {
-    template <typename Int,
-              typename = std::enable_if_t<std::is_integral_v<Int>>>
+    template <std::integral Int>
     nbatches(Int n) : n(n) {}
-    template <typename Int,
-              typename = std::enable_if_t<std::is_integral_v<Int>>>
-    nbatches& operator=(Int n) {
+    template <std::integral Int>
+    void operator=(Int n) {
       this->n = n;
     }
 
@@ -361,10 +361,9 @@ class Tensor {
 
   /// \param range An array with the size of each dimension
   /// \param value The value of the tensor elements
-  template <
-      typename Value,
-      typename std::enable_if<std::is_same<Value, value_type>::value &&
-                              detail::is_tensor<Value>::value>::type* = nullptr>
+  template <typename Value,
+            std::enable_if_t<std::is_same_v<Value, value_type> &&
+                             detail::is_tensor<Value>::value>* = nullptr>
   Tensor(const range_type& range, const Value& value)
       : Tensor(range, 1, default_construct{false}) {
     const auto n = this->size();
@@ -379,9 +378,8 @@ class Tensor {
   /// \param range An array with the size of each dimension
   /// \param value The value of the tensor elements
   template <typename Value,
-            typename std::enable_if<std::is_convertible_v<Value, value_type> &&
-                                    !detail::is_tensor<Value>::value>::type* =
-                nullptr>
+            std::enable_if_t<std::is_convertible_v<Value, value_type> &&
+                             !detail::is_tensor<Value>::value>* = nullptr>
   Tensor(const range_type& range, const Value& value)
       : Tensor(range, 1, default_construct{false}) {
     detail::tensor_init([value]() -> Value { return value; }, *this);
@@ -406,10 +404,10 @@ class Tensor {
   }
 
   /// Construct an evaluated tensor
-  template <typename InIter,
-            typename std::enable_if<
-                TiledArray::detail::is_input_iterator<InIter>::value &&
-                !std::is_pointer<InIter>::value>::type* = nullptr>
+  template <
+      typename InIter,
+      std::enable_if_t<TiledArray::detail::is_input_iterator<InIter>::value &&
+                       !std::is_pointer_v<InIter>>* = nullptr>
   Tensor(const range_type& range, InIter it)
       : Tensor(range, 1, default_construct{false}) {
     auto n = range.volume();
@@ -439,11 +437,10 @@ class Tensor {
   ///          if `T1` is a tensor of scalars the constructed tensor is
   ///          independent of \p other, thus should apply clone to inner
   ///          tensor nests to behave similarly for nested tensors
-  template <
-      typename T1,
-      typename std::enable_if<
-          is_tensor<T1>::value && !std::is_same<T1, Tensor>::value &&
-          !detail::has_conversion_operator_v<T1, Tensor>>::type* = nullptr>
+  template <typename T1,
+            std::enable_if_t<
+                is_tensor<T1>::value && !std::is_same_v<T1, Tensor> &&
+                !detail::has_conversion_operator_v<T1, Tensor>>* = nullptr>
   explicit Tensor(const T1& other)
       : Tensor(detail::clone_range(other), 1, default_construct{false}) {
     detail::tensor_init(value_converter<typename T1::value_type>, *this, other);
@@ -461,10 +458,9 @@ class Tensor {
   ///          if `T1` is a tensor of scalars the constructed tensor is
   ///          independent of \p other, thus should apply clone to inner
   ///          tensor nests to behave similarly for nested tensors
-  template <
-      typename T1, typename Perm,
-      typename std::enable_if<detail::is_nested_tensor_v<T1> &&
-                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  template <typename T1, typename Perm,
+            std::enable_if_t<detail::is_nested_tensor_v<T1> &&
+                             detail::is_permutation_v<Perm>>* = nullptr>
   Tensor(const T1& other, const Perm& perm)
       : Tensor(outer(perm) * other.range(), other.nbatch(),
                default_construct{false}) {
@@ -503,10 +499,10 @@ class Tensor {
   /// \param other The tensor argument
   /// \param op Unary operation that can be invoked on elements of \p other ;
   ///        if it is not, it will be "threaded" over \p other via `tensor_op`
-  template <typename T1, typename Op,
-            typename std::enable_if_t<
-                is_tensor<T1>::value &&
-                !detail::is_permutation_v<std::decay_t<Op>>>* = nullptr>
+  template <
+      typename T1, typename Op,
+      std::enable_if_t<is_tensor<T1>::value &&
+                       !detail::is_permutation_v<std::decay_t<Op>>>* = nullptr>
   Tensor(const T1& other, Op&& op)
       : Tensor(detail::clone_range(other), 1, default_construct{false}) {
     detail::tensor_init(op, *this, other);
@@ -569,10 +565,9 @@ class Tensor {
   /// \param op Binary operation that can be invoked as `op(left[i],right[i]))`;
   ///        if it is not, it will be "threaded" over \p other via `tensor_op`
   /// \param perm The permutation that will be applied to the arguments
-  template <
-      typename T1, typename T2, typename Op, typename Perm,
-      typename std::enable_if<detail::is_nested_tensor<T1, T2>::value &&
-                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  template <typename T1, typename T2, typename Op, typename Perm,
+            std::enable_if_t<detail::is_nested_tensor<T1, T2>::value &&
+                             detail::is_permutation_v<Perm>>* = nullptr>
   Tensor(const T1& left, const T2& right, Op&& op, const Perm& perm)
       : Tensor(outer(perm) * left.range(), 1, default_construct{false}) {
     detail::tensor_init(op, outer(perm), *this, left, right);
@@ -774,7 +769,7 @@ class Tensor {
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
   /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
-            std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+            std::enable_if_t<std::is_integral_v<Ordinal>>* = nullptr>
   const_reference operator[](const Ordinal ord) const {
     TA_ASSERT(!this->empty());
     // can't distinguish between operator[](Index...) and operator[](ordinal)
@@ -816,7 +811,7 @@ class Tensor {
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
   /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
-            std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+            std::enable_if_t<std::is_integral_v<Ordinal>>* = nullptr>
   const_reference at_ordinal(const Ordinal ord) const {
     TA_ASSERT(!this->empty());
     TA_ASSERT(this->nbatch() == 1);

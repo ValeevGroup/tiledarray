@@ -39,8 +39,13 @@
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/platform.h>
 #include <TiledArray/range.h>
-#include <TiledArray/tensor/tensor.h>
-#include <TiledArray/tile.h>
+
+
+// Forward declare Tensor
+namespace TiledArray {
+template <typename T, typename Allocator>
+class Tensor;
+}
 
 #include <concepts>
 
