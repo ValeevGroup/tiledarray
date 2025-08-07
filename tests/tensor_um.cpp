@@ -26,7 +26,7 @@
 
 using namespace TiledArray;
 
-struct TensorUMFixture {
+struct TensorUM_TA_Fixture {
   typedef UMTensor<int> TensorN;
   typedef TensorN::value_type value_type;
   typedef TensorN::range_type::index index;
@@ -36,11 +36,11 @@ struct TensorUMFixture {
 
   const range_type r;
 
-  TensorUMFixture() : r(make_range(81)), t(r, TensorN::nbatches{1}) {
-    rand_fill(18, t.size(), t.data());
+  TensorUM_TA_Fixture() : r(make_range(81)), t(r, 1) {
+      rand_fill(18, t.size(), t.data());
   }
 
-  ~TensorUMFixture() {}
+  ~TensorUM_TA_Fixture() {}
 
   static range_type make_range(const int seed) {
     GlobalFixture::world->srand(seed);
@@ -69,11 +69,12 @@ struct TensorUMFixture {
                                 GlobalFixture::world->rand() % 42);
   }
 
-  static TensorN make_tensor(const int range_seed, const int data_seed) {
-    TensorN tensor(make_range(range_seed));
-    rand_fill(data_seed, tensor.size(), tensor.data());
-    return tensor;
-  }
+  // static TensorN make_tensor(const int range_seed, const int data_seed) {
+  //   TensorN tensor(make_range(range_seed));
+  //   rand_fill(data_seed, tensor.size(), tensor.data());
+  //   return tensor;
+  // }
+
 
   //  // make permutation definition object
   //  static Permutation make_perm() {
@@ -89,7 +90,7 @@ struct TensorUMFixture {
   TensorN t;
 };
 
-BOOST_FIXTURE_TEST_SUITE(ta_tensor_um_suite, TensorUMFixture,
+BOOST_FIXTURE_TEST_SUITE(ta_tensor_um_suite, TensorUM_TA_Fixture,
                          TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
@@ -180,7 +181,7 @@ BOOST_AUTO_TEST_CASE(range_accessor) {
   BOOST_CHECK_EQUAL(t.range(), r);                    // check range accessof
 }
 
-BOOST_AUTO_TEST_CASE(element_access) {
+BOOST_AUTO_TEST_CASE(element_access) {  
   // check operator[] with array coordinate index and ordinal index
   for (std::size_t i = 0ul; i < t.size(); ++i) {
     BOOST_CHECK_LT(t[i], 42);
