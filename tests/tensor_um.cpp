@@ -20,7 +20,9 @@
  *  Aug 02, 2025
  */
 
+#include <TiledArray/tensor/tensor.h>
 #include <TiledArray/device/um_tensor.h>
+
 #include "global_fixture.h"
 #include "unit_test_config.h"
 
