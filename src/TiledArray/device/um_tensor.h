@@ -65,6 +65,29 @@ auto *device_data(UMTensor<T> &tensor) {
   return tensor.data();
 }
 
+/// handle ComplexConjugate handling for scaling functions
+/// follows the logic in device/btas.h
+template <typename T, typename Scalar, typename Queue>
+void apply_scale_factor(T* data, std::size_t size, const Scalar& factor, Queue& queue) {
+  if constexpr (TiledArray::detail::is_blas_numeric_v<Scalar> ||
+                std::is_arithmetic_v<Scalar>) {
+    blas::scal(size, factor, data, 1, queue);
+  } else {
+    if constexpr (TiledArray::detail::is_complex_v<T>) {
+      abort();  // fused conjugation requires custom kernels, not yet supported
+    } else {
+      if constexpr (std::is_same_v<
+                        Scalar, TiledArray::detail::ComplexConjugate<void>>) {
+      } else if constexpr (std::is_same_v<
+                               Scalar,
+                               TiledArray::detail::ComplexConjugate<
+                                   TiledArray::detail::ComplexNegTag>>) {
+        blas::scal(size, static_cast<T>(-1), data, 1, queue);
+      }
+    }
+  }
+}
+
 }  // namespace detail
 
 ///
@@ -290,7 +313,9 @@ UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor) {
   // copy and scale
   blas::copy(result.size(), detail::device_data(arg), 1,
              detail::device_data(result), 1, queue);
-  blas::scal(result.size(), factor_t, detail::device_data(result), 1, queue);
+
+  detail::apply_scale_factor(detail::device_data(result), result.size(), factor, queue);
+
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -304,9 +329,8 @@ UMTensor<T> &scale_to(UMTensor<T> &arg, const Scalar factor) {
   detail::to_device(arg);
 
   // in-place scale
-  using value_type = typename Tensor::value_type;
-  value_type factor_t = value_type(factor);
-  blas::scal(arg.size(), factor_t, detail::device_data(arg), 1, queue);
+  // ComplexConjugate is handled as in device/btas.h
+  detail::apply_scale_factor(detail::device_data(arg), arg.size(), factor, queue);
 
   device::sync_madness_task_with(stream);
   return arg;
