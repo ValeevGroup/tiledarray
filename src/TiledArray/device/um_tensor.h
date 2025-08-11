@@ -134,7 +134,7 @@ UMTensor<T> gemm(const UMTensor<T> &left, const UMTensor<T> &right, Scalar facto
   const integer ldb = std::max(
       integer{1},
       (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
-  const integer ldc = std::max(integer{1}, m);
+  const integer ldc = std::max(integer{1}, n);
 
   using value_type = UMTensor<T>::value_type;
   value_type factor_t = value_type(factor);
@@ -168,6 +168,14 @@ void gemm(UMTensor<T> &result, const UMTensor<T> &left, const UMTensor<T> &right
   TA_ASSERT(right.nbatch() == 1);
   TA_ASSERT(result.nbatch() == 1);
 
+  // Check dimension congruence
+  TA_ASSERT(gemm_helper.left_result_congruent(left.range().extent_data(),
+                                              result.range().extent_data()));
+  TA_ASSERT(gemm_helper.right_result_congruent(right.range().extent_data(),
+                                               result.range().extent_data()));
+  TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
+                                             right.range().extent_data()));
+
   auto &queue = blasqueue_for(result.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
   DeviceSafeCall(device::setDevice(stream.device));
@@ -187,7 +195,7 @@ void gemm(UMTensor<T> &result, const UMTensor<T> &left, const UMTensor<T> &right
   const integer ldb = std::max(
       integer{1},
       (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
-  const integer ldc = std::max(integer{1}, m);
+  const integer ldc = std::max(integer{1}, n);
 
   using value_type = UMTensor<T>::value_type;
   value_type factor_t = value_type(factor);
