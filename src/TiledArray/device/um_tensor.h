@@ -42,6 +42,8 @@
 #include <TiledArray/platform.h>
 #include <TiledArray/range.h>
 
+#include <concepts>
+
 
 namespace TiledArray {
 namespace detail {
@@ -224,8 +226,9 @@ UMTensor<T> clone(const UMTensor<T> &arg) {
   detail::to_device(result);
 
   // copy data
+  auto &queue = blasqueue_for(result.range());
   blas::copy(result.size(), detail::device_data(arg), 1,
-             detail::device_data(result), 1, blasqueue_for(result.range()));
+             detail::device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -310,17 +313,11 @@ UMTensor<T> permute(const UMTensor<T> &arg,
 template <typename T, typename Scalar>
   requires TiledArray::detail::is_numeric_v<Scalar>
 UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor) {
-  UMTensor<T> result(arg.range());
 
-  auto &queue = blasqueue_for(result.range());
+  auto &queue = blasqueue_for(arg.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
 
-  detail::to_device(arg);
-  detail::to_device(result);
-
-  // copy and scale
-  blas::copy(result.size(), detail::device_data(arg), 1,
-             detail::device_data(result), 1, queue);
+  auto result = clone(arg);
 
   detail::apply_scale_factor(detail::device_data(result), result.size(), factor, queue);
 
