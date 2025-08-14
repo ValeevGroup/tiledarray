@@ -100,7 +100,7 @@ void do_main_body(TiledArray::World& world, const long Nm, const long Bm,
 
   using DeviceTile = TA::UMTensor<T>;
   using DeviceMatrix = TA::DistArray<TA::Tile<DeviceTile>>;
-  using HostTensor = TA::Tensor<T>;
+  using HostTensor = TA::Tensor<T>; // Should this be a PinnedTile ? Or is it okay because we call to_device on Tiles anyway?
   using HostMatrix = TA::DistArray<HostTensor>;
 
   DeviceMatrix c(world, trange_c);

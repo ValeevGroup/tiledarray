@@ -21,6 +21,7 @@
  */
 
 #include <TiledArray/tensor/tensor.h>
+
 #include <TiledArray/device/um_tensor.h>
 
 #include "global_fixture.h"
@@ -39,7 +40,7 @@ struct TensorUM_TA_Fixture {
   const range_type r;
 
   TensorUM_TA_Fixture() : r(make_range(81)), t(r, 1) {
-      rand_fill(18, t.size(), t.data());
+    rand_fill(18, t.size(), t.data());
   }
 
   ~TensorUM_TA_Fixture() {}
@@ -76,7 +77,6 @@ struct TensorUM_TA_Fixture {
   //   rand_fill(data_seed, tensor.size(), tensor.data());
   //   return tensor;
   // }
-
 
   //  // make permutation definition object
   //  static Permutation make_perm() {
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE(range_accessor) {
   BOOST_CHECK_EQUAL(t.range(), r);                    // check range accessof
 }
 
-BOOST_AUTO_TEST_CASE(element_access) {  
+BOOST_AUTO_TEST_CASE(element_access) {
   // check operator[] with array coordinate index and ordinal index
   for (std::size_t i = 0ul; i < t.size(); ++i) {
     BOOST_CHECK_LT(t[i], 42);

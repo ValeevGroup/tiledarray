@@ -21,16 +21,18 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
-#include <TiledArray/tensor/tensor.h>
 #include <TiledArray/device/um_tensor.h>
+#include <TiledArray/tensor/tensor.h>
 
 namespace TiledArray {
 
 // Explicit template instantiations for common types
 template class Tensor<double, device_um_allocator<double>>;
 template class Tensor<float, device_um_allocator<float>>;
-template class Tensor<std::complex<double>, device_um_allocator<std::complex<double>>>;
-template class Tensor<std::complex<float>, device_um_allocator<std::complex<float>>>;
+template class Tensor<std::complex<double>,
+                      device_um_allocator<std::complex<double>>>;
+template class Tensor<std::complex<float>,
+                      device_um_allocator<std::complex<float>>>;
 template class Tensor<int, device_um_allocator<int>>;
 template class Tensor<long, device_um_allocator<long>>;
 
