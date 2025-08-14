@@ -51,16 +51,16 @@ namespace detail {
 template <typename T>
 void to_device(const UMTensor<T> &tensor) {
   auto stream = device::stream_for(tensor.range());
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
-      tensor, stream);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(tensor,
+                                                                     stream);
 }
 
 /// pre-fetch to device (non-const)
 template <typename T>
 void to_device(UMTensor<T> &tensor) {
   auto stream = device::stream_for(tensor.range());
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
-      tensor, stream);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(tensor,
+                                                                     stream);
 }
 
 /// get device data pointer
@@ -93,7 +93,7 @@ void apply_scale_factor(T *data, std::size_t size, const Scalar &factor,
                                Scalar,
                                TiledArray::detail::ComplexConjugate<
                                    TiledArray::detail::ComplexNegTag>>) {
-        blas::scal(size, static_cast<T>(-1), data, 1, queue);
+        blas::scal(size, T(-1), data, 1, queue);
       }
     }
   }
@@ -148,9 +148,8 @@ UMTensor<T> gemm(const UMTensor<T> &left, const UMTensor<T> &right,
       (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
   const integer ldc = std::max(integer{1}, n);
 
-  using value_type = UMTensor<T>::value_type;
-  value_type factor_t = value_type(factor);
-  value_type zero(0);
+  auto factor_t = T(factor);
+  T zero(0);
 
   blas::gemm(blas::Layout::ColMajor, gemm_helper.right_op(),
              gemm_helper.left_op(), n, m, k, factor_t,
@@ -210,9 +209,8 @@ void gemm(UMTensor<T> &result, const UMTensor<T> &left,
       (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k));
   const integer ldc = std::max(integer{1}, n);
 
-  using value_type = UMTensor<T>::value_type;
-  value_type factor_t = value_type(factor);
-  value_type one(1);
+  auto factor_t = T(factor);
+  T one(1);
 
   blas::gemm(blas::Layout::ColMajor, gemm_helper.right_op(),
              gemm_helper.left_op(), n, m, k, factor_t,
@@ -274,11 +272,6 @@ UMTensor<T> shift(const UMTensor<T> &arg, const Index &bound_shift) {
 
 template <typename T, typename Index>
 UMTensor<T> &shift_to(UMTensor<T> &arg, const Index &bound_shift) {
-  // although shift_to is currently fine on shared objects since ranges are
-  // not shared, this will change in the future
-#ifdef TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED
-  TA_ASSERT(data_.use_count() <= 1);
-#endif
   const_cast<TiledArray::Range &>(arg.range()).inplace_shift(bound_shift);
   return arg;
 }
@@ -303,8 +296,7 @@ UMTensor<T> permute(const UMTensor<T> &arg,
   detail::to_device(result);
 
   // invoke permute function from librett
-  using value_type = UMTensor<T>::value_type;
-  librett_permute(const_cast<value_type *>(detail::device_data(arg)),
+  librett_permute(const_cast<T *>(detail::device_data(arg)),
                   detail::device_data(result), arg.range(), perm, stream);
   device::sync_madness_task_with(stream);
   return result;
@@ -369,8 +361,7 @@ UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor,
 
 template <typename T>
 UMTensor<T> neg(const UMTensor<T> &arg) {
-  using value_type = UMTensor<T>::value_type;
-  return scale(arg, value_type(-1.0));
+  return scale(arg, T(-1.0));
 }
 
 template <typename T, typename Perm>
@@ -382,8 +373,7 @@ UMTensor<T> neg(const UMTensor<T> &arg, const Perm &perm) {
 
 template <typename T>
 UMTensor<T> &neg_to(UMTensor<T> &arg) {
-  using value_type = UMTensor<T>::value_type;
-  return scale_to(arg, value_type(-1.0));
+  return scale_to(arg, T(-1.0));
 }
 
 ///
@@ -402,10 +392,9 @@ UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   detail::to_device(result);
 
   // result = arg1 + arg2
-  using value_type = typename UMTensor<T>::value_type;
   blas::copy(result.size(), detail::device_data(arg1), 1,
              detail::device_data(result), 1, queue);
-  blas::axpy(result.size(), value_type(1), detail::device_data(arg2), 1,
+  blas::axpy(result.size(), 1, detail::device_data(arg2), 1,
              detail::device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
@@ -449,8 +438,7 @@ UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   detail::to_device(arg);
 
   // result += arg
-  using value_type = typename UMTensor<T>::value_type;
-  blas::axpy(result.size(), value_type(1), detail::device_data(arg), 1,
+  blas::axpy(result.size(), 1, detail::device_data(arg), 1,
              detail::device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
@@ -480,10 +468,9 @@ UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   detail::to_device(result);
 
   // result = arg1 - arg2
-  using value_type = typename UMTensor<T>::value_type;
   blas::copy(result.size(), detail::device_data(arg1), 1,
              detail::device_data(result), 1, queue);
-  blas::axpy(result.size(), value_type(-1), detail::device_data(arg2), 1,
+  blas::axpy(result.size(), T(-1), detail::device_data(arg2), 1,
              detail::device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
@@ -527,8 +514,7 @@ UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   detail::to_device(arg);
 
   // result -= arg
-  using value_type = typename UMTensor<T>::value_type;
-  blas::axpy(result.size(), value_type(-1), detail::device_data(arg), 1,
+  blas::axpy(result.size(), T(-1), detail::device_data(arg), 1,
              detail::device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
@@ -548,12 +534,10 @@ UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg,
 
 template <typename T>
 UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
-  std::size_t n = arg1.size();
-  TA_ASSERT(arg2.size() == n);
+  TA_ASSERT(arg1.size() == arg2.size());
 
   auto stream = device::stream_for(arg1.range());
 
-  using value_type = typename UMTensor<T>::value_type;
   UMTensor<T> result(arg1.range());
 
   detail::to_device(arg1);
@@ -562,7 +546,7 @@ UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
 
   // element-wise multiplication
   device::mult_kernel(detail::device_data(result), detail::device_data(arg1),
-                      detail::device_data(arg2), n, stream);
+                      detail::device_data(arg2), arg1.size(), stream);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -599,16 +583,14 @@ UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 template <typename T>
 UMTensor<T> &mult_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   auto stream = device::stream_for(result.range());
-
-  std::size_t n = result.size();
-  TA_ASSERT(n == arg.size());
+  TA_ASSERT(result.size() == arg.size());
 
   detail::to_device(result);
   detail::to_device(arg);
 
   // in-place element-wise multiplication
   device::mult_to_kernel(detail::device_data(result), detail::device_data(arg),
-                         n, stream);
+                         result.size(), stream);
 
   device::sync_madness_task_with(stream);
   return result;
@@ -627,8 +609,7 @@ UMTensor<T> &mult_to(UMTensor<T> &result, const UMTensor<T> &arg,
 ///
 
 template <typename T>
-typename UMTensor<T>::value_type dot(const UMTensor<T> &arg1,
-                                     const UMTensor<T> &arg2) {
+T dot(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   auto &queue = blasqueue_for(arg1.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
 
@@ -636,8 +617,7 @@ typename UMTensor<T>::value_type dot(const UMTensor<T> &arg1,
   detail::to_device(arg2);
 
   // compute dot product using device BLAS
-  using value_type = typename UMTensor<T>::value_type;
-  value_type result = value_type(0);
+  auto result = T(0);
   blas::dot(arg1.size(), detail::device_data(arg1), 1,
             detail::device_data(arg2), 1, &result, queue);
   device::sync_madness_task_with(stream);
@@ -649,28 +629,27 @@ typename UMTensor<T>::value_type dot(const UMTensor<T> &arg1,
 ///
 
 template <typename T>
-typename UMTensor<T>::value_type squared_norm(const UMTensor<T> &arg) {
+T squared_norm(const UMTensor<T> &arg) {
   auto &queue = blasqueue_for(arg.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
 
   detail::to_device(arg);
 
   // compute squared norm using dot
-  using value_type = typename UMTensor<T>::value_type;
-  value_type result = value_type(0);
-  blas::dot(arg.size(), detail::device_data(arg), 1, detail::device_data(arg),
-            1, &result, queue);
+  auto result = T(0);
+  blas::dot(arg.size(), detail::device_data(arg), 1,
+            detail::device_data(arg), 1, &result, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
 
 template <typename T>
-typename UMTensor<T>::value_type norm(const UMTensor<T> &arg) {
+T norm(const UMTensor<T> &arg) {
   return std::sqrt(squared_norm(arg));
 }
 
 template <typename T>
-typename UMTensor<T>::value_type sum(const UMTensor<T> &arg) {
+T sum(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
@@ -680,7 +659,7 @@ typename UMTensor<T>::value_type sum(const UMTensor<T> &arg) {
 }
 
 template <typename T>
-typename UMTensor<T>::value_type product(const UMTensor<T> &arg) {
+T product(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
@@ -690,7 +669,7 @@ typename UMTensor<T>::value_type product(const UMTensor<T> &arg) {
 }
 
 template <typename T>
-typename UMTensor<T>::value_type max(const UMTensor<T> &arg) {
+T max(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
@@ -700,7 +679,7 @@ typename UMTensor<T>::value_type max(const UMTensor<T> &arg) {
 }
 
 template <typename T>
-typename UMTensor<T>::value_type min(const UMTensor<T> &arg) {
+T min(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
@@ -710,7 +689,7 @@ typename UMTensor<T>::value_type min(const UMTensor<T> &arg) {
 }
 
 template <typename T>
-typename UMTensor<T>::value_type abs_max(const UMTensor<T> &arg) {
+T abs_max(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
@@ -720,12 +699,13 @@ typename UMTensor<T>::value_type abs_max(const UMTensor<T> &arg) {
 }
 
 template <typename T>
-typename UMTensor<T>::value_type abs_min(const UMTensor<T> &arg) {
+T abs_min(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
       device::absmin_kernel(detail::device_data(arg), arg.size(), stream);
   device::sync_madness_task_with(stream);
+
   return result;
 }
 
