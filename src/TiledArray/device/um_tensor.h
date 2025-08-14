@@ -735,31 +735,68 @@ typename UMTensor<T>::value_type abs_min(const UMTensor<T> &arg) {
 namespace madness {
 namespace archive {
 
-template <class Archive, typename T>
-struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
-  static inline void load(const Archive &ar, TiledArray::UMTensor<T> &t) {
-    TiledArray::Range range{};
-    ar & range;
-
-    if (range.volume() > 0) {
-      t = TiledArray::UMTensor<T>(std::move(range));
-      ar &madness::archive::wrap(t.data(), t.size());
-    } else {
-      t = TiledArray::UMTensor<T>{};
-    }
-  }
-};
-
-template <class Archive, typename T>
+template <typename Archive, typename T>
 struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
   static inline void store(const Archive &ar,
                            const TiledArray::UMTensor<T> &t) {
     ar & t.range();
+    ar & t.nbatch();
     if (t.range().volume() > 0) {
-      ar &madness::archive::wrap(t.data(), t.size());
+      auto stream = TiledArray::device::stream_for(t.range());
+      TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(t,
+                                                                       stream);
+      ar &madness::archive::wrap(t.data(), t.range().volume() * t.nbatch());
     }
   }
 };
+
+template <typename Archive, typename T>
+struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
+  static inline void load(const Archive &ar, TiledArray::UMTensor<T> &t) {
+    TiledArray::Range range{};
+    size_t nbatch{};
+    ar & range;
+    ar & nbatch;
+    if (range.volume() > 0) {
+      t = TiledArray::UMTensor<T>(std::move(range), nbatch);
+      ar &madness::archive::wrap(t.data(), range.volume() * nbatch);
+    }
+  }
+};
+
+// template <class Archive, typename T>
+// struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
+//   static inline void load(const Archive &ar, TiledArray::UMTensor<T> &t) {
+//     TiledArray::Range range{};
+//     TiledArray::UMTensor<T> data;
+//     ar & range & data;
+//     t = TiledArray::UMTensor<T>(std::move(range), std::move(data));
+
+//     // if (range.volume() > 0) {
+//     //   t = TiledArray::UMTensor<T>(std::move(range));
+//     //   ar & madness::archive::wrap(t.data(), t.size());
+//     // } else {
+//     //   t = TiledArray::UMTensor<T>{};
+//     // }
+//   }
+// };
+
+// template <class Archive, typename T>
+// struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
+//   static inline void store(const Archive &ar,
+//                            const TiledArray::UMTensor<T> &t) {
+//     ar & t.range();
+//     auto stream = TiledArray::device::stream_for(t.range());
+//     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
+//         t, stream);
+
+//         ar & t.range() & t;
+
+//     // if (t.range().volume() > 0) {
+//     //   ar &madness::archive::wrap(t.data(), t.size());
+//     // }
+//   }
+// };
 
 }  // namespace archive
 }  // namespace madness
