@@ -47,6 +47,12 @@
 namespace TiledArray {
 namespace detail {
 
+/// is_device_tile specialization for UMTensor
+template <typename T>
+struct is_device_tile<
+    ::TiledArray::Tensor<T, TiledArray::device_um_allocator<T>>>
+    : public std::true_type {};
+
 /// pre-fetch to device
 template <typename T>
 void to_device(const UMTensor<T> &tensor) {
