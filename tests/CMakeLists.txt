@@ -105,7 +105,7 @@ set(ta_test_src_files  ta_test.cpp
 )
 
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
-  list(APPEND ta_test_src_files librett.cpp expressions_device_um.cpp btas_tensor_um.cpp tensor_um.cpp)
+  list(APPEND ta_test_src_files librett.cpp expressions_device_um.cpp expressions_device_um_ta.cpp btas_tensor_um.cpp tensor_um.cpp)
 endif()
 
 # if using C++20 must use Boost 1.74 or later:
