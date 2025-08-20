@@ -61,12 +61,12 @@ void to_device(const UMTensor<T> &tensor) {
                                                                      stream);
 }
 
-/// pre-fetch to device (non-const)
+/// pre-fetch to host
 template <typename T>
-void to_device(UMTensor<T> &tensor) {
+void to_host(const UMTensor<T> &tensor) {
   auto stream = device::stream_for(tensor.range());
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(tensor,
-                                                                     stream);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(tensor,
+                                                                   stream);
 }
 
 /// get device data pointer
@@ -643,8 +643,8 @@ T squared_norm(const UMTensor<T> &arg) {
 
   // compute squared norm using dot
   auto result = T(0);
-  blas::dot(arg.size(), detail::device_data(arg), 1,
-            detail::device_data(arg), 1, &result, queue);
+  blas::dot(arg.size(), detail::device_data(arg), 1, detail::device_data(arg),
+            1, &result, queue);
   device::sync_madness_task_with(stream);
   return result;
 }

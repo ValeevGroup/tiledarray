@@ -54,6 +54,14 @@ void to_device(const TiledArray::btasUMTensorVarray<T> &tile) {
       tile.storage(), stream);
 }
 
+/// pre-fetch memory to host
+template <typename T>
+void to_host(const TiledArray::btasUMTensorVarray<T> &tile) {
+  auto stream = device::stream_for(tile.range());
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
+      tile.storage(), stream);
+}
+
 }  // end of namespace detail
 
 }  // end of namespace TiledArray
