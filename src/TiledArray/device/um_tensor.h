@@ -48,12 +48,14 @@ namespace detail {
 
 /// is_device_tile specialization for UMTensor
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 struct is_device_tile<
     ::TiledArray::Tensor<T, TiledArray::device_um_allocator<T>>>
     : public std::true_type {};
 
 /// pre-fetch to device
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 void to_device(const UMTensor<T> &tensor) {
   auto stream = device::stream_for(tensor.range());
   TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(tensor,
@@ -62,6 +64,7 @@ void to_device(const UMTensor<T> &tensor) {
 
 /// pre-fetch to host
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 void to_host(const UMTensor<T> &tensor) {
   auto stream = device::stream_for(tensor.range());
   TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(tensor,
@@ -83,6 +86,7 @@ void to_host(const UMTensor<T> &tensor) {
 /// handle ComplexConjugate handling for scaling functions
 /// follows the logic in device/btas.h
 template <typename T, typename Scalar, typename Queue>
+requires TiledArray::detail::is_numeric_v<T>
 void apply_scale_factor(T *data, std::size_t size, const Scalar &factor,
                         Queue &queue) {
   if constexpr (TiledArray::detail::is_blas_numeric_v<Scalar> ||
@@ -111,7 +115,7 @@ void apply_scale_factor(T *data, std::size_t size, const Scalar &factor,
 ///
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> gemm(const UMTensor<T> &left, const UMTensor<T> &right,
                  Scalar factor,
                  const TiledArray::math::GemmHelper &gemm_helper) {
@@ -166,7 +170,7 @@ UMTensor<T> gemm(const UMTensor<T> &left, const UMTensor<T> &right,
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 void gemm(UMTensor<T> &result, const UMTensor<T> &left,
           const UMTensor<T> &right, Scalar factor,
           const TiledArray::math::GemmHelper &gemm_helper) {
@@ -230,6 +234,7 @@ void gemm(UMTensor<T> &result, const UMTensor<T> &left,
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> clone(const UMTensor<T> &arg) {
   TA_ASSERT(!arg.empty());
 
@@ -252,6 +257,7 @@ UMTensor<T> clone(const UMTensor<T> &arg) {
 ///
 
 template <typename T, typename Index>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> shift(const UMTensor<T> &arg, const Index &bound_shift) {
   TA_ASSERT(!arg.empty());
 
@@ -276,6 +282,7 @@ UMTensor<T> shift(const UMTensor<T> &arg, const Index &bound_shift) {
 }
 
 template <typename T, typename Index>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &shift_to(UMTensor<T> &arg, const Index &bound_shift) {
   const_cast<TiledArray::Range &>(arg.range()).inplace_shift(bound_shift);
   return arg;
@@ -286,6 +293,7 @@ UMTensor<T> &shift_to(UMTensor<T> &arg, const Index &bound_shift) {
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> permute(const UMTensor<T> &arg,
                     const TiledArray::Permutation &perm) {
   TA_ASSERT(!arg.empty());
@@ -308,6 +316,7 @@ UMTensor<T> permute(const UMTensor<T> &arg,
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> permute(const UMTensor<T> &arg,
                     const TiledArray::BipartitePermutation &perm) {
   TA_ASSERT(!arg.empty());
@@ -320,7 +329,7 @@ UMTensor<T> permute(const UMTensor<T> &arg,
 ///
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor) {
   auto &queue = blasqueue_for(arg.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
@@ -335,7 +344,7 @@ UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor) {
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &scale_to(UMTensor<T> &arg, const Scalar factor) {
   auto &queue = blasqueue_for(arg.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
@@ -352,7 +361,7 @@ UMTensor<T> &scale_to(UMTensor<T> &arg, const Scalar factor) {
 }
 
 template <typename T, typename Scalar, typename Perm>
-  requires TiledArray::detail::is_numeric_v<Scalar> &&
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T> &&
            TiledArray::detail::is_permutation_v<Perm>
 UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor,
                   const Perm &perm) {
@@ -365,18 +374,20 @@ UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor,
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> neg(const UMTensor<T> &arg) {
   return scale(arg, T(-1.0));
 }
 
 template <typename T, typename Perm>
-  requires TiledArray::detail::is_permutation_v<Perm>
+  requires TiledArray::detail::is_permutation_v<Perm> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> neg(const UMTensor<T> &arg, const Perm &perm) {
   auto result = neg(arg);
   return permute(result, perm);
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &neg_to(UMTensor<T> &arg) {
   return scale_to(arg, T(-1.0));
 }
@@ -386,6 +397,7 @@ UMTensor<T> &neg_to(UMTensor<T> &arg) {
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   UMTensor<T> result(arg1.range());
 
@@ -406,7 +418,7 @@ UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                 const Scalar factor) {
   auto result = add(arg1, arg2);
@@ -414,7 +426,7 @@ UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 }
 
 template <typename T, typename Perm>
-  requires TiledArray::detail::is_permutation_v<Perm>
+  requires TiledArray::detail::is_permutation_v<Perm> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                 const Perm &perm) {
   auto result = add(arg1, arg2);
@@ -422,7 +434,7 @@ UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 }
 
 template <typename T, typename Scalar, typename Perm>
-  requires TiledArray::detail::is_numeric_v<Scalar> &&
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T> &&
            TiledArray::detail::is_permutation_v<Perm>
 UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                 const Scalar factor, const Perm &perm) {
@@ -435,6 +447,7 @@ UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   auto &queue = blasqueue_for(result.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
@@ -450,7 +463,7 @@ UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg) {
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg,
                     const Scalar factor) {
   add_to(result, arg);
@@ -462,6 +475,7 @@ UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg,
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   UMTensor<T> result(arg1.range());
 
@@ -482,7 +496,7 @@ UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Scalar factor) {
   auto result = subt(arg1, arg2);
@@ -490,7 +504,7 @@ UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 }
 
 template <typename T, typename Perm>
-  requires TiledArray::detail::is_permutation_v<Perm>
+  requires TiledArray::detail::is_permutation_v<Perm> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Perm &perm) {
   auto result = subt(arg1, arg2);
@@ -498,7 +512,7 @@ UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 }
 
 template <typename T, typename Scalar, typename Perm>
-  requires TiledArray::detail::is_numeric_v<Scalar> &&
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T> &&
            TiledArray::detail::is_permutation_v<Perm>
 UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Scalar factor, const Perm &perm) {
@@ -511,6 +525,7 @@ UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   auto &queue = blasqueue_for(result.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
@@ -526,7 +541,7 @@ UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg) {
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg,
                      const Scalar factor) {
   subt_to(result, arg);
@@ -538,6 +553,7 @@ UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg,
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   TA_ASSERT(arg1.size() == arg2.size());
 
@@ -557,7 +573,7 @@ UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Scalar factor) {
   auto result = mult(arg1, arg2);
@@ -565,7 +581,7 @@ UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 }
 
 template <typename T, typename Perm>
-  requires TiledArray::detail::is_permutation_v<Perm>
+  requires TiledArray::detail::is_permutation_v<Perm> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Perm &perm) {
   auto result = mult(arg1, arg2);
@@ -573,7 +589,7 @@ UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 }
 
 template <typename T, typename Scalar, typename Perm>
-  requires TiledArray::detail::is_numeric_v<Scalar> &&
+  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T> &&
            TiledArray::detail::is_permutation_v<Perm>
 UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Scalar factor, const Perm &perm) {
@@ -586,6 +602,7 @@ UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &mult_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   auto stream = device::stream_for(result.range());
   TA_ASSERT(result.size() == arg.size());
@@ -614,6 +631,7 @@ UMTensor<T> &mult_to(UMTensor<T> &result, const UMTensor<T> &arg,
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T dot(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   auto &queue = blasqueue_for(arg1.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
@@ -634,6 +652,7 @@ T dot(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
 ///
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T squared_norm(const UMTensor<T> &arg) {
   auto &queue = blasqueue_for(arg.range());
   const auto stream = device::Stream(queue.device(), queue.stream());
@@ -649,11 +668,13 @@ T squared_norm(const UMTensor<T> &arg) {
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T norm(const UMTensor<T> &arg) {
   return std::sqrt(squared_norm(arg));
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T sum(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
@@ -664,6 +685,7 @@ T sum(const UMTensor<T> &arg) {
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T product(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
@@ -674,6 +696,7 @@ T product(const UMTensor<T> &arg) {
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T max(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
@@ -684,6 +707,7 @@ T max(const UMTensor<T> &arg) {
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T min(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
@@ -694,6 +718,7 @@ T min(const UMTensor<T> &arg) {
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T abs_max(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
@@ -704,6 +729,7 @@ T abs_max(const UMTensor<T> &arg) {
 }
 
 template <typename T>
+requires TiledArray::detail::is_numeric_v<T>
 T abs_min(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
@@ -721,6 +747,7 @@ namespace madness {
 namespace archive {
 
 template <typename Archive, typename T>
+requires TiledArray::detail::is_numeric_v<T>
 struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
   static inline void store(const Archive &ar,
                            const TiledArray::UMTensor<T> &t) {
@@ -736,6 +763,7 @@ struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
 };
 
 template <typename Archive, typename T>
+requires TiledArray::detail::is_numeric_v<T>
 struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
   static inline void load(const Archive &ar, TiledArray::UMTensor<T> &t) {
     TiledArray::Range range{};
