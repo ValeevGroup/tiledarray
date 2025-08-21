@@ -20,6 +20,7 @@
 // clang-format off
 #include <tiledarray.h>
 #include <TiledArray/device/um_tensor.h>
+#include <TiledArray/device/device_array.h>
 // clang-format on
 
 #ifdef TILEDARRAY_HAS_CUDA

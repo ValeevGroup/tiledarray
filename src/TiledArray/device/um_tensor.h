@@ -31,7 +31,7 @@
 #include <TiledArray/fwd.h>
 
 #include <TiledArray/device/blas.h>
-#include <TiledArray/device/device_array_ops.h>
+#include <TiledArray/device/device_array.h>
 #include <TiledArray/device/kernel/mult_kernel.h>
 #include <TiledArray/device/kernel/reduce_kernel.h>
 #include <TiledArray/device/um_storage.h>

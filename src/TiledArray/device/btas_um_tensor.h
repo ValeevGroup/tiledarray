@@ -34,7 +34,7 @@
 
 #include <TiledArray/device/blas.h>
 #include <TiledArray/device/btas.h>
-#include <TiledArray/device/device_array_ops.h>
+#include <TiledArray/device/device_array.h>
 #include <TiledArray/device/um_storage.h>
 #include <TiledArray/external/librett.h>
 #include <TiledArray/tile.h>

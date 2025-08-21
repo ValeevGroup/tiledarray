@@ -21,21 +21,24 @@
  *
  */
 
-#ifndef TILEDARRAY_DEVICE_ARRAY_OPERATIONS_H
-#define TILEDARRAY_DEVICE_ARRAY_OPERATIONS_H
+#ifndef TILEDARRAY_DEVICE_ARRAY_H
+#define TILEDARRAY_DEVICE_ARRAY_H
 
 #include <TiledArray/config.h>
 
 #ifdef TILEDARRAY_HAS_DEVICE
+#include <TiledArray/fwd.h>
 
 #include <TiledArray/device/um_storage.h>
 #include <TiledArray/external/device.h>
-#include <TiledArray/fwd.h>
 #include <TiledArray/tile.h>
 
 namespace TiledArray {
 
-/// Array-level to_device operation for DistArrays containing device tensors
+/// @brief Array-level to_device operation for DistArrays
+/// @tparam UMT Device (UM) Tile type
+/// @tparam Policy Policy for DistArray
+/// @param um_array input array
 template <typename UMT, typename Policy>
 void to_device(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
   auto to_device_fn = [](TiledArray::Tile<UMT> &tile) {
@@ -66,7 +69,10 @@ void to_device(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
   DeviceSafeCall(device::deviceSynchronize());
 }
 
-/// Array-level to_host operation for DistArrays containing device tensors
+/// @brief Array-level to_host operation for DistArrays
+/// @tparam UMT Device (UM) Tile type
+/// @tparam Policy Policy for DistArray
+/// @param um_array input array
 template <typename UMT, typename Policy>
 void to_host(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
   auto to_host_fn = [](TiledArray::Tile<UMT> &tile) {
@@ -101,4 +107,4 @@ void to_host(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
 
 #endif  // TILEDARRAY_HAS_DEVICE
 
-#endif  // TILEDARRAY_DEVICE_ARRAY_OPERATIONS_H
+#endif  // TILEDARRAY_DEVICE_ARRAY_H
