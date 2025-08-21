@@ -71,18 +71,6 @@ void to_host(const UMTensor<T> &tensor) {
                                                                    stream);
 }
 
-// /// get device data pointer
-// template <typename T>
-// auto *device_data(const UMTensor<T> &tensor) {
-//   return tensor.data();
-// }
-
-// /// get device data pointer (non-const)
-// template <typename T>
-// auto *device_data(UMTensor<T> &tensor) {
-//   return tensor.data();
-// }
-
 /// handle ComplexConjugate handling for scaling functions
 /// follows the logic in device/btas.h
 template <typename T, typename Scalar, typename Queue>
@@ -776,40 +764,6 @@ struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
     }
   }
 };
-
-// template <class Archive, typename T>
-// struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
-//   static inline void load(const Archive &ar, TiledArray::UMTensor<T> &t) {
-//     TiledArray::Range range{};
-//     TiledArray::UMTensor<T> data;
-//     ar & range & data;
-//     t = TiledArray::UMTensor<T>(std::move(range), std::move(data));
-
-//     // if (range.volume() > 0) {
-//     //   t = TiledArray::UMTensor<T>(std::move(range));
-//     //   ar & madness::archive::wrap(t.data(), t.size());
-//     // } else {
-//     //   t = TiledArray::UMTensor<T>{};
-//     // }
-//   }
-// };
-
-// template <class Archive, typename T>
-// struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
-//   static inline void store(const Archive &ar,
-//                            const TiledArray::UMTensor<T> &t) {
-//     ar & t.range();
-//     auto stream = TiledArray::device::stream_for(t.range());
-//     TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
-//         t, stream);
-
-//         ar & t.range() & t;
-
-//     // if (t.range().volume() > 0) {
-//     //   ar &madness::archive::wrap(t.data(), t.size());
-//     // }
-//   }
-// };
 
 }  // namespace archive
 }  // namespace madness
