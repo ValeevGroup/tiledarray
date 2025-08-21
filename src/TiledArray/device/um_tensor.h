@@ -37,7 +37,6 @@
 #include <TiledArray/device/um_storage.h>
 #include <TiledArray/external/device.h>
 #include <TiledArray/external/librett.h>
-#include <TiledArray/fwd.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/platform.h>
 #include <TiledArray/range.h>
@@ -69,17 +68,17 @@ void to_host(const UMTensor<T> &tensor) {
                                                                    stream);
 }
 
-/// get device data pointer
-template <typename T>
-auto *device_data(const UMTensor<T> &tensor) {
-  return tensor.data();
-}
+// /// get device data pointer
+// template <typename T>
+// auto *device_data(const UMTensor<T> &tensor) {
+//   return tensor.data();
+// }
 
-/// get device data pointer (non-const)
-template <typename T>
-auto *device_data(UMTensor<T> &tensor) {
-  return tensor.data();
-}
+// /// get device data pointer (non-const)
+// template <typename T>
+// auto *device_data(UMTensor<T> &tensor) {
+//   return tensor.data();
+// }
 
 /// handle ComplexConjugate handling for scaling functions
 /// follows the logic in device/btas.h
@@ -159,8 +158,8 @@ UMTensor<T> gemm(const UMTensor<T> &left, const UMTensor<T> &right,
 
   blas::gemm(blas::Layout::ColMajor, gemm_helper.right_op(),
              gemm_helper.left_op(), n, m, k, factor_t,
-             detail::device_data(right), ldb, detail::device_data(left), lda,
-             zero, detail::device_data(result), ldc, queue);
+             device_data(right), ldb, device_data(left), lda,
+             zero, device_data(result), ldc, queue);
 
   device::sync_madness_task_with(stream);
   return result;
@@ -220,8 +219,8 @@ void gemm(UMTensor<T> &result, const UMTensor<T> &left,
 
   blas::gemm(blas::Layout::ColMajor, gemm_helper.right_op(),
              gemm_helper.left_op(), n, m, k, factor_t,
-             detail::device_data(right), ldb, detail::device_data(left), lda,
-             one, detail::device_data(result), ldc, queue);
+             device_data(right), ldb, device_data(left), lda,
+             one, device_data(result), ldc, queue);
 
   device::sync_madness_task_with(stream);
 }
@@ -242,8 +241,8 @@ UMTensor<T> clone(const UMTensor<T> &arg) {
 
   // copy data
   auto &queue = blasqueue_for(result.range());
-  blas::copy(result.size(), detail::device_data(arg), 1,
-             detail::device_data(result), 1, queue);
+  blas::copy(result.size(), device_data(arg), 1,
+             device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -270,8 +269,8 @@ UMTensor<T> shift(const UMTensor<T> &arg, const Index &bound_shift) {
   detail::to_device(result);
 
   // copy data
-  blas::copy(result.size(), detail::device_data(arg), 1,
-             detail::device_data(result), 1, queue);
+  blas::copy(result.size(), device_data(arg), 1,
+             device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -302,8 +301,8 @@ UMTensor<T> permute(const UMTensor<T> &arg,
   detail::to_device(result);
 
   // invoke permute function from librett
-  librett_permute(const_cast<T *>(detail::device_data(arg)),
-                  detail::device_data(result), arg.range(), perm, stream);
+  librett_permute(const_cast<T *>(device_data(arg)),
+                  device_data(result), arg.range(), perm, stream);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -328,7 +327,7 @@ UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor) {
 
   auto result = clone(arg);
 
-  detail::apply_scale_factor(detail::device_data(result), result.size(), factor,
+  detail::apply_scale_factor(device_data(result), result.size(), factor,
                              queue);
 
   device::sync_madness_task_with(stream);
@@ -345,7 +344,7 @@ UMTensor<T> &scale_to(UMTensor<T> &arg, const Scalar factor) {
 
   // in-place scale
   // ComplexConjugate is handled as in device/btas.h
-  detail::apply_scale_factor(detail::device_data(arg), arg.size(), factor,
+  detail::apply_scale_factor(device_data(arg), arg.size(), factor,
                              queue);
 
   device::sync_madness_task_with(stream);
@@ -398,10 +397,10 @@ UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   detail::to_device(result);
 
   // result = arg1 + arg2
-  blas::copy(result.size(), detail::device_data(arg1), 1,
-             detail::device_data(result), 1, queue);
-  blas::axpy(result.size(), 1, detail::device_data(arg2), 1,
-             detail::device_data(result), 1, queue);
+  blas::copy(result.size(), device_data(arg1), 1,
+             device_data(result), 1, queue);
+  blas::axpy(result.size(), 1, device_data(arg2), 1,
+             device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -444,8 +443,8 @@ UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   detail::to_device(arg);
 
   // result += arg
-  blas::axpy(result.size(), 1, detail::device_data(arg), 1,
-             detail::device_data(result), 1, queue);
+  blas::axpy(result.size(), 1, device_data(arg), 1,
+             device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -474,10 +473,10 @@ UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   detail::to_device(result);
 
   // result = arg1 - arg2
-  blas::copy(result.size(), detail::device_data(arg1), 1,
-             detail::device_data(result), 1, queue);
-  blas::axpy(result.size(), T(-1), detail::device_data(arg2), 1,
-             detail::device_data(result), 1, queue);
+  blas::copy(result.size(), device_data(arg1), 1,
+             device_data(result), 1, queue);
+  blas::axpy(result.size(), T(-1), device_data(arg2), 1,
+             device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -520,8 +519,8 @@ UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   detail::to_device(arg);
 
   // result -= arg
-  blas::axpy(result.size(), T(-1), detail::device_data(arg), 1,
-             detail::device_data(result), 1, queue);
+  blas::axpy(result.size(), T(-1), device_data(arg), 1,
+             device_data(result), 1, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -551,8 +550,8 @@ UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   detail::to_device(result);
 
   // element-wise multiplication
-  device::mult_kernel(detail::device_data(result), detail::device_data(arg1),
-                      detail::device_data(arg2), arg1.size(), stream);
+  device::mult_kernel(device_data(result), device_data(arg1),
+                      device_data(arg2), arg1.size(), stream);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -595,7 +594,7 @@ UMTensor<T> &mult_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   detail::to_device(arg);
 
   // in-place element-wise multiplication
-  device::mult_to_kernel(detail::device_data(result), detail::device_data(arg),
+  device::mult_to_kernel(device_data(result), device_data(arg),
                          result.size(), stream);
 
   device::sync_madness_task_with(stream);
@@ -624,8 +623,8 @@ T dot(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
 
   // compute dot product using device BLAS
   auto result = T(0);
-  blas::dot(arg1.size(), detail::device_data(arg1), 1,
-            detail::device_data(arg2), 1, &result, queue);
+  blas::dot(arg1.size(), device_data(arg1), 1,
+            device_data(arg2), 1, &result, queue);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -643,7 +642,7 @@ T squared_norm(const UMTensor<T> &arg) {
 
   // compute squared norm using dot
   auto result = T(0);
-  blas::dot(arg.size(), detail::device_data(arg), 1, detail::device_data(arg),
+  blas::dot(arg.size(), device_data(arg), 1, device_data(arg),
             1, &result, queue);
   device::sync_madness_task_with(stream);
   return result;
@@ -659,7 +658,7 @@ T sum(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
-      device::sum_kernel(detail::device_data(arg), arg.size(), stream);
+      device::sum_kernel(device_data(arg), arg.size(), stream);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -669,7 +668,7 @@ T product(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
-      device::product_kernel(detail::device_data(arg), arg.size(), stream);
+      device::product_kernel(device_data(arg), arg.size(), stream);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -679,7 +678,7 @@ T max(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
-      device::max_kernel(detail::device_data(arg), arg.size(), stream);
+      device::max_kernel(device_data(arg), arg.size(), stream);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -689,7 +688,7 @@ T min(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
-      device::min_kernel(detail::device_data(arg), arg.size(), stream);
+      device::min_kernel(device_data(arg), arg.size(), stream);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -699,7 +698,7 @@ T abs_max(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
-      device::absmax_kernel(detail::device_data(arg), arg.size(), stream);
+      device::absmax_kernel(device_data(arg), arg.size(), stream);
   device::sync_madness_task_with(stream);
   return result;
 }
@@ -709,7 +708,7 @@ T abs_min(const UMTensor<T> &arg) {
   detail::to_device(arg);
   auto stream = device::stream_for(arg.range());
   auto result =
-      device::absmin_kernel(detail::device_data(arg), arg.size(), stream);
+      device::absmin_kernel(device_data(arg), arg.size(), stream);
   device::sync_madness_task_with(stream);
 
   return result;
