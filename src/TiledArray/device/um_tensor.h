@@ -768,6 +768,24 @@ struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
 }  // namespace archive
 }  // namespace madness
 
+
+#ifndef TILEDARRAY_HEADER_ONLY
+
+namespace TiledArray {
+
+extern template class Tensor<double, device_um_allocator<double>>;
+extern template class Tensor<float, device_um_allocator<float>>;
+extern template class Tensor<std::complex<double>,
+                      device_um_allocator<std::complex<double>>>;
+extern template class Tensor<std::complex<float>,
+                      device_um_allocator<std::complex<float>>>;
+extern template class Tensor<int, device_um_allocator<int>>;
+extern template class Tensor<long, device_um_allocator<long>>;
+
+}
+
+#endif  // TILEDARRAY_HEADER_ONLY
+
 #endif  // TILEDARRAY_HAS_DEVICE
 
 #endif  // TILEDARRAY_DEVICE_UM_TENSOR_H
