@@ -30,6 +30,7 @@
 
 #include <TiledArray/fwd.h>
 
+#include <TiledArray/conversions/to_new_tile_type.h>
 #include <TiledArray/device/blas.h>
 #include <TiledArray/device/device_array.h>
 #include <TiledArray/device/kernel/mult_kernel.h>
@@ -726,6 +727,122 @@ T abs_min(const UMTensor<T> &arg) {
   device::sync_madness_task_with(stream);
 
   return result;
+}
+
+/// convert array from UMTensor to TiledArray::Tensor
+template <typename UMT, typename TATensor, typename Policy>
+TiledArray::DistArray<TATensor, Policy>
+um_tensor_to_ta_tensor(const TiledArray::DistArray<UMT, Policy> &um_array) {
+  if constexpr (std::is_same_v<UMT, TATensor>) {
+    // No-op if UMTensor is the same type as TATensor type
+    return um_array;
+  } else {
+    const auto convert_tile_memcpy = [](const UMT &tile) {
+      TATensor result(tile.range());
+
+      auto stream = device::stream_for(result.range());
+      DeviceSafeCall(
+          device::memcpyAsync(result.data(), tile.data(),
+                              tile.size() * sizeof(typename TATensor::value_type),
+                              device::MemcpyDefault, stream));
+      device::sync_madness_task_with(stream);
+
+      return result;
+    };
+
+    const auto convert_tile_um = [](const UMT &tile) {
+      TATensor result(tile.range());
+      using std::begin;
+      const auto n = tile.size();
+
+      auto stream = device::stream_for(tile.range());
+
+      TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
+          tile, stream);
+
+      std::copy_n(tile.data(), n, result.data());
+
+      return result;
+    };
+
+    const char *use_legacy_conversion =
+        std::getenv("TA_DEVICE_LEGACY_UM_CONVERSION");
+    auto ta_array = use_legacy_conversion
+                        ? to_new_tile_type(um_array, convert_tile_um)
+                        : to_new_tile_type(um_array, convert_tile_memcpy);
+
+    um_array.world().gop.fence();
+    return ta_array;
+  }
+}
+
+/// convert array from TiledArray::Tensor to UMTensor
+template <typename UMT, typename TATensor, typename Policy>
+TiledArray::DistArray<UMT, Policy>
+ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
+  if constexpr (std::is_same_v<UMT, TATensor>) {
+    // No-op if array is the same as return type
+    return array;
+  } else {
+    using inT = typename TATensor::value_type;
+    using outT = typename UMT::value_type;
+    // check if element conversion is necessary
+    constexpr bool T_conversion = !std::is_same_v<inT, outT>;
+
+    // this is safe even when need to convert element types, but less efficient
+    auto convert_tile_um = [](const TATensor &tile) {
+      /// UMTensor must be wrapped into TA::Tile
+      UMT result(tile.range());
+
+      const auto n = tile.size();
+      std::copy_n(tile.data(), n, result.data());
+
+      auto stream = device::stream_for(result.range());
+
+      TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
+          result, stream);
+
+      // N.B. move! without it have D-to-H transfer due to calling UM
+      // allocator construct() on the host
+      return std::move(result);
+    };
+
+    TiledArray::DistArray<UMT, Policy> um_array;
+    if constexpr (T_conversion) {
+      um_array = to_new_tile_type(array, convert_tile_um);
+    } else {
+      // this is more efficient for copying:
+      // - avoids copy on host followed by UM transfer, instead uses direct copy
+      // - replaced unneeded copy (which also caused D-to-H transfer due to
+      // calling UM allocator construct() on the host) by move
+      // This eliminates all spurious UM traffic in (T) W3 contractions
+      auto convert_tile_memcpy = [](const TATensor &tile) {
+        /// UMTensor must be wrapped into TA::Tile .. Why?
+
+        auto stream = device::stream_for(tile.range());
+        UMT result(tile.range());
+
+        DeviceSafeCall(
+            device::memcpyAsync(result.data(), tile.data(),
+                                tile.size() * sizeof(typename UMT::value_type),
+                                device::MemcpyDefault, stream));
+
+        device::sync_madness_task_with(stream);
+        // N.B. move! without it have D-to-H transfer due to calling UM
+        // allocator construct() on the host
+        return std::move(result);
+      };
+
+      const char *use_legacy_conversion =
+          std::getenv("TA_DEVICE_LEGACY_UM_CONVERSION");
+      um_array = use_legacy_conversion
+                    ? to_new_tile_type(array, convert_tile_um)
+                    : to_new_tile_type(array, convert_tile_memcpy);
+    }
+
+    array.world().gop.fence();
+    return um_array;
+  }
 }
 
 }  // namespace TiledArray
