@@ -467,6 +467,62 @@ class CP {
     }
     return false;
   }
+
+  // This function is for a 2 core CP i.e. a THC approximation
+  virtual bool check_thc_fit(bool verbose = false) {
+    // Compute the inner product T * T_CP
+    // The MTtKRP is for the core tensor, so only need to dot with the core which isn't normalized
+    const auto ref_dot_cp = MTtKRP("r,n").dot(cp_factors[2]("r,n"));
+    // compute the square of the CP tensor (can use the grammian)
+    auto factor_norm = [&]() {
+      auto gram_ptr = partial_grammian.begin();
+      Array WL, WR;
+      WL("P,L") = (*(gram_ptr))("P,L") * (*(gram_ptr + 1))("P,L");
+      WR("Q,M") = (*(gram_ptr + 2))("Q,M") * (*(gram_ptr + 3))("Q,M");
+
+      auto result = TA::dot(cp_factors[2]("P,Q") * WL("P,L"), WR("Q,M") * cp_factors[2]("L,M"));
+      // not sure why need to fence here, but hang periodically without it
+      WL.world().gop.fence();
+
+      return result;
+    };
+    // compute the error in the loss function and find the fit
+    const auto norm_cp = factor_norm();  // ||T_CP||_2
+    const auto squared_norm_error = norm_ref_sq +
+                                    norm_cp -
+                                    2.0 * ref_dot_cp;  // ||T - T_CP||_2^2
+    // N.B. squared_norm_error is very noisy
+    // TA_ASSERT(squared_norm_error >= - 1e-8);
+    const auto norm_error = sqrt(abs(squared_norm_error));
+    const auto fit = 1.0 - (norm_error / norm_reference);
+    const auto fit_change = fit - prev_fit;
+    prev_fit = fit;
+    // print fit data if required
+    if (verbose) {
+      std::cout << MTtKRP.world().rank() << ": fit=" << fit
+                << " fit_change=" << fit_change << std::endl;
+    }
+
+    // if the change in fit is less than the tolerance try to return true.
+    if (abs(fit_change) < fit_tol) {
+      converged_num++;
+      if (converged_num == 2) {
+        converged_num = 0;
+        final_fit = prev_fit;
+        prev_fit = 1.0;
+        if (verbose)
+          std::cout << MTtKRP.world().rank() << ": converged" << std::endl;
+        return true;
+      } else {
+        TA_ASSERT(converged_num == 1);
+        if (verbose)
+          std::cout << MTtKRP.world().rank() << ": pre-converged" << std::endl;
+      }
+    } else {
+      converged_num = 0;
+    }
+    return false;
+  }
 };
 
 }  // namespace TiledArray::math::cp
