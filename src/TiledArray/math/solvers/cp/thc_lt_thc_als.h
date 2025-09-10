@@ -191,7 +191,7 @@ class THC_LT_THC_ALS : public CP<Tile, Policy> {
       // Checking the convergence of the thing
 
       update_factors_left();
-      {
+      /*{
         DistArray<Tile, Policy> abcd_old, abcd_new, diff;
         abcd_old("a,b,c,d") = TA::einsum(ref_orb_a("a,m,P"), ref_orb_b("b,m,P"), "a,b,m,P")("a,b,m,P") *
                               ref_core("P,Q") * TA::einsum(ref_orb_c("c,m,Q"), ref_orb_d("d,m,Q"), "c,d,m,Q")("c,d,m,Q");
@@ -203,7 +203,7 @@ class THC_LT_THC_ALS : public CP<Tile, Policy> {
         std::cout << "Norm old: " << TA::norm2(abcd_old) << std::endl;
         std::cout << "Norm new: " << TA::norm2(abcd_new) << std::endl;
         std::cout << "Error: " << TA::norm2(diff) / TA::norm2(abcd_old) << std::endl;
-      }
+      }*/
       // Preserve symmetry in the structure
       {
         cp_factors[3] = cp_factors[0].clone();
@@ -216,7 +216,7 @@ class THC_LT_THC_ALS : public CP<Tile, Policy> {
       }
       // Update the core tensor and don't rescale to normalized
       update_core();
-      {
+      /*{
         DistArray<Tile, Policy> abcd_old, abcd_new, diff;
         abcd_old("a,b,c,d") = TA::einsum(ref_orb_a("a,m,P"), ref_orb_b("b,m,P"), "a,b,m,P")("a,b,m,P") *
                               ref_core("P,Q") * TA::einsum(ref_orb_c("c,m,Q"), ref_orb_d("d,m,Q"), "c,d,m,Q")("c,d,m,Q");
@@ -228,24 +228,25 @@ class THC_LT_THC_ALS : public CP<Tile, Policy> {
         std::cout << "Norm old: " << TA::norm2(abcd_old) << std::endl;
         std::cout << "Norm new: " << TA::norm2(abcd_new) << std::endl;
         std::cout << "Error: " << TA::norm2(diff) / TA::norm2(abcd_old) << std::endl;
-      }
+      }*/
       //update_factors_right();
-//      {
-//        DistArray<Tile, Policy> abcd_old, abcd_new, diff;
-//        abcd_old("a,b,c,d") = TA::einsum(ref_orb_a("a,m,P"), ref_orb_b("b,m,P"), "a,b,m,P")("a,b,m,P") *
-//                              ref_core("P,Q") * TA::einsum(ref_orb_c("c,m,Q"), ref_orb_d("d,m,Q"), "c,d,m,Q")("c,d,m,Q");
-//        abcd_new("a,b,c,d") = TA::einsum(cp_factors[0]("P,a"), cp_factors[1]("P,b"), "P,a,b")("P,a,b") *
-//                              (UnNormalizedLeft("P,X") * UnNormalizedRight("Q,X")) * TA::einsum(cp_factors[3]("Q,c"), cp_factors[4]("Q,d"), "Q,c,d")("Q,c,d");
-//        diff("a,b,c,d") = abcd_new("a,b,c,d") - abcd_old("a,b,c,d");
-//        std::cout << "Norm old: " << TA::norm2(abcd_old) << std::endl;
-//        std::cout << "Norm new: " << TA::norm2(abcd_new) << std::endl;
-//        std::cout << "Error: " << TA::norm2(diff) / TA::norm2(abcd_old) << std::endl;
-//      }
+      /*{
+        DistArray<Tile, Policy> abcd_old, abcd_new, diff;
+        abcd_old("a,b,c,d") = TA::einsum(ref_orb_a("a,m,P"), ref_orb_b("b,m,P"), "a,b,m,P")("a,b,m,P") *
+                              ref_core("P,Q") * TA::einsum(ref_orb_c("c,m,Q"), ref_orb_d("d,m,Q"), "c,d,m,Q")("c,d,m,Q");
+        abcd_new("a,b,c,d") = TA::einsum(cp_factors[0]("P,a"), cp_factors[1]("P,b"), "P,a,b")("P,a,b") *
+                              (UnNormalizedLeft("P,X") * UnNormalizedRight("Q,X")) * TA::einsum(cp_factors[3]("Q,c"), cp_factors[4]("Q,d"), "Q,c,d")("Q,c,d");
+        diff("a,b,c,d") = abcd_new("a,b,c,d") - abcd_old("a,b,c,d");
+        std::cout << "Norm old: " << TA::norm2(abcd_old) << std::endl;
+        std::cout << "Norm new: " << TA::norm2(abcd_new) << std::endl;
+        std::cout << "Error: " << TA::norm2(diff) / TA::norm2(abcd_old) << std::endl;
+      }*/
 
       converged = this->check_thc_fit(verbose);
 
       ++iter;
     } while (iter < max_iter && !converged);
+    this->unNormalized_Factor = cp_factors[4];
   }
 
   // These assume the center is a sqrt of the core tensor.
@@ -359,12 +360,17 @@ class THC_LT_THC_ALS : public CP<Tile, Policy> {
     this->normalize_factor(MTtKRP);
     cp_factors[5] = MTtKRP;
   }*/
+
+  //
   void update_factors_left(){
     DistArray<Tile, Policy> env, b_mON, MttKRP, W, W_env, pq;
 
     // solve for A
     env("m,M,P") = ref_core("M,N") * THC_times_CPD[1]("m,N,Q") * cp_factors[2]("P,Q");
     b_mON("m,M,P") = ref_orb_b("b,m,M") * cp_factors[1]("P,b");
+    env.truncate();
+    b_mON.truncate();
+
     MttKRP("P,a") = TA::einsum(env("m,M,P"), b_mON("m,M,P"), "m,M,P")("m,M,P") * ref_orb_a("a,m,M");
 
     DistArray<Tile, Policy> temp;
@@ -380,6 +386,7 @@ class THC_LT_THC_ALS : public CP<Tile, Policy> {
     world.gop.fence();  // N.B. seems to deadlock without this
 
     this->normalize_factor(MttKRP);
+    MttKRP.truncate();
     cp_factors[0] = MttKRP;
     this->partial_grammian[0]("r,rp") = MttKRP("r,n") * MttKRP("rp,n");
     pq("m,M,P") = ref_orb_a("a,m,M") * MttKRP("P,a");
@@ -394,6 +401,7 @@ class THC_LT_THC_ALS : public CP<Tile, Policy> {
 
     UnNormalizedLeft = MttKRP.clone();
     this->normalize_factor(MttKRP);
+    MttKRP.truncate();
     cp_factors[1] = MttKRP;
     this->partial_grammian[1]("r,rp") = MttKRP("r,n") * MttKRP("rp,n");
     THC_times_CPD[0]("m,M,P") = pq("m,M,P") * (ref_orb_b("b,m,M") * MttKRP("P,b"));
@@ -408,6 +416,7 @@ class THC_LT_THC_ALS : public CP<Tile, Policy> {
     R = math::linalg::lu_inv(TA::einsum(this->partial_grammian[2]("P,Q"), this->partial_grammian[3]("P,Q"),"P,Q"));
 
     cp_factors[2]("P,Q") = L("P,L") * MttKRP("L,M") * R("Q,M");
+    cp_factors[2].truncate();
   }
 
   void update_factors_right(){
