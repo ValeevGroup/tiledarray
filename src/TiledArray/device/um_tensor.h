@@ -99,6 +99,194 @@ void apply_scale_factor(T *data, std::size_t size, const Scalar &factor,
 
 }  // namespace detail
 
+/// Contains internal implementations of functions which take blas::Queue as an
+/// argument to be used in composite functions to avoid race conditions
+namespace device::impl {
+
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+UMTensor<T> clone(const UMTensor<T> &arg, blas::Queue &queue) {
+  TA_ASSERT(!arg.empty());
+
+  UMTensor<T> result(arg.range());
+  auto stream = device::Stream(queue.device(), queue.stream());
+  TiledArray::detail::to_device(arg);
+  TiledArray::detail::to_device(result);
+
+  // copy data
+  blas::copy(result.size(), device_data(arg), 1, device_data(result), 1, queue);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/*/// make sure you pass the correct queue object to this function. ie, the queue
+/// generated from the permuted range
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+UMTensor<T> permute(const UMTensor<T> &arg, const TiledArray::Permutation &perm,
+                    blas::Queue &queue) {
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(perm.size() == arg.range().rank());
+
+  // computed result range
+  auto result_range = perm * arg.range();
+  auto stream = device::Stream(queue.device(), queue.stream());
+
+  UMTensor<T> result(result_range);
+  TiledArray::detail::to_device(arg);
+  TiledArray::detail::to_device(result);
+
+  // invoke permute from librett
+  librett_permute(const_cast<T *>(device_data(arg)), device_data(result),
+                  arg.range(), perm, stream);
+  device::sync_madness_task_with(stream);
+  return result;
+}*/
+
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> &&
+           TiledArray::detail::is_numeric_v<T>
+UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor,
+                  blas::Queue &queue) {
+  const auto stream = device::Stream(queue.device(), queue.stream());
+  auto result = device::impl::clone(arg, queue);
+  TiledArray::detail::apply_scale_factor(device_data(result), result.size(),
+                                         factor, queue);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar> &&
+           TiledArray::detail::is_numeric_v<T>
+UMTensor<T> &scale_to(UMTensor<T> &arg, const Scalar factor,
+                      blas::Queue& queue) {
+  const auto stream = device::Stream(queue.device(), queue.stream());
+
+  TiledArray::detail::to_device(arg);
+  // in-place scale
+  TiledArray::detail::apply_scale_factor(device_data(arg), arg.size(), factor,
+                                         queue);
+  device::sync_madness_task_with(stream);
+  return arg;
+}
+
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
+                blas::Queue& queue) {
+  const auto stream = device::Stream(queue.device(), queue.stream());
+
+  UMTensor<T> result(arg1.range());
+
+  TiledArray::detail::to_device(arg1);
+  TiledArray::detail::to_device(arg2);
+  TiledArray::detail::to_device(result);
+
+  // result = arg1 + arg2
+  blas::copy(result.size(), device_data(arg1), 1, device_data(result), 1,
+             queue);
+  blas::axpy(result.size(), 1, device_data(arg2), 1, device_data(result), 1,
+             queue);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg,
+                    blas::Queue& queue) {
+  const auto stream = device::Stream(queue.device(), queue.stream());
+
+  TiledArray::detail::to_device(result);
+  TiledArray::detail::to_device(arg);
+
+  // result += arg
+  blas::axpy(result.size(), 1, device_data(arg), 1, device_data(result), 1,
+             queue);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
+                 blas::Queue& queue) {
+  const auto stream = device::Stream(queue.device(), queue.stream());
+
+  UMTensor<T> result(arg1.range());
+
+  TiledArray::detail::to_device(arg1);
+  TiledArray::detail::to_device(arg2);
+  TiledArray::detail::to_device(result);
+
+  // result = arg1 - arg2
+  blas::copy(result.size(), device_data(arg1), 1, device_data(result), 1,
+             queue);
+  blas::axpy(result.size(), T(-1), device_data(arg2), 1, device_data(result), 1,
+             queue);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg,
+                     blas::Queue& queue) {
+  const auto stream = device::Stream(queue.device(), queue.stream());
+
+  TiledArray::detail::to_device(result);
+  TiledArray::detail::to_device(arg);
+
+  // result -= arg
+  blas::axpy(result.size(), T(-1), device_data(arg), 1, device_data(result), 1,
+             queue);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
+                 blas::Queue& queue) {
+  TA_ASSERT(arg1.size() == arg2.size());
+
+  const auto stream = device::Stream(queue.device(), queue.stream());
+
+  UMTensor<T> result(arg1.range());
+
+  TiledArray::detail::to_device(arg1);
+  TiledArray::detail::to_device(arg2);
+  TiledArray::detail::to_device(result);
+
+  // element-wise multiplication
+  device::mult_kernel(device_data(result), device_data(arg1), device_data(arg2),
+                      arg1.size(), stream);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+UMTensor<T> &mult_to(UMTensor<T> &result, const UMTensor<T> &arg,
+                     blas::Queue& queue) {
+  TA_ASSERT(result.size() == arg.size());
+
+  const auto stream = device::Stream(queue.device(), queue.stream());
+
+  TiledArray::detail::to_device(result);
+  TiledArray::detail::to_device(arg);
+
+  // in-place element-wise multiplication
+  device::mult_to_kernel(device_data(result), device_data(arg), result.size(),
+                         stream);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+}  // namespace device::impl
+
 ///
 /// gemm
 ///
@@ -223,22 +411,12 @@ void gemm(UMTensor<T> &result, const UMTensor<T> &left,
 ///
 
 template <typename T>
-requires TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> clone(const UMTensor<T> &arg) {
   TA_ASSERT(!arg.empty());
 
-  UMTensor<T> result(arg.range());
-  auto stream = device::stream_for(result.range());
-
-  detail::to_device(arg);
-  detail::to_device(result);
-
-  // copy data
-  auto &queue = blasqueue_for(result.range());
-  blas::copy(result.size(), device_data(arg), 1,
-             device_data(result), 1, queue);
-  device::sync_madness_task_with(stream);
-  return result;
+  auto &queue = blasqueue_for(arg.range());
+  return device::impl::clone(arg, queue);
 }
 
 ///
@@ -270,8 +448,10 @@ UMTensor<T> shift(const UMTensor<T> &arg, const Index &bound_shift) {
   return result;
 }
 
+/// this is probably not needed, range changes, but no actual data of the tensor
+/// changes
 template <typename T, typename Index>
-requires TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &shift_to(UMTensor<T> &arg, const Index &bound_shift) {
   const_cast<TiledArray::Range &>(arg.range()).inplace_shift(bound_shift);
   return arg;
@@ -321,41 +501,26 @@ template <typename T, typename Scalar>
   requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor) {
   auto &queue = blasqueue_for(arg.range());
-  const auto stream = device::Stream(queue.device(), queue.stream());
-
-  auto result = clone(arg);
-
-  detail::apply_scale_factor(device_data(result), result.size(), factor,
-                             queue);
-
-  device::sync_madness_task_with(stream);
-  return result;
+  return device::impl::scale(arg, factor, queue);
 }
 
 template <typename T, typename Scalar>
   requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &scale_to(UMTensor<T> &arg, const Scalar factor) {
   auto &queue = blasqueue_for(arg.range());
-  const auto stream = device::Stream(queue.device(), queue.stream());
-
-  detail::to_device(arg);
-
-  // in-place scale
-  // ComplexConjugate is handled as in device/btas.h
-  detail::apply_scale_factor(device_data(arg), arg.size(), factor,
-                             queue);
-
-  device::sync_madness_task_with(stream);
-  return arg;
+  return device::impl::scale_to(arg, factor, queue);
 }
 
 template <typename T, typename Scalar, typename Perm>
-  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T> &&
+  requires TiledArray::detail::is_numeric_v<Scalar> &&
+           TiledArray::detail::is_numeric_v<T> &&
            TiledArray::detail::is_permutation_v<Perm>
 UMTensor<T> scale(const UMTensor<T> &arg, const Scalar factor,
                   const Perm &perm) {
-  auto result = scale(arg, factor);
-  return permute(result, perm);
+  auto result = permute(arg, perm);
+  auto &queue = blasqueue_for(result.range());
+  device::impl::scale_to(result, factor, queue);
+  return result;
 }
 
 ///
@@ -369,10 +534,13 @@ UMTensor<T> neg(const UMTensor<T> &arg) {
 }
 
 template <typename T, typename Perm>
-  requires TiledArray::detail::is_permutation_v<Perm> && TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_permutation_v<Perm> &&
+           TiledArray::detail::is_numeric_v<T>
 UMTensor<T> neg(const UMTensor<T> &arg, const Perm &perm) {
-  auto result = neg(arg);
-  return permute(result, perm);
+  auto result = permute(arg, perm);
+  auto &queue = blasqueue_for(result.range());
+  device::impl::scale_to(result, T(-1.0), queue);
+  return result;
 }
 
 template <typename T>
@@ -386,32 +554,20 @@ UMTensor<T> &neg_to(UMTensor<T> &arg) {
 ///
 
 template <typename T>
-requires TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
-  UMTensor<T> result(arg1.range());
-
-  auto &queue = blasqueue_for(result.range());
-  const auto stream = device::Stream(queue.device(), queue.stream());
-
-  detail::to_device(arg1);
-  detail::to_device(arg2);
-  detail::to_device(result);
-
-  // result = arg1 + arg2
-  blas::copy(result.size(), device_data(arg1), 1,
-             device_data(result), 1, queue);
-  blas::axpy(result.size(), 1, device_data(arg2), 1,
-             device_data(result), 1, queue);
-  device::sync_madness_task_with(stream);
-  return result;
+  auto &queue = blasqueue_for(arg1.range());
+  return device::impl::add(arg1, arg2, queue);
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_numeric_v<Scalar> &&
+           TiledArray::detail::is_numeric_v<T>
 UMTensor<T> add(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                 const Scalar factor) {
-  auto result = add(arg1, arg2);
-  return scale_to(result, factor);
+  auto &queue = blasqueue_for(arg1.range());
+  auto result = device::impl::add(arg1, arg2, queue);
+  return device::impl::scale_to(result, factor, queue);
 }
 
 template <typename T, typename Perm>
@@ -439,24 +595,17 @@ template <typename T>
 requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   auto &queue = blasqueue_for(result.range());
-  const auto stream = device::Stream(queue.device(), queue.stream());
-
-  detail::to_device(result);
-  detail::to_device(arg);
-
-  // result += arg
-  blas::axpy(result.size(), 1, device_data(arg), 1,
-             device_data(result), 1, queue);
-  device::sync_madness_task_with(stream);
-  return result;
+  return device::impl::add_to(result, arg, queue);
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_numeric_v<Scalar> &&
+           TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg,
                     const Scalar factor) {
-  add_to(result, arg);
-  return scale_to(result, factor);
+  auto &queue = blasqueue_for(result.range());
+  device::impl::add_to(result, arg, queue);
+  return device::impl::scale_to(result, factor, queue);
 }
 
 ///
@@ -464,36 +613,27 @@ UMTensor<T> &add_to(UMTensor<T> &result, const UMTensor<T> &arg,
 ///
 
 template <typename T>
-requires TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   UMTensor<T> result(arg1.range());
 
   auto &queue = blasqueue_for(result.range());
-  const auto stream = device::Stream(queue.device(), queue.stream());
-
-  detail::to_device(arg1);
-  detail::to_device(arg2);
-  detail::to_device(result);
-
-  // result = arg1 - arg2
-  blas::copy(result.size(), device_data(arg1), 1,
-             device_data(result), 1, queue);
-  blas::axpy(result.size(), T(-1), device_data(arg2), 1,
-             device_data(result), 1, queue);
-  device::sync_madness_task_with(stream);
-  return result;
+  return device::impl::subt(arg1, arg2, queue);
 }
 
 template <typename T, typename Scalar>
-  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_numeric_v<Scalar> &&
+           TiledArray::detail::is_numeric_v<T>
 UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Scalar factor) {
-  auto result = subt(arg1, arg2);
-  return scale_to(result, factor);
+  auto &queue = blasqueue_for(arg1.range());
+  auto result = device::impl::subt(arg1, arg2, queue);
+  return device::impl::scale_to(result, factor, queue);
 }
 
 template <typename T, typename Perm>
-  requires TiledArray::detail::is_permutation_v<Perm> && TiledArray::detail::is_numeric_v<T>
+  requires TiledArray::detail::is_permutation_v<Perm> &&
+           TiledArray::detail::is_numeric_v<T>
 UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Perm &perm) {
   auto result = subt(arg1, arg2);
@@ -501,7 +641,8 @@ UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 }
 
 template <typename T, typename Scalar, typename Perm>
-  requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T> &&
+  requires TiledArray::detail::is_numeric_v<Scalar> &&
+           TiledArray::detail::is_numeric_v<T> &&
            TiledArray::detail::is_permutation_v<Perm>
 UMTensor<T> subt(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Scalar factor, const Perm &perm) {
@@ -517,24 +658,16 @@ template <typename T>
 requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg) {
   auto &queue = blasqueue_for(result.range());
-  const auto stream = device::Stream(queue.device(), queue.stream());
-
-  detail::to_device(result);
-  detail::to_device(arg);
-
-  // result -= arg
-  blas::axpy(result.size(), T(-1), device_data(arg), 1,
-             device_data(result), 1, queue);
-  device::sync_madness_task_with(stream);
-  return result;
+  return device::impl::subt_to(result, arg, queue);
 }
 
 template <typename T, typename Scalar>
   requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &subt_to(UMTensor<T> &result, const UMTensor<T> &arg,
                      const Scalar factor) {
-  subt_to(result, arg);
-  return scale_to(result, factor);
+  auto &queue = blasqueue_for(result.range());
+  device::impl::subt_to(result, arg, queue);
+  return device::impl::scale_to(result, factor, queue);
 }
 
 ///
@@ -545,28 +678,17 @@ template <typename T>
 requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2) {
   TA_ASSERT(arg1.size() == arg2.size());
-
-  auto stream = device::stream_for(arg1.range());
-
-  UMTensor<T> result(arg1.range());
-
-  detail::to_device(arg1);
-  detail::to_device(arg2);
-  detail::to_device(result);
-
-  // element-wise multiplication
-  device::mult_kernel(device_data(result), device_data(arg1),
-                      device_data(arg2), arg1.size(), stream);
-  device::sync_madness_task_with(stream);
-  return result;
+  auto& queue = blasqueue_for(arg1.range());
+  return device::impl::mult(arg1, arg2, queue);
 }
 
 template <typename T, typename Scalar>
   requires TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_numeric_v<T>
 UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
                  const Scalar factor) {
-  auto result = mult(arg1, arg2);
-  return scale_to(result, factor);
+  auto& queue = blasqueue_for(arg1.range());
+  auto result = device::impl::mult(arg1, arg2, queue);
+  return device::impl::scale_to(result, factor, queue);
 }
 
 template <typename T, typename Perm>
@@ -593,26 +715,18 @@ UMTensor<T> mult(const UMTensor<T> &arg1, const UMTensor<T> &arg2,
 template <typename T>
 requires TiledArray::detail::is_numeric_v<T>
 UMTensor<T> &mult_to(UMTensor<T> &result, const UMTensor<T> &arg) {
-  auto stream = device::stream_for(result.range());
   TA_ASSERT(result.size() == arg.size());
-
-  detail::to_device(result);
-  detail::to_device(arg);
-
-  // in-place element-wise multiplication
-  device::mult_to_kernel(device_data(result), device_data(arg),
-                         result.size(), stream);
-
-  device::sync_madness_task_with(stream);
-  return result;
+  auto& queue = blasqueue_for(result.range());
+  return device::impl::mult_to(result, arg, queue);
 }
 
 template <typename T, typename Scalar>
   requires TiledArray::detail::is_numeric_v<Scalar>
 UMTensor<T> &mult_to(UMTensor<T> &result, const UMTensor<T> &arg,
                      const Scalar factor) {
-  mult_to(result, arg);
-  return scale_to(result, factor);
+  auto &queue = blasqueue_for(result.range());
+  device::impl::mult_to(result, arg, queue);
+  return device::impl::scale_to(result, factor, queue);
 }
 
 ///
