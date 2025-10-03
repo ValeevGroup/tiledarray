@@ -177,6 +177,26 @@ inline constexpr const bool is_tensor_of_tensor_v =
     is_tensor_of_tensor<Ts...>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// It is sometimes desirable to distinguish between DistArrays with
+/// tensor-of-scalars tiles vs tensor-of-tensors tiles.
+
+///
+/// True if the @tparam Array is a DistArray with tensor-of-scalars tile type.
+/// e.g. DistArray<Tensor<double>>;
+///
+template <typename Array>
+concept array_tos =
+    is_array_v<Array> && is_tensor_v<typename Array::value_type>;
+
+///
+/// True if the @tparam Array is a DistArray with tensor-of-tensors tile type.
+/// e.g. DistArray<Tensor<Tensor<double>>>;
+///
+template <typename Array>
+concept array_tot =
+    is_array_v<Array> && is_tensor_of_tensor_v<typename Array::value_type>;
+
+////////////////////////////////////////////////////////////////////////////////
 
 template <typename T1, typename T2, typename Enabler = void>
 struct tensors_have_equal_nested_rank_helper : std::false_type {};
