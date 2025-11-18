@@ -53,6 +53,7 @@ void to_device(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
       TiledArray::to_execution_space<TiledArray::ExecutionSpace::Device>(
           tile.tensor(), stream);
     }
+    device::sync_madness_task_with(stream);
   };
 
   auto &world = um_array.world();
@@ -87,6 +88,11 @@ void to_host(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
       TiledArray::to_execution_space<TiledArray::ExecutionSpace::Host>(
           tile.tensor(), stream);
     }
+
+    // Synchronize this stream to ensure prefetch completes before task returns
+    // This prevents race conditions where world.gop.fence() completes before
+    // all async prefetch operations have finished
+    device::sync_madness_task_with(stream);
   };
 
   auto &world = um_array.world();
@@ -100,6 +106,8 @@ void to_host(TiledArray::DistArray<TiledArray::Tile<UMT>, Policy> &um_array) {
   }
 
   world.gop.fence();
+  // Note: deviceSynchronize() may be redundant after fence() + per-task sync,
+  // but kept for extra safety to ensure all device operations are complete
   DeviceSafeCall(device::deviceSynchronize());
 }
 
