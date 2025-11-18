@@ -17,8 +17,7 @@
  *
  */
 
-#include <TiledArray/device/btas_um_tensor.h>
-#include <TiledArray/external/btas.h>
+#include <TiledArray/device/um_tensor.h>
 #include <tiledarray.h>
 
 template <typename Tile>
@@ -247,7 +246,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 }
 
 template <typename T>
-using deviceTile = TiledArray::Tile<TiledArray::btasUMTensorVarray<T>>;
+using deviceTile = TiledArray::Tile<TiledArray::UMTensor<T>>;
 
 int try_main(int argc, char **argv) {
   // Initialize runtime

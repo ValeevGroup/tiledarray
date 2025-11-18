@@ -8,9 +8,9 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 # N.B. need relaxed constexpr for std::complex
 # see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#constexpr-functions%5B/url%5D:
 if (DEFINED CMAKE_CUDA_FLAGS)
-  set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr ${CMAKE_CUDA_FLAGS}")
+  set(CMAKE_CUDA_FLAGS "--forward-unknown-opts --expt-relaxed-constexpr ${CMAKE_CUDA_FLAGS}")
 else()
-  set(CMAKE_CUDA_FLAGS "--expt-relaxed-constexpr")
+  set(CMAKE_CUDA_FLAGS "--forward-unknown-opts --expt-relaxed-constexpr")
 endif()
 # if CMAKE_CUDA_HOST_COMPILER not set, set it to CMAKE_CXX_COMPILER, else NVCC will grab something from PATH
 if (NOT DEFINED CMAKE_CUDA_HOST_COMPILER)
