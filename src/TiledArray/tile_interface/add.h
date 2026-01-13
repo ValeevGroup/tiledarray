@@ -46,10 +46,8 @@ template <typename Left, typename Right,
 inline decltype(auto) add(Left&& left, Right&& right) {
   constexpr auto left_right =
       (detail::has_member_function_add_anyreturn_v<Left&&, Right&&> &&
-       detail::has_member_function_add_anyreturn_v<Right&&, Left&&> &&
-       !std::is_reference_v<Right> && std::is_reference_v<Left>) ||
-      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&> &&
-       !detail::has_member_function_add_anyreturn_v<Right&&, Left&&>);
+       !std::is_reference_v<Left>) ||
+      (!detail::has_member_function_add_anyreturn_v<Right&&, Left&&>);
   if constexpr (left_right)
     return std::forward<Left>(left).add(std::forward<Right>(right));
   else
@@ -76,12 +74,8 @@ inline decltype(auto) add(Left&& left, Right&& right, const Scalar factor) {
   constexpr auto left_right =
       (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
                                                    const Scalar> &&
-       detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
-                                                   const Scalar> &&
-       !std::is_reference_v<Right> && std::is_reference_v<Left>) ||
-      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
-                                                   const Scalar> &&
-       !detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+       !std::is_reference_v<Left>) ||
+      (!detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
                                                     const Scalar>);
   if constexpr (left_right)
     return std::forward<Left>(left).add(std::forward<Right>(right), factor);
@@ -108,12 +102,8 @@ inline decltype(auto) add(Left&& left, Right&& right, const Perm& perm) {
   constexpr auto left_right =
       (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
                                                    const Perm&> &&
-       detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
-                                                   const Perm&> &&
-       !std::is_reference_v<Right> && std::is_reference_v<Left>) ||
-      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
-                                                   const Perm&> &&
-       !detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+       !std::is_reference_v<Left>) ||
+      (!detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
                                                     const Perm&>);
   if constexpr (left_right)
     return std::forward<Left>(left).add(std::forward<Right>(right), perm);
@@ -143,12 +133,8 @@ inline decltype(auto) add(Left&& left, Right&& right, const Scalar factor,
   constexpr auto left_right =
       (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
                                                    const Scalar, const Perm&> &&
-       detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
-                                                   const Scalar, const Perm&> &&
-       !std::is_reference_v<Right> && std::is_reference_v<Left>) ||
-      (detail::has_member_function_add_anyreturn_v<Left&&, Right&&,
-                                                   const Scalar, const Perm&> &&
-       !detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
+       !std::is_reference_v<Left>) ||
+      (!detail::has_member_function_add_anyreturn_v<Right&&, Left&&,
                                                     const Scalar, const Perm&>);
   if constexpr (left_right)
     return std::forward<Left>(left).add(std::forward<Right>(right), factor,
