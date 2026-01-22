@@ -313,8 +313,13 @@ class BlkTsrExprBase : public Expr<Derived> {
 
   /// Sets result trange lobound such that the tile lobounds are not changed
   Derived& preserve_lobound() {
-    return set_trange_lobound(
-        array_.trange().make_tile_range(lower_bound()).lobound());
+    // only set lobound if *all* dimensions have non-zero extents
+    // so compare lower and upper bounds
+    if (ranges::equal(lower_bound_, upper_bound_, std::less<>{})) {
+      return set_trange_lobound(
+          array_.trange().make_tile_range(lower_bound()).lobound());
+    }
+    return static_cast<Derived&>(*this);
   }
 
   /// @return optional to result trange lobound; if null, the result trange
