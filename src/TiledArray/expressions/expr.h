@@ -518,9 +518,10 @@ class Expr {
     // Move the data from dist_eval into the sub-block of result array.
     // This step may involve communication when the tiles are moved from the
     // sub-block distribution to the array distribution.
-    // N.B. handle the corner case of zero-volume host array, then no data needs
-    // to be moved
-    if (tsr.array().trange().tiles_range().volume() != 0) {
+    // N.B. handle the corner cases of zero-volume host array and zero-volume
+    // block, then no data needs to be moved
+    if (tsr.array().trange().tiles_range().volume() != 0 &&
+        blk_range.volume() != 0) {
       // N.B. must deep copy
       TA_ASSERT(tsr.array().trange().tiles_range().includes(tsr.lower_bound()));
       // N.B. this expression's range,
