@@ -32,6 +32,9 @@
 #include <TiledArray/expressions/unary_expr.h>
 #include "blk_tsr_engine.h"
 
+#include <range/v3/algorithm.hpp>
+#include <range/v3/view.hpp>
+
 #include <optional>
 
 namespace TiledArray {
@@ -314,8 +317,13 @@ class BlkTsrExprBase : public Expr<Derived> {
   /// Sets result trange lobound such that the tile lobounds are not changed
   Derived& preserve_lobound() {
     // only set lobound if *all* dimensions have non-zero extents
-    // so compare lower and upper bounds
-    if (ranges::equal(lower_bound_, upper_bound_, std::less<>{})) {
+    const bool empty = ranges::any_of(
+        ranges::views::zip(lower_bound_, upper_bound_), [](auto&& p) {
+          auto [lb, ub] = p;
+          return lb >= ub;
+        });
+
+    if (!empty) {
       return set_trange_lobound(
           array_.trange().make_tile_range(lower_bound()).lobound());
     }
