@@ -1745,9 +1745,11 @@ class Tensor {
   /// \param right The tensor that will be added to this tensor
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other
-  template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  Tensor add(const Right& right) const& {
+  template <typename Right>
+    requires(is_tensor<Right>::value &&
+             detail::sum_convertible_to<value_type, const value_type&,
+                                        const value_t<Right>&>)
+  Tensor add(const Right& right) const {
     // early exit for empty right
     if (right.empty()) return this->clone();
 
@@ -1780,11 +1782,29 @@ class Tensor {
   /// \param right The tensor that will be added to this tensor
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other
-  template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+  template <typename Right>
+    requires(is_tensor<Right>::value &&
+             detail::addable_to<value_type&, const value_t<Right>&>)
   Tensor add(const Right& right) && {
     add_to(right);
     return std::move(*this);
+  }
+
+  /// Add this and \c other to construct a new tensor of type that differs from
+  /// this
+
+  /// \tparam Right The right-hand tensor type
+  /// \param right The tensor that will be added to this tensor
+  /// \return A new tensor where the elements are the sum of the elements of
+  /// \c this and \c other
+  template <typename Right>
+    requires(detail::is_tensor_v<Right> &&
+             !detail::sum_convertible_to<value_type, const value_type&,
+                                         const value_t<Right>&>)
+  auto add(const Right& right) const {
+    return binary(right, [](const value_type& l, const value_t<Right>& r) {
+      return l + r;
+    });
   }
 
   /// Add this and \c other to construct a new, permuted tensor
@@ -1795,13 +1815,13 @@ class Tensor {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other
-  template <
-      typename Right, typename Perm,
-      typename std::enable_if<is_tensor<Right>::value &&
-                              detail::is_permutation_v<Perm>>::type* = nullptr>
-  Tensor add(const Right& right, const Perm& perm) const {
+  template <typename Right, typename Perm>
+    requires(is_tensor<Right>::value && detail::is_permutation_v<Perm> &&
+             detail::addable<const value_type&, const value_t<Right>&>)
+  auto add(const Right& right, const Perm& perm) const {
     return binary(
-        right, [](const value_type& l, const value_type& r) { return l + r; },
+        right,
+        [](const value_type& l, const value_t<Right>& r) { return l + r; },
         perm);
   }
 
@@ -1813,14 +1833,14 @@ class Tensor {
   /// \param factor The scaling factor
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other, scaled by \c factor
-  template <
-      typename Right, typename Scalar,
-      typename std::enable_if<is_tensor<Right>::value &&
-                              detail::is_numeric_v<Scalar>>::type* = nullptr>
-  Tensor add(const Right& right, const Scalar factor) const {
-    return binary(right, [factor](const value_type& l, const value_type& r) {
-      return (l + r) * factor;
-    });
+  template <typename Right, typename Scalar>
+    requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
+             detail::addable<const value_type&, const value_t<Right>&>)
+  auto add(const Right& right, const Scalar factor) const {
+    return binary(right,
+                  [factor](const value_type& l, const value_t<Right>& r) {
+                    return (l + r) * factor;
+                  });
   }
 
   /// Scale and add this and \c other to construct a new, permuted tensor
@@ -1833,14 +1853,14 @@ class Tensor {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other, scaled by \c factor
-  template <typename Right, typename Scalar, typename Perm,
-            typename std::enable_if<
-                is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
-                detail::is_permutation_v<Perm>>::type* = nullptr>
-  Tensor add(const Right& right, const Scalar factor, const Perm& perm) const {
+  template <typename Right, typename Scalar, typename Perm>
+    requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
+             detail::is_permutation_v<Perm> &&
+             detail::addable<const value_type&, const value_t<Right>&>)
+  auto add(const Right& right, const Scalar factor, const Perm& perm) const {
     return binary(
         right,
-        [factor](const value_type& l, const value_type& r) {
+        [factor](const value_type& l, const value_t<Right>& r) {
           return (l + r) * factor;
         },
         perm);
@@ -1879,8 +1899,9 @@ class Tensor {
   /// \tparam Right The right-hand tensor type
   /// \param right The tensor that will be added to this tensor
   /// \return A reference to this tensor
-  template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+  template <typename Right>
+    requires(is_tensor<Right>::value &&
+             detail::addable_to<value_type&, const value_t<Right>&>)
   Tensor& add_to(const Right& right) {
     // early exit for empty right
     if (right.empty()) return *this;
@@ -1902,10 +1923,9 @@ class Tensor {
   /// \param right The tensor that will be added to this tensor
   /// \param factor The scaling factor
   /// \return A reference to this tensor
-  template <
-      typename Right, typename Scalar,
-      typename std::enable_if<is_tensor<Right>::value &&
-                              detail::is_numeric_v<Scalar>>::type* = nullptr>
+  template <typename Right, typename Scalar>
+    requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
+             detail::addable_to<value_type&, const value_t<Right>&>)
   Tensor& add_to(const Right& right, const Scalar factor) {
     return inplace_binary(
         right, [factor](value_type& MADNESS_RESTRICT l,
@@ -1916,8 +1936,9 @@ class Tensor {
 
   /// \param value The constant to be added
   /// \return A reference to this tensor
-  template <typename Scalar,
-            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
+  template <typename Scalar>
+    requires(detail::is_numeric_v<Scalar> &&
+             detail::addable_to<value_type&, const Scalar>)
   Tensor& add_to(const Scalar value) {
     return inplace_unary(
         [value](value_type& MADNESS_RESTRICT res) { res += value; });

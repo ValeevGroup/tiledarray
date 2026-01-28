@@ -1585,6 +1585,24 @@ struct is_invocable_void : is_invocable_void_helper<void, F, Args...> {};
 
 template <typename T>
 struct type_printer;
+
+// concepts
+
+template <typename Summand1, typename Summand2>
+concept addable = requires(Summand1 t, Summand2 u) {
+  { t + u };
+};
+
+template <typename Sum, typename Summand>
+concept addable_to = requires(Sum t, Summand u) {
+  { t += u };
+};
+
+template <typename Result, typename Summand1, typename Summand2>
+concept sum_convertible_to = requires(Summand1 t, Summand2 u) {
+  { t + u } -> std::convertible_to<Result>;
+};
+
 }  // namespace detail
 
 }  // namespace TiledArray

@@ -3075,6 +3075,53 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_trange1, F, Fixtures, F) {
   }
 }
 
+// corner case: expressions involving empty blocks
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_block_expressions, F, Fixtures, F) {
+  auto& a = F::a;
+  auto& c = F::c;
+
+  // one of the dimensions has zero extent
+  const auto lb1 = std::array{3, 2, 0};
+  const auto ub1 = std::array{4, 2, 2};
+
+  const int ntiles = F::ntiles;
+  const auto lb2 = std::array{ntiles, 0, 0};
+  const auto ub2 = std::array{ntiles, ntiles, ntiles};
+
+  // preserve_lobound should go through without issues
+  {
+    std::decay_t<decltype(c)> result;
+    BOOST_CHECK_NO_THROW(result("a,b,c") =
+                             a("a,b,c").block(lb1, ub1, preserve_lobound));
+
+    BOOST_CHECK_EQUAL(result.trange().tiles_range().volume(), 0);
+  }
+  {
+    std::decay_t<decltype(c)> result;
+    BOOST_CHECK_NO_THROW(result("a,b,c") =
+                             a("a,b,c").block(lb2, ub2, preserve_lobound));
+    BOOST_CHECK_EQUAL(result.trange().tiles_range().volume(), 0);
+  }
+
+  // assignment of empty (zero volume) block
+  {
+    BOOST_CHECK_NO_THROW(c("a,b,c").block(lb1, ub1) =
+                             a("a,b,c").block(lb1, ub1));
+  }
+  {
+    BOOST_CHECK_NO_THROW(c("a,b,c").block(lb2, ub2) =
+                             a("a,b,c").block(lb2, ub2));
+  }
+
+  // assignment from empty array
+  {
+    std::decay_t<decltype(c)> z;
+    z("a,b,c") = a("a,b,c").block(lb2, ub2);  // z is a full empty array
+    BOOST_CHECK_NO_THROW(c("a,b,c").block(lb2, ub2, preserve_lobound) =
+                             z("a,b,c"));
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 #endif  // TILEDARRAY_TEST_EXPRESSIONS_IMPL_H
