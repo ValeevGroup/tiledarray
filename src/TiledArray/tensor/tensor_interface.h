@@ -179,7 +179,6 @@ class TensorInterface {
   /// \param data The data pointer for this tensor
   TensorInterface(const range_type& range, pointer data)
       : range_(range), data_(data) {
-    TA_ASSERT(data);
   }
 
   /// Construct a new view of \c tensor
@@ -188,7 +187,6 @@ class TensorInterface {
   /// \param data The data pointer for this tensor
   TensorInterface(range_type&& range, pointer data)
       : range_(std::move(range)), data_(data) {
-    TA_ASSERT(data);
   }
 
   template <typename T1, typename std::enable_if<detail::is_nested_tensor<
