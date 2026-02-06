@@ -15,11 +15,10 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Chong Peng
+ *  Ajay Melekamburath
  *  Department of Chemistry, Virginia Tech
  *
- *  expressions.cpp
- *  Aug 08, 2018
+ *  Aug 05, 2025
  *
  */
 
@@ -27,18 +26,18 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
-#include <TiledArray/device/btas_um_tensor.h>
+#include <TiledArray/device/um_tensor.h>
 #include <range_fixture.h>
 #include <tiledarray.h>
 #include "unit_test_config.h"
 
 using namespace TiledArray;
 
-struct UMExpressionsFixture : public TiledRangeFixture {
-  using UMT = TA::Tile<btasUMTensorVarray<double>>;
+struct UMTensorExpressionsFixture : public TiledRangeFixture {
+  using UMT = TA::Tile<TA::UMTensor<double>>;
   using TArrayUMD = TiledArray::DistArray<UMT, TA::DensePolicy>;
 
-  UMExpressionsFixture()
+  UMTensorExpressionsFixture()
       : a(*GlobalFixture::world, tr),
         b(*GlobalFixture::world, tr),
         c(*GlobalFixture::world, tr),
@@ -58,9 +57,9 @@ struct UMExpressionsFixture : public TiledRangeFixture {
         array.pmap()->begin();
     typename DistArray<Tile>::pmap_interface::const_iterator end =
         array.pmap()->end();
-    for (; it != end; ++it)
+    for (; it != end; ++it) 
       array.set(*it, array.world().taskq.add(
-                         &UMExpressionsFixture::template make_rand_tile<Tile>,
+                         &UMTensorExpressionsFixture::template make_rand_tile<Tile>,
                          array.trange().make_tile_range(*it)));
   }
 
@@ -111,7 +110,7 @@ struct UMExpressionsFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.sum(&matrix(0, 0), matrix.size());
   }
 
-  ~UMExpressionsFixture() { GlobalFixture::world->gop.fence(); }
+  ~UMTensorExpressionsFixture() { GlobalFixture::world->gop.fence(); }
 
   const static TiledRange trange1;
   const static TiledRange trange2;
@@ -124,17 +123,17 @@ struct UMExpressionsFixture : public TiledRangeFixture {
   TArrayUMD v;
   TArrayUMD w;
   static constexpr double tolerance = 5.0e-14;
-};  // UMExpressionsFixture
+};  // UMTensorExpressionsFixture
 
 // Instantiate static variables for fixture
-const TiledRange UMExpressionsFixture::trange1 =
+const TiledRange UMTensorExpressionsFixture::trange1 =
     TiledRange{{0, 2, 5, 10, 17, 28, 41}};
-const TiledRange UMExpressionsFixture::trange2 =
+const TiledRange UMTensorExpressionsFixture::trange2 =
     TiledRange{{0, 2, 5, 10, 17, 28, 41}, {0, 3, 6, 11, 18, 29, 42}};
-// const TiledRange UMExpressionsFixture::trange3 = {{0,11,20}, {0,10,20},
+// const TiledRange UMTensorExpressionsFixture::trange3 = {{0,11,20}, {0,10,20},
 // {0,15,20,30}};
 
-BOOST_FIXTURE_TEST_SUITE(um_expressions_suite, UMExpressionsFixture)
+BOOST_FIXTURE_TEST_SUITE(ta_um_expressions_suite, UMTensorExpressionsFixture)
 
 BOOST_AUTO_TEST_CASE(tensor_factories) {
   const auto& ca = a;
@@ -524,9 +523,12 @@ BOOST_AUTO_TEST_CASE(scal_add_block) {
   Permutation perm({2, 1, 0});
   BlockRange block_range(a.trange().tiles_range(), {3, 3, 3}, {5, 5, 5});
 
+  c("a,b,c") = 2 * (3 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+
   BOOST_REQUIRE_NO_THROW(c("a,b,c") =
-                             2 * (3 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
-                                  4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+                             2.0 * (3.0 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  4.0 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index)) &&
@@ -864,6 +866,7 @@ BOOST_AUTO_TEST_CASE(add) {
     }
   }
 }
+
 
 BOOST_AUTO_TEST_CASE(add_to) {
   c("a,b,c") = a("a,b,c");
@@ -1906,6 +1909,7 @@ BOOST_AUTO_TEST_CASE(scale_cont) {
     }
   }
 
+
   BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * (3 * b("j,b,c"))));
 
   for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
@@ -1922,6 +1926,7 @@ BOOST_AUTO_TEST_CASE(scale_cont) {
       }
     }
   }
+
 }
 
 BOOST_AUTO_TEST_CASE(scale_cont_permute) {
@@ -2588,4 +2593,4 @@ BOOST_AUTO_TEST_CASE(dot_contr) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-#endif  // TILEDARRAY_HAS_CUDA
+#endif  // TILEDARRAY_HAS_DEVICE

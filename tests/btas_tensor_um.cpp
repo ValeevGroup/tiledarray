@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2025  Virginia Tech
+ *  Copyright (C) 2018  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,22 +15,17 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Ajay Melekamburath
- *  Department of Chemistry, Virginia Tech
- *  Aug 02, 2025
+ *  Chong Peng on 9/19/18.
  */
 
-#include <TiledArray/tensor/tensor.h>
-
-#include <TiledArray/device/um_tensor.h>
-
+#include <TiledArray/device/btas_um_tensor.h>
 #include "global_fixture.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
 
-struct TensorUM_TA_Fixture {
-  typedef UMTensor<int> TensorN;
+struct TensorUMFixture {
+  typedef btasUMTensorVarray<int> TensorN;
   typedef TensorN::value_type value_type;
   typedef TensorN::range_type::index index;
   typedef TensorN::size_type size_type;
@@ -39,11 +34,11 @@ struct TensorUM_TA_Fixture {
 
   const range_type r;
 
-  TensorUM_TA_Fixture() : r(make_range(81)), t(r, 1) {
+  TensorUMFixture() : r(make_range(81)), t(r) {
     rand_fill(18, t.size(), t.data());
   }
 
-  ~TensorUM_TA_Fixture() {}
+  ~TensorUMFixture() {}
 
   static range_type make_range(const int seed) {
     GlobalFixture::world->srand(seed);
@@ -72,11 +67,11 @@ struct TensorUM_TA_Fixture {
                                 GlobalFixture::world->rand() % 42);
   }
 
-  // static TensorN make_tensor(const int range_seed, const int data_seed) {
-  //   TensorN tensor(make_range(range_seed));
-  //   rand_fill(data_seed, tensor.size(), tensor.data());
-  //   return tensor;
-  // }
+  static TensorN make_tensor(const int range_seed, const int data_seed) {
+    TensorN tensor(make_range(range_seed));
+    rand_fill(data_seed, tensor.size(), tensor.data());
+    return tensor;
+  }
 
   //  // make permutation definition object
   //  static Permutation make_perm() {
@@ -92,7 +87,7 @@ struct TensorUM_TA_Fixture {
   TensorN t;
 };
 
-BOOST_FIXTURE_TEST_SUITE(ta_tensor_um_suite, TensorUM_TA_Fixture,
+BOOST_FIXTURE_TEST_SUITE(btas_tensor_um_suite, TensorUMFixture,
                          TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {

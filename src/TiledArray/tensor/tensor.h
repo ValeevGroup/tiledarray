@@ -91,8 +91,8 @@ To clone_or_cast(From&& f) {
 /// As of TiledArray 1.1 Tensor represents a batch of tensors with same Range
 /// (the default batch size = 1).
 /// \tparam T The value type of this tensor
-/// \tparam A The allocator type for the data; only default-constructible
-/// allocators are supported to save space
+/// \tparam Allocator The allocator type for the data; only
+/// default-constructible allocators are supported to save space
 template <typename T, typename Allocator>
 class Tensor {
   // meaningful error if T& is not assignable, see
@@ -352,14 +352,14 @@ class Tensor {
   /// default-initialized (which, for `T` with trivial default constructor,
   /// means data is uninitialized).
   /// \param range The range of the tensor
-  /// \param nbatch The number of batches (default is 1)
+  /// \param nb The number of batches (default is 1)
   explicit Tensor(const range_type& range, nbatches nb = 1)
       : Tensor(range, nb.n, default_construct{true}) {}
 
   /// Construct a tensor of tensor values, setting all elements to the same
   /// value
 
-  /// \param range An array with the size of of each dimension
+  /// \param range An array with the size of each dimension
   /// \param value The value of the tensor elements
   template <
       typename Value,
@@ -376,7 +376,7 @@ class Tensor {
 
   /// Construct a tensor of scalars, setting all elements to the same value
 
-  /// \param range An array with the size of of each dimension
+  /// \param range An array with the size of each dimension
   /// \param value The value of the tensor elements
   template <typename Value,
             typename std::enable_if<std::is_convertible_v<Value, value_type> &&
@@ -391,7 +391,7 @@ class Tensor {
 
   /// \tparam ElementIndexOp callable of signature
   /// `value_type(const Range::index_type&)`
-  /// \param range An array with the size of of each dimension
+  /// \param range An array with the size of each dimension
   /// \param element_idx_op a callable of type ElementIndexOp
   template <typename ElementIndexOp,
             typename = std::enable_if_t<std::is_invocable_r_v<
@@ -437,7 +437,7 @@ class Tensor {
   ///          than copied to make the semantics of  this to be consistent
   ///          between tensors of scalars and tensors of scalars; specifically,
   ///          if `T1` is a tensor of scalars the constructed tensor is
-  ///          is independent of \p other, thus should apply clone to inner
+  ///          independent of \p other, thus should apply clone to inner
   ///          tensor nests to behave similarly for nested tensors
   template <
       typename T1,
@@ -459,7 +459,7 @@ class Tensor {
   ///          than copied to make the semantics of  this to be consistent
   ///          between tensors of scalars and tensors of tensors; specifically,
   ///          if `T1` is a tensor of scalars the constructed tensor is
-  ///          is independent of \p other, thus should apply clone to inner
+  ///          independent of \p other, thus should apply clone to inner
   ///          tensor nests to behave similarly for nested tensors
   template <
       typename T1, typename Perm,
@@ -667,7 +667,7 @@ class Tensor {
     return result;
   }
 
-  /// cloning an rvalue ref forwards the contents of this
+  /// cloning a rvalue ref forwards the contents of this
   /// @return a deep copy of `*this`
   /// @post this is in a moved-from state
   Tensor clone() && { return std::move(*this); }

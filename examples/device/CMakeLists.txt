@@ -25,7 +25,7 @@
 
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
-    foreach(_exec device_task ta_dense_device ta_cc_abcd_device ta_vector_device ta_reduce_device)
+    foreach(_exec device_task ta_dense_device ta_dense_um_tensor ta_cc_abcd_device ta_vector_device ta_reduce_device)
 
         # Add executable
         add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
