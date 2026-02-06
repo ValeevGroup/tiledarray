@@ -28,10 +28,12 @@
 
 #include <TiledArray/math/solvers/cp/cp.h>
 #include <TiledArray/math/solvers/cp/cp_als.h>
+#include <TiledArray/math/solvers/cp/cp_thc_als.h>
 #include <TiledArray/math/solvers/cp/cp_reconstruct.h>
 
 namespace TiledArray {
 using TiledArray::math::cp::CP_ALS;
+using TiledArray::math::cp::CP_THC_ALS;
 using TiledArray::math::cp::cp_reconstruct;
 }  // namespace TiledArray
 

@@ -37,6 +37,56 @@ static inline char intToAlphabet(int i) { return static_cast<char>('a' + i); }
 
 }  // namespace detail
 
+/// normalizes "columns" (aka rows) of an updated factor matrix
+
+/// rows of factor matrices produced by least-squares are not unit
+/// normalized. This takes each row and makes it unit normalized,
+/// with inverse of the normalization factor stored in this->lambda
+/// \param[in,out] factor in: unnormalized factor matrix, out:
+/// normalized factor matrix
+template <typename Array>
+void normalize_factor(Array& factor, Array& lambda) {
+  using Tile = typename Array::value_type;
+  auto& world = factor.world();
+  // this is what the code should look like, but expressions::einsum seems to
+  // be buggy lambda contains squared norms of rows
+  lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
+
+  // element-wise square root to convert squared norms to norms
+  TiledArray::foreach_inplace(
+      lambda,
+      [](Tile& tile) {
+        auto lo = tile.range().lobound_data();
+        auto up = tile.range().upbound_data();
+        for (auto R = lo[0]; R < up[0]; ++R) {
+          const auto norm_squared_RR = tile({R});
+          using std::sqrt;
+          tile({R}) = sqrt(norm_squared_RR);
+        }
+      },
+      /* fence = */ true);
+  lambda.truncate();
+  lambda.make_replicated();
+  auto lambda_eig = array_to_eigen(lambda);
+
+  TiledArray::foreach_inplace(
+      factor,
+      [&lambda_eig](Tile& tile) {
+        auto lo = tile.range().lobound_data();
+        auto up = tile.range().upbound_data();
+        for (auto R = lo[0]; R < up[0]; ++R) {
+          const auto lambda_R = lambda_eig(R, 0);
+          if (lambda_R < 1e-12) continue;
+          auto scale_by = 1.0 / lambda_R;
+          for (auto N = lo[1]; N < up[1]; ++N) {
+            tile(R, N) *= scale_by;
+          }
+        }
+      },
+      /* fence = */ true);
+  factor.truncate();
+}
+
 /**
  * This is a base class for the canonical polyadic (CP)
  * decomposition solver. The decomposition, in general,
@@ -91,7 +141,7 @@ class CP {
   /// \returns the fit: \f$ 1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
   double compute_rank(size_t rank, size_t rank_block_size = 0,
                       bool build_rank = false, double epsilonALS = 1e-3,
-                      bool verbose = false) {
+                      bool verbose = false, int niters = 100) {
     rank_block_size = (rank_block_size == 0 ? rank : rank_block_size);
     double epsilon = 1.0;
     fit_tol = epsilonALS;
@@ -101,15 +151,15 @@ class CP {
       do {
         rank_trange = TiledRange1::make_uniform(cur_rank, rank_block_size);
         build_guess(cur_rank, rank_trange);
-        ALS(cur_rank, 100, verbose);
+        ALS(cur_rank, niters, verbose);
         ++cur_rank;
       } while (cur_rank < rank);
     } else {
       rank_trange = TiledRange1::make_uniform(rank, rank_block_size);
       build_guess(rank, rank_trange);
-      ALS(rank, 100, verbose);
+      ALS(rank, niters, verbose);
     }
-    return epsilon;
+    return this->final_fit;
   }
 
   /// This function computes the CP decomposition with an
@@ -140,10 +190,14 @@ class CP {
     return epsilon;
   }
 
-  std::vector<Array> get_factor_matrices() {
+  std::vector<Array> get_factor_matrices(bool with_lambda = false) {
     TA_ASSERT(!cp_factors.empty(),
               "CP factor matrices have not been computed)");
     auto result = cp_factors;
+    if (with_lambda) {
+      result.emplace_back(lambda);
+      return result;
+    }
     result.pop_back();
     result.emplace_back(unNormalized_Factor);
     return result;
@@ -185,7 +239,8 @@ class CP {
       final_fit,          // The final fit of the ALS
                           // optimization at fixed rank.
       fit_tol,            // Tolerance for the ALS solver
-      norm_reference;     // used in determining the CP fit.
+      norm_reference,     // used in determining the CP fit.
+      norm_ref_sq;
   std::size_t converged_num =
       0;  // How many times the ALS solver
           // has changed less than the tolerance in a row
@@ -259,7 +314,7 @@ class CP {
     // MtKRP);
     try {
       MtKRP = math::linalg::cholesky_solve(W, MtKRP);
-    } catch (std::runtime_error& ex) {
+    } catch (std::exception& ex) {
       // if W is near-singular try LU instead of Cholesky
       if (std::string(ex.what()).find("lapack::posv failed") !=
           std::string::npos) {
@@ -370,17 +425,16 @@ class CP {
       for (size_t i = 1; i < ndim - 1; ++i, ++gram_ptr) {
         W("r,rp") *= (*gram_ptr)("r,rp");
       }
-      auto result = sqrt(W("r,rp").dot(
-          (unNormalized_Factor("r,n") * unNormalized_Factor("rp,n"))));
+      auto result = W("r,rp").dot(
+          (unNormalized_Factor("r,n") * unNormalized_Factor("rp,n")));
       // not sure why need to fence here, but hang periodically without it
       W.world().gop.fence();
       return result;
     };
     // compute the error in the loss function and find the fit
     const auto norm_cp = factor_norm();  // ||T_CP||_2
-    const auto squared_norm_error = norm_reference * norm_reference +
-                                    norm_cp * norm_cp -
-                                    2.0 * ref_dot_cp;  // ||T - T_CP||_2^2
+    const auto squared_norm_error =
+        norm_ref_sq + norm_cp - 2.0 * ref_dot_cp;  // ||T - T_CP||_2^2
     // N.B. squared_norm_error is very noisy
     // TA_ASSERT(squared_norm_error >= - 1e-8);
     const auto norm_error = sqrt(abs(squared_norm_error));
