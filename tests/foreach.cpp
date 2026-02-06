@@ -119,6 +119,26 @@ BOOST_AUTO_TEST_CASE(foreach_unary) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(foreach_w_idx) {
+
+  TArrayI result = a.clone();
+  foreach_inplace(result, [](TensorI& tile, const Range::index_type &coord_idx) {
+    long fac = (coord_idx[0] < coord_idx[1]) ? coord_idx[0] : coord_idx[1];
+    tile[coord_idx] = fac * tile[coord_idx];
+  }, true);
+
+  for (auto index : *result.pmap()) {
+    TensorI tile0 = a.find(index).get();
+    TensorI tile = result.find(index).get();
+    const Range &range = tile0.range();
+    for (std::size_t i = 0; i < tile.size(); ++i) {
+      const Range::index_type &coord_idx = range.idx(i);
+      long fac = coord_idx[0] < coord_idx[1] ? coord_idx[0] : coord_idx[1];
+      BOOST_CHECK_EQUAL(tile[i], fac * tile0[i]);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE(foreach_unary_sparse) {
   TSpArrayI result =
       foreach (c, [](TensorI& result, const TensorI& arg) -> float {
