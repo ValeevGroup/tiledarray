@@ -1007,4 +1007,16 @@ BOOST_AUTO_TEST_CASE(size_of) {
   BOOST_REQUIRE(sz0 == sz0_expected);
 }
 
+BOOST_FIXTURE_TEST_CASE(fill_zero_sparse, ArrayFixture) {
+  // construct a sparse array with some non-zero tiles and fill it
+  SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr));
+  as.fill(1);
+  BOOST_CHECK_GT(as.shape().nnz(), 0);
+
+  // fill with zero should result in an empty array (no tiles)
+  as.fill(0);
+  BOOST_CHECK_EQUAL(as.shape().nnz(), 0);
+  BOOST_CHECK(as.begin() == as.end());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
