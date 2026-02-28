@@ -533,7 +533,7 @@ for(TArrayD::iterator it = array.begin(); it != array.end(); ++it) {
 ```
 The outer loop in this example iterates over the local tiles of `array`. Within the loop body we first create an tile (an object of `TArrayD::value_type` type, which in this case is `TA::Tensor<double>`). Then we loop over its elements and assign each to zero.
 
-N.B. Of course, filling a DistArray with a constant is such a common use case that there's already a method for exactly that: `array.fill(0.0)`.
+N.B. Of course, filling a DistArray with a constant is such a common use case that there's already a method for exactly that: `array.fill(0.0)`. Note that for sparse arrays `fill(0.0)` will produce an empty array with no tiles, rather than an array full of tiles filled with zeroes.
 
 There are more serious issues with the last example. First, it is too verbose. Second, it's not generic enough (i.e. trying to reuse it for a sparse DistArray would require changing a few lines). Both issues can be solved by using modern C++ features:
 ```.cpp

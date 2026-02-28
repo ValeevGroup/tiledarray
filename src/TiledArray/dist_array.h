@@ -918,6 +918,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Fill all local tiles with the specified value
 
+  /// For sparse arrays, if \p value is zero (i.e., equal to
+  /// `element_type()`), the array is empty (no nonzero tiles)
+  /// and 0 is returned.
   /// \tparam fence If Fence::No, the operation will return early,
   ///         before the tasks have completed
   /// \param[in] value What each local tile should be filled with.
