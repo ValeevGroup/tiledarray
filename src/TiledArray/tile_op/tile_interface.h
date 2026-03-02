@@ -969,7 +969,8 @@ inline auto min(const Arg& arg) {
 /// \tparam Arg The tile argument type
 /// \param arg The argument to find the maximum
 /// \return A scalar that is equal to <tt>abs(max(arg))</tt>
-template <typename Arg>
+template <typename Arg,
+          typename = decltype(std::declval<const Arg&>().abs_max())>
 inline auto abs_max(const Arg& arg) {
   return arg.abs_max();
 }
@@ -979,7 +980,8 @@ inline auto abs_max(const Arg& arg) {
 /// \tparam Arg The tile argument type
 /// \param arg The argument to find the minimum
 /// \return A scalar that is equal to <tt>abs(min(arg))</tt>
-template <typename Arg>
+template <typename Arg,
+          typename = decltype(std::declval<const Arg&>().abs_min())>
 inline auto abs_min(const Arg& arg) {
   return arg.abs_min();
 }
@@ -991,7 +993,9 @@ inline auto abs_min(const Arg& arg) {
 /// \param left The left-hand argument tile
 /// \param right The right-hand argument tile
 /// \return A scalar that is equal to <tt>sum_i left[i] * right[i]</tt>
-template <typename Left, typename Right>
+template <typename Left, typename Right,
+          typename = decltype(std::declval<const Left&>().dot(
+              std::declval<const Right&>()))>
 inline auto dot(const Left& left, const Right& right) {
   return left.dot(right);
 }
@@ -1003,7 +1007,9 @@ inline auto dot(const Left& left, const Right& right) {
 /// \param left The left-hand argument tile
 /// \param right The right-hand argument tile
 /// \return A scalar that is equal to <tt>sum_i conj(left[i]) * right[i]</tt>
-template <typename Left, typename Right>
+template <typename Left, typename Right,
+          typename = decltype(std::declval<const Left&>().inner_product(
+              std::declval<const Right&>()))>
 inline auto inner_product(const Left& left, const Right& right) {
   return left.inner_product(right);
 }

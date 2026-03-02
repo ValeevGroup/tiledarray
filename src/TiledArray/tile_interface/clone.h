@@ -36,7 +36,7 @@ namespace TiledArray {
 /// \tparam Arg The tile argument type
 /// \param arg The tile argument to be permuted
 /// \return A (deep) copy of \c arg
-template <typename Arg>
+template <typename Arg, typename = decltype(std::declval<const Arg&>().clone())>
 inline auto clone(const Arg& arg) {
   return arg.clone();
 }

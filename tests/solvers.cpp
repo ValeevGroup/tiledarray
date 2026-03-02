@@ -167,6 +167,49 @@ struct validate<DistArray<Tile, Policy>> {
   }
 };
 
+// Eigen specializations
+
+template <>
+struct make_Ax<Eigen::VectorXd> {
+  using T = Eigen::VectorXd;
+
+  struct Ax {
+    Ax() : A_(3, 3) { A_ << 1, 2, 3, 2, 5, 8, 3, 8, 15; }
+    void operator()(const T& x, T& result) const { result = A_ * x; }
+    Eigen::MatrixXd A_;
+  };
+  Ax operator()() const { return Ax{}; }
+};
+
+template <>
+struct make_b<Eigen::VectorXd> {
+  using T = Eigen::VectorXd;
+
+  T operator()() const {
+    T result(3);
+    result << 1, 4, 0;
+    return result;
+  }
+};
+
+template <>
+struct make_pc<Eigen::VectorXd> {
+  using T = Eigen::VectorXd;
+
+  T operator()() const { return T::Ones(3); }
+};
+
+template <>
+struct validate<Eigen::VectorXd> {
+  using T = Eigen::VectorXd;
+
+  bool operator()(const T& x) const {
+    T ref(3);
+    ref << -6.5, 9., -3.5;
+    return (x - ref).norm() < 1e-11;
+  }
+};
+
 BOOST_AUTO_TEST_SUITE(solvers)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(conjugate_gradient, Array, array_types) {
@@ -176,6 +219,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(conjugate_gradient, Array, array_types) {
   Array x;
   ConjugateGradientSolver<Array, decltype(Ax)>{}(Ax, b, x, pc, 1e-11);
   BOOST_CHECK(validate<Array>{}(x));
+}
+
+BOOST_AUTO_TEST_CASE(conjugate_gradient_eigen) {
+  using T = Eigen::VectorXd;
+  auto Ax = make_Ax<T>{}();
+  auto b = make_b<T>{}();
+  auto pc = make_pc<T>{}();
+  T x;
+  ConjugateGradientSolver<T, decltype(Ax)>{}(Ax, b, x, pc, 1e-11);
+  BOOST_CHECK(validate<T>{}(x));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

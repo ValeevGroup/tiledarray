@@ -29,6 +29,7 @@
 #include <TiledArray/math/linalg/basic.h>
 #include <TiledArray/math/solvers/diis.h>
 #include "TiledArray/dist_array.h"
+#include "TiledArray/type_traits.h"
 
 namespace TiledArray::math {
 
@@ -44,8 +45,8 @@ namespace TiledArray::math {
 /// stand-alone functions:
 ///   \li <tt> std::size_t volume(const D&) </tt> (returns the total number of elements)
 ///   \li <tt> D clone(const D&) </tt>, returns a deep copy
-///   \li <tt> value_type minabs_value(const D&) </tt>
-///   \li <tt> value_type maxabs_value(const D&) </tt>
+///   \li <tt> value_type abs_min(const D&) </tt>
+///   \li <tt> value_type abs_max(const D&) </tt>
 ///   \li <tt> void vec_multiply(D& a, const D& b) </tt> (element-wise multiply
 ///   of \c a by \c b )
 ///   \li <tt> value_type inner_product(const D& a, const D& b) </tt>
@@ -60,7 +61,7 @@ namespace TiledArray::math {
 // clang-format on
 template <typename D, typename F>
 struct ConjugateGradientSolver {
-  typedef typename D::numeric_type value_type;
+  typedef TiledArray::detail::numeric_t<D> value_type;
 
   /// \param a object of type F
   /// \param b RHS
@@ -73,8 +74,8 @@ struct ConjugateGradientSolver {
                         value_type convergence_target = -1.0) {
     std::size_t n = volume(preconditioner);
 
-    const bool use_diis = false;
-    DIIS<D> diis;
+    constexpr bool use_diis = false;
+    std::conditional_t<use_diis, DIIS<D>, char> diis{};
 
     // solution vector
     D XX_i;
@@ -120,7 +121,7 @@ struct ConjugateGradientSolver {
     scale(RR_i, -1.0);
     axpy(RR_i, 1.0, b);  // RR_i = b - a(XX_i)
 
-    if (use_diis) diis.extrapolate(XX_i, RR_i, true);
+    if constexpr (use_diis) diis.extrapolate(XX_i, RR_i, true);
 
     // z_0 = D^-1 . r_0
     ZZ_i = RR_i;
@@ -144,7 +145,7 @@ struct ConjugateGradientSolver {
       // r_i -= alpha_i Ap_i
       axpy(RR_i, -alpha_i, APP_i);
 
-      if (use_diis) diis.extrapolate(XX_i, RR_i, true);
+      if constexpr (use_diis) diis.extrapolate(XX_i, RR_i, true);
 
       const value_type r_ip1_norm = norm2(RR_i) / rhs_size;
       if (r_ip1_norm < convergence_target) {
