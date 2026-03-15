@@ -692,6 +692,10 @@ inline std::enable_if_t<!is_dense_v<Policy>, void> foreach_inplace(
   // Set the arg with the new array
   left = detail::foreach<true, Op, LeftTile, LeftTile, Policy, RightTile>(
       std::forward<Op>(op), shape_reduction, left, right);
+
+  // must also fence after to prevent remote ranks start work on unprocessed
+  // tiles
+  if (fence) left.world().gop.fence();
 }
 
 /// @}
