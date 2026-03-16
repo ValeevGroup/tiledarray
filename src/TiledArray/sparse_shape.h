@@ -269,6 +269,9 @@ class SparseShape {
     return zero_tile_count;
   }
 
+  // clang-format off
+  /// \post `std::ranges::all_of(data(), [](auto x) { return std::isfinite(x); })`
+  // clang-format of
   SparseShape(const Tensor<T>& tile_norms,
               const std::shared_ptr<vector_type>& size_vectors,
               const size_type zero_tile_count,
@@ -276,7 +279,9 @@ class SparseShape {
       : tile_norms_(tile_norms),
         size_vectors_(size_vectors),
         zero_tile_count_(zero_tile_count),
-        my_threshold_(my_threshold) {}
+        my_threshold_(my_threshold) {
+    TA_ASSERT(check_norms_finite(tile_norms_));
+  }
 
  public:
   /// Default constructor
@@ -292,13 +297,17 @@ class SparseShape {
   /// \note this ctor *does not* scale tile norms
   /// \note if @c tile_norm is less than the threshold then all tile norms are
   /// set to zero
+  /// \pre `std::isfinite(tile_norm)`
   SparseShape(const value_type& tile_norm, const TiledRange& trange)
       : tile_norms_(trange.tiles_range(),
                     (tile_norm < threshold_ ? 0 : tile_norm)),
         size_vectors_(initialize_size_vectors(trange)),
         zero_tile_count_(tile_norm < threshold_ ? trange.tiles_range().area()
-                                                : 0ul) {}
+                                                : 0ul) {
+    TA_ASSERT(std::isfinite(tile_norm));
+  }
 
+  // clang-format off
   /// Constructs a SparseShape from a functor returning norm values
 
   /// \tparam Op callable of signature `value_type(const Range::index&)`
@@ -306,6 +315,8 @@ class SparseShape {
   /// \param trange The tiled range of the tensor
   /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
   /// are already scaled
+  /// \post `std::ranges::all_of(data(), [](auto x) { return std::isfinite(x); })`
+  // clang-format on
   template <
       typename Op,
       typename = std::enable_if_t<std::is_invocable_r_v<
@@ -317,6 +328,7 @@ class SparseShape {
         zero_tile_count_(0ul) {
     TA_ASSERT(!tile_norms_.empty());
     TA_ASSERT(tile_norms_.range() == trange.tiles_range());
+    TA_ASSERT(check_norms_finite(tile_norms_));
 
     if (!do_not_scale) {
       zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(
@@ -326,12 +338,15 @@ class SparseShape {
     }
   }
 
+  // clang-format off
   /// Constructor from a tensor of (scaled/unscaled) norm values
 
   /// \param tile_norms The Frobenius norm of tiles
   /// \param trange The tiled range of the tensor
   /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
   /// are already scaled
+  /// \post `std::ranges::all_of(data(), [](auto x) { return std::isfinite(x); })`
+  // clang-format on
   SparseShape(const Tensor<value_type>& tile_norms, const TiledRange& trange,
               bool do_not_scale = false)
       : tile_norms_(tile_norms.clone()),
@@ -339,6 +354,7 @@ class SparseShape {
         zero_tile_count_(0ul) {
     TA_ASSERT(!tile_norms_.empty());
     TA_ASSERT(tile_norms_.range() == trange.tiles_range());
+    TA_ASSERT(check_norms_finite(tile_norms_));
 
     if (!do_not_scale) {
       zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(
@@ -348,6 +364,7 @@ class SparseShape {
     }
   }
 
+  // clang-format off
   /// "Sparse" constructor
 
   /// This constructor uses tile norms given as a sparse tensor,
@@ -361,6 +378,8 @@ class SparseShape {
   /// \param trange The tiled range of the tensor
   /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
   /// are already scaled
+  /// \post `std::ranges::all_of(data(), [](auto x) { return std::isfinite(x); })`
+  // clang-format on
   template <typename SparseNormSequence,
             typename = std::enable_if_t<
                 TiledArray::detail::has_member_function_begin_anyreturn<
@@ -388,8 +407,10 @@ class SparseShape {
         --zero_tile_count_;
       }
     }
+    TA_ASSERT(check_norms_finite(tile_norms_));
   }
 
+  // clang-format off
   /// Collective "dense" constructor
 
   /// This constructor uses tile norms given as a dense tensor.
@@ -404,6 +425,8 @@ class SparseShape {
   /// \param trange The tiled range of the tensor
   /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
   /// are already scaled
+  /// \post `std::ranges::all_of(data(), [](auto x) { return std::isfinite(x); })`
+  // clang-format on
   SparseShape(World& world, const Tensor<value_type>& tile_norms,
               const TiledRange& trange, bool do_not_scale = false)
       : tile_norms_(tile_norms.clone()),
@@ -411,6 +434,7 @@ class SparseShape {
         zero_tile_count_(0ul) {
     TA_ASSERT(!tile_norms_.empty());
     TA_ASSERT(tile_norms_.range() == trange.tiles_range());
+    TA_ASSERT(check_norms_finite(tile_norms_));
 
     // reduce norm data from all processors
     world.gop.max(tile_norms_.data(), tile_norms_.size());
@@ -423,6 +447,7 @@ class SparseShape {
     }
   }
 
+  // clang-format off
   /// Collective "sparse" constructor
 
   /// This constructor uses tile norms given as a sparse tensor,
@@ -438,6 +463,8 @@ class SparseShape {
   /// nonzeros
   ///        for this rank's subset of tiles, or be replicated.
   /// \param trange The tiled range of the tensor
+  /// \post `std::ranges::all_of(data(), [](auto x) { return std::isfinite(x); })`
+  // clang-format on
   template <typename SparseNormSequence>
   SparseShape(World& world, const SparseNormSequence& tile_norms,
               const TiledRange& trange)
@@ -1720,6 +1747,17 @@ class SparseShape {
     const auto cast_abs_factor = static_cast<value_type>(abs(factor));
     TA_ASSERT(std::isfinite(cast_abs_factor));
     return cast_abs_factor;
+  }
+
+  /// checks for finite tile norms
+  /// @return true if all elements of @p norms are finite
+  static bool check_norms_finite(const Tensor<value_type>& norms) {
+    for (const auto& v : norms) {
+      if (!std::isfinite(v)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   template <MemorySpace S, typename T_>
