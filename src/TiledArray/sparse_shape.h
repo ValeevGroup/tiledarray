@@ -155,17 +155,21 @@ class SparseShape {
     madness::AtomicInt zero_tile_count;
     zero_tile_count = 0;
 
+    constexpr auto real_max = std::numeric_limits<value_type>::max();
+
     if (dim == 1u) {
       // This is the easy case where the data is a vector and can be
       // normalized directly.
       math::inplace_vector_op(
-          [threshold, &zero_tile_count](value_type& norm,
-                                        const value_type size) {
+          [threshold, real_max, &zero_tile_count](value_type& norm,
+                                                  const value_type size) {
             if (ScaleBy_ == ScaleBy::Volume)
               norm *= size;
             else
               norm /= size;
-            if (Screen && norm < threshold) {
+            if (!std::isfinite(norm)) {
+              norm = real_max;
+            } else if (Screen && norm < threshold) {
               norm = value_type(0);
               ++zero_tile_count;
             }
@@ -203,10 +207,12 @@ class SparseShape {
       math::outer(
           left.size(), right.size(), left.data(), right.data(),
           tile_norms.data(),
-          [threshold, &zero_tile_count](value_type& norm, const value_type x,
-                                        const value_type y) {
+          [threshold, real_max, &zero_tile_count](
+              value_type& norm, const value_type x, const value_type y) {
             norm *= x * y;
-            if (Screen && norm < threshold) {
+            if (!std::isfinite(norm)) {
+              norm = real_max;
+            } else if (Screen && norm < threshold) {
               norm = value_type(0);
               ++zero_tile_count;
             }
@@ -280,7 +286,12 @@ class SparseShape {
         size_vectors_(size_vectors),
         zero_tile_count_(zero_tile_count),
         my_threshold_(my_threshold) {
-    TA_ASSERT(check_norms_finite(tile_norms_));
+    // Clamp non-finite shape norm estimates (inf/NaN from float overflow in
+    // shape arithmetic) to real_max.  Shape norms are upper bounds used for
+    // tile screening; clamping preserves correctness (no tile is incorrectly
+    // zeroed) while preventing inf/NaN from propagating to downstream
+    // operations.
+    clamp_nonfinite_norms(tile_norms_);
   }
 
  public:
@@ -1273,9 +1284,13 @@ class SparseShape {
     const value_type abs_factor = to_abs_factor(factor);
     madness::AtomicInt zero_tile_count;
     zero_tile_count = 0;
-    auto op = [threshold, &zero_tile_count, abs_factor](value_type value) {
+    constexpr auto real_max = std::numeric_limits<value_type>::max();
+    auto op = [threshold, real_max, &zero_tile_count,
+               abs_factor](value_type value) {
       value *= abs_factor;
-      if (value < threshold) {
+      if (!std::isfinite(value)) {
+        value = real_max;
+      } else if (value < threshold) {
         value = value_type(0);
         ++zero_tile_count;
       }
@@ -1310,9 +1325,13 @@ class SparseShape {
     const value_type abs_factor = to_abs_factor(factor);
     madness::AtomicInt zero_tile_count;
     zero_tile_count = 0;
-    auto op = [threshold, &zero_tile_count, abs_factor](value_type value) {
+    constexpr auto real_max = std::numeric_limits<value_type>::max();
+    auto op = [threshold, real_max, &zero_tile_count,
+               abs_factor](value_type value) {
       value *= abs_factor;
-      if (value < threshold) {
+      if (!std::isfinite(value)) {
+        value = real_max;
+      } else if (value < threshold) {
         value = value_type(0);
         ++zero_tile_count;
       }
@@ -1661,10 +1680,16 @@ class SparseShape {
       // TODO: Make this faster. It can be done without using temporaries
       // for the arguments, but requires a custom matrix multiply.
 
+      // Preprocessing: multiply tile norms by k_sizes to convert per-element
+      // norms to Frobenius norms for the BLAS gemm.  Clamp to real_max to
+      // prevent overflow to inf (inf * 0 in the gemm would produce NaN).
+      constexpr auto real_max = std::numeric_limits<value_type>::max();
+
       Tensor<value_type> left(tile_norms_.range());
       const size_type mk = M * K;
-      auto left_op = [](const value_type left, const value_type right) {
-        return left * right;
+      auto left_op = [real_max](const value_type left, const value_type right) {
+        auto v = left * right;
+        return v > real_max ? real_max : v;
       };
       for (size_type i = 0ul; i < mk; i += K)
         math::vector_op(left_op, K, left.data() + i, tile_norms_.data() + i,
@@ -1673,17 +1698,23 @@ class SparseShape {
       Tensor<value_type> right(other.tile_norms_.range());
       for (integer i = 0ul, k = 0; k < K; i += N, ++k) {
         const value_type factor = k_sizes[k];
-        auto right_op = [=](const value_type arg) { return arg * factor; };
+        auto right_op = [=](const value_type arg) {
+          auto v = arg * factor;
+          return v > real_max ? real_max : v;
+        };
         math::vector_op(right_op, N, right.data() + i,
                         other.tile_norms_.data() + i);
       }
 
       result_norms = left.gemm(right, abs_factor, gemm_helper);
 
-      // Hard zero tiles that are below the zero threshold.
+      // Clamp non-finite results (inf/NaN from float overflow in BLAS gemm)
+      // and hard-zero tiles below the threshold.
       result_norms.inplace_unary(
-          [threshold, &zero_tile_count](value_type& value) {
-            if (value < threshold) {
+          [threshold, real_max, &zero_tile_count](value_type& value) {
+            if (!std::isfinite(value)) {
+              value = real_max;
+            } else if (value < threshold) {
               value = value_type(0);
               ++zero_tile_count;
             }
@@ -1691,12 +1722,15 @@ class SparseShape {
 
     } else {
       // This is an outer product, so the inputs can be used directly
+      constexpr auto real_max = std::numeric_limits<value_type>::max();
       math::outer_fill(M, N, tile_norms_.data(), other.tile_norms_.data(),
                        result_norms.data(),
-                       [threshold, &zero_tile_count, abs_factor](
+                       [threshold, real_max, &zero_tile_count, abs_factor](
                            const value_type left, const value_type right) {
                          value_type norm = left * right * abs_factor;
-                         if (norm < threshold) {
+                         if (!std::isfinite(norm)) {
+                           norm = real_max;
+                         } else if (norm < threshold) {
                            norm = value_type(0);
                            ++zero_tile_count;
                          }
@@ -1758,6 +1792,19 @@ class SparseShape {
       }
     }
     return true;
+  }
+
+  /// Clamp non-finite (inf/NaN) shape norm estimates to real_max.
+  /// Shape norms are upper bounds; clamping to a large finite value
+  /// preserves screening correctness (no false zeros) while preventing
+  /// inf/NaN from propagating through subsequent shape arithmetic.
+  static void clamp_nonfinite_norms(Tensor<value_type>& norms) {
+    constexpr auto real_max = std::numeric_limits<value_type>::max();
+    for (auto& v : norms) {
+      if (!std::isfinite(v)) {
+        v = real_max;
+      }
+    }
   }
 
   template <MemorySpace S, typename T_>
