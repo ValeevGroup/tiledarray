@@ -163,15 +163,26 @@ class SparseShape {
       math::inplace_vector_op(
           [threshold, real_max, &zero_tile_count](value_type& norm,
                                                   const value_type size) {
-            if (ScaleBy_ == ScaleBy::Volume)
-              norm *= size;
-            else
-              norm /= size;
-            if (!std::isfinite(norm)) {
-              norm = real_max;
-            } else if (Screen && norm < threshold) {
+            if (size == value_type(0)) {
+              // zero-size tiles always have zero norm
               norm = value_type(0);
-              ++zero_tile_count;
+              if (Screen) ++zero_tile_count;
+            } else if (ScaleBy_ == ScaleBy::Volume) {
+              norm *= size;
+              if (!std::isfinite(norm)) {
+                norm = real_max;
+              } else if (Screen && norm < threshold) {
+                norm = value_type(0);
+                ++zero_tile_count;
+              }
+            } else {
+              norm /= size;
+              if (!std::isfinite(norm)) {
+                norm = real_max;
+              } else if (Screen && norm < threshold) {
+                norm = value_type(0);
+                ++zero_tile_count;
+              }
             }
           },
           size_vectors[0].size(), tile_norms.data(), size_vectors[0].data());
@@ -187,7 +198,7 @@ class SparseShape {
       /// for scaling by inverse volume
       auto inv_vec_op = [](const vector_type& size_vector) {
         return vector_type(size_vector, [](const value_type size) {
-          return value_type(1) / size;
+          return size > value_type(0) ? value_type(1) / size : value_type(0);
         });
       };
 
