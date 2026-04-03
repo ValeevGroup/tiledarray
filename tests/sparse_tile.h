@@ -66,28 +66,31 @@ class EigenSparseTile {
 
   /// makes an uninitialized matrix
   explicit EigenSparseTile(const range_type& r)
-      : impl_(std::make_shared<impl_type>(
-            std::make_tuple(matrix_type(r.extent()[0], r.extent()[1]), r))) {
-    TA_ASSERT(r.extent()[0] > 0);
-    TA_ASSERT(r.extent()[1] > 0);
-  }
+      : impl_([&]() {
+          TA_ASSERT(r.extent()[0] > 0);
+          TA_ASSERT(r.extent()[1] > 0);
+          return std::make_shared<impl_type>(
+              std::make_tuple(matrix_type(r.extent()[0], r.extent()[1]), r));
+        }()) {}
 
   /// ctor using sparse matrix
   EigenSparseTile(matrix_type&& mat, const range_type& range)
-      : impl_(std::make_shared<impl_type>(
-            std::make_tuple(std::move(mat), range))) {
-    using extent_type = typename range_type::extent_type::value_type;
-    TA_ASSERT(static_cast<extent_type>(mat.rows()) == range.extent()[0]);
-    TA_ASSERT(static_cast<extent_type>(mat.cols()) == range.extent()[1]);
-  }
+      : impl_([&]() {
+          using extent_type = typename range_type::extent_type::value_type;
+          TA_ASSERT(static_cast<extent_type>(mat.rows()) == range.extent()[0]);
+          TA_ASSERT(static_cast<extent_type>(mat.cols()) == range.extent()[1]);
+          return std::make_shared<impl_type>(
+              std::make_tuple(std::move(mat), range));
+        }()) {}
 
   /// ctor using sparse matrix
   EigenSparseTile(const matrix_type& mat, const range_type& range)
-      : impl_(std::make_shared<impl_type>(std::make_tuple(mat, range))) {
-    using extent_type = typename range_type::extent_type::value_type;
-    TA_ASSERT(static_cast<extent_type>(mat.rows()) == range.extent()[0]);
-    TA_ASSERT(static_cast<extent_type>(mat.cols()) == range.extent()[1]);
-  }
+      : impl_([&]() {
+          using extent_type = typename range_type::extent_type::value_type;
+          TA_ASSERT(static_cast<extent_type>(mat.rows()) == range.extent()[0]);
+          TA_ASSERT(static_cast<extent_type>(mat.cols()) == range.extent()[1]);
+          return std::make_shared<impl_type>(std::make_tuple(mat, range));
+        }()) {}
 
   // Deep copy
   EigenSparseTile clone() const {
@@ -683,7 +686,7 @@ struct ArchiveLoadImpl<Archive, Eigen::Triplet<T>> {
   static inline void load(const Archive& ar, Eigen::Triplet<T>& obj) {
     int row, col;
     T value;
-    ar & row & col & value;
+    ar& row& col& value;
     obj = Eigen::Triplet<T>(row, col, value);
   }
 };
@@ -691,7 +694,7 @@ struct ArchiveLoadImpl<Archive, Eigen::Triplet<T>> {
 template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, Eigen::Triplet<T>> {
   static inline void store(const Archive& ar, const Eigen::Triplet<T>& obj) {
-    ar & obj.row() & obj.col() & obj.value();
+    ar& obj.row() & obj.col() & obj.value();
   }
 };
 }  // namespace archive

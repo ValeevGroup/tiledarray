@@ -155,6 +155,17 @@ inline void vec_multiply(
   a1.array() *= a2.array();
 }
 
+template <typename Derived>
+inline auto clone(const Eigen::MatrixBase<Derived>& a) {
+  return a.eval();
+}
+
+template <typename XprType1, int BlockRows1, int BlockCols1, bool InnerPanel1>
+inline auto clone(
+    const Eigen::Block<XprType1, BlockRows1, BlockCols1, InnerPanel1>& a) {
+  return a.eval();
+}
+
 template <typename Derived, typename S>
 inline void scale(Eigen::MatrixBase<Derived>& a, S scaling_factor) {
   using numeric_type = typename Eigen::MatrixBase<Derived>::value_type;
@@ -239,6 +250,21 @@ inline auto norm2(
   return m.template lpNorm<2>();
 }
 
+template <typename Derived>
+inline auto volume(const Eigen::MatrixBase<Derived>& m) {
+  return m.size();
+}
+
+template <typename Derived>
+inline auto abs_min(const Eigen::MatrixBase<Derived>& m) {
+  return m.array().abs().minCoeff();
+}
+
+template <typename Derived>
+inline auto abs_max(const Eigen::MatrixBase<Derived>& m) {
+  return m.array().abs().maxCoeff();
+}
+
 }  // namespace Eigen
 
 #ifndef TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG
@@ -253,12 +279,12 @@ inline auto norm2(
     return scalapack::FN;                                           \
   return non_distributed::FN;
 #elif (TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK)
-#define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)               \
-  TA_MAX_THREADS;                                                       \
-  if (get_linalg_backend() == LinearAlgebraBackend::TTG ||              \
-      TiledArray::math::linalg::detail::prefer_distributed(MATRIX))     \
-    return TiledArray::math::linalg::ttg::FN;                           \
-  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
+#define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)              \
+  TA_MAX_THREADS;                                                      \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG ||             \
+      TiledArray::math::linalg::detail::prefer_distributed(MATRIX))    \
+    return TiledArray::math::linalg::ttg::FN;                          \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)         \
     TA_EXCEPTION("ScaLAPACK linear algebra backend is not available"); \
   return non_distributed::FN;
 #elif !TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
@@ -271,11 +297,11 @@ inline auto norm2(
     return scalapack::FN;                                           \
   return non_distributed::FN;
 #else  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
-#define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)               \
-  TA_MAX_THREADS;                                                       \
-  if (get_linalg_backend() == LinearAlgebraBackend::TTG)                \
-    TA_EXCEPTION("TTG linear algebra backend is not available");        \
-  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
+#define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)              \
+  TA_MAX_THREADS;                                                      \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)               \
+    TA_EXCEPTION("TTG linear algebra backend is not available");       \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)         \
     TA_EXCEPTION("ScaLAPACK linear algebra backend is not available"); \
   return non_distributed::FN;
 #endif  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
@@ -297,12 +323,12 @@ inline auto norm2(
     return scalapack::FN;                                           \
   return non_distributed::FN;
 #elif TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
-#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)              \
-  TA_MAX_THREADS;                                                       \
-  if (get_linalg_backend() == LinearAlgebraBackend::TTG)                \
-    TA_EXCEPTION(TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG_STRINGIFY(      \
-        FN) " is not provided by the TTG backend");                     \
-  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
+#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)             \
+  TA_MAX_THREADS;                                                      \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)               \
+    TA_EXCEPTION(TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG_STRINGIFY(     \
+        FN) " is not provided by the TTG backend");                    \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)         \
     TA_EXCEPTION("ScaLAPACK linear algebra backend is not available"); \
   return non_distributed::FN;
 #elif !TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
@@ -315,11 +341,11 @@ inline auto norm2(
     return scalapack::FN;                                           \
   return non_distributed::FN;
 #else  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
-#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)              \
-  TA_MAX_THREADS;                                                       \
-  if (get_linalg_backend() == LinearAlgebraBackend::TTG)                \
-    TA_EXCEPTION("TTG linear algebra backend is not available");        \
-  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
+#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)             \
+  TA_MAX_THREADS;                                                      \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)               \
+    TA_EXCEPTION("TTG linear algebra backend is not available");       \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)         \
     TA_EXCEPTION("ScaLAPACK linear algebra backend is not available"); \
   return non_distributed::FN;
 #endif  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK

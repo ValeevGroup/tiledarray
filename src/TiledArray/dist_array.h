@@ -918,6 +918,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Fill all local tiles with the specified value
 
+  /// For sparse arrays, if \p value is zero (i.e., equal to
+  /// `element_type()`), the array is empty (no nonzero tiles)
+  /// and 0 is returned.
   /// \tparam fence If Fence::No, the operation will return early,
   ///         before the tasks have completed
   /// \param[in] value What each local tile should be filled with.
@@ -930,6 +933,15 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   template <Fence fence = Fence::No>
   std::int64_t fill(const element_type& value = numeric_type(),
                     bool skip_set = false) {
+    // for sparse arrays filled with zero, replace with an empty array
+    if constexpr (!is_dense_v<Policy>) {
+      if (value == element_type()) {
+        *this = DistArray(
+            world(), trange(),
+            shape_type(typename shape_type::value_type(0), trange()), pmap());
+        return 0;
+      }
+    }
     return fill_local<fence>(value, skip_set);
   }
 
