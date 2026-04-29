@@ -1380,7 +1380,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \note This function is a no-op for dense arrays.
   void truncate(
       typename shape_type::value_type thresh = shape_type::threshold()) {
-    TiledArray::truncate(*this, thresh);
+    if (is_initialized()) {
+      TiledArray::truncate(*this, thresh);
+    }
   }
 
   /// Check if the array is initialized
