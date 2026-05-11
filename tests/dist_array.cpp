@@ -63,6 +63,19 @@ std::string to_parallel_archive_file_name(const char* prefix_name, int rank) {
   snprintf(buf, sizeof(buf), "%s.%5.5d", prefix_name, rank);
   return buf;
 }
+
+// Replace the trailing XXXXXX in `name_template` with a unique suffix.
+// Uses mkstemp + close + remove so the resulting name can be reused by
+// callers that want to open it themselves (single-file archive) or use it
+// as a prefix for per-rank files (parallel archive). Unlike mktemp(3),
+// which clang/macOS flags as deprecated, this is race-free against other
+// in-process callers.
+void make_unique_filename_template(char* name_template) {
+  const int fd = mkstemp(name_template);
+  MADNESS_ASSERT(fd != -1);
+  ::close(fd);
+  std::remove(name_template);
+}
 }  // namespace
 
 BOOST_FIXTURE_TEST_SUITE(array_suite, ArrayFixture)
@@ -649,7 +662,7 @@ BOOST_AUTO_TEST_CASE(serialization_by_tile) {
     buf.reset();
   } else {  // ... else use TextFstreamOutputArchive
     char archive_file_name[] = "tmp.XXXXXX";
-    mktemp(archive_file_name);
+    make_unique_filename_template(archive_file_name);
     madness::archive::TextFstreamOutputArchive oar(archive_file_name);
 
     for (auto tile : a) {
@@ -676,7 +689,7 @@ BOOST_AUTO_TEST_CASE(serialization_by_tile) {
 
 BOOST_AUTO_TEST_CASE(dense_serialization) {
   char archive_file_name[] = "tmp.XXXXXX";
-  mktemp(archive_file_name);
+  make_unique_filename_template(archive_file_name);
   madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
   a.serialize(oar);
 
@@ -694,7 +707,7 @@ BOOST_AUTO_TEST_CASE(dense_serialization) {
 
 BOOST_AUTO_TEST_CASE(sparse_serialization) {
   char archive_file_name[] = "tmp.XXXXXX";
-  mktemp(archive_file_name);
+  make_unique_filename_template(archive_file_name);
   madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
   b.serialize(oar);
 
@@ -713,7 +726,7 @@ BOOST_AUTO_TEST_CASE(sparse_serialization) {
 BOOST_AUTO_TEST_CASE(parallel_serialization) {
   const int nio = 1;  // use 1 rank for I/O
   char archive_file_prefix_name[] = "tmp.XXXXXX";
-  mktemp(archive_file_prefix_name);
+  make_unique_filename_template(archive_file_prefix_name);
   madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
                                                 nio);
   oar & a;
@@ -737,7 +750,7 @@ BOOST_AUTO_TEST_CASE(parallel_serialization) {
 BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
   const int nio = 1;  // use 1 rank for 1
   char archive_file_prefix_name[] = "tmp.XXXXXX";
-  mktemp(archive_file_prefix_name);
+  make_unique_filename_template(archive_file_prefix_name);
   madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
                                                 nio);
   oar & b;
@@ -773,7 +786,7 @@ BOOST_AUTO_TEST_CASE(issue_225) {
   S.fill(1.0);
 
   char archive_file_name[] = "tmp.XXXXXX";
-  mktemp(archive_file_name);
+  make_unique_filename_template(archive_file_name);
   madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
   St("i,j") = S("j,i");
   BOOST_REQUIRE_NO_THROW(oar & S);
