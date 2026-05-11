@@ -103,6 +103,7 @@ set(ta_test_src_files  ta_test.cpp
     cp.cpp
     btas.cpp
     arena.cpp
+    arena_kernels.cpp
 )
 
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
