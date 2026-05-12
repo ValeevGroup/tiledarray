@@ -47,6 +47,7 @@ OuterTensor arena_trivial_unary(const SrcOuterTensor& src, FillOp&& fill_op) {
   auto shape_fn = [&src](std::size_t ord) -> decltype(auto) {
     return src.data()[ord].range();
   };
+  // Elementwise kernels: pack tight (no cross-cell GEMM to amortize 128B pad).
   ArenaPlan p = plan(N_cells, shape_fn, sizeof(elem_t), alignof(elem_t));
   auto arena = std::make_shared<Arena>();
   if (p.total_bytes > 0) arena->reserve(p.total_bytes, false);
@@ -80,6 +81,7 @@ OuterTensor arena_trivial_binary(const LeftTensor& left, const RightTensor& righ
   auto shape_fn = [&left](std::size_t ord) -> decltype(auto) {
     return left.data()[ord].range();
   };
+  // Elementwise kernels: pack tight (no cross-cell GEMM to amortize 128B pad).
   ArenaPlan p = plan(N_cells, shape_fn, sizeof(elem_t), alignof(elem_t));
   auto arena = std::make_shared<Arena>();
   if (p.total_bytes > 0) arena->reserve(p.total_bytes, false);

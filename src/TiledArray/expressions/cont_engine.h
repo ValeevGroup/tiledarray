@@ -306,6 +306,11 @@ class ContEngine : public BinaryEngine<Derived> {
                       outer_size(left_indices_), outer_size(right_indices_),
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
+        // Plan ownership transferred to op_; mark carrier slot empty so any
+        // later use of arena_plan_ reads as "no plan" rather than moved-from.
+        if constexpr (!std::is_same_v<arena_plan_storage_t, std::monostate>) {
+          this->arena_plan_.reset();
+        }
       }
       trange_ = ContEngine_::make_trange(outer_perm);
       shape_ = ContEngine_::make_shape(outer_perm);
@@ -337,6 +342,11 @@ class ContEngine : public BinaryEngine<Derived> {
                       outer_size(left_indices_), outer_size(right_indices_),
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
+        // Plan ownership transferred to op_; mark carrier slot empty so any
+        // later use of arena_plan_ reads as "no plan" rather than moved-from.
+        if constexpr (!std::is_same_v<arena_plan_storage_t, std::monostate>) {
+          this->arena_plan_.reset();
+        }
       }
       trange_ = ContEngine_::make_trange();
       shape_ = ContEngine_::make_shape();
