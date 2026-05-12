@@ -104,6 +104,7 @@ set(ta_test_src_files  ta_test.cpp
     btas.cpp
     arena.cpp
     arena_kernels.cpp
+    arena_einsum_unit_suite.cpp
 )
 
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
