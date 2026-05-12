@@ -71,6 +71,27 @@ void compile_test_tier1() {
   (void)TiledArray::norm(a);
   (void)TiledArray::gemm(a, b, T(1), h);
   TiledArray::gemm(c, a, b, T(1), h);
+
+  // Phase 2b: permute / shift / mult and the perm-variants.
+  TiledArray::Permutation perm(std::vector<unsigned>{1, 0});
+  TiledArray::BipartitePermutation bperm(perm);
+  std::vector<long> shift{0, 0};
+  (void)TiledArray::permute(a, perm);
+  (void)TiledArray::permute(a, bperm);
+  (void)TiledArray::shift(a, shift);
+  (void)TiledArray::shift_to(a, shift);
+  (void)TiledArray::scale(a, T(2), perm);
+  (void)TiledArray::neg(a, perm);
+  (void)TiledArray::add(a, b, perm);
+  (void)TiledArray::add(a, b, T(2), perm);
+  (void)TiledArray::subt(a, b, perm);
+  (void)TiledArray::subt(a, b, T(2), perm);
+  (void)TiledArray::mult(a, b);
+  (void)TiledArray::mult(a, b, T(2));
+  (void)TiledArray::mult(a, b, perm);
+  (void)TiledArray::mult(a, b, T(2), perm);
+  (void)TiledArray::mult_to(a, b);
+  (void)TiledArray::mult_to(a, b, T(2));
 }
 
 [[maybe_unused]] auto instantiate_tier1_double = &compile_test_tier1<double>;

@@ -27,9 +27,12 @@
 #ifdef TILEDARRAY_HAS_DEVICE
 
 #include <TiledArray/device/blas.h>
+#include <TiledArray/device/kernel/mult_kernel.h>
 #include <TiledArray/external/device.h>
+#include <TiledArray/external/librett.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/gemm_helper.h>
+#include <TiledArray/permutation.h>
 #include <TiledArray/tensor/complex.h>
 #include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tensor/type_traits.h>
@@ -376,6 +379,206 @@ inline auto norm(const UMTensor<T>& arg) {
   using std::sqrt;
   using ResultType = TiledArray::detail::scalar_t<T>;
   return static_cast<ResultType>(sqrt(squared_norm(arg)));
+}
+
+/// result[perm(i)] = arg[i]
+template <typename T>
+inline UMTensor<T> permute(const UMTensor<T>& arg,
+                           const TiledArray::Permutation& perm) {
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(arg.nbatch() == 1);
+  TA_ASSERT(perm.size() == arg.range().rank());
+
+  auto result_range = perm * arg.range();
+  auto& queue = blasqueue_for(result_range);
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  UMTensor<T> result(result_range);
+
+  detail::to_device(arg);
+  detail::to_device(result);
+
+  // librett operates on the original (unpermuted) range and writes into the
+  // permuted layout; pointers go in as-is.
+  librett_permute(const_cast<T*>(arg.data()), result.data(), arg.range(), perm,
+                  stream.stream);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// BipartitePermutation -> plain Permutation forward.
+/// Required to win ADL against the generic CPU member-delegating overload;
+/// see the matching warning in device/btas_um_tensor.h:193.
+template <typename T>
+inline UMTensor<T> permute(const UMTensor<T>& arg,
+                           const TiledArray::BipartitePermutation& perm) {
+  TA_ASSERT(inner_size(perm) == 0);  // UMTensor is a non-nested tile
+  return permute(arg, outer(perm));
+}
+
+/// result[perm(i)] = arg[i] * factor
+template <typename T, typename Scalar, typename Perm,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                                      TiledArray::detail::is_permutation_v<Perm>>>
+inline UMTensor<T> scale(const UMTensor<T>& arg, const Scalar factor,
+                         const Perm& perm) {
+  auto scaled = scale(arg, factor);
+  return permute(scaled, perm);
+}
+
+/// result[perm(i)] = -arg[i]
+template <typename T, typename Perm,
+          typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+inline UMTensor<T> neg(const UMTensor<T>& arg, const Perm& perm) {
+  return permute(neg(arg), perm);
+}
+
+/// result[perm(i)] = arg1[i] + arg2[i]
+template <typename T, typename Perm,
+          typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+inline UMTensor<T> add(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                       const Perm& perm) {
+  return permute(add(arg1, arg2), perm);
+}
+
+/// result[perm(i)] = (arg1[i] + arg2[i]) * factor
+template <typename T, typename Scalar, typename Perm,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                                      TiledArray::detail::is_permutation_v<Perm>>>
+inline UMTensor<T> add(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                       const Scalar factor, const Perm& perm) {
+  return permute(add(arg1, arg2, factor), perm);
+}
+
+/// result[perm(i)] = arg1[i] - arg2[i]
+template <typename T, typename Perm,
+          typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+inline UMTensor<T> subt(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                        const Perm& perm) {
+  return permute(subt(arg1, arg2), perm);
+}
+
+/// result[perm(i)] = (arg1[i] - arg2[i]) * factor
+template <typename T, typename Scalar, typename Perm,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                                      TiledArray::detail::is_permutation_v<Perm>>>
+inline UMTensor<T> subt(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                        const Scalar factor, const Perm& perm) {
+  return permute(subt(arg1, arg2, factor), perm);
+}
+
+/// shift: result has arg's data, range shifted by bound_shift.
+template <typename T, typename Index>
+inline UMTensor<T> shift(const UMTensor<T>& arg, const Index& bound_shift) {
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(arg.nbatch() == 1);
+
+  TiledArray::Range result_range(arg.range());
+  result_range.inplace_shift(bound_shift);
+
+  auto& queue = blasqueue_for(result_range);
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  UMTensor<T> result(result_range);
+
+  detail::to_device(arg);
+  detail::to_device(result);
+
+  ::blas::copy(result.size(), arg.data(), 1, result.data(), 1, queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// shift_to: in-place range shift, no data movement.
+template <typename T, typename Index>
+inline UMTensor<T>& shift_to(UMTensor<T>& arg, const Index& bound_shift) {
+  const_cast<TiledArray::Range&>(arg.range()).inplace_shift(bound_shift);
+  return arg;
+}
+
+/// result[i] = arg1[i] * arg2[i] (element-wise / Hadamard)
+template <typename T>
+inline UMTensor<T> mult(const UMTensor<T>& arg1, const UMTensor<T>& arg2) {
+  TA_ASSERT(!arg1.empty());
+  TA_ASSERT(!arg2.empty());
+  TA_ASSERT(arg1.size() == arg2.size());
+  TA_ASSERT(arg1.nbatch() == 1 && arg2.nbatch() == 1);
+
+  auto& queue = blasqueue_for(arg1.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  UMTensor<T> result(arg1.range());
+
+  detail::to_device(arg1);
+  detail::to_device(arg2);
+  detail::to_device(result);
+
+  device::mult_kernel(result.data(), arg1.data(), arg2.data(), arg1.size(),
+                      stream);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] = arg1[i] * arg2[i] * factor
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T> mult(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                        const Scalar factor) {
+  auto result = mult(arg1, arg2);
+  return scale_to(result, factor);
+}
+
+/// result[perm(i)] = arg1[i] * arg2[i]
+template <typename T, typename Perm,
+          typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+inline UMTensor<T> mult(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                        const Perm& perm) {
+  return permute(mult(arg1, arg2), perm);
+}
+
+/// result[perm(i)] = arg1[i] * arg2[i] * factor
+template <typename T, typename Scalar, typename Perm,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                                      TiledArray::detail::is_permutation_v<Perm>>>
+inline UMTensor<T> mult(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                        const Scalar factor, const Perm& perm) {
+  return permute(mult(arg1, arg2, factor), perm);
+}
+
+/// result[i] *= arg[i]
+template <typename T>
+inline UMTensor<T>& mult_to(UMTensor<T>& result, const UMTensor<T>& arg) {
+  TA_ASSERT(!result.empty());
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(result.size() == arg.size());
+  TA_ASSERT(result.nbatch() == 1 && arg.nbatch() == 1);
+
+  auto& queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  detail::to_device(result);
+  detail::to_device(arg);
+
+  device::mult_to_kernel(result.data(), arg.data(), result.size(), stream);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] *= arg[i] * factor
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T>& mult_to(UMTensor<T>& result, const UMTensor<T>& arg,
+                            const Scalar factor) {
+  mult_to(result, arg);
+  return scale_to(result, factor);
 }
 
 /// gemm: returning form. result = factor * left * right
