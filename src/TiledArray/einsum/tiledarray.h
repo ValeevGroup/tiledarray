@@ -7,6 +7,7 @@
 #include "TiledArray/einsum/range.h"
 #include "TiledArray/expressions/fwd.h"
 #include "TiledArray/fwd.h"
+#include "TiledArray/tensor/arena_einsum.h"
 #include "TiledArray/tiled_range.h"
 #include "TiledArray/tiled_range1.h"
 
@@ -687,6 +688,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
       auto pa = A.permutation;
       auto pb = B.permutation;
+      auto arena_plan = detail::make_regime_a_arena_plan<ResultTensor>(
+          A, B, inner, /*inner_perm=*/C.permutation);
       for (Index h : H.tiles) {
         auto const pc = C.permutation;
         auto const c = apply(pc, h);
@@ -695,6 +698,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         for (size_t i = 0; i < h.size(); ++i) {
           batch *= H.batch[i].at(h[i]);
         }
+        if (detail::run_regime_a_arena(arena_plan, h, batch, A, B, C,
+                                       C_local_tiles, tiles, trange))
+          continue;
         ResultTensor tile(TiledArray::Range{batch},
                           typename ResultTensor::value_type{});
         for (Index i : tiles) {
