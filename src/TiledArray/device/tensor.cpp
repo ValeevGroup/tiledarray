@@ -41,6 +41,40 @@ static_assert(!is_device_tile_v<TiledArray::Tensor<double>>,
 
 }  // namespace TiledArray::detail
 
-// Explicit instantiations of UMTensor and its tile-op overloads land here in
-// Phase 4 once the overload set is in place.
+// Phase 2 instantiation probes: force the compiler to type-check the
+// device-tile overloads. Real explicit instantiations land in Phase 4.
+namespace {
+
+template <typename T>
+void compile_test_tier1() {
+  using TA::UMTensor;
+  using helper_t = TiledArray::math::GemmHelper;
+  UMTensor<T> a, b, c;
+  helper_t h(TiledArray::math::blas::Op::NoTrans,
+             TiledArray::math::blas::Op::NoTrans, 2u, 2u, 2u);
+
+  (void)TiledArray::clone(a);
+  (void)TiledArray::scale(a, T(2));
+  (void)TiledArray::scale_to(a, T(2));
+  (void)TiledArray::neg(a);
+  (void)TiledArray::neg_to(a);
+  (void)TiledArray::add(a, b);
+  (void)TiledArray::add(a, b, T(2));
+  (void)TiledArray::add_to(a, b);
+  (void)TiledArray::add_to(a, b, T(2));
+  (void)TiledArray::subt(a, b);
+  (void)TiledArray::subt(a, b, T(2));
+  (void)TiledArray::subt_to(a, b);
+  (void)TiledArray::subt_to(a, b, T(2));
+  (void)TiledArray::dot(a, b);
+  (void)TiledArray::squared_norm(a);
+  (void)TiledArray::norm(a);
+  (void)TiledArray::gemm(a, b, T(1), h);
+  TiledArray::gemm(c, a, b, T(1), h);
+}
+
+[[maybe_unused]] auto instantiate_tier1_double = &compile_test_tier1<double>;
+[[maybe_unused]] auto instantiate_tier1_float = &compile_test_tier1<float>;
+
+}  // namespace
 
