@@ -29,6 +29,7 @@
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/complex.h"
 #include "TiledArray/tensor/kernels.h"
+#include "TiledArray/tensor/arena_kernels.h"
 #include "TiledArray/tile_interface/clone.h"
 #include "TiledArray/tile_interface/permute.h"
 #include "TiledArray/tile_interface/trace.h"
@@ -652,8 +653,14 @@ class Tensor {
   Tensor clone() const& {
     Tensor result;
     if (data_) {
-      if constexpr (detail::is_tensor_of_tensor_v<Tensor>) {
-        result = Tensor(*this, [](value_type const& el) { return el.clone(); });
+      if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
+                    detail::is_ta_tensor_v<value_type>) {
+        auto fill = [](typename value_type::value_type* dst,
+                       const typename value_type::value_type* src,
+                       std::size_t n) {
+          for (std::size_t i = 0; i < n; ++i) dst[i] = src[i];
+        };
+        result = detail::arena_trivial_unary<Tensor>(*this, fill);
       } else {
         result = detail::tensor_op<Tensor>(
             [](const numeric_type value) -> numeric_type { return value; },
@@ -1680,10 +1687,20 @@ class Tensor {
     // early exit for empty this
     if (empty()) return {};
 
-    return unary([factor](const value_type& a) {
-      using namespace TiledArray::detail;
-      return a * factor;
-    });
+    if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
+                  detail::is_ta_tensor_v<value_type>) {
+      auto fill = [factor](typename value_type::value_type* dst,
+                           const typename value_type::value_type* src,
+                           std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = src[i] * factor;
+      };
+      return detail::arena_trivial_unary<Tensor>(*this, fill);
+    } else {
+      return unary([factor](const value_type& a) {
+        using namespace TiledArray::detail;
+        return a * factor;
+      });
+    }
   }
 
   /// Construct a scaled copy of this tensor
@@ -1756,24 +1773,35 @@ class Tensor {
     // early exit for empty this
     if (empty()) detail::clone_or_cast<Tensor>(right);
 
-    return binary(
-        right,
-        [](const value_type& l, const value_t<Right>& r) -> decltype(l + r) {
-          if constexpr (detail::is_tensor_v<value_type>) {
-            if (l.empty()) {
-              if (r.empty())
-                return {};
-              else
-                return r.clone();
-            } else {
-              if (r.empty())
-                return l.clone();
-              else
-                return l + r;
+    if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
+                  detail::is_ta_tensor_v<value_type> &&
+                  detail::is_ta_tensor_v<typename Right::value_type>) {
+      auto fill = [](typename value_type::value_type* dst,
+                     const typename value_type::value_type* l,
+                     const typename value_type::value_type* r, std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] + r[i];
+      };
+      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+    } else {
+      return binary(
+          right,
+          [](const value_type& l, const value_t<Right>& r) -> decltype(l + r) {
+            if constexpr (detail::is_tensor_v<value_type>) {
+              if (l.empty()) {
+                if (r.empty())
+                  return {};
+                else
+                  return r.clone();
+              } else {
+                if (r.empty())
+                  return l.clone();
+                else
+                  return l + r;
+              }
             }
-          }
-          return l + r;
-        });
+            return l + r;
+          });
+    }
   }
 
   /// Add this and \c other to construct a new tensor
@@ -1956,25 +1984,36 @@ class Tensor {
             typename = std::enable_if_t<
                 detail::tensors_have_equal_nested_rank_v<Tensor, Right>>>
   Tensor subt(const Right& right) const {
-    return binary(
-        right,
-        [](const value_type& l, const value_t<Right>& r) -> decltype(l - r) {
-          if constexpr (detail::is_tensor_v<value_type>) {
-            if (l.empty()) {
-              if (r.empty())
-                return {};
-              else
-                return -r;
+    if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
+                  detail::is_ta_tensor_v<value_type> &&
+                  detail::is_ta_tensor_v<typename Right::value_type>) {
+      auto fill = [](typename value_type::value_type* dst,
+                     const typename value_type::value_type* l,
+                     const typename value_type::value_type* r, std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] - r[i];
+      };
+      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+    } else {
+      return binary(
+          right,
+          [](const value_type& l, const value_t<Right>& r) -> decltype(l - r) {
+            if constexpr (detail::is_tensor_v<value_type>) {
+              if (l.empty()) {
+                if (r.empty())
+                  return {};
+                else
+                  return -r;
+              } else {
+                if (r.empty())
+                  return l.clone();
+                else
+                  return l - r;
+              }
             } else {
-              if (r.empty())
-                return l.clone();
-              else
-                return l - r;
+              return l - r;
             }
-          } else {
-            return l - r;
-          }
-        });
+          });
+    }
   }
 
   /// Subtract \c right from this and return the result permuted by \c perm
@@ -2122,7 +2161,18 @@ class Tensor {
       return res_t{};
     }
 
-    return binary(right, mult_op);
+    if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
+                  detail::is_ta_tensor_v<value_type> &&
+                  detail::is_ta_tensor_v<typename Right::value_type>) {
+      auto fill = [](typename value_type::value_type* dst,
+                     const typename value_type::value_type* l,
+                     const typename value_type::value_type* r, std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] * r[i];
+      };
+      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+    } else {
+      return binary(right, mult_op);
+    }
   }
 
   /// Multiply this by \c right to create a new, permuted tensor
