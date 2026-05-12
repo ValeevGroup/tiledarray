@@ -26,10 +26,16 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
+#include <TiledArray/device/blas.h>
 #include <TiledArray/external/device.h>
+#include <TiledArray/math/blas.h>
+#include <TiledArray/math/gemm_helper.h>
+#include <TiledArray/tensor/complex.h>
 #include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/tile.h>
+
+#include <blas.hh>
 
 namespace TiledArray {
 namespace detail {
@@ -68,6 +74,405 @@ inline void to_host(const TiledArray::UMTensor<T>& tile) {
 }
 
 }  // namespace detail
+
+// ---------------------------------------------------------------------------
+// Tile-op overloads for UMTensor.
+//
+// Each overload sits in `namespace TiledArray` so ADL finds it from the
+// expression engine and from the tile_op layer's free-function defaults.
+// More-specialized concrete-type overloads win against the generic
+// `template<typename Left, typename Right> ... add(left, right) { return
+// left.add(right); }` forwarders in `tile_op/tile_interface.h`, so we never
+// fall back to the CPU member functions for UMTensor.
+//
+// All overloads follow the stream/queue contract:
+//   1. Resolve a queue via `blasqueue_for(range)`. Inside a device task this
+//      is the same queue everyone else in the task uses (see
+//      `external/device.h:899-907`); outside one, it round-robins.
+//   2. Prefetch every input + the result to the device.
+//   3. Call into BLAS++ / device kernels on that queue.
+//   4. `sync_madness_task_with(stream)` so the enclosing MADNESS device task
+//      waits for the queue to drain before completing.
+//
+// For Phase 2 batched tiles (`nbatch_ > 1`) are not yet supported -- the
+// expression engine doesn't currently feed batched UMTensor through these
+// paths, and dropping the assertion now would silently miscompute.
+// ---------------------------------------------------------------------------
+
+/// result[i] = arg[i]
+template <typename T>
+inline UMTensor<T> clone(const UMTensor<T>& arg) {
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(arg.nbatch() == 1);
+
+  auto& queue = blasqueue_for(arg.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  UMTensor<T> result(arg.range());
+
+  detail::to_device(arg);
+  detail::to_device(result);
+
+  blas::copy(result.size(), arg.data(), 1, result.data(), 1, queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+namespace detail {
+
+/// Apply a scaling factor in-place on the device, replicating the
+/// ComplexConjugate handling from device/btas.h::scale. Real-valued kernels
+/// reduce to a single `blas::scal`; conjugation+scale on complex tiles
+/// requires a custom kernel that we have not implemented yet.
+template <typename T, typename Scalar>
+inline void apply_scale_factor(T* data, std::size_t n, const Scalar factor,
+                               ::blas::Queue& queue) {
+  if constexpr (TiledArray::detail::is_blas_numeric_v<Scalar> ||
+                std::is_arithmetic_v<Scalar>) {
+    ::blas::scal(n, factor, data, 1, queue);
+  } else {
+    if constexpr (TiledArray::detail::is_complex_v<T>) {
+      abort();  // fused conjugation requires custom kernels, not yet supported
+    } else {
+      if constexpr (std::is_same_v<
+                        Scalar, TiledArray::detail::ComplexConjugate<void>>) {
+        // conjugation on a real tensor is a no-op
+      } else if constexpr (std::is_same_v<
+                               Scalar,
+                               TiledArray::detail::ComplexConjugate<
+                                   TiledArray::detail::ComplexNegTag>>) {
+        ::blas::scal(n, static_cast<T>(-1), data, 1, queue);
+      }
+    }
+  }
+}
+
+}  // namespace detail
+
+/// result[i] = arg[i] * factor
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T> scale(const UMTensor<T>& arg, const Scalar factor) {
+  auto result = clone(arg);
+  auto& queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  detail::apply_scale_factor(result.data(), result.size(), factor, queue);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] *= factor (in-place)
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T>& scale_to(UMTensor<T>& result, const Scalar factor) {
+  TA_ASSERT(!result.empty());
+  TA_ASSERT(result.nbatch() == 1);
+  auto& queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+  detail::to_device(result);
+  detail::apply_scale_factor(result.data(), result.size(), factor, queue);
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] = -arg[i]
+template <typename T>
+inline UMTensor<T> neg(const UMTensor<T>& arg) {
+  return scale(arg, T(-1));
+}
+
+/// arg[i] = -arg[i] (in-place)
+template <typename T>
+inline UMTensor<T>& neg_to(UMTensor<T>& arg) {
+  return scale_to(arg, T(-1));
+}
+
+/// result[i] = arg1[i] + arg2[i]
+template <typename T>
+inline UMTensor<T> add(const UMTensor<T>& arg1, const UMTensor<T>& arg2) {
+  TA_ASSERT(!arg1.empty());
+  TA_ASSERT(!arg2.empty());
+  TA_ASSERT(arg1.nbatch() == 1 && arg2.nbatch() == 1);
+
+  auto& queue = blasqueue_for(arg1.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  UMTensor<T> result(arg1.range());
+
+  detail::to_device(arg1);
+  detail::to_device(arg2);
+  detail::to_device(result);
+
+  ::blas::copy(result.size(), arg1.data(), 1, result.data(), 1, queue);
+  ::blas::axpy(result.size(), T(1), arg2.data(), 1, result.data(), 1, queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] = (arg1[i] + arg2[i]) * factor
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T> add(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                       const Scalar factor) {
+  auto result = add(arg1, arg2);
+  return scale_to(result, factor);
+}
+
+/// result[i] += arg[i]
+template <typename T>
+inline UMTensor<T>& add_to(UMTensor<T>& result, const UMTensor<T>& arg) {
+  TA_ASSERT(!result.empty());
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(result.nbatch() == 1 && arg.nbatch() == 1);
+
+  auto& queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  detail::to_device(result);
+  detail::to_device(arg);
+
+  ::blas::axpy(result.size(), T(1), arg.data(), 1, result.data(), 1, queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] += arg[i] * factor
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T>& add_to(UMTensor<T>& result, const UMTensor<T>& arg,
+                           const Scalar factor) {
+  TA_ASSERT(!result.empty());
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(result.nbatch() == 1 && arg.nbatch() == 1);
+
+  auto& queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  detail::to_device(result);
+  detail::to_device(arg);
+
+  ::blas::axpy(result.size(), T(factor), arg.data(), 1, result.data(), 1,
+               queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] = arg1[i] - arg2[i]
+template <typename T>
+inline UMTensor<T> subt(const UMTensor<T>& arg1, const UMTensor<T>& arg2) {
+  TA_ASSERT(!arg1.empty());
+  TA_ASSERT(!arg2.empty());
+  TA_ASSERT(arg1.nbatch() == 1 && arg2.nbatch() == 1);
+
+  auto& queue = blasqueue_for(arg1.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  UMTensor<T> result(arg1.range());
+
+  detail::to_device(arg1);
+  detail::to_device(arg2);
+  detail::to_device(result);
+
+  ::blas::copy(result.size(), arg1.data(), 1, result.data(), 1, queue);
+  ::blas::axpy(result.size(), T(-1), arg2.data(), 1, result.data(), 1, queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] = (arg1[i] - arg2[i]) * factor
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T> subt(const UMTensor<T>& arg1, const UMTensor<T>& arg2,
+                        const Scalar factor) {
+  auto result = subt(arg1, arg2);
+  return scale_to(result, factor);
+}
+
+/// result[i] -= arg[i]
+template <typename T>
+inline UMTensor<T>& subt_to(UMTensor<T>& result, const UMTensor<T>& arg) {
+  TA_ASSERT(!result.empty());
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(result.nbatch() == 1 && arg.nbatch() == 1);
+
+  auto& queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  detail::to_device(result);
+  detail::to_device(arg);
+
+  ::blas::axpy(result.size(), T(-1), arg.data(), 1, result.data(), 1, queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// result[i] -= arg[i] * factor
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T>& subt_to(UMTensor<T>& result, const UMTensor<T>& arg,
+                            const Scalar factor) {
+  TA_ASSERT(!result.empty());
+  TA_ASSERT(!arg.empty());
+  TA_ASSERT(result.nbatch() == 1 && arg.nbatch() == 1);
+
+  auto& queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  detail::to_device(result);
+  detail::to_device(arg);
+
+  ::blas::axpy(result.size(), T(-factor), arg.data(), 1, result.data(), 1,
+               queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// dot product: scalar = sum_i arg1[i] * arg2[i]
+template <typename T>
+inline T dot(const UMTensor<T>& arg1, const UMTensor<T>& arg2) {
+  TA_ASSERT(!arg1.empty());
+  TA_ASSERT(!arg2.empty());
+  TA_ASSERT(arg1.nbatch() == 1 && arg2.nbatch() == 1);
+  TA_ASSERT(arg1.size() == arg2.size());
+
+  auto& queue = blasqueue_for(arg1.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  detail::to_device(arg1);
+  detail::to_device(arg2);
+
+  T result(0);
+  ::blas::dot(arg1.size(), arg1.data(), 1, arg2.data(), 1, &result, queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// scalar = sum_i arg[i] * arg[i]
+template <typename T>
+inline auto squared_norm(const UMTensor<T>& arg) {
+  return dot(arg, arg);
+}
+
+/// scalar = sqrt(squared_norm(arg))
+template <typename T>
+inline auto norm(const UMTensor<T>& arg) {
+  using std::sqrt;
+  using ResultType = TiledArray::detail::scalar_t<T>;
+  return static_cast<ResultType>(sqrt(squared_norm(arg)));
+}
+
+/// gemm: returning form. result = factor * left * right
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline UMTensor<T> gemm(const UMTensor<T>& left, const UMTensor<T>& right,
+                        const Scalar factor,
+                        const TiledArray::math::GemmHelper& gemm_helper) {
+  TA_ASSERT(!left.empty());
+  TA_ASSERT(!right.empty());
+  TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
+  TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
+  TA_ASSERT(left.nbatch() == 1 && right.nbatch() == 1);
+
+  auto result_range = gemm_helper.template make_result_range<TiledArray::Range>(
+      left.range(), right.range());
+
+  auto& queue = blasqueue_for(result_range);
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  UMTensor<T> result(result_range);
+  TA_ASSERT(result.nbatch() == 1);
+
+  detail::to_device(left);
+  detail::to_device(right);
+  detail::to_device(result);
+
+  using TiledArray::math::blas::integer;
+  integer m = 1, n = 1, k = 1;
+  gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
+
+  const integer lda = std::max(
+      integer{1},
+      gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
+  const integer ldb = std::max(
+      integer{1},
+      gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+  const integer ldc = std::max(integer{1}, n);
+
+  const T factor_t = T(factor);
+  const T zero(0);
+
+  // Match btas device gemm (device/btas.h): col-major view with right/left
+  // swapped reproduces TA::Tensor's row-major layout under cublas.
+  ::blas::gemm(::blas::Layout::ColMajor, gemm_helper.right_op(),
+               gemm_helper.left_op(), n, m, k, factor_t, right.data(), ldb,
+               left.data(), lda, zero, result.data(), ldc, queue);
+
+  device::sync_madness_task_with(stream);
+  return result;
+}
+
+/// gemm: accumulating form. result += factor * left * right
+template <typename T, typename Scalar,
+          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+inline void gemm(UMTensor<T>& result, const UMTensor<T>& left,
+                 const UMTensor<T>& right, const Scalar factor,
+                 const TiledArray::math::GemmHelper& gemm_helper) {
+  TA_ASSERT(!result.empty());
+  TA_ASSERT(!left.empty());
+  TA_ASSERT(!right.empty());
+  TA_ASSERT(result.range().rank() == gemm_helper.result_rank());
+  TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
+  TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
+  TA_ASSERT(left.nbatch() == 1 && right.nbatch() == 1 && result.nbatch() == 1);
+
+  auto& queue = blasqueue_for(result.range());
+  const device::Stream stream(queue.device(), queue.stream());
+  DeviceSafeCall(device::setDevice(stream.device));
+
+  detail::to_device(left);
+  detail::to_device(right);
+  detail::to_device(result);
+
+  using TiledArray::math::blas::integer;
+  integer m = 1, n = 1, k = 1;
+  gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
+
+  const integer lda = std::max(
+      integer{1},
+      gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
+  const integer ldb = std::max(
+      integer{1},
+      gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+  const integer ldc = std::max(integer{1}, n);
+
+  const T factor_t = T(factor);
+  const T one(1);
+
+  ::blas::gemm(::blas::Layout::ColMajor, gemm_helper.right_op(),
+               gemm_helper.left_op(), n, m, k, factor_t, right.data(), ldb,
+               left.data(), lda, one, result.data(), ldc, queue);
+
+  device::sync_madness_task_with(stream);
+}
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_DEVICE
