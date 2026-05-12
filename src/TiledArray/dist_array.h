@@ -1852,8 +1852,20 @@ size_t volume(const DistArray<Tile, Policy>& array) {
 
   auto local_vol = [&vol](Tile const& in_tile) {
     if constexpr (detail::is_tensor_of_tensor_v<Tile>) {
+      // Inner tile pointer is passed (see is_reduce_op_v in
+      // tensor/type_traits.h selecting the pointer-passing tensor_reduce
+      // overload). Prefer `total_size()` (TA::Tensor exposes it, batches
+      // included); fall back to `size()` for inner tile types that don't
+      // (e.g. btas::Tensor).
       auto reduce_op = [](size_t& MADNESS_RESTRICT result, auto&& arg) {
-        result += arg->total_size();
+        using InnerTile =
+            std::remove_cv_t<std::remove_reference_t<decltype(*arg)>>;
+        if constexpr (detail::has_member_function_total_size_anyreturn_v<
+                          InnerTile>) {
+          result += arg->total_size();
+        } else {
+          result += arg->size();
+        }
       };
       auto join_op = [](auto& MADNESS_RESTRICT result, size_t count) {
         result += count;

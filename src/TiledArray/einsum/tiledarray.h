@@ -185,9 +185,31 @@ template <typename ArrayT1, typename ArrayT2>
 constexpr bool AreArraySame =
     AreArrayT<ArrayT1, ArrayT2> || AreArrayToT<ArrayT1, ArrayT2>;
 
+// "Denested" companion of a ToT array: drops the inner-tile nesting, leaving
+// a regular (non-nested) DistArray. For ToT inputs, the outer tile of the
+// denested array is always TA::Tensor — nested inner-tile types (e.g.
+// btas::Tensor) are only valid as the *innermost* tile and don't support the
+// outer-tile operations einsum needs (permute/reshape/batch/range+lambda
+// ctor). So for ToT we drop the inner tile and re-wrap its numeric type in
+// TA::Tensor. For non-ToT inputs, the original "drop one level" behavior is
+// preserved.
+namespace detail_denested {
+template <typename Array, typename Enabler = void>
+struct denested {
+  using type = DistArray<typename Array::value_type::value_type,
+                         typename Array::policy_type>;
+};
 template <typename Array>
-using DeNestedArray = DistArray<typename Array::value_type::value_type,
-                                typename Array::policy_type>;
+struct denested<Array,
+                std::enable_if_t<TiledArray::detail::is_tensor_of_tensor_v<
+                    typename Array::value_type>>> {
+  using type = DistArray<
+      TA::Tensor<typename Array::value_type::value_type::numeric_type>,
+      typename Array::policy_type>;
+};
+}  // namespace detail_denested
+template <typename Array>
+using DeNestedArray = typename detail_denested::denested<Array>::type;
 
 template <typename Array1, typename Array2>
 using MaxNestedArray = std::conditional_t<(detail::nested_rank<Array2> >
@@ -496,13 +518,21 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     //  Step III: C1(ijpqab) -> C2(ijpq)
     //  Step IV:  C2(ijpq) -> C(ipjq)
 
+    // Build a "denested" tile: one scalar per outer index, summed over the
+    // inner tile. The result tile's outer type is TA::Tensor (inner tile
+    // types like btas::Tensor are only valid as the innermost tile and don't
+    // expose the range+lambda ctor used here).
     auto sum_tot_2_tos = [](auto const &tot) {
       using tot_t = std::remove_reference_t<decltype(tot)>;
-      typename tot_t::value_type result(tot.range(), [tot](auto &&ix) {
+      using numeric_type = typename tot_t::numeric_type;
+      TA::Tensor<numeric_type> result(tot.range(), [tot](auto &&ix) {
+        // unqualified `sum` so ADL finds the right overload for both
+        // TA::Tensor inner (free fn in namespace TiledArray, calls .sum())
+        // and btas::Tensor inner (free fn in namespace btas).
         if (!tot(ix).empty())
-          return tot(ix).sum();
+          return sum(tot(ix));
         else
-          return typename tot_t::numeric_type{};
+          return numeric_type{};
       });
       return result;
     };
@@ -722,7 +752,7 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
               using TensorT = std::remove_reference_t<decltype(el)>;
 
               for (auto i = 0; i < vol; ++i)
-                el.add_to(element_product_op(aik.data()[i], bik.data()[i]));
+                add_to(el, element_product_op(aik.data()[i], bik.data()[i]));
 
             } else if constexpr (!AreArraySame<ArrayA, ArrayB>) {
               auto aik = ai.batch(k);
@@ -734,9 +764,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
               for (auto i = 0; i < vol; ++i)
                 if constexpr (IsArrayToT<ArrayA>) {
-                  el.add_to(aik.data()[i].scale(bik.data()[i]));
+                  add_to(el, scale(aik.data()[i], bik.data()[i]));
                 } else {
-                  el.add_to(bik.data()[i].scale(aik.data()[i]));
+                  add_to(el, scale(bik.data()[i], aik.data()[i]));
                 }
 
             } else {

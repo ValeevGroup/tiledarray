@@ -80,30 +80,39 @@ class NDArrayPrinter {
   FloatTruncate truncate_;
 
   // Helper function to recursively print the array
-  template <typename T, typename Index = Range1::index1_type,
-            typename Char = char, typename CharTraits = std::char_traits<Char>>
-  void printArray(const T* data, const std::size_t order, const Index* extents,
-                  const Index* strides,
+  template <typename T, typename ExtentIndex = Range1::index1_type,
+            typename StrideIndex = ExtentIndex, typename Char = char,
+            typename CharTraits = std::char_traits<Char>>
+  void printArray(const T* data, const std::size_t order,
+                  const ExtentIndex* extents, const StrideIndex* strides,
                   std::basic_ostream<Char, CharTraits>& os, size_t level = 0,
                   size_t offset = 0, size_t extra_indentation = 0);
 
  public:
   // Print a row-major array to a stream
+  //
+  // @c ExtentIndex and @c StrideIndex are independently deducible so callers
+  // can pass arrays of different integer types — needed for @c btas::Tensor ,
+  // whose range exposes @c extent_data() as @c unsigned-long* but
+  // @c stride_data() as @c long-long* .
   template <typename T, typename Char = char,
-            typename Index = Range1::index1_type,
+            typename ExtentIndex = Range1::index1_type,
+            typename StrideIndex = ExtentIndex,
             typename CharTraits = std::char_traits<Char>>
-  void print(const T* data, const std::size_t order, const Index* extents,
-             const Index* strides, std::basic_ostream<Char, CharTraits>& os,
+  void print(const T* data, const std::size_t order, const ExtentIndex* extents,
+             const StrideIndex* strides,
+             std::basic_ostream<Char, CharTraits>& os,
              std::size_t extra_indentation = 0);
 
   // Helper function to create a string representation
   template <typename T, typename Char = char,
-            typename Index = Range1::index1_type,
+            typename ExtentIndex = Range1::index1_type,
+            typename StrideIndex = ExtentIndex,
             typename CharTraits = std::char_traits<Char>>
   std::basic_string<Char, CharTraits> toString(const T* data,
                                                const std::size_t order,
-                                               const Index* extents,
-                                               const Index* strides);
+                                               const ExtentIndex* extents,
+                                               const StrideIndex* strides);
 };
 
 // Explicit template instantiations

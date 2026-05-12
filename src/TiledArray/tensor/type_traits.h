@@ -117,6 +117,18 @@ struct is_nested_tensor<T1, T2, Ts...> {
 template <typename... Ts>
 inline constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
 
+/// Predicate used by the shared operator body in
+/// @c TiledArray/tensor/operators_body.inl to gate the element-wise tensor
+/// operators that are injected into @c namespace TiledArray . The btas-side
+/// copy of the same operators (in @c external/btas.h) partial-specializes
+/// this predicate to @c std::false_type for @c btas::Tensor so the two
+/// namespaces' operators stay non-overlapping under ADL.
+template <typename T>
+struct ta_ops_match_tensor : is_nested_tensor<T> {};
+
+template <typename T>
+inline constexpr bool ta_ops_match_tensor_v = ta_ops_match_tensor<T>::value;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename Enabler = void>
@@ -487,19 +499,20 @@ struct result_tensor_helper {
   using TensorB_ = std::remove_reference_t<TensorB>;
   using value_type_A = typename TensorA_::value_type;
   using value_type_B = typename TensorB_::value_type;
-  using allocator_type_A = typename TensorA_::allocator_type;
-  using allocator_type_B = typename TensorB_::allocator_type;
 
  public:
   using numeric_type = binop_result_t<Op, value_type_A, value_type_B>;
-  using allocator_type =
-      std::conditional_t<std::is_same_v<void, Allocator> &&
-                             std::is_same_v<allocator_type_A, allocator_type_B>,
-                         allocator_type_A, Allocator>;
+
+  // Result tensor type stays in TensorA's family with the allocator rebound to
+  // hold `numeric_type`. Both TA::Tensor and btas::Tensor expose this as
+  // `rebind_t<U>` (TA::Tensor via std::allocator_traits::rebind_alloc; btas
+  // via storage_traits::rebind_t). An explicit @tparam Allocator override only
+  // applies when TensorA is a TA::Tensor.
   using result_type =
-      std::conditional_t<std::is_same_v<void, allocator_type>,
-                         TA::Tensor<numeric_type>,
-                         TA::Tensor<numeric_type, allocator_type>>;
+      std::conditional_t<std::is_same_v<void, Allocator> ||
+                             !is_ta_tensor_v<TensorA_>,
+                         typename TensorA_::template rebind_t<numeric_type>,
+                         TA::Tensor<numeric_type, Allocator>>;
 };
 
 }  // namespace
