@@ -920,6 +920,95 @@ BOOST_AUTO_TEST_CASE(dot_contr) {
   BOOST_CHECK_CLOSE_FRACTION(dev_d, host_d, 1.0e-10);
 }
 
+// ---------------------------------------------------------------------------
+// Phase 3 surface: archive round-trip, host/device array conversions, and
+// bulk to_host / to_device. Smoke + correctness for the helpers in
+// device/tensor.h that are not in the expression-engine path.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(serialize_um_tensor) {
+  // Single-tile round-trip: build a UMTensor, write to a buffer archive,
+  // read into a fresh UMTensor, compare element-wise. The Store side
+  // forces a host prefetch so the archive sees coherent data.
+  TileD t(TiledArray::Range{4, 4});
+  for (std::size_t k = 0; k < t.size(); ++k)
+    t.data()[k] = static_cast<double>(k) - 5.0;
+
+  const std::size_t buf_size =
+      (t.range().volume() * sizeof(double) +
+       sizeof(std::size_t) * (t.range().rank() * 4 + 4)) *
+      2;
+  std::vector<unsigned char> buf(buf_size);
+
+  madness::archive::BufferOutputArchive oar(buf.data(), buf.size());
+  BOOST_REQUIRE_NO_THROW(oar & t);
+  const std::size_t nbyte = oar.size();
+  oar.close();
+
+  TileD u;
+  madness::archive::BufferInputArchive iar(buf.data(), nbyte);
+  BOOST_REQUIRE_NO_THROW(iar & u);
+  iar.close();
+
+  BOOST_REQUIRE_EQUAL(t.range(), u.range());
+  for (std::size_t k = 0; k < t.size(); ++k)
+    BOOST_CHECK_CLOSE(t.data()[k], u.data()[k], 1.0e-15);
+}
+
+BOOST_AUTO_TEST_CASE(serialize_um_tensor_empty) {
+  // Empty-tensor round-trip: the empty branch in Store/Load.
+  TileD t;
+  std::vector<unsigned char> buf(1024);
+  madness::archive::BufferOutputArchive oar(buf.data(), buf.size());
+  BOOST_REQUIRE_NO_THROW(oar & t);
+  const std::size_t nbyte = oar.size();
+  oar.close();
+
+  TileD u(TiledArray::Range{2, 2});  // start non-empty so load has work
+  madness::archive::BufferInputArchive iar(buf.data(), nbyte);
+  BOOST_REQUIRE_NO_THROW(iar & u);
+  iar.close();
+  BOOST_CHECK(u.empty());
+}
+
+BOOST_AUTO_TEST_CASE(um_to_ta_round_trip) {
+  // UMTensor array -> host array -> UMTensor array, verify element-wise
+  // against the original both at the host and device endpoints.
+  HostArray host_view = TiledArray::um_tensor_to_ta_tensor(a);
+  GlobalFixture::world->gop.fence();
+  // Compare host_view directly against a_h (same data was used for both).
+  check_close(host_view, a_h, tolerance);
+
+  TArrayD device_view = TiledArray::ta_tensor_to_um_tensor(host_view);
+  GlobalFixture::world->gop.fence();
+  // Round-trip: device_view should match the original `a`.
+  check_close(device_view, a_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(um_to_ta_then_expression) {
+  // After converting a device array to host, plain CPU expressions on the
+  // host array should produce the same values as their device counterpart.
+  HostArray sum_h(*GlobalFixture::world, tr);
+  sum_h("a,b,c") = a_h("a,b,c") + b_h("a,b,c");
+
+  HostArray converted = TiledArray::um_tensor_to_ta_tensor(a);
+  HostArray sum_from_device(*GlobalFixture::world, tr);
+  sum_from_device("a,b,c") = converted("a,b,c") + b_h("a,b,c");
+
+  GlobalFixture::world->gop.fence();
+  check_close(sum_from_device, sum_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(bulk_prefetch_round_trip) {
+  // to_host / to_device on a DistArray should be no-ops for correctness:
+  // the array contents are unchanged, only the page residency hints are
+  // adjusted. We just verify the array is still equal to its host mirror
+  // after bouncing through both directions.
+  TiledArray::to_host(a);
+  TiledArray::to_device(a);
+  GlobalFixture::world->gop.fence();
+  check_close(a, a_h, tolerance);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 #endif  // TILEDARRAY_HAS_DEVICE

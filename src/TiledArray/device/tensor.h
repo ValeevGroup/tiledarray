@@ -26,6 +26,7 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
+#include <TiledArray/conversions/to_new_tile_type.h>
 #include <TiledArray/device/blas.h>
 #include <TiledArray/device/kernel/mult_kernel.h>
 #include <TiledArray/external/device.h>
@@ -39,6 +40,7 @@
 #include <TiledArray/tile.h>
 
 #include <blas.hh>
+#include <madness/world/archive.h>
 
 namespace TiledArray {
 namespace detail {
@@ -759,7 +761,146 @@ inline void gemm(UMTensor<T>& result, const UMTensor<T>& left,
   device::sync_madness_task_with(stream);
 }
 
+// ---------------------------------------------------------------------------
+// Array-level helpers: bulk to-host / to-device prefetch and conversions
+// between UMTensor-backed and host-Tensor-backed DistArrays. Mirrors the
+// btas-device helpers in btas_um_tensor.h:567-617 but for the bare
+// TA::Tensor specialization -- so the tile type is `UMTensor<T>` directly,
+// not wrapped in `TA::Tile<...>`.
+//
+// `to_host` / `to_device` are oneshot bulk-prefetch routines: they walk the
+// pmap, dispatch one prefetch task per local tile, fence, then issue a
+// `deviceSynchronize` to make sure every stream has drained. They're
+// "stop the world" by design -- intended for explicit synchronization
+// points (before a host read, after a load, etc.), not for inner loops.
+// ---------------------------------------------------------------------------
+
+/// Prefetch every local tile of `array` to the host. Fences on the
+/// containing world and globally synchronizes the device on exit.
+template <typename T, typename Policy>
+inline void to_host(TiledArray::DistArray<UMTensor<T>, Policy>& array) {
+  auto prefetch = [](UMTensor<T>& tile) {
+    auto stream = device::stream_for(tile.range());
+    detail::to_host(tile);
+    device::sync_madness_task_with(stream);
+  };
+  auto& world = array.world();
+  for (auto it = array.pmap()->begin(); it != array.pmap()->end(); ++it) {
+    if (!array.is_zero(*it)) world.taskq.add(prefetch, array.find(*it));
+  }
+  world.gop.fence();
+  DeviceSafeCall(device::deviceSynchronize());
+}
+
+/// Prefetch every local tile of `array` to the device. Fences on the
+/// containing world and globally synchronizes the device on exit.
+template <typename T, typename Policy>
+inline void to_device(TiledArray::DistArray<UMTensor<T>, Policy>& array) {
+  auto prefetch = [](UMTensor<T>& tile) {
+    auto stream = device::stream_for(tile.range());
+    detail::to_device(tile);
+    device::sync_madness_task_with(stream);
+  };
+  auto& world = array.world();
+  for (auto it = array.pmap()->begin(); it != array.pmap()->end(); ++it) {
+    if (!array.is_zero(*it)) world.taskq.add(prefetch, array.find(*it));
+  }
+  world.gop.fence();
+  DeviceSafeCall(device::deviceSynchronize());
+}
+
+/// Convert a UMTensor-backed `DistArray` to one backed by host
+/// `TA::Tensor<T>`. Tile-by-tile copy through `to_new_tile_type` -- the
+/// per-tile lambda allocates a host result, prefetches the source UM
+/// buffer to host, and memcpys.
+template <typename T, typename Policy>
+inline TiledArray::DistArray<TiledArray::Tensor<T>, Policy>
+um_tensor_to_ta_tensor(
+    const TiledArray::DistArray<UMTensor<T>, Policy>& um_array) {
+  auto convert_tile = [](const UMTensor<T>& tile) {
+    detail::to_host(tile);
+    TiledArray::Tensor<T> result(tile.range());
+    std::copy_n(tile.data(), tile.total_size(), result.data());
+    return result;
+  };
+  auto out = to_new_tile_type<UMTensor<T>>(um_array, convert_tile);
+  um_array.world().gop.fence();
+  return out;
+}
+
+/// Convert a host `TA::Tensor<T>`-backed `DistArray` to a UMTensor-backed
+/// one. Tile-by-tile copy: allocate UM, memcpy, prefetch to device.
+template <typename T, typename Policy>
+inline TiledArray::DistArray<UMTensor<T>, Policy> ta_tensor_to_um_tensor(
+    const TiledArray::DistArray<TiledArray::Tensor<T>, Policy>& host_array) {
+  auto convert_tile = [](const TiledArray::Tensor<T>& tile) {
+    UMTensor<T> result(tile.range());
+    std::copy_n(tile.data(), tile.total_size(), result.data());
+    detail::to_device(result);
+    return result;
+  };
+  auto out = to_new_tile_type<TiledArray::Tensor<T>>(host_array, convert_tile);
+  host_array.world().gop.fence();
+  return out;
+}
+
 }  // namespace TiledArray
+
+// ---------------------------------------------------------------------------
+// MADNESS archive specializations for UMTensor.
+//
+// `TA::Tensor::serialize(ar)` works on any allocator (the member just walks
+// `data() + range().volume() * nbatch()`), but UM data may be stale on the
+// host if a device kernel is in flight. The Store specialization prefetches
+// the tile back to the host before reading. Load goes through the default
+// member -- the freshly constructed UM-allocated tile is host-writable, so
+// no additional prefetch is needed (downstream code that wants the data on
+// the device should call `to_device` explicitly).
+// ---------------------------------------------------------------------------
+namespace madness {
+namespace archive {
+
+template <class Archive, typename T>
+struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
+  static inline void store(const Archive& ar,
+                           const TiledArray::UMTensor<T>& t) {
+    TiledArray::detail::to_host(t);
+    // Mirror TA::Tensor::serialize's store side; we cannot call the member
+    // because it is non-const and we want to keep the input parameter
+    // const-correct.
+    const bool empty = t.empty();
+    ar & empty;
+    if (!empty) {
+      ar & t.range();
+      ar & t.nbatch();
+      ar & madness::archive::wrap(t.data(),
+                                  t.range().volume() * t.nbatch());
+    }
+  }
+};
+
+template <class Archive, typename T>
+struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
+  static inline void load(const Archive& ar, TiledArray::UMTensor<T>& t) {
+    bool empty = false;
+    ar & empty;
+    if (!empty) {
+      TiledArray::Range range;
+      std::size_t nbatch = 1;
+      ar & range;
+      ar & nbatch;
+      t = TiledArray::UMTensor<T>(
+          std::move(range), typename TiledArray::UMTensor<T>::nbatches(nbatch));
+      ar & madness::archive::wrap(t.data(),
+                                  t.range().volume() * t.nbatch());
+    } else {
+      t = TiledArray::UMTensor<T>();
+    }
+  }
+};
+
+}  // namespace archive
+}  // namespace madness
 
 #endif  // TILEDARRAY_HAS_DEVICE
 
