@@ -79,6 +79,51 @@ inline void to_host(const TiledArray::UMTensor<T>& tile) {
 }  // namespace detail
 
 // ---------------------------------------------------------------------------
+// In-place tile ops are tricky to dispatch correctly.
+//
+// `tile_op/{subt,add,mult,...}.h::Op::eval` passes the result via
+// `std::move(...)` when the operand is consumable -- so the engine calls our
+// `subt_to`, `add_to`, etc. with an rvalue. A plain `UMTensor<T>&` overload
+// is not a viable candidate for an rvalue, so overload resolution falls
+// through to the generic forwarder in `tile_op/tile_interface.h` (and
+// `tile_interface/scale.h`). That forwarder delegates to TA::Tensor's CPU
+// member function, which then reads UM memory while the previous device
+// kernel is still in flight on the queue -- silently miscomputing.
+//
+// To win the dispatch we provide two concrete-type overloads per in-place
+// op: one taking `UMTensor<T>&` and one taking `UMTensor<T>&&`. Concrete
+// types beat the templated forwarding reference `Result&&` in partial
+// ordering regardless of the SFINAE / `requires` constraint shape, so this
+// is robust against compiler differences. (A single forwarding-ref overload
+// constrained with a `requires UMTensorArg<...>` concept would in principle
+// also win because a constrained template subsumes an unconstrained one,
+// but g++ does not consistently treat tile_interface's `enable_if`-only
+// templates as unconstrained for this purpose -- the result is an ambiguous
+// overload error. The two-concrete-overload form sidesteps the question.)
+//
+// The lvalue overload forwards to the rvalue overload to keep a single
+// implementation per op. Value-returning overloads (e.g.
+// `add(const UMTensor&, const UMTensor&)`) don't need this because
+// reference-to-const binds to both lvalues and rvalues.
+//
+// The `UMTensorArg` concept is kept around as documentation of intent and
+// as a clean handle for any future helper that genuinely wants forwarding
+// references (e.g. a `to_device` overload set).
+// ---------------------------------------------------------------------------
+namespace detail {
+template <typename U>
+struct is_um_tensor : std::false_type {};
+template <typename T>
+struct is_um_tensor<UMTensor<T>> : std::true_type {};
+template <typename U>
+inline constexpr bool is_um_tensor_v =
+    is_um_tensor<std::remove_cv_t<std::remove_reference_t<U>>>::value;
+}  // namespace detail
+
+template <typename U>
+concept UMTensorArg = detail::is_um_tensor_v<U>;
+
+// ---------------------------------------------------------------------------
 // Tile-op overloads for UMTensor.
 //
 // Each overload sits in `namespace TiledArray` so ADL finds it from the
@@ -166,9 +211,12 @@ inline UMTensor<T> scale(const UMTensor<T>& arg, const Scalar factor) {
   return result;
 }
 
-/// result[i] *= factor (in-place)
-template <typename T, typename Scalar,
-          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+/// result[i] *= factor (in-place). Forwarding-reference form so the engine's
+/// `scale_to(std::move(tile), factor)` (from `tile_op/scal.h:82`) dispatches
+/// here rather than to the tile_interface forwarder that would call the CPU
+/// member function on UM memory.
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar>
 inline UMTensor<T>& scale_to(UMTensor<T>& result, const Scalar factor) {
   TA_ASSERT(!result.empty());
   TA_ASSERT(result.nbatch() == 1);
@@ -181,6 +229,12 @@ inline UMTensor<T>& scale_to(UMTensor<T>& result, const Scalar factor) {
   return result;
 }
 
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar>
+inline UMTensor<T>& scale_to(UMTensor<T>&& result, const Scalar factor) {
+  return scale_to(result, factor);
+}
+
 /// result[i] = -arg[i]
 template <typename T>
 inline UMTensor<T> neg(const UMTensor<T>& arg) {
@@ -190,6 +244,11 @@ inline UMTensor<T> neg(const UMTensor<T>& arg) {
 /// arg[i] = -arg[i] (in-place)
 template <typename T>
 inline UMTensor<T>& neg_to(UMTensor<T>& arg) {
+  return scale_to(arg, T(-1));
+}
+
+template <typename T>
+inline UMTensor<T>& neg_to(UMTensor<T>&& arg) {
   return scale_to(arg, T(-1));
 }
 
@@ -246,27 +305,26 @@ inline UMTensor<T>& add_to(UMTensor<T>& result, const UMTensor<T>& arg) {
   return result;
 }
 
-/// result[i] += arg[i] * factor
-template <typename T, typename Scalar,
-          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+template <typename T>
+inline UMTensor<T>& add_to(UMTensor<T>&& result, const UMTensor<T>& arg) {
+  return add_to(result, arg);
+}
+
+/// result[i] = (result[i] + arg[i]) * factor
+/// Matches TA::Tensor::add_to(right, factor) semantics: `(l += r) *= factor`.
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar>
 inline UMTensor<T>& add_to(UMTensor<T>& result, const UMTensor<T>& arg,
                            const Scalar factor) {
-  TA_ASSERT(!result.empty());
-  TA_ASSERT(!arg.empty());
-  TA_ASSERT(result.nbatch() == 1 && arg.nbatch() == 1);
+  add_to(result, arg);
+  return scale_to(result, factor);
+}
 
-  auto& queue = blasqueue_for(result.range());
-  const device::Stream stream(queue.device(), queue.stream());
-  DeviceSafeCall(device::setDevice(stream.device));
-
-  detail::to_device(result);
-  detail::to_device(arg);
-
-  ::blas::axpy(result.size(), T(factor), arg.data(), 1, result.data(), 1,
-               queue);
-
-  device::sync_madness_task_with(stream);
-  return result;
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar>
+inline UMTensor<T>& add_to(UMTensor<T>&& result, const UMTensor<T>& arg,
+                           const Scalar factor) {
+  return add_to(result, arg, factor);
 }
 
 /// result[i] = arg1[i] - arg2[i]
@@ -322,27 +380,34 @@ inline UMTensor<T>& subt_to(UMTensor<T>& result, const UMTensor<T>& arg) {
   return result;
 }
 
-/// result[i] -= arg[i] * factor
-template <typename T, typename Scalar,
-          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+template <typename T>
+inline UMTensor<T>& subt_to(UMTensor<T>&& result, const UMTensor<T>& arg) {
+  return subt_to(result, arg);
+}
+
+/// result[i] = (result[i] - arg[i]) * factor
+/// Matches TA::Tensor::subt_to(right, factor) semantics: `(l -= r) *= factor`.
+/// This convention is load-bearing for `tile_op/subt.h::Subt::eval` -- when
+/// the engine reuses the right operand's storage, it calls
+/// `subt_to(std::move(second), first, -1)` and relies on the result being
+/// `(second - first) * -1 = first - second`. Hence the forwarding reference
+/// on `result`: lvalue-only signatures lose overload resolution to the
+/// templated forwarder in tile_op/tile_interface.h, which then dispatches to
+/// TA::Tensor's CPU member function and races with any in-flight device
+/// kernel on UM memory.
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar>
 inline UMTensor<T>& subt_to(UMTensor<T>& result, const UMTensor<T>& arg,
                             const Scalar factor) {
-  TA_ASSERT(!result.empty());
-  TA_ASSERT(!arg.empty());
-  TA_ASSERT(result.nbatch() == 1 && arg.nbatch() == 1);
+  subt_to(result, arg);
+  return scale_to(result, factor);
+}
 
-  auto& queue = blasqueue_for(result.range());
-  const device::Stream stream(queue.device(), queue.stream());
-  DeviceSafeCall(device::setDevice(stream.device));
-
-  detail::to_device(result);
-  detail::to_device(arg);
-
-  ::blas::axpy(result.size(), T(-factor), arg.data(), 1, result.data(), 1,
-               queue);
-
-  device::sync_madness_task_with(stream);
-  return result;
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar>
+inline UMTensor<T>& subt_to(UMTensor<T>&& result, const UMTensor<T>& arg,
+                            const Scalar factor) {
+  return subt_to(result, arg, factor);
 }
 
 /// dot product: scalar = sum_i arg1[i] * arg2[i]
@@ -500,6 +565,11 @@ inline UMTensor<T>& shift_to(UMTensor<T>& arg, const Index& bound_shift) {
   return arg;
 }
 
+template <typename T, typename Index>
+inline UMTensor<T>& shift_to(UMTensor<T>&& arg, const Index& bound_shift) {
+  return shift_to(arg, bound_shift);
+}
+
 /// result[i] = arg1[i] * arg2[i] (element-wise / Hadamard)
 template <typename T>
 inline UMTensor<T> mult(const UMTensor<T>& arg1, const UMTensor<T>& arg2) {
@@ -572,13 +642,26 @@ inline UMTensor<T>& mult_to(UMTensor<T>& result, const UMTensor<T>& arg) {
   return result;
 }
 
-/// result[i] *= arg[i] * factor
-template <typename T, typename Scalar,
-          typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
+template <typename T>
+inline UMTensor<T>& mult_to(UMTensor<T>&& result, const UMTensor<T>& arg) {
+  return mult_to(result, arg);
+}
+
+/// result[i] = (result[i] * arg[i]) * factor
+/// Matches TA::Tensor::mult_to(right, factor) semantics: `(l *= r) *= factor`.
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar>
 inline UMTensor<T>& mult_to(UMTensor<T>& result, const UMTensor<T>& arg,
                             const Scalar factor) {
   mult_to(result, arg);
   return scale_to(result, factor);
+}
+
+template <typename T, typename Scalar>
+  requires TiledArray::detail::is_numeric_v<Scalar>
+inline UMTensor<T>& mult_to(UMTensor<T>&& result, const UMTensor<T>& arg,
+                            const Scalar factor) {
+  return mult_to(result, arg, factor);
 }
 
 /// gemm: returning form. result = factor * left * right
