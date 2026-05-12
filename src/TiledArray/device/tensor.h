@@ -902,6 +902,26 @@ struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
 }  // namespace archive
 }  // namespace madness
 
+// ---------------------------------------------------------------------------
+// `extern template` declarations for the UMTensor class. Match the explicit
+// instantiations in src/TiledArray/device/tensor.cpp so that consumers do
+// not re-instantiate the full Tensor<T, device_um_allocator<T>> class body
+// in each TU. (Mirrors the analogous pattern at the bottom of
+// src/TiledArray/tensor/tensor.h for the host-side instantiations.)
+// ---------------------------------------------------------------------------
+namespace TiledArray {
+
+extern template class Tensor<double, device_um_allocator<double>>;
+extern template class Tensor<float, device_um_allocator<float>>;
+extern template class Tensor<std::complex<double>,
+                             device_um_allocator<std::complex<double>>>;
+extern template class Tensor<std::complex<float>,
+                             device_um_allocator<std::complex<float>>>;
+extern template class Tensor<int, device_um_allocator<int>>;
+extern template class Tensor<long, device_um_allocator<long>>;
+
+}  // namespace TiledArray
+
 #endif  // TILEDARRAY_HAS_DEVICE
 
 #endif  // TILEDARRAY_DEVICE_TENSOR_H

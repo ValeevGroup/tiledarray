@@ -23,6 +23,35 @@
 
 #include <complex>
 
+namespace TiledArray {
+
+// Explicit instantiations of the UMTensor class for the standard numeric
+// types. Without these, every TU including device/tensor.h would instantiate
+// the full TA::Tensor<T, device_um_allocator<T>> class body (~3000 lines of
+// templated members) -- the matching `extern template` declarations in
+// device/tensor.h suppress that per-TU work and route consumers to the
+// symbols defined here.
+//
+// The list mirrors `src/TiledArray/tensor/tensor.cpp`'s host-side set
+// (double, float, complex variants), plus int/long which are cheap to
+// instantiate and useful for index-tile use cases. BLAS-bearing free
+// functions (`gemm`, `scale`, ...) are still header-defined templates --
+// instantiating those for each numeric type would pull in the full
+// BLAS++/librett surface here, and the compile-time saving from
+// extern-templating them does not justify it. They get instantiated lazily
+// in whichever TU actually calls them (typically the test or example TU).
+
+template class Tensor<double, device_um_allocator<double>>;
+template class Tensor<float, device_um_allocator<float>>;
+template class Tensor<std::complex<double>,
+                      device_um_allocator<std::complex<double>>>;
+template class Tensor<std::complex<float>,
+                      device_um_allocator<std::complex<float>>>;
+template class Tensor<int, device_um_allocator<int>>;
+template class Tensor<long, device_um_allocator<long>>;
+
+}  // namespace TiledArray
+
 namespace TiledArray::detail {
 
 // Phase 1 sanity: confirm the is_device_tile specialization fires for the
