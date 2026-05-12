@@ -191,3 +191,8 @@ else()
           ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT}"
           )
 endif()
+
+if (NOT TARGET test-cases-tiledarray)
+  add_custom_target_subproject(tiledarray test-cases)
+endif()
+add_subdirectory(cases)
