@@ -26,8 +26,12 @@
 #ifndef TILEDARRAY_TILE_OP_CONTRACT_REDUCE_H__INCLUDED
 #define TILEDARRAY_TILE_OP_CONTRACT_REDUCE_H__INCLUDED
 
+#include <optional>
+#include <type_traits>
+#include <variant>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/tensor/arena_einsum.h>
 #include <TiledArray/tensor/complex.h>
 #include <TiledArray/tile_op/tile_interface.h>
 #include <TiledArray/util/function.h>
@@ -81,23 +85,32 @@ class ContractReduceBase {
 
  private:
   struct Impl {
+    using left_tile_type  = std::remove_cv_t<std::remove_reference_t<first_argument_type>>;
+    using right_tile_type = std::remove_cv_t<std::remove_reference_t<second_argument_type>>;
+    using arena_plan_storage_t =
+        TiledArray::detail::arena_plan_storage_t<result_type, left_tile_type, right_tile_type>;
+
     template <
         typename Perm = BipartitePermutation,
         typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+        typename Plan = arena_plan_storage_t,
         typename = std::enable_if_t<
             TiledArray::detail::is_permutation_v<
                 std::remove_reference_t<Perm>> &&
             std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                   result_value_type&, const left_value_type&,
-                                  const right_value_type&>>>
+                                  const right_value_type&> &&
+            std::is_same_v<std::decay_t<Plan>, arena_plan_storage_t>>>
     Impl(const math::blas::Op left_op, const math::blas::Op right_op,
          const scalar_type alpha, const unsigned int result_rank,
          const unsigned int left_rank, const unsigned int right_rank,
-         Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
+         Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {},
+         Plan&& arena_plan_in = {})
         : gemm_helper_(left_op, right_op, result_rank, left_rank, right_rank),
           alpha_(alpha),
           perm_(std::forward<Perm>(perm)),
-          elem_muladd_op_(std::forward<ElemMultAddOp>(elem_muladd_op)) {
+          elem_muladd_op_(std::forward<ElemMultAddOp>(elem_muladd_op)),
+          arena_plan_(std::forward<Plan>(arena_plan_in)) {
       // non-unit alpha must be absorbed into elem_muladd_op
       if (elem_muladd_op_) TA_ASSERT(alpha == scalar_type(1));
     }
@@ -111,6 +124,8 @@ class ContractReduceBase {
     /// type-erased reference to custom element multiply-add op
     /// \note the lifetime is managed by the callee!
     TiledArray::function_ref<elem_muladd_op_type> elem_muladd_op_;
+
+    TA_NO_UNIQUE_ADDRESS arena_plan_storage_t arena_plan_;
   };
 
   std::shared_ptr<Impl> pimpl_;
@@ -124,6 +139,8 @@ class ContractReduceBase {
   ~ContractReduceBase() = default;
   ContractReduceBase_& operator=(const ContractReduceBase_&) = default;
   ContractReduceBase_& operator=(ContractReduceBase_&&) = default;
+
+  using arena_plan_storage_t = typename Impl::arena_plan_storage_t;
 
   /// Construct contract/reduce functor
 
@@ -141,21 +158,25 @@ class ContractReduceBase {
   template <
       typename Perm = BipartitePermutation,
       typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+      typename Plan = typename Impl::arena_plan_storage_t,
       typename = std::enable_if_t<
           TiledArray::detail::is_permutation_v<std::remove_reference_t<Perm>> &&
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
-                                const right_value_type&>>>
+                                const right_value_type&> &&
+          std::is_same_v<std::decay_t<Plan>, typename Impl::arena_plan_storage_t>>>
   ContractReduceBase(const math::blas::Op left_op,
                      const math::blas::Op right_op, const scalar_type alpha,
                      const unsigned int result_rank,
                      const unsigned int left_rank,
                      const unsigned int right_rank, Perm&& perm = {},
-                     ElemMultAddOp&& elem_muladd_op = {})
+                     ElemMultAddOp&& elem_muladd_op = {},
+                     Plan&& arena_plan_in = {})
       : pimpl_(std::make_shared<Impl>(
             left_op, right_op, alpha, result_rank, left_rank, right_rank,
             std::forward<Perm>(perm),
-            std::forward<ElemMultAddOp>(elem_muladd_op))) {}
+            std::forward<ElemMultAddOp>(elem_muladd_op),
+            std::forward<Plan>(arena_plan_in))) {}
 
   /// Gemm meta data accessor
 
@@ -187,6 +208,14 @@ class ContractReduceBase {
   const auto& elem_muladd_op() const {
     TA_ASSERT(pimpl_);
     return pimpl_->elem_muladd_op_;
+  }
+
+  /// Arena plan accessor
+
+  /// \return A const reference to the arena plan storage
+  const auto& arena_plan() const {
+    TA_ASSERT(pimpl_);
+    return pimpl_->arena_plan_;
   }
 
   //-------------- these are only used for unit tests -----------------
@@ -277,18 +306,23 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   template <
       typename Perm = BipartitePermutation,
       typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+      typename Plan = typename ContractReduceBase_::arena_plan_storage_t,
       typename = std::enable_if_t<
           TiledArray::detail::is_permutation_v<std::remove_reference_t<Perm>> &&
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
-                                const right_value_type&>>>
+                                const right_value_type&> &&
+          std::is_same_v<std::decay_t<Plan>,
+                         typename ContractReduceBase_::arena_plan_storage_t>>>
   ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
+                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {},
+                 Plan&& arena_plan_in = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
                             right_rank, std::forward<Perm>(perm),
-                            std::forward<ElemMultAddOp>(elem_muladd_op)) {}
+                            std::forward<ElemMultAddOp>(elem_muladd_op),
+                            std::forward<Plan>(arena_plan_in)) {}
 
   /// Create a result type object
 
@@ -332,6 +366,15 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 
     if constexpr (!ContractReduceBase_::plain_tensors) {
       TA_ASSERT(this->elem_muladd_op());
+      if constexpr (detail::is_contraction_arena_tot_v<
+                        result_type,
+                        std::remove_cv_t<std::remove_reference_t<first_argument_type>>,
+                        std::remove_cv_t<std::remove_reference_t<second_argument_type>>>) {
+        if (empty(result) && this->arena_plan().has_value()) {
+          result = this->arena_plan()->reserve_and_construct(
+              left, right, this->gemm_helper());
+        }
+      }
       gemm(result, left, right, ContractReduceBase_::gemm_helper(),
            this->elem_muladd_op());
     } else {  // plain tensors
@@ -404,18 +447,23 @@ class ContractReduce<Result, Left, Right,
   template <
       typename Perm = BipartitePermutation,
       typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+      typename Plan = typename ContractReduceBase_::arena_plan_storage_t,
       typename = std::enable_if_t<
           TiledArray::detail::is_permutation_v<std::remove_reference_t<Perm>> &&
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
-                                const right_value_type&>>>
+                                const right_value_type&> &&
+          std::is_same_v<std::decay_t<Plan>,
+                         typename ContractReduceBase_::arena_plan_storage_t>>>
   ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
+                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {},
+                 Plan&& arena_plan_in = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
                             right_rank, std::forward<Perm>(perm),
-                            std::forward<ElemMultAddOp>(elem_muladd_op)) {}
+                            std::forward<ElemMultAddOp>(elem_muladd_op),
+                            std::forward<Plan>(arena_plan_in)) {}
 
   /// Create a result type object
 
@@ -530,18 +578,23 @@ class ContractReduce<Result, Left, Right,
   template <
       typename Perm = BipartitePermutation,
       typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+      typename Plan = typename ContractReduceBase_::arena_plan_storage_t,
       typename = std::enable_if_t<
           TiledArray::detail::is_permutation_v<std::remove_reference_t<Perm>> &&
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
-                                const right_value_type&>>>
+                                const right_value_type&> &&
+          std::is_same_v<std::decay_t<Plan>,
+                         typename ContractReduceBase_::arena_plan_storage_t>>>
   ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
+                 Perm&& perm = {}, ElemMultAddOp&& elem_muladd_op = {},
+                 Plan&& arena_plan_in = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
                             right_rank, std::forward<Perm>(perm),
-                            std::forward<ElemMultAddOp>(elem_muladd_op)) {}
+                            std::forward<ElemMultAddOp>(elem_muladd_op),
+                            std::forward<Plan>(arena_plan_in)) {}
 
   /// Create a result type object
 
