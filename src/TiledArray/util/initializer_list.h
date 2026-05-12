@@ -212,9 +212,15 @@ auto flatten_il(T&& il, OutputItr out_itr) {
     ++out_itr;
   }
   // We were given a vector or we have recursed to the most nested
-  // initializer_list, either way copy the contents to the buffer
+  // initializer_list, either way copy the contents to the buffer.
+  // Guard against empty ranges: std::copy on a 0-length range with a
+  // possibly-null output iterator (e.g. std::array<T,0>::begin()) inlines
+  // to __builtin_memmove(null, null, 0), tripping gcc's -Wnonnull even
+  // though the copy itself is a no-op.
   else if constexpr (ranks_left == 1) {
-    out_itr = std::copy(il.begin(), il.end(), out_itr);
+    if (il.size() != 0) {
+      out_itr = std::copy(il.begin(), il.end(), out_itr);
+    }
   }
   // The initializer list is at least a matrix, so recurse over sub-lists
   else {
