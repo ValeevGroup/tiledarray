@@ -147,10 +147,6 @@ class BinaryEngine : public ExprEngine<Derived> {
         TiledArray::detail::is_tensor_of_tensor_v<left_tile_type>;
     constexpr bool right_tile_is_tot =
         TiledArray::detail::is_tensor_of_tensor_v<right_tile_type>;
-    constexpr bool args_are_plain_tensors =
-        !left_tile_is_tot && !right_tile_is_tot;
-    constexpr bool args_are_mixed_tensors =
-        left_tile_is_tot ^ right_tile_is_tot;
     // implicit_permute_{outer,inner}() denotes whether permutations will be
     // fused into consuming operation
     if (left_outer_permtype_ == PermutationType::matrix_transpose ||

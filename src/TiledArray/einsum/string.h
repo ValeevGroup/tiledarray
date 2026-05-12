@@ -20,13 +20,15 @@ std::pair<T, U> split2(const std::string& s, const std::string& d) {
 }
 
 // Split delimiter must match completely
-std::vector<std::string> split(const std::string& s, char d) {
+[[maybe_unused]] std::vector<std::string> split(const std::string& s, char d) {
   std::vector<std::string> res;
   return boost::split(res, s,
                       [&d](char c) { return c == d; } /*boost::is_any_of(d)*/);
 }
 
-std::string trim(const std::string& s) { return boost::trim_copy(s); }
+[[maybe_unused]] std::string trim(const std::string& s) {
+  return boost::trim_copy(s);
+}
 
 template <typename T>
 std::string str(const T& obj) {

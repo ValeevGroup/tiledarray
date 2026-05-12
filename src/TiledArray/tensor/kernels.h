@@ -1276,8 +1276,9 @@ template <typename ResultTensorAllocator = void, typename TensorA,
                                       is_annotation_v<Annot>>>
 auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
                      Annot const& aB, Annot const& aC) {
-  using Result = result_tensor_t<std::multiplies<>, TensorA, TensorB,
-                                 ResultTensorAllocator>;
+  using Result [[maybe_unused]] =
+      result_tensor_t<std::multiplies<>, TensorA, TensorB,
+                      ResultTensorAllocator>;
 
   TensorContractionPlan plan(aA, aB, aC);
 

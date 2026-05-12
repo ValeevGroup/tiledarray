@@ -813,10 +813,9 @@ class ArrayImpl : public TensorImpl<Policy>,
           if (fut.probe()) continue;
         }
         if constexpr (Exec == HostExecutor::MADWorld) {
-          Future<value_type> tile =
-              this->world().taskq.add([this_sptr = this->shared_from_this(),
-                                       index = ordinal_type(index),
-                                       op_shared_handle, this]() -> value_type {
+          Future<value_type> tile = this->world().taskq.add(
+              [this_sptr = this->shared_from_this(),
+               index = ordinal_type(index), op_shared_handle]() -> value_type {
                 return op_shared_handle(
                     this_sptr->trange().make_tile_range(index));
               });
@@ -954,7 +953,6 @@ std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
   if constexpr (!is_dense_v<Policy>) {
     // each rank computes contributions to the shape norms from its local tiles
     Tensor<float> target_shape_norms(target_tiles_range, 0);
-    auto& source_trange = source_array.trange();
     const auto e = source_array.cend();
     for (auto it = source_array.cbegin(); it != e; ++it) {
       auto source_tile_idx = it.index();
@@ -995,7 +993,6 @@ std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
 
   // loop over local tile and sends its contributions to the targets
   {
-    auto& source_trange = source_array.trange();
     const auto e = source_array.cend();
     auto& target_tiles_range = target_trange.tiles_range();
     for (auto it = source_array.cbegin(); it != e; ++it) {

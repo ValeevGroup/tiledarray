@@ -18,7 +18,20 @@
  */
 #include "tot_array_fixture.h"
 
+#include <unistd.h>
 #include <cstdio>
+
+namespace {
+// Replace the trailing XXXXXX in `name_template` with a unique suffix.
+// Uses mkstemp + close + remove so the resulting name can be reused by
+// callers that open the file themselves; race-free unlike mktemp(3).
+void make_unique_filename_template(char* name_template) {
+  const int fd = mkstemp(name_template);
+  MADNESS_ASSERT(fd != -1);
+  ::close(fd);
+  std::remove(name_template);
+}
+}  // namespace
 
 BOOST_FIXTURE_TEST_SUITE(tot_array_suite2, ToTArrayFixture)
 //------------------------------------------------------------------------------
@@ -668,7 +681,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(serialization, TestParam, test_params) {
   for (auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
     char file_name[] = "tmp.XXXXXX";
-    mktemp(file_name);
+    make_unique_filename_template(file_name);
     {
       output_archive_type ar_out(file_name);
       corr.serialize(ar_out);
@@ -689,7 +702,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parallel_serialization, TestParam, test_params) {
     auto& corr = std::get<2>(tr_t);
     const int nio = 1;  // use 1 rank for I/O
     char file_name[] = "tmp.XXXXXX";
-    mktemp(file_name);
+    make_unique_filename_template(file_name);
     {
       madness::archive::ParallelOutputArchive<> ar_out(m_world, file_name, nio);
       corr.store(ar_out);

@@ -343,6 +343,14 @@ add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
   target_link_libraries(${targetname} PUBLIC ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
   target_link_libraries(${targetname} PUBLIC MADworld)
   target_link_libraries(${targetname} PUBLIC Boost::headers)
+  # Pull compile options off the internal warnings INTERFACE target without
+  # creating a real link dependency on it — `tiledarray` is installed/exported,
+  # and a PRIVATE link would force the (intentionally non-installed)
+  # tiledarray_internal_warnings target into the same export set. The
+  # generator expression keeps these flags PRIVATE to TA's own TUs, so they
+  # do not propagate to downstream consumers via find_package(tiledarray).
+  target_compile_options(${targetname} PRIVATE
+      $<TARGET_PROPERTY:tiledarray_internal_warnings,INTERFACE_COMPILE_OPTIONS>)
 
   # build all external deps before building tiledarray
   add_dependencies(${targetname} External-tiledarray)

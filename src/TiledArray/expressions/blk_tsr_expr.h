@@ -32,8 +32,8 @@
 #include <TiledArray/expressions/unary_expr.h>
 #include "blk_tsr_engine.h"
 
-#include <range/v3/algorithm.hpp>
-#include <range/v3/view.hpp>
+#include <range/v3/algorithm/any_of.hpp>
+#include <range/v3/view/zip.hpp>
 
 #include <optional>
 
