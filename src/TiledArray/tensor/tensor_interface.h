@@ -178,16 +178,14 @@ class TensorInterface {
   /// \param range The range of this tensor
   /// \param data The data pointer for this tensor
   TensorInterface(const range_type& range, pointer data)
-      : range_(range), data_(data) {
-  }
+      : range_(range), data_(data) {}
 
   /// Construct a new view of \c tensor
 
   /// \param range The range of this tensor
   /// \param data The data pointer for this tensor
   TensorInterface(range_type&& range, pointer data)
-      : range_(std::move(range)), data_(data) {
-  }
+      : range_(std::move(range)), data_(data) {}
 
   template <typename T1, typename std::enable_if<detail::is_nested_tensor<
                              T1>::value>::type* = nullptr>
@@ -223,7 +221,7 @@ class TensorInterface {
   /// \param index_ordinal The ordinal element index
   /// \return A const reference to the element at \c index_ordinal.
   const_reference operator[](const ordinal_type index_ordinal) const {
-    TA_ASSERT(range_.includes(index_ordinal));
+    TA_ASSERT(range_.includes_ordinal(index_ordinal));
     return data_[range_.ordinal(index_ordinal)];
   }
 
@@ -232,7 +230,7 @@ class TensorInterface {
   /// \param index The ordinal element index
   /// \return A const reference to the element at \c index_ordinal.
   reference operator[](const ordinal_type index_ordinal) {
-    TA_ASSERT(range_.includes(index_ordinal));
+    TA_ASSERT(range_.includes_ordinal(index_ordinal));
     return data_[range_.ordinal(index_ordinal)];
   }
 
@@ -241,7 +239,7 @@ class TensorInterface {
   /// \param index_ordinal The ordinal element index
   /// \return A const reference to the element at \c index_ordinal.
   const_reference at_ordinal(const ordinal_type index_ordinal) const {
-    TA_ASSERT(range_.includes(index_ordinal));
+    TA_ASSERT(range_.includes_ordinal(index_ordinal));
     return data_[range_.ordinal(index_ordinal)];
   }
 
@@ -250,7 +248,7 @@ class TensorInterface {
   /// \param index_ordinal The ordinal element index
   /// \return A const reference to the element at \c index_ordinal.
   reference at_ordinal(const ordinal_type index_ordinal) {
-    TA_ASSERT(range_.includes(index_ordinal));
+    TA_ASSERT(range_.includes_ordinal(index_ordinal));
     return data_[range_.ordinal(index_ordinal)];
   }
 

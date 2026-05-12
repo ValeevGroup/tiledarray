@@ -308,11 +308,21 @@ inline btas::Tensor<T, Range, Storage>&& shift_to(
   return std::move(arg);
 }
 
+// NOTE on empty-handling: these btas free functions mirror the empty-/null-
+// argument behavior of TA::Tensor's same-named member ops, so generic ToT
+// code (e.g. TA::Tensor<btas::Tensor<T>>'s lambdas in
+// TA::Tensor::{add,subt,mult,add_to,subt_to,mult_to,neg,scale}) can produce
+// or accumulate into default-constructed (empty) btas inner tiles without
+// hitting TA's congruent-range assertion in the underlying TensorInterface
+// machinery.
+
 /// result[i] = arg1[i] + arg2[i]
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2) {
+  if (arg1.empty()) return arg2;
+  if (arg2.empty()) return arg1;
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.add(arg2_view);
@@ -325,6 +335,9 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor) {
+  if (arg1.empty() && arg2.empty()) return {};
+  if (arg1.empty()) return scale(arg2, factor);
+  if (arg2.empty()) return scale(arg1, factor);
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.add(arg2_view, factor);
@@ -337,6 +350,9 @@ template <
 inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Perm& perm) {
+  if (arg1.empty() && arg2.empty()) return {};
+  if (arg1.empty()) return permute(arg2, perm);
+  if (arg2.empty()) return permute(arg1, perm);
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.add(arg2_view, perm);
@@ -352,6 +368,9 @@ inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
     const Perm& perm) {
+  if (arg1.empty() && arg2.empty()) return {};
+  if (arg1.empty()) return scale(permute(arg2, perm), factor);
+  if (arg2.empty()) return scale(permute(arg1, perm), factor);
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.add(arg2_view, factor, perm);
@@ -362,6 +381,15 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage>& add_to(
     btas::Tensor<T, Range, Storage>& result,
     const btas::Tensor<T, Range, Storage>& arg) {
+  // Mirror TA::Tensor::add_to's empty-handling so consumers (e.g. einsum's
+  // inner-contraction loop, which default-constructs result inner tiles)
+  // can accumulate into an empty result. Without these the make_ti's view
+  // ranges differ and TA's congruent-range assertion fires.
+  if (arg.empty()) return result;
+  if (result.empty()) {
+    result = arg;
+    return result;
+  }
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.add_to(arg_view);
@@ -375,6 +403,15 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 inline btas::Tensor<T, Range, Storage>& add_to(
     btas::Tensor<T, Range, Storage>& result,
     const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  if (arg.empty()) return result;
+  if (result.empty()) {
+    result = arg;
+    {
+      auto result_view = make_ti(result);
+      result_view.scale_to(factor);
+    }
+    return result;
+  }
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.add_to(arg_view, factor);
@@ -386,6 +423,8 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2) {
+  if (arg2.empty()) return arg1;
+  if (arg1.empty()) return neg(arg2);
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.subt(arg2_view);
@@ -398,6 +437,9 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 inline btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor) {
+  if (arg1.empty() && arg2.empty()) return {};
+  if (arg2.empty()) return scale(arg1, factor);
+  if (arg1.empty()) return scale(arg2, -factor);
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.subt(arg2_view, factor);
@@ -410,6 +452,9 @@ template <
 inline btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Perm& perm) {
+  if (arg1.empty() && arg2.empty()) return {};
+  if (arg2.empty()) return permute(arg1, perm);
+  if (arg1.empty()) return neg(permute(arg2, perm));
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.subt(arg2_view, perm);
@@ -425,6 +470,9 @@ inline btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
     const Perm& perm) {
+  if (arg1.empty() && arg2.empty()) return {};
+  if (arg2.empty()) return scale(permute(arg1, perm), factor);
+  if (arg1.empty()) return scale(permute(arg2, perm), -factor);
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.subt(arg2_view, factor, perm);
@@ -435,6 +483,11 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage>& subt_to(
     btas::Tensor<T, Range, Storage>& result,
     const btas::Tensor<T, Range, Storage>& arg) {
+  if (arg.empty()) return result;
+  if (result.empty()) {
+    result = neg(arg);
+    return result;
+  }
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.subt_to(arg_view);
@@ -445,6 +498,11 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage>&& subt_to(
     btas::Tensor<T, Range, Storage>&& result,
     const btas::Tensor<T, Range, Storage>& arg) {
+  if (arg.empty()) return std::move(result);
+  if (result.empty()) {
+    result = neg(arg);
+    return std::move(result);
+  }
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.subt_to(arg_view);
@@ -457,6 +515,15 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 inline btas::Tensor<T, Range, Storage>& subt_to(
     btas::Tensor<T, Range, Storage>& result,
     const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  // TA::Tensor::subt_to(right, factor): right empty -> scale_to(factor).
+  if (arg.empty()) {
+    if (!result.empty()) scale_to(result, factor);
+    return result;
+  }
+  if (result.empty()) {
+    result = scale(arg, -factor);
+    return result;
+  }
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.subt_to(arg_view, factor);
@@ -469,6 +536,14 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 inline btas::Tensor<T, Range, Storage>&& subt_to(
     btas::Tensor<T, Range, Storage>&& result,
     const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  if (arg.empty()) {
+    if (!result.empty()) scale_to(result, factor);
+    return std::move(result);
+  }
+  if (result.empty()) {
+    result = scale(arg, -factor);
+    return std::move(result);
+  }
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.subt_to(arg_view, factor);
@@ -480,6 +555,7 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2) {
+  if (arg1.empty() || arg2.empty()) return {};
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.mult(arg2_view);
@@ -492,6 +568,7 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor) {
+  if (arg1.empty() || arg2.empty()) return {};
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.mult(arg2_view, factor);
@@ -504,6 +581,7 @@ template <
 inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Perm& perm) {
+  if (arg1.empty() || arg2.empty()) return {};
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.mult(arg2_view, perm);
@@ -519,16 +597,23 @@ inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
     const Perm& perm) {
+  if (arg1.empty() || arg2.empty()) return {};
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.mult(arg2_view, factor, perm);
 }
 
 /// result[i] *= arg[i]
+/// (TA::Tensor::mult_to: right empty -> result = {}; left empty -> result.)
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage>& mult_to(
     btas::Tensor<T, Range, Storage>& result,
     const btas::Tensor<T, Range, Storage>& arg) {
+  if (arg.empty()) {
+    result = btas::Tensor<T, Range, Storage>{};
+    return result;
+  }
+  if (result.empty()) return result;
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.mult_to(arg_view);
@@ -539,6 +624,11 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage>&& mult_to(
     btas::Tensor<T, Range, Storage>&& result,
     const btas::Tensor<T, Range, Storage>& arg) {
+  if (arg.empty()) {
+    result = btas::Tensor<T, Range, Storage>{};
+    return std::move(result);
+  }
+  if (result.empty()) return std::move(result);
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.mult_to(arg_view);
@@ -552,6 +642,11 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 inline btas::Tensor<T, Range, Storage>& mult_to(
     btas::Tensor<T, Range, Storage>& result,
     const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  if (result.empty()) return result;
+  if (arg.empty()) {
+    result = btas::Tensor<T, Range, Storage>{};
+    return result;
+  }
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.mult_to(arg_view, factor);
@@ -564,6 +659,11 @@ template <typename T, typename Range, typename Storage, typename Scalar,
 inline btas::Tensor<T, Range, Storage>&& mult_to(
     btas::Tensor<T, Range, Storage>&& result,
     const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  if (result.empty()) return std::move(result);
+  if (arg.empty()) {
+    result = btas::Tensor<T, Range, Storage>{};
+    return std::move(result);
+  }
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.mult_to(arg_view, factor);
@@ -605,6 +705,7 @@ template <typename T, typename Range, typename Storage, typename Scalar,
           std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
 inline btas::Tensor<T, Range, Storage>& scale_to(
     btas::Tensor<T, Range, Storage>& result, const Scalar factor) {
+  if (result.empty()) return result;
   auto result_view = make_ti(result);
   result_view.scale_to(factor);
   return result;
@@ -614,6 +715,7 @@ template <typename T, typename Range, typename Storage, typename Scalar,
           std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
 inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& result,
                             const Scalar factor) {
+  if (result.empty()) return btas::Tensor<T, Range, Storage>{};
   auto result_view = make_ti(result);
   return result_view.scale(factor);
 }
@@ -625,6 +727,7 @@ template <
                      TiledArray::detail::is_permutation_v<Perm>>* = nullptr>
 inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& result,
                             const Scalar factor, const Perm& perm) {
+  if (result.empty()) return btas::Tensor<T, Range, Storage>{};
   auto result_view = make_ti(result);
   return result_view.scale(factor, perm);
 }
@@ -632,6 +735,7 @@ inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& result,
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage>& neg_to(
     btas::Tensor<T, Range, Storage>& result) {
+  if (result.empty()) return result;
   auto result_view = make_ti(result);
   result_view.neg_to();
   return result;
@@ -640,6 +744,7 @@ inline btas::Tensor<T, Range, Storage>& neg_to(
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage>&& neg_to(
     btas::Tensor<T, Range, Storage>&& result) {
+  if (result.empty()) return std::move(result);
   auto result_view = make_ti(result);
   result_view.neg_to();
   return std::move(result);
@@ -648,6 +753,7 @@ inline btas::Tensor<T, Range, Storage>&& neg_to(
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> neg(
     const btas::Tensor<T, Range, Storage>& arg) {
+  if (arg.empty()) return {};
   auto arg_view = make_ti(arg);
   return arg_view.neg();
 }
@@ -657,6 +763,7 @@ template <
     typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 inline btas::Tensor<T, Range, Storage> neg(
     const btas::Tensor<T, Range, Storage>& arg, const Perm& perm) {
+  if (arg.empty()) return {};
   auto arg_view = make_ti(arg);
   return arg_view.neg(perm);
 }
