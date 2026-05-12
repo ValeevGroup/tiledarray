@@ -133,13 +133,17 @@ OuterTensor arena_permute_shallow(const SrcOuterTensor& src, const Perm& perm) {
 }
 
 /// Allocate a slab-backed outer tile using caller-provided inner shapes.
+/// `alignment` is the per-cell stride alignment (e.g. kArenaCachelineAlign).
 template <typename OuterTensor, typename Range, typename ShapeFn>
 OuterTensor arena_outer_init(const Range& outer_range, std::size_t batch_sz,
-                             ShapeFn&& shape_fn, bool zero_init = true) {
+                             ShapeFn&& shape_fn,
+                             std::size_t alignment = kArenaCachelineAlign,
+                             bool zero_init = true) {
   using inner_t = typename OuterTensor::value_type;
   using elem_t = typename inner_t::value_type;
   using inner_range_t =
       std::decay_t<decltype(shape_fn(std::declval<std::size_t>()))>;
+  TA_ASSERT(alignment >= alignof(elem_t));
   const std::size_t N_cells = outer_range.volume() * batch_sz;
   std::vector<inner_range_t> ranges;
   ranges.reserve(N_cells);
@@ -149,7 +153,7 @@ OuterTensor arena_outer_init(const Range& outer_range, std::size_t batch_sz,
     offsets[ord] = total_bytes;
     ranges.emplace_back(shape_fn(ord));
     const std::size_t bytes = ranges.back().volume() * sizeof(elem_t);
-    total_bytes += arena_align_up(bytes, alignof(elem_t));
+    total_bytes += arena_align_up(bytes, alignment);
   }
   auto arena = std::make_shared<Arena>();
   // Arena::reserve requires a non-empty slab.
