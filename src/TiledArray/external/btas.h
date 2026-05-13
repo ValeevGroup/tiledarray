@@ -37,9 +37,14 @@
 
 #include <btas/features.h>
 #include <btas/generic/axpy_impl.h>
+
+// zb/range.h before generic/permute.h so the zb-specific permute(zb::RangeNd,
+// p) overload is visible to two-phase lookup inside BTAS's generic permute
+// template.
+#include <btas/zb/range.h>
+
 #include <btas/generic/permute.h>
 #include <btas/tensor.h>
-#include <btas/zb/range.h>
 
 #include <madness/world/archive.h>
 
@@ -88,12 +93,15 @@ inline TiledArray::Range make_ta_range(
   return TiledArray::Range(range.lobound(), range.upbound());
 }
 
-/// makes TiledArray::Range from a btas::zb::RangeNd (zero-based, row-major)
+/// makes TiledArray::Range from a btas::zb::RangeNd (zero-based)
 
 /// \param[in] range a btas::zb::RangeNd object
-template <std::size_t MaxRank, typename Ext, typename Ord>
+template <::blas::Layout Order, typename Ext, typename Ord, std::size_t MaxRank>
 inline TiledArray::Range make_ta_range(
-    const btas::zb::RangeNd<MaxRank, Ext, Ord>& range) {
+    const btas::zb::RangeNd<Order, Ext, Ord, MaxRank>& range) {
+  TA_ASSERT(Order == ::blas::Layout::RowMajor &&
+            "TiledArray::detail::make_ta_range(btas::zb::RangeNd<Order,...>): "
+            "not supported for col-major Order");
   return TiledArray::Range(range.lobound(), range.upbound());
 }
 
@@ -148,17 +156,18 @@ namespace zb {
 // overloads taking a btas::zb::RangeNd must live here.
 
 /// Test if a btas::zb::RangeNd is congruent with another btas::zb::RangeNd
-template <std::size_t MaxRank, typename Ext, typename Ord>
-inline bool is_congruent(const btas::zb::RangeNd<MaxRank, Ext, Ord>& r1,
-                         const btas::zb::RangeNd<MaxRank, Ext, Ord>& r2) {
+template <::blas::Layout Order, typename Ext, typename Ord, std::size_t MaxRank>
+inline bool is_congruent(
+    const btas::zb::RangeNd<Order, Ext, Ord, MaxRank>& r1,
+    const btas::zb::RangeNd<Order, Ext, Ord, MaxRank>& r2) {
   return (r1.rank() == r2.rank()) &&
          std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
                     r2.extent_data());
 }
 
 /// Test if a btas::zb::RangeNd and a TA range are congruent
-template <std::size_t MaxRank, typename Ext, typename Ord>
-inline bool is_congruent(const btas::zb::RangeNd<MaxRank, Ext, Ord>& r1,
+template <::blas::Layout Order, typename Ext, typename Ord, std::size_t MaxRank>
+inline bool is_congruent(const btas::zb::RangeNd<Order, Ext, Ord, MaxRank>& r1,
                          const TiledArray::Range& r2) {
   return (r1.rank() == r2.rank()) &&
          std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
@@ -166,9 +175,10 @@ inline bool is_congruent(const btas::zb::RangeNd<MaxRank, Ext, Ord>& r1,
 }
 
 /// Test if a TA range and a btas::zb::RangeNd are congruent
-template <std::size_t MaxRank, typename Ext, typename Ord>
-inline bool is_congruent(const TiledArray::Range& r1,
-                         const btas::zb::RangeNd<MaxRank, Ext, Ord>& r2) {
+template <::blas::Layout Order, typename Ext, typename Ord, std::size_t MaxRank>
+inline bool is_congruent(
+    const TiledArray::Range& r1,
+    const btas::zb::RangeNd<Order, Ext, Ord, MaxRank>& r2) {
   return (r1.rank() == r2.rank()) &&
          std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
                     r2.extent_data());

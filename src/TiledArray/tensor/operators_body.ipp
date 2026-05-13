@@ -154,10 +154,20 @@ inline std::basic_ostream<Char, CharTraits>& operator<<(
       for (auto&& idx : t.range()) {
         const auto& inner_t = *(t.data() + offset + t.range().ordinal(idx));
         os << "  " << idx << ":";
-        TA::detail::NDArrayPrinter{}.print(
-            inner_t.data(), inner_t.range().rank(),
-            inner_t.range().extent_data(), inner_t.range().stride_data(), os,
-            more_than_1_batch ? 6 : 4);
+        using inner_range_t =
+            std::remove_cv_t<std::remove_reference_t<decltype(inner_t.range())>>;
+        if constexpr (TA::detail::has_member_function_stride_data_anyreturn_v<
+                          inner_range_t>) {
+          TA::detail::NDArrayPrinter{}.print(
+              inner_t.data(), inner_t.range().rank(),
+              inner_t.range().extent_data(), inner_t.range().stride_data(), os,
+              more_than_1_batch ? 6 : 4);
+        } else {
+          // Inner range doesn't expose stride_data (e.g. btas::zb::RangeNd,
+          // which intentionally synthesizes row-major strides on demand and
+          // stores none). Skip the strided pretty-printer for this element.
+          os << " <inner tile elided: range type has no stride_data()>";
+        }
         os << "\n";
       }
     }
