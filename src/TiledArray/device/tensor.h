@@ -95,35 +95,19 @@ inline void to_host(const TiledArray::UMTensor<T>& tile) {
 // To win the dispatch we provide two concrete-type overloads per in-place
 // op: one taking `UMTensor<T>&` and one taking `UMTensor<T>&&`. Concrete
 // types beat the templated forwarding reference `Result&&` in partial
-// ordering regardless of the SFINAE / `requires` constraint shape, so this
-// is robust against compiler differences. (A single forwarding-ref overload
-// constrained with a `requires UMTensorArg<...>` concept would in principle
-// also win because a constrained template subsumes an unconstrained one,
-// but g++ does not consistently treat tile_interface's `enable_if`-only
-// templates as unconstrained for this purpose -- the result is an ambiguous
-// overload error. The two-concrete-overload form sidesteps the question.)
+// ordering regardless of constraint shape, so this is robust against
+// compiler differences. (A constrained forwarding-ref overload should in
+// principle also win because a constrained template subsumes an
+// unconstrained one, but g++ does not consistently treat
+// tile_interface's `enable_if`-only templates as unconstrained for this
+// purpose, leading to ambiguous-overload errors. Two concrete overloads
+// sidestep the question.)
 //
-// The lvalue overload forwards to the rvalue overload to keep a single
-// implementation per op. Value-returning overloads (e.g.
-// `add(const UMTensor&, const UMTensor&)`) don't need this because
-// reference-to-const binds to both lvalues and rvalues.
-//
-// The `UMTensorArg` concept is kept around as documentation of intent and
-// as a clean handle for any future helper that genuinely wants forwarding
-// references (e.g. a `to_device` overload set).
+// The lvalue overload does the work; the rvalue overload forwards to it.
+// Value-returning overloads (e.g. `add(const UMTensor&, const UMTensor&)`)
+// don't need this because reference-to-const binds to both lvalues and
+// rvalues.
 // ---------------------------------------------------------------------------
-namespace detail {
-template <typename U>
-struct is_um_tensor : std::false_type {};
-template <typename T>
-struct is_um_tensor<UMTensor<T>> : std::true_type {};
-template <typename U>
-inline constexpr bool is_um_tensor_v =
-    is_um_tensor<std::remove_cv_t<std::remove_reference_t<U>>>::value;
-}  // namespace detail
-
-template <typename U>
-concept UMTensorArg = detail::is_um_tensor_v<U>;
 
 // ---------------------------------------------------------------------------
 // Tile-op overloads for UMTensor.
@@ -144,9 +128,9 @@ concept UMTensorArg = detail::is_um_tensor_v<U>;
 //   4. `sync_madness_task_with(stream)` so the enclosing MADNESS device task
 //      waits for the queue to drain before completing.
 //
-// For Phase 2 batched tiles (`nbatch_ > 1`) are not yet supported -- the
-// expression engine doesn't currently feed batched UMTensor through these
-// paths, and dropping the assertion now would silently miscompute.
+// Batched tiles (`nbatch_ > 1`) are not yet supported -- the expression
+// engine doesn't currently feed batched UMTensor through these paths, and
+// dropping the assertion would silently miscompute.
 // ---------------------------------------------------------------------------
 
 /// result[i] = arg[i]

@@ -921,9 +921,9 @@ BOOST_AUTO_TEST_CASE(dot_contr) {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3 surface: archive round-trip, host/device array conversions, and
-// bulk to_host / to_device. Smoke + correctness for the helpers in
-// device/tensor.h that are not in the expression-engine path.
+// Archive round-trip, host/device array conversions, and bulk to_host /
+// to_device. Smoke + correctness for the helpers in device/tensor.h that
+// are not in the expression-engine path.
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(serialize_um_tensor) {
   // Single-tile round-trip: build a UMTensor, write to a buffer archive,
