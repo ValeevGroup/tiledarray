@@ -23,7 +23,9 @@
  *
  */
 
-#include <TiledArray/tensor/print.ipp>
+// print.h pulls in print.ipp at the end so the template definitions are
+// visible here for the explicit instantiations below.
+#include <TiledArray/tensor/print.h>
 
 namespace TiledArray {
 
