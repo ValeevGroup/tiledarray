@@ -793,39 +793,56 @@ inline void to_device(TiledArray::DistArray<UMTensor<T>, Policy>& array) {
   DeviceSafeCall(device::deviceSynchronize());
 }
 
-/// Convert a UMTensor-backed `DistArray` to one backed by host
-/// `TA::Tensor<T>`. Tile-by-tile copy through `to_new_tile_type` -- the
-/// per-tile lambda allocates a host result, prefetches the source UM
-/// buffer to host, and memcpys.
-template <typename T, typename Policy>
-inline TiledArray::DistArray<TiledArray::Tensor<T>, Policy>
+/// Convert a UMTensor-backed `DistArray` to one backed by a host tile type.
+/// Template arg order `<UMTile, HostTile, Policy>` matches the btas pair in
+/// device/btas_um_tensor.h:619+.
+template <typename UMTile, typename HostTile, typename Policy>
+inline std::enable_if_t<!std::is_same_v<UMTile, HostTile>,
+                        TiledArray::DistArray<HostTile, Policy>>
 um_tensor_to_ta_tensor(
-    const TiledArray::DistArray<UMTensor<T>, Policy>& um_array) {
-  auto convert_tile = [](const UMTensor<T>& tile) {
+    const TiledArray::DistArray<UMTile, Policy>& um_array) {
+  auto convert_tile = [](const UMTile& tile) {
     detail::to_host(tile);
-    TiledArray::Tensor<T> result(tile.range());
+    HostTile result(tile.range());
     std::copy_n(tile.data(), tile.total_size(), result.data());
     return result;
   };
-  auto out = to_new_tile_type<UMTensor<T>>(um_array, convert_tile);
+  auto out = to_new_tile_type<UMTile>(um_array, convert_tile);
   um_array.world().gop.fence();
   return out;
 }
 
-/// Convert a host `TA::Tensor<T>`-backed `DistArray` to a UMTensor-backed
-/// one. Tile-by-tile copy: allocate UM, memcpy, prefetch to device.
-template <typename T, typename Policy>
-inline TiledArray::DistArray<UMTensor<T>, Policy> ta_tensor_to_um_tensor(
-    const TiledArray::DistArray<TiledArray::Tensor<T>, Policy>& host_array) {
-  auto convert_tile = [](const TiledArray::Tensor<T>& tile) {
-    UMTensor<T> result(tile.range());
+template <typename UMTile, typename HostTile, typename Policy>
+inline std::enable_if_t<std::is_same_v<UMTile, HostTile>,
+                        TiledArray::DistArray<UMTile, Policy>>
+um_tensor_to_ta_tensor(
+    const TiledArray::DistArray<UMTile, Policy>& um_array) {
+  return um_array;
+}
+
+/// Convert a host-tile-backed `DistArray` to a UMTensor-backed one.
+template <typename UMTile, typename HostTile, typename Policy>
+inline std::enable_if_t<!std::is_same_v<UMTile, HostTile>,
+                        TiledArray::DistArray<UMTile, Policy>>
+ta_tensor_to_um_tensor(
+    const TiledArray::DistArray<HostTile, Policy>& host_array) {
+  auto convert_tile = [](const HostTile& tile) {
+    UMTile result(tile.range());
     std::copy_n(tile.data(), tile.total_size(), result.data());
     detail::to_device(result);
     return result;
   };
-  auto out = to_new_tile_type<TiledArray::Tensor<T>>(host_array, convert_tile);
+  auto out = to_new_tile_type<HostTile>(host_array, convert_tile);
   host_array.world().gop.fence();
   return out;
+}
+
+template <typename UMTile, typename HostTile, typename Policy>
+inline std::enable_if_t<std::is_same_v<UMTile, HostTile>,
+                        TiledArray::DistArray<UMTile, Policy>>
+ta_tensor_to_um_tensor(
+    const TiledArray::DistArray<HostTile, Policy>& host_array) {
+  return host_array;
 }
 
 }  // namespace TiledArray
