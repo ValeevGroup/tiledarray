@@ -118,7 +118,7 @@ template <typename... Ts>
 inline constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
 
 /// Predicate used by the shared operator body in
-/// @c TiledArray/tensor/operators_body.inl to gate the element-wise tensor
+/// @c TiledArray/tensor/operators_body.ipp to gate the element-wise tensor
 /// operators that are injected into @c namespace TiledArray . The btas-side
 /// copy of the same operators (in @c external/btas.h) partial-specializes
 /// this predicate to @c std::false_type for @c btas::Tensor so the two
@@ -490,6 +490,15 @@ template <typename Op, typename Lhs, typename Rhs>
 constexpr bool
     is_binop_v<Op, Lhs, Rhs, std::void_t<binop_result_t<Op, Lhs, Rhs>>>{true};
 
+// Detect whether T exposes a `rebind_t<U>` member template. Both TA::Tensor
+// and btas::Tensor do; view types like TensorInterface and ShiftWrapper do
+// not, so callers must fall back to a concrete tensor for the result type.
+template <typename T, typename U, typename = void>
+struct has_rebind_t : std::false_type {};
+template <typename T, typename U>
+struct has_rebind_t<T, U, std::void_t<typename T::template rebind_t<U>>>
+    : std::true_type {};
+
 template <typename Op, typename TensorA, typename TensorB,
           typename Allocator = void,
           typename = std::enable_if_t<is_nested_tensor_v<TensorA, TensorB>>>
@@ -504,15 +513,18 @@ struct result_tensor_helper {
   using numeric_type = binop_result_t<Op, value_type_A, value_type_B>;
 
   // Result tensor type stays in TensorA's family with the allocator rebound to
-  // hold `numeric_type`. Both TA::Tensor and btas::Tensor expose this as
+  // hold `numeric_type`. TA::Tensor and btas::Tensor expose this as
   // `rebind_t<U>` (TA::Tensor via std::allocator_traits::rebind_alloc; btas
-  // via storage_traits::rebind_t). An explicit @tparam Allocator override only
-  // applies when TensorA is a TA::Tensor.
-  using result_type =
-      std::conditional_t<std::is_same_v<void, Allocator> ||
-                             !is_ta_tensor_v<TensorA_>,
+  // via storage_traits::rebind_t). View types (TensorInterface, ShiftWrapper)
+  // satisfy is_tensor_v but have no `rebind_t` — fall back to TA::Tensor for
+  // those. An explicit @tparam Allocator override only applies when TensorA
+  // is a TA::Tensor.
+  using result_type = std::conditional_t<
+      std::is_same_v<void, Allocator> || !is_ta_tensor_v<TensorA_>,
+      std::conditional_t<has_rebind_t<TensorA_, numeric_type>::value,
                          typename TensorA_::template rebind_t<numeric_type>,
-                         TA::Tensor<numeric_type, Allocator>>;
+                         TA::Tensor<numeric_type>>,
+      TA::Tensor<numeric_type, Allocator>>;
 };
 
 }  // namespace

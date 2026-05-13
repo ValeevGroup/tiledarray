@@ -142,4 +142,12 @@ TILEDARRAY_MAKE_NDARRAY_PRINTER_INSTANTIATION(int, wchar_t);
 
 }  // namespace TiledArray
 
+// Pull in the template definitions so callers using non-default
+// ExtentIndex/StrideIndex pointer types (e.g. tensors over non-TA ranges
+// whose extent_data() and stride_data() expose differently-sized integer
+// pointers) get an implicit instantiation. The explicit instantiations
+// declared above cover the common Range1::index1_type case and are
+// satisfied by the symbols emitted from print.cpp.
+#include <TiledArray/tensor/print.ipp>
+
 #endif  // TILEDARRAY_SRC_TILEDARRAY_TENSOR_PRINT_H__INCLUDED
