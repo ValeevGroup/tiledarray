@@ -973,12 +973,15 @@ BOOST_AUTO_TEST_CASE(serialize_um_tensor_empty) {
 BOOST_AUTO_TEST_CASE(um_to_ta_round_trip) {
   // UMTensor array -> host array -> UMTensor array, verify element-wise
   // against the original both at the host and device endpoints.
-  HostArray host_view = TiledArray::um_tensor_to_ta_tensor(a);
+  HostArray host_view =
+      TiledArray::um_tensor_to_ta_tensor<TileD, HostTile, TA::DensePolicy>(a);
   GlobalFixture::world->gop.fence();
   // Compare host_view directly against a_h (same data was used for both).
   check_close(host_view, a_h, tolerance);
 
-  TArrayD device_view = TiledArray::ta_tensor_to_um_tensor(host_view);
+  TArrayD device_view =
+      TiledArray::ta_tensor_to_um_tensor<TileD, HostTile, TA::DensePolicy>(
+          host_view);
   GlobalFixture::world->gop.fence();
   // Round-trip: device_view should match the original `a`.
   check_close(device_view, a_h, tolerance);
@@ -990,7 +993,8 @@ BOOST_AUTO_TEST_CASE(um_to_ta_then_expression) {
   HostArray sum_h(*GlobalFixture::world, tr);
   sum_h("a,b,c") = a_h("a,b,c") + b_h("a,b,c");
 
-  HostArray converted = TiledArray::um_tensor_to_ta_tensor(a);
+  HostArray converted =
+      TiledArray::um_tensor_to_ta_tensor<TileD, HostTile, TA::DensePolicy>(a);
   HostArray sum_from_device(*GlobalFixture::world, tr);
   sum_from_device("a,b,c") = converted("a,b,c") + b_h("a,b,c");
 
