@@ -22,6 +22,13 @@ if (NOT TARGET MADworld)
     endif()
   endif()
   set(MPI_THREAD "multiple" CACHE INTERNAL "MADNESS requires MPI_THREAD_MULTIPLE")
+  # TA_WERROR=ON implies MADNESS_WERROR=ON: warnings-as-errors should cover
+  # the MADNESS translation units built as part of TA's FetchContent tree.
+  # (Requires a MADNESS pin that includes the MADNESS_WERROR option; otherwise
+  #  this cache variable is harmlessly ignored.)
+  if (TA_WERROR)
+    set(MADNESS_WERROR ON CACHE BOOL "Treat compiler warnings as errors when compiling MADNESS's own translation units" FORCE)
+  endif()
   set(MADNESS_ASSUMES_ASLR_DISABLED ${TA_ASSUMES_ASLR_DISABLED} CACHE BOOL "Whether MADNESS assumes ASLR to be disabled")
   set(MPI_CXX_SKIP_MPICXX ON CACHE BOOL "Whether to disable search for C++ MPI-2 bindings")
   set(DISABLE_WORLD_GET_DEFAULT ON CACHE INTERNAL "Whether to disable madness::World::get_default()")

@@ -34,9 +34,11 @@ namespace TiledArray {
 namespace detail {
 
 // Class to print n-dimensional arrays in NumPy style but with curly braces
-template <typename T, typename Index, typename Char, typename CharTraits>
+template <typename T, typename ExtentIndex, typename StrideIndex, typename Char,
+          typename CharTraits>
 void NDArrayPrinter::printArray(const T* data, const std::size_t order,
-                                const Index* extents, const Index* strides,
+                                const ExtentIndex* extents,
+                                const StrideIndex* strides,
                                 std::basic_ostream<Char, CharTraits>& os,
                                 size_t level, size_t offset,
                                 size_t extra_indentation) {
@@ -69,9 +71,11 @@ void NDArrayPrinter::printArray(const T* data, const std::size_t order,
 }
 
 // Print a row-major array to a stream
-template <typename T, typename Char, typename Index, typename CharTraits>
+template <typename T, typename Char, typename ExtentIndex, typename StrideIndex,
+          typename CharTraits>
 void NDArrayPrinter::print(const T* data, const std::size_t order,
-                           const Index* extents, const Index* strides,
+                           const ExtentIndex* extents,
+                           const StrideIndex* strides,
                            std::basic_ostream<Char, CharTraits>& os,
                            std::size_t extra_indentation) {
   // Note: Can't validate data size with raw pointers, caller must ensure data has sufficient size
@@ -80,10 +84,11 @@ void NDArrayPrinter::print(const T* data, const std::size_t order,
 }
 
 // Helper function to create a string representation
-template <typename T, typename Char, typename Index, typename CharTraits>
+template <typename T, typename Char, typename ExtentIndex, typename StrideIndex,
+          typename CharTraits>
 std::basic_string<Char, CharTraits> NDArrayPrinter::toString(
-    const T* data, const std::size_t order, const Index* extents,
-    const Index* strides) {
+    const T* data, const std::size_t order, const ExtentIndex* extents,
+    const StrideIndex* strides) {
   std::basic_stringstream<Char, CharTraits> oss;
   print(data, order, extents, strides, oss, /* extra_indentation = */ 0);
   return oss.str();

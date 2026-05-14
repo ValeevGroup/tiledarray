@@ -31,3 +31,23 @@ endif(NOT TARGET range-v3::range-v3)
 if (NOT TARGET range-v3::range-v3)
   message(FATAL_ERROR "FindOrFetchRangeV3 could not make range-v3::range-v3 target available")
 endif(NOT TARGET range-v3::range-v3)
+
+# Treat range-v3 headers as system: range-v3 is header-only with no
+# ordering risk against TA's headers, and it self-triggers
+# -Wdeprecated-declarations (e.g. ranges::compressed_tuple used inside
+# compressed_pair.hpp). The blanket CMAKE_NO_SYSTEM_FROM_IMPORTED=TRUE
+# at the top-level avoids -isystem for general imported targets due to
+# include-dir ordering; carve out range-v3 specifically here.
+# range-v3::range-v3 is an ALIAS — resolve to the underlying target before
+# touching properties.
+get_target_property(_rv3_aliased range-v3::range-v3 ALIASED_TARGET)
+if (NOT _rv3_aliased)
+  set(_rv3_aliased range-v3::range-v3)
+endif()
+get_target_property(_rv3_inc ${_rv3_aliased} INTERFACE_INCLUDE_DIRECTORIES)
+if (_rv3_inc)
+  set_target_properties(${_rv3_aliased} PROPERTIES
+      INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_rv3_inc}")
+endif()
+unset(_rv3_inc)
+unset(_rv3_aliased)

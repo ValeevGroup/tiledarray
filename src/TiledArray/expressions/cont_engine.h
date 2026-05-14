@@ -640,13 +640,6 @@ class ContEngine : public BinaryEngine<Derived> {
                                                       right_tile_type> &&
             TiledArray::detail::is_tensor_v<left_tile_type>;
         if constexpr (tot_x_t || t_x_tot) {
-          using arg_tile_element_type =
-              std::conditional_t<tot_x_t, left_tile_element_type,
-                                 right_tile_element_type>;
-          using scalar_type =
-              std::conditional_t<tot_x_t, right_tile_element_type,
-                                 left_tile_element_type>;
-
           auto scal_op = [perm = !this->implicit_permute_inner_
                                      ? inner(this->perm_)
                                      : Permutation{}](

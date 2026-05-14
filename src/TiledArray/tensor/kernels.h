@@ -1258,12 +1258,12 @@ auto tensor_contract(TensorA const& A, TensorB const& B,
   using Numeric = typename Result::numeric_type;
 
   // call gemm
-  gemm(Numeric{1},                                   //
-       plan.do_perm.A ? A.permute(plan.perm.A) : A,  //
-       plan.do_perm.B ? B.permute(plan.perm.B) : B,  //
+  gemm(Numeric{1},                                    //
+       plan.do_perm.A ? permute(A, plan.perm.A) : A,  //
+       plan.do_perm.B ? permute(B, plan.perm.B) : B,  //
        Numeric{0}, result, plan.gemm_helper);
 
-  return plan.do_perm.C ? result.permute(plan.perm.C.inv()) : result;
+  return plan.do_perm.C ? permute(result, plan.perm.C.inv()) : result;
 }
 
 /// contracts 2 tensors, with 1 plan construction per call.
@@ -1276,8 +1276,9 @@ template <typename ResultTensorAllocator = void, typename TensorA,
                                       is_annotation_v<Annot>>>
 auto tensor_contract(TensorA const& A, Annot const& aA, TensorB const& B,
                      Annot const& aB, Annot const& aC) {
-  using Result = result_tensor_t<std::multiplies<>, TensorA, TensorB,
-                                 ResultTensorAllocator>;
+  using Result [[maybe_unused]] =
+      result_tensor_t<std::multiplies<>, TensorA, TensorB,
+                      ResultTensorAllocator>;
 
   TensorContractionPlan plan(aA, aB, aC);
 
@@ -1333,20 +1334,21 @@ auto tensor_hadamard(TensorA const& A, TensorB const& B,
   TA_ASSERT(B.range().rank() == plan.B.size());
 
   if (plan.no_perm) {
-    return A.mult(B);
+    return mult(A, B);
   } else if (plan.perm_to_c) {
-    return A.mult(B, plan.perm.AC);
+    return mult(A, B, plan.perm.AC);
   } else if (plan.perm_a) {
-    auto pA = A.permute(plan.perm.AC);
-    pA.mult_to(B);
+    auto pA = permute(A, plan.perm.AC);
+    mult_to(pA, B);
     return pA;
   } else if (plan.perm_b) {
-    auto pB = B.permute(plan.perm.BC);
-    pB.mult_to(A);
+    auto pB = permute(B, plan.perm.BC);
+    mult_to(pB, A);
     return pB;
   } else {
-    auto pA = A.permute(plan.perm.AC);
-    return pA.mult_to(B.permute(plan.perm.BC));
+    auto pA = permute(A, plan.perm.AC);
+    mult_to(pA, permute(B, plan.perm.BC));
+    return pA;
   }
 }
 

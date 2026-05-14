@@ -149,6 +149,10 @@ add_feature_info(TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED TA_TENSOR_ASSERT_NO_M
 
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
+redefaultable_option(TA_WERROR "Treat compiler warnings as errors when compiling TiledArray's own translation units (does not propagate to consumers of installed TiledArray targets)" OFF)
+add_feature_info(WERROR TA_WERROR "Treat compiler warnings as errors on TiledArray's own translation units")
+include(TiledArrayWarnings)
+
 option(TA_SIGNED_1INDEX_TYPE "Enables the use of signed 1-index coordinate type (OFF in 1.0.0-alpha.2 and older)" ON)
 add_feature_info(SIGNED_1INDEX_TYPE TA_SIGNED_1INDEX_TYPE "Use of signed 1-index coordinate type in TiledArray")
 

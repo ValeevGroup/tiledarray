@@ -1953,7 +1953,7 @@ class Tensor {
   /// \return A new tensor where the elements are the different between the
   /// elements of \c this and \c right
   template <typename Right,
-            typename = std::enable_if<
+            typename = std::enable_if_t<
                 detail::tensors_have_equal_nested_rank_v<Tensor, Right>>>
   Tensor subt(const Right& right) const {
     return binary(

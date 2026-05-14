@@ -75,3 +75,20 @@ endif(NOT TARGET BTAS::BTAS)
 if (NOT TARGET BTAS::BTAS)
   message(FATAL_ERROR "FindOrFetchBTAS could not make BTAS::BTAS target available")
 endif(NOT TARGET BTAS::BTAS)
+
+# Treat BTAS headers as system: header-only library, no include-order
+# risk against TA's headers, and BTAS upstream trips warnings TA itself
+# can't fix (e.g. btas/generic/converge_class.h -Wreturn-type on gcc).
+# Carved out specifically here despite the top-level
+# CMAKE_NO_SYSTEM_FROM_IMPORTED=TRUE.
+get_target_property(_btas_aliased BTAS::BTAS ALIASED_TARGET)
+if (NOT _btas_aliased)
+  set(_btas_aliased BTAS::BTAS)
+endif()
+get_target_property(_btas_inc ${_btas_aliased} INTERFACE_INCLUDE_DIRECTORIES)
+if (_btas_inc)
+  set_target_properties(${_btas_aliased} PROPERTIES
+      INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_btas_inc}")
+endif()
+unset(_btas_inc)
+unset(_btas_aliased)
