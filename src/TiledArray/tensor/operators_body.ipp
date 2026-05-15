@@ -77,11 +77,15 @@ inline decltype(auto) operator*(N number, T&& tensor) {
   return scale(std::forward<T>(tensor), number);
 }
 
-/// tensor += tensor
+/// tensor += tensor -- compound assignment is valid for any tensor whose
+/// storage can be mutated, including views. Gated on the broader
+/// `ta_ops_match_tensor_inplace_v` predicate.
 template <typename T1, typename T2,
           typename = std::enable_if_t<
-              detail::ta_ops_match_tensor_v<TA::detail::remove_cvr_t<T1>> &&
-              detail::ta_ops_match_tensor_v<TA::detail::remove_cvr_t<T2>>>>
+              detail::ta_ops_match_tensor_inplace_v<
+                  TA::detail::remove_cvr_t<T1>> &&
+              detail::ta_ops_match_tensor_inplace_v<
+                  TA::detail::remove_cvr_t<T2>>>>
 inline decltype(auto) operator+=(T1&& left, const T2& right) {
   return add_to(std::forward<T1>(left), right);
 }
@@ -89,8 +93,10 @@ inline decltype(auto) operator+=(T1&& left, const T2& right) {
 /// tensor -= tensor
 template <typename T1, typename T2,
           typename = std::enable_if_t<
-              detail::ta_ops_match_tensor_v<TA::detail::remove_cvr_t<T1>> &&
-              detail::ta_ops_match_tensor_v<TA::detail::remove_cvr_t<T2>>>>
+              detail::ta_ops_match_tensor_inplace_v<
+                  TA::detail::remove_cvr_t<T1>> &&
+              detail::ta_ops_match_tensor_inplace_v<
+                  TA::detail::remove_cvr_t<T2>>>>
 inline decltype(auto) operator-=(T1&& left, const T2& right) {
   return subt_to(std::forward<T1>(left), right);
 }
@@ -98,8 +104,10 @@ inline decltype(auto) operator-=(T1&& left, const T2& right) {
 /// tensor *= tensor (element-wise)
 template <typename T1, typename T2,
           typename = std::enable_if_t<
-              detail::ta_ops_match_tensor_v<TA::detail::remove_cvr_t<T1>> &&
-              detail::ta_ops_match_tensor_v<TA::detail::remove_cvr_t<T2>>>>
+              detail::ta_ops_match_tensor_inplace_v<
+                  TA::detail::remove_cvr_t<T1>> &&
+              detail::ta_ops_match_tensor_inplace_v<
+                  TA::detail::remove_cvr_t<T2>>>>
 inline decltype(auto) operator*=(T1&& left, const T2& right) {
   return mult_to(std::forward<T1>(left), right);
 }
@@ -107,7 +115,8 @@ inline decltype(auto) operator*=(T1&& left, const T2& right) {
 /// tensor *= scalar
 template <typename T, typename N,
           typename = std::enable_if_t<
-              detail::ta_ops_match_tensor_v<TA::detail::remove_cvr_t<T>> &&
+              detail::ta_ops_match_tensor_inplace_v<
+                  TA::detail::remove_cvr_t<T>> &&
               TA::detail::is_numeric_v<N>>>
 inline decltype(auto) operator*=(T&& left, N right) {
   return scale_to(std::forward<T>(left), right);

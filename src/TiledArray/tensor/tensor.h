@@ -27,9 +27,10 @@
 
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
+#include "TiledArray/tensor/arena_kernels.h"
+#include "TiledArray/tensor/arena_tensor_kernels.h"
 #include "TiledArray/tensor/complex.h"
 #include "TiledArray/tensor/kernels.h"
-#include "TiledArray/tensor/arena_kernels.h"
 #include "TiledArray/tile_interface/clone.h"
 #include "TiledArray/tile_interface/permute.h"
 #include "TiledArray/tile_interface/trace.h"
@@ -267,7 +268,8 @@ class Tensor {
   template <typename T_>
   static decltype(auto) value_converter(const T_& arg) {
     using arg_type = detail::remove_cvr_t<decltype(arg)>;
-    if constexpr (detail::is_tensor_v<arg_type>)  // clone nested tensors
+    if constexpr (detail::is_tensor_v<arg_type> &&
+                  !is_tensor_view_v<arg_type>)  // clone owning nested tensors
       return arg.clone();
     else if constexpr (!std::is_same_v<arg_type, value_type>) {  // convert
       if constexpr (std::is_convertible_v<arg_type, value_type>)
@@ -275,7 +277,7 @@ class Tensor {
       else
         return conversions::to<value_type, arg_type>()(arg);
     } else
-      return arg;
+      return arg;  // identity (for views, copy = rebind, no deep clone)
   };
 
   range_type range_;  ///< Range
@@ -370,9 +372,14 @@ class Tensor {
       : Tensor(range, 1, default_construct{false}) {
     const auto n = this->size();
     pointer MADNESS_RESTRICT const data = this->data();
-    Clone<Value, Value> cloner;
-    for (size_type i = 0ul; i < n; ++i)
-      new (data + i) value_type(cloner(value));
+    if constexpr (is_tensor_view_v<Value>) {
+      // Views are rebind-on-copy and lack member `clone`; just copy each.
+      for (size_type i = 0ul; i < n; ++i) new (data + i) value_type(value);
+    } else {
+      Clone<Value, Value> cloner;
+      for (size_type i = 0ul; i < n; ++i)
+        new (data + i) value_type(cloner(value));
+    }
   }
 
   /// Construct a tensor of scalars, setting all elements to the same value
@@ -482,8 +489,13 @@ class Tensor {
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor>;
     constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
-    // tile ops pass bipartite permutations here even if this is a plain tensor
-    if constexpr (is_tot && is_bperm) {
+    constexpr bool is_view = is_tensor_view_v<value_type>;
+    // tile ops pass bipartite permutations here even if this is a plain tensor.
+    // For view inners, the cell has fixed layout that can't be permuted in
+    // place -- skip the inner-permute pass and rely on callers to arrange
+    // canonical inner indexing (regime-A einsum's `do_perm.{A,B,C}` bailout
+    // guarantees no inner permutation is needed for our paths).
+    if constexpr (is_tot && is_bperm && !is_view) {
       if (inner_size(perm) != 0) {
         const auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
@@ -493,6 +505,12 @@ class Tensor {
           auto& el = *(data() + i);
           if (!el.empty()) el = p(el, inner_perm);
         }
+      }
+    } else if constexpr (is_tot && is_bperm && is_view) {
+      if (inner_size(perm) != 0) {
+        TA_EXCEPTION(
+            "Tensor<View>: inner permutation requested but view "
+            "cells cannot be permuted in place");
       }
     }
   }
@@ -661,6 +679,13 @@ class Tensor {
           for (std::size_t i = 0; i < n; ++i) dst[i] = src[i];
         };
         result = detail::arena_trivial_unary<Tensor>(*this, fill);
+      } else if constexpr (is_arena_tensor_v<value_type>) {
+        auto fill = [](typename value_type::value_type* dst,
+                       const typename value_type::value_type* src,
+                       std::size_t n) {
+          for (std::size_t i = 0; i < n; ++i) dst[i] = src[i];
+        };
+        result = detail::arena_trivial_unary_pinned<Tensor>(*this, fill);
       } else {
         result = detail::tensor_op<Tensor>(
             [](const numeric_type value) -> numeric_type { return value; },
@@ -1197,11 +1222,20 @@ class Tensor {
     if (!empty) {
       ar & range;
       ar & nbatch;
-      if constexpr (madness::is_input_archive_v<Archive>) {
-        *this = Tensor(std::move(range), nbatch, default_construct{true});
+      if constexpr (is_arena_tensor_v<value_type>) {
+        // ArenaTensor inner cells own no storage themselves; their data
+        // lives in a per-outer-tile arena slab. Bypass the generic
+        // wrap(value_type*, N) path (which would try to serialize bare
+        // Cell* pointers across processes) and manage cell storage at
+        // this outer-tile boundary instead. The slab is rebuilt on load.
+        serialize_arena_inner_cells(ar, std::move(range), nbatch);
+      } else {
+        if constexpr (madness::is_input_archive_v<Archive>) {
+          *this = Tensor(std::move(range), nbatch, default_construct{true});
+        }
+        ar& madness::archive::wrap(this->data_.get(),
+                                   this->range_.volume() * nbatch);
       }
-      ar& madness::archive::wrap(this->data_.get(),
-                                 this->range_.volume() * nbatch);
     } else {
       if constexpr (madness::is_input_archive_v<Archive>) {
         *this = Tensor{};
@@ -1209,6 +1243,60 @@ class Tensor {
     }
   }
 
+ private:
+  /// ArenaTensor-aware inner-cell serialization. Writes per-cell metadata
+  /// (null flag + range) then element bytes; on load, rebuilds the outer
+  /// via `arena_outer_init_pinned` so the slab is reconstructed in one
+  /// allocation and the outer-data deleter keeps it alive.
+  template <typename Archive>
+  void serialize_arena_inner_cells(Archive& ar, range_type range,
+                                   std::size_t nbatch) {
+    using InnerT = value_type;
+    using InnerRange = typename InnerT::range_type;
+    const std::size_t N = range.volume() * nbatch;
+    if constexpr (madness::is_output_archive_v<Archive>) {
+      // Per-cell null flags.
+      for (std::size_t i = 0; i < N; ++i) {
+        bool not_null = bool(this->data_.get()[i]);
+        ar & not_null;
+      }
+      // Inner ranges for non-null cells only.
+      for (std::size_t i = 0; i < N; ++i) {
+        const InnerT& cell = this->data_.get()[i];
+        if (cell) ar & cell.range();
+      }
+      // Element bytes for non-null cells only.
+      for (std::size_t i = 0; i < N; ++i) {
+        const InnerT& cell = this->data_.get()[i];
+        if (cell) ar& madness::archive::wrap(cell.data(), cell.size());
+      }
+    } else {
+      // Load: read all metadata, plan + allocate slab via the factory,
+      // then read element bytes into each placed cell's data().
+      std::vector<bool> flags(N);
+      for (std::size_t i = 0; i < N; ++i) {
+        bool f;
+        ar & f;
+        flags[i] = f;
+      }
+      std::vector<InnerRange> ranges(N);
+      for (std::size_t i = 0; i < N; ++i) {
+        if (flags[i]) ar& ranges[i];
+      }
+      *this = detail::arena_outer_init_pinned<Tensor>(
+          range, nbatch, [&](std::size_t ord) -> InnerRange {
+            return flags[ord] ? ranges[ord] : InnerRange{};
+          });
+      for (std::size_t i = 0; i < N; ++i) {
+        if (flags[i]) {
+          InnerT& cell = this->data_.get()[i];
+          ar& madness::archive::wrap(cell.data(), cell.size());
+        }
+      }
+    }
+  }
+
+ public:
   /// Swap tensor data
 
   /// \param other The tensor to swap with this
@@ -1695,6 +1783,13 @@ class Tensor {
         for (std::size_t i = 0; i < n; ++i) dst[i] = src[i] * factor;
       };
       return detail::arena_trivial_unary<Tensor>(*this, fill);
+    } else if constexpr (is_arena_tensor_v<value_type>) {
+      auto fill = [factor](typename value_type::value_type* dst,
+                           const typename value_type::value_type* src,
+                           std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = src[i] * factor;
+      };
+      return detail::arena_trivial_unary_pinned<Tensor>(*this, fill);
     } else {
       return unary([factor](const value_type& a) {
         using namespace TiledArray::detail;
@@ -1731,12 +1826,19 @@ class Tensor {
     // early exit for empty this
     if (empty()) return {};
 
-    return unary(
-        [factor](const value_type& a) {
-          using namespace TiledArray::detail;
-          return a * factor;
-        },
-        perm);
+    if constexpr (is_tensor_view_v<value_type>) {
+      TA_EXCEPTION(
+          "Tensor<View>::scale(factor, perm): permutation is not "
+          "supported for view inner cells");
+      return Tensor{};
+    } else {
+      return unary(
+          [factor](const value_type& a) {
+            using namespace TiledArray::detail;
+            return a * factor;
+          },
+          perm);
+    }
   }
 
   /// Scale this tensor
@@ -1756,6 +1858,56 @@ class Tensor {
 
   // Addition operations
 
+  /// Element-wise add for `Tensor<ArenaTensor>` ToT operands. Routes through
+  /// the arena binary kernel; inner cells have no `operator+` of their own.
+  template <typename Right>
+    requires(is_arena_tensor_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type>)
+  Tensor add(const Right& right) const {
+    if (empty()) return detail::clone_or_cast<Tensor>(right);
+    if (right.empty()) return this->clone();
+    auto fill = [](typename value_type::value_type* dst,
+                   const typename value_type::value_type* l,
+                   const typename value_type::value_type* r, std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] + r[i];
+    };
+    return detail::arena_trivial_binary_pinned<Tensor>(*this, right, fill);
+  }
+
+  /// Mixed `Tensor<ArenaTensor> + Tensor<scalar>`: each inner element is
+  /// offset by the corresponding outer-cell scalar. Routes through the
+  /// arena scaled kernel; no operator+ between ArenaTensor and scalar.
+  template <typename Right>
+    requires(is_arena_tensor_v<value_type> &&
+             detail::is_numeric_v<typename Right::value_type>)
+  Tensor add(const Right& right) const {
+    if (empty() || right.empty()) return {};
+    using ElemT = typename value_type::value_type;
+    using Scalar = typename Right::value_type;
+    auto fill = [](ElemT* dst, const ElemT* arena, const Scalar& s,
+                   std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = arena[i] + s;
+    };
+    return detail::arena_trivial_scaled_pinned<Tensor>(*this, right, fill);
+  }
+
+  /// Mixed `Tensor<scalar> + Tensor<ArenaTensor>`: symmetric to above,
+  /// result has the same ToT layout as the right operand.
+  template <typename Right>
+    requires(detail::is_numeric_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type>)
+  Right add(const Right& right) const {
+    if (empty() || right.empty()) return {};
+    using ArenaInner = typename Right::value_type;
+    using ElemT = typename ArenaInner::value_type;
+    using Scalar = value_type;
+    auto fill = [](ElemT* dst, const ElemT* arena, const Scalar& s,
+                   std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = s + arena[i];
+    };
+    return detail::arena_trivial_scaled_pinned<Right>(right, *this, fill);
+  }
+
   /// Add this and \c other to construct a new tensor
 
   /// \tparam Right The right-hand tensor type
@@ -1765,7 +1917,11 @@ class Tensor {
   template <typename Right>
     requires(is_tensor<Right>::value &&
              detail::sum_convertible_to<value_type, const value_type&,
-                                        const value_t<Right>&>)
+                                        const value_t<Right>&> &&
+             !(is_arena_tensor_v<value_type> &&
+               detail::is_numeric_v<typename Right::value_type>) &&
+             !(detail::is_numeric_v<value_type> &&
+               is_arena_tensor_v<typename Right::value_type>))
   Tensor add(const Right& right) const {
     // early exit for empty right
     if (right.empty()) return this->clone();
@@ -1828,7 +1984,13 @@ class Tensor {
   template <typename Right>
     requires(detail::is_tensor_v<Right> &&
              !detail::sum_convertible_to<value_type, const value_type&,
-                                         const value_t<Right>&>)
+                                         const value_t<Right>&> &&
+             !(is_arena_tensor_v<value_type> &&
+               is_arena_tensor_v<typename Right::value_type>) &&
+             !(is_arena_tensor_v<value_type> &&
+               detail::is_numeric_v<typename Right::value_type>) &&
+             !(detail::is_numeric_v<value_type> &&
+               is_arena_tensor_v<typename Right::value_type>))
   auto add(const Right& right) const {
     return binary(right, [](const value_type& l, const value_t<Right>& r) {
       return l + r;
@@ -1976,13 +2138,62 @@ class Tensor {
 
   /// Subtract \c right from this and return the result
 
+  /// Element-wise subtraction for `Tensor<ArenaTensor>` ToT operands. Routes
+  /// through the arena binary kernel; inner cells have no `operator-`.
+  template <typename Right>
+    requires(is_arena_tensor_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type>)
+  Tensor subt(const Right& right) const {
+    auto fill = [](typename value_type::value_type* dst,
+                   const typename value_type::value_type* l,
+                   const typename value_type::value_type* r, std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] - r[i];
+    };
+    return detail::arena_trivial_binary_pinned<Tensor>(*this, right, fill);
+  }
+
+  /// Mixed `Tensor<ArenaTensor> - Tensor<scalar>`: subtract per-cell scalar
+  /// from every inner element. Routes through the arena scaled kernel.
+  template <typename Right>
+    requires(is_arena_tensor_v<value_type> &&
+             detail::is_numeric_v<typename Right::value_type>)
+  Tensor subt(const Right& right) const {
+    if (empty() || right.empty()) return {};
+    using ElemT = typename value_type::value_type;
+    using Scalar = typename Right::value_type;
+    auto fill = [](ElemT* dst, const ElemT* arena, const Scalar& s,
+                   std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = arena[i] - s;
+    };
+    return detail::arena_trivial_scaled_pinned<Tensor>(*this, right, fill);
+  }
+
+  /// Mixed `Tensor<scalar> - Tensor<ArenaTensor>`: for each outer cell,
+  /// broadcast the scalar minus each inner element of the arena side.
+  template <typename Right>
+    requires(detail::is_numeric_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type>)
+  Right subt(const Right& right) const {
+    if (empty() || right.empty()) return {};
+    using ArenaInner = typename Right::value_type;
+    using ElemT = typename ArenaInner::value_type;
+    using Scalar = value_type;
+    auto fill = [](ElemT* dst, const ElemT* arena, const Scalar& s,
+                   std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = s - arena[i];
+    };
+    return detail::arena_trivial_scaled_pinned<Right>(right, *this, fill);
+  }
+
   /// \tparam Right The right-hand tensor type
   /// \param right The tensor that will be subtracted from this tensor
   /// \return A new tensor where the elements are the different between the
   /// elements of \c this and \c right
   template <typename Right,
             typename = std::enable_if_t<
-                detail::tensors_have_equal_nested_rank_v<Tensor, Right>>>
+                detail::tensors_have_equal_nested_rank_v<Tensor, Right> &&
+                !(is_arena_tensor_v<value_type> &&
+                  is_arena_tensor_v<typename Right::value_type>)>>
   Tensor subt(const Right& right) const {
     if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
                   detail::is_ta_tensor_v<value_type> &&
@@ -2029,9 +2240,18 @@ class Tensor {
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor subt(const Right& right, const Perm& perm) const {
-    return binary(
-        right, [](const value_type& l, const value_type& r) { return l - r; },
-        perm);
+    if constexpr (is_tensor_view_v<value_type>) {
+      // Permutation isn't supported for view inner cells (fixed storage
+      // layout). Subt+permute would require materialization.
+      TA_EXCEPTION(
+          "Tensor<View>::subt(right, perm): permutation is not "
+          "supported for view inner cells");
+      return Tensor{};
+    } else {
+      return binary(
+          right, [](const value_type& l, const value_type& r) { return l - r; },
+          perm);
+    }
   }
 
   /// Subtract \c right from this and return the result scaled by a scaling \c
@@ -2147,9 +2367,60 @@ class Tensor {
   /// \param right The tensor that will be multiplied by this tensor
   /// \return A new tensor where the elements are the product of the elements
   /// of \c this and \c right
-  template <typename Right,
-            typename std::enable_if<detail::is_nested_tensor_v<Right>>::type* =
-                nullptr>
+  /// Element-wise mult for `Tensor<ArenaTensor>` ToT operands. Routes
+  /// through the arena binary kernel; inner cells have no `operator*`.
+  template <typename Right>
+    requires(is_arena_tensor_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type>)
+  Tensor mult(const Right& right) const {
+    if (empty() || right.empty()) return {};
+    auto fill = [](typename value_type::value_type* dst,
+                   const typename value_type::value_type* l,
+                   const typename value_type::value_type* r, std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] * r[i];
+    };
+    return detail::arena_trivial_binary_pinned<Tensor>(*this, right, fill);
+  }
+
+  /// Mixed `Tensor<ArenaTensor> * Tensor<scalar>`: outer Hadamard, each
+  /// inner cell scaled by the corresponding scalar. Routes through the
+  /// arena scaled kernel; no operator* between ArenaTensor and scalar.
+  template <typename Right>
+    requires(is_arena_tensor_v<value_type> &&
+             detail::is_numeric_v<typename Right::value_type>)
+  Tensor mult(const Right& right) const {
+    if (empty() || right.empty()) return {};
+    using ElemT = typename value_type::value_type;
+    using Scalar = typename Right::value_type;
+    auto fill = [](ElemT* dst, const ElemT* arena, const Scalar& s,
+                   std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = arena[i] * s;
+    };
+    return detail::arena_trivial_scaled_pinned<Tensor>(*this, right, fill);
+  }
+
+  /// Mixed `Tensor<scalar> * Tensor<ArenaTensor>`: symmetric to above,
+  /// result has the same ToT layout as the right operand.
+  template <typename Right>
+    requires(detail::is_numeric_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type>)
+  Right mult(const Right& right) const {
+    if (empty() || right.empty()) return {};
+    using ArenaInner = typename Right::value_type;
+    using ElemT = typename ArenaInner::value_type;
+    using Scalar = value_type;
+    auto fill = [](ElemT* dst, const ElemT* arena, const Scalar& s,
+                   std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = s * arena[i];
+    };
+    return detail::arena_trivial_scaled_pinned<Right>(right, *this, fill);
+  }
+
+  template <
+      typename Right,
+      typename std::enable_if<
+          detail::is_nested_tensor_v<Right> && !is_arena_tensor_v<value_type> &&
+          !is_arena_tensor_v<typename Right::value_type>>::type* = nullptr>
   decltype(auto) mult(const Right& right) const {
     auto mult_op = [](const value_type& l, const value_t<Right>& r) {
       return l * r;
@@ -2289,7 +2560,13 @@ class Tensor {
     // early exit for empty this
     if (empty()) return this->clone();
 
-    return unary([](const value_type r) { return -r; });
+    if constexpr (is_arena_tensor_v<value_type>) {
+      Tensor result = this->clone();
+      result.scale_to(numeric_type(-1));
+      return result;
+    } else {
+      return unary([](const value_type r) { return -r; });
+    }
   }
 
   /// Create a negated and permuted copy of this tensor
@@ -2303,7 +2580,16 @@ class Tensor {
     // early exit for empty this
     if (empty()) return this->clone();
 
-    return unary([](const value_type l) { return -l; }, perm);
+    if constexpr (is_tensor_view_v<value_type>) {
+      // View cells cannot be permuted in place (size-fixed); permute is
+      // intentionally not supported here.
+      TA_EXCEPTION(
+          "Tensor<View>::neg(perm): permutation is not supported "
+          "for view inner cells");
+      return Tensor{};
+    } else {
+      return unary([](const value_type l) { return -l; }, perm);
+    }
   }
 
   /// Negate elements of this tensor
@@ -2313,7 +2599,11 @@ class Tensor {
     // early exit for empty this
     if (empty()) return *this;
 
-    return inplace_unary([](value_type& MADNESS_RESTRICT l) { l = -l; });
+    if constexpr (is_tensor_view_v<value_type>) {
+      return this->scale_to(numeric_type(-1));
+    } else {
+      return inplace_unary([](value_type& MADNESS_RESTRICT l) { l = -l; });
+    }
   }
 
   /// Create a complex conjugated copy of this tensor

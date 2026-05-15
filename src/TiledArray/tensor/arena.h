@@ -25,8 +25,8 @@ inline bool& arena_disabled() {
 /// One-shot bump allocator; slab is co-owned via aliasing shared_ptrs.
 class Arena {
  public:
-  explicit Arena(std::pmr::memory_resource* mr =
-                     std::pmr::new_delete_resource()) noexcept
+  explicit Arena(
+      std::pmr::memory_resource* mr = std::pmr::new_delete_resource()) noexcept
       : resource_(mr) {
     TA_ASSERT(resource_ != nullptr);
   }
@@ -38,16 +38,22 @@ class Arena {
   ~Arena() = default;
 
   /// Allocate the slab once; zero_init clears it for accumulation kernels.
-  void reserve(std::size_t bytes, bool zero_init = false) {
+  /// `alignment` (default `alignof(std::max_align_t)`) is the alignment of
+  /// the slab base; pass a larger power-of-two when callers need SIMD-aligned
+  /// element pointers at known interior offsets.
+  void reserve(std::size_t bytes, bool zero_init = false,
+               std::size_t alignment = alignof(std::max_align_t)) {
     TA_ASSERT(capacity_ == 0);
     TA_ASSERT(bytes > 0);
-    void* raw = resource_->allocate(bytes, alignof(std::max_align_t));
+    TA_ASSERT(alignment >= alignof(std::max_align_t));
+    TA_ASSERT((alignment & (alignment - 1)) == 0);
+    void* raw = resource_->allocate(bytes, alignment);
     auto* mr = resource_;
-    auto deleter = [mr, bytes](std::byte* p) noexcept {
-      mr->deallocate(p, bytes, alignof(std::max_align_t));
+    auto deleter = [mr, bytes, alignment](std::byte* p) noexcept {
+      mr->deallocate(p, bytes, alignment);
     };
     slab_ = std::shared_ptr<std::byte[]>(static_cast<std::byte*>(raw),
-                                          std::move(deleter));
+                                         std::move(deleter));
     capacity_ = bytes;
     cursor_ = 0;
     if (zero_init) std::memset(slab_.get(), 0, bytes);
@@ -55,8 +61,7 @@ class Arena {
 
   /// Aliasing view at a caller-aligned offset.
   template <typename T>
-  std::shared_ptr<T[]> slice(std::size_t offset,
-                              std::size_t /*n_elem*/) const {
+  std::shared_ptr<T[]> slice(std::size_t offset, std::size_t /*n_elem*/) const {
     TA_ASSERT(slab_);
     TA_ASSERT(offset % alignof(T) == 0);
     TA_ASSERT(offset <= capacity_);
@@ -101,16 +106,14 @@ inline constexpr std::size_t kArenaCachelineAlign = 128;
 
 /// Round bytes up to a power-of-two alignment.
 inline std::size_t arena_align_up(std::size_t bytes,
-                                   std::size_t alignment) noexcept {
+                                  std::size_t alignment) noexcept {
   return (bytes + alignment - 1) & ~(alignment - 1);
 }
 
 /// Pre-walk cells once to compute offsets and total bytes.
 template <typename ShapeFn>
-ArenaPlan plan(std::size_t N_cells,
-                ShapeFn&& shape_fn,
-                std::size_t element_size,
-                std::size_t alignment) {
+ArenaPlan plan(std::size_t N_cells, ShapeFn&& shape_fn,
+               std::size_t element_size, std::size_t alignment) {
   ArenaPlan out;
   out.offsets.resize(N_cells);
   std::size_t total = 0;
@@ -134,14 +137,12 @@ class ArenaResource final : public std::pmr::memory_resource {
   Arena* arena() const noexcept { return arena_; }
 
  protected:
-  void* do_allocate(std::size_t bytes,
-                    std::size_t alignment) override {
+  void* do_allocate(std::size_t bytes, std::size_t alignment) override {
     auto h = arena_->claim<std::byte>(arena_align_up(bytes, alignment));
     return h.get();
   }
 
-  void do_deallocate(void* /*p*/,
-                     std::size_t /*bytes*/,
+  void do_deallocate(void* /*p*/, std::size_t /*bytes*/,
                      std::size_t /*alignment*/) override {}
 
   bool do_is_equal(
@@ -153,7 +154,7 @@ class ArenaResource final : public std::pmr::memory_resource {
   Arena* arena_;
 };
 
-}
-}
+}  // namespace detail
+}  // namespace TiledArray
 
 #endif

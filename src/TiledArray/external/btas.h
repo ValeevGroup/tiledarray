@@ -1223,6 +1223,9 @@ namespace TiledArray {
 namespace detail {
 template <typename T, typename... Args>
 struct ta_ops_match_tensor<::btas::Tensor<T, Args...>> : std::false_type {};
+template <typename T, typename... Args>
+struct ta_ops_match_tensor_inplace<::btas::Tensor<T, Args...>>
+    : std::false_type {};
 }  // namespace detail
 }  // namespace TiledArray
 
@@ -1236,6 +1239,12 @@ namespace btas {
 namespace detail {
 template <typename T>
 inline constexpr bool ta_ops_match_tensor_v =
+    ::TiledArray::detail::is_btas_tensor_v<
+        ::TiledArray::detail::remove_cvr_t<T>>;
+// btas::Tensor is freestanding (owning); the compound-assignment predicate is
+// identical to the value-returning one.
+template <typename T>
+inline constexpr bool ta_ops_match_tensor_inplace_v =
     ::TiledArray::detail::is_btas_tensor_v<
         ::TiledArray::detail::remove_cvr_t<T>>;
 }  // namespace detail

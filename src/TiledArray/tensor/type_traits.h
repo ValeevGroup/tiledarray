@@ -117,17 +117,50 @@ struct is_nested_tensor<T1, T2, Ts...> {
 template <typename... Ts>
 inline constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
 
-/// Predicate used by the shared operator body in
-/// @c TiledArray/tensor/operators_body.ipp to gate the element-wise tensor
-/// operators that are injected into @c namespace TiledArray . The btas-side
-/// copy of the same operators (in @c external/btas.h) partial-specializes
-/// this predicate to @c std::false_type for @c btas::Tensor so the two
-/// namespaces' operators stay non-overlapping under ADL.
+}  // namespace detail
+
+/// Forward decl for the tensor-view predicate. Specializations live in
+/// `tensor/arena_tensor.h` (`ArenaTensor`, `detail::TensorInterface`) and
+/// `external/btas.h` (`btas::TensorView`). Declared here so the operator-body
+/// predicates below can consult it without including arena_tensor.h.
 template <typename T>
-struct ta_ops_match_tensor : is_nested_tensor<T> {};
+struct is_tensor_view : std::false_type {};
+template <typename T>
+inline constexpr bool is_tensor_view_v = is_tensor_view<T>::value;
+
+namespace detail {
+
+/// Predicate used by the shared operator body in
+/// @c TiledArray/tensor/operators_body.ipp to gate the **value-returning**
+/// element-wise tensor operators (@c +, @c -, @c *, @c neg) that are
+/// injected into @c namespace TiledArray. These ops produce a *new* tensor
+/// and so are only valid for *freestanding* (owning) tensor types -- a view
+/// like `ArenaTensor` cannot allocate on its own.
+///
+/// The btas-side copy of the same operators (in @c external/btas.h)
+/// partial-specializes this predicate to @c std::false_type for @c
+/// btas::Tensor so the two namespaces' operators stay non-overlapping under
+/// ADL.
+template <typename T>
+struct ta_ops_match_tensor
+    : std::bool_constant<is_nested_tensor<T>::value && !is_tensor_view_v<T>> {};
 
 template <typename T>
 inline constexpr bool ta_ops_match_tensor_v = ta_ops_match_tensor<T>::value;
+
+/// Predicate used by the operator body to gate the **compound-assignment**
+/// (in-place) operators (@c +=, @c -=, @c *=). Mutating ops don't allocate,
+/// so they're valid for any tensor whose storage we can mutate -- including
+/// views. By default this is the freestanding predicate union'd with the
+/// tensor-view predicate; the btas-side copy specializes it the same way it
+/// does for the value-returning one.
+template <typename T>
+struct ta_ops_match_tensor_inplace
+    : std::bool_constant<is_nested_tensor<T>::value> {};
+
+template <typename T>
+inline constexpr bool ta_ops_match_tensor_inplace_v =
+    ta_ops_match_tensor_inplace<T>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
 
