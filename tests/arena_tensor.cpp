@@ -195,7 +195,7 @@ BOOST_AUTO_TEST_CASE(mult_to_does_elementwise) {
   for (std::size_t i = 0; i < 4; ++i) BOOST_CHECK_EQUAL(dst.data()[i], 2.0);
 }
 
-BOOST_AUTO_TEST_CASE(axpy_scales_and_adds) {
+BOOST_AUTO_TEST_CASE(axpy_to_scales_and_adds) {
   CellBuf bd(4), bs(4);
   Inner dst =
       TA::detail::make_arena_tensor_in<double>(bd.aligned_ptr, TA::Range{4});
@@ -203,7 +203,8 @@ BOOST_AUTO_TEST_CASE(axpy_scales_and_adds) {
       TA::detail::make_arena_tensor_in<double>(bs.aligned_ptr, TA::Range{4});
   TA::fill(dst, 1.0);
   TA::fill(src, 2.0);
-  TA::axpy(dst, 3.0, src);
+  // axpy_to(y, x, alpha): y += alpha * x (in-place, BLAS-like AXPY).
+  TA::axpy_to(dst, src, 3.0);
   for (std::size_t i = 0; i < 4; ++i) BOOST_CHECK_EQUAL(dst.data()[i], 7.0);
 }
 

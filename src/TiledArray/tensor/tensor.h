@@ -2122,6 +2122,65 @@ class Tensor {
                         const value_t<Right> r) { (l += r) *= factor; });
   }
 
+  /// axpy: <tt>result[i] += arg[i] * factor</tt> (factor scales only the
+  /// added operand, not the existing result). Distinct from
+  /// `add_to(arg, factor)` which has the legacy `(result + arg) * factor`
+  /// semantics. Useful as a fused replacement for
+  /// `add_to(result, scale(arg, factor))` when the intermediate
+  /// materialization is undesirable (e.g. when `value_type` is a view).
+  ///
+  /// The lambda body dispatches by element type so the same body works
+  /// for flat and ToT tensors -- at the leaf (scalar) level it uses
+  /// `l += r * factor`; at the cell level it delegates to the cell's
+  /// `axpy_to` member (free or member, found via ADL).
+  template <typename Right, typename Scalar>
+    requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar>)
+  Tensor& axpy_to(const Right& right, const Scalar factor) {
+    if (right.empty()) return *this;
+    if (empty()) {
+      *this = detail::clone_or_cast<Tensor>(right);
+      this->scale_to(factor);
+      return *this;
+    }
+    return inplace_binary(right,
+                          [factor](auto& MADNESS_RESTRICT l, const auto& r) {
+                            using L = std::remove_reference_t<decltype(l)>;
+                            if constexpr (detail::is_tensor_helper<L>::value) {
+                              l.axpy_to(r, factor);
+                            } else {
+                              l += r * factor;
+                            }
+                          });
+  }
+
+  /// axpy with fused permutation on the added operand:
+  /// <tt>result[i] += (perm ^ arg)[i] * factor</tt>.
+  ///
+  /// Bails for view inner cells (which cannot be permuted in place).
+  template <typename Right, typename Scalar, typename Perm>
+    requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
+             detail::is_permutation_v<Perm>)
+  Tensor& axpy_to(const Right& right, const Scalar factor, const Perm& perm) {
+    if (right.empty()) return *this;
+    if constexpr (is_tensor_view_v<value_type>) {
+      TA_EXCEPTION(
+          "Tensor<View>::axpy_to(right, factor, perm): inner "
+          "permutation is not supported for view inner cells");
+      return *this;
+    } else {
+      auto permuted = right.permute(perm);
+      return inplace_binary(
+          permuted, [factor](auto& MADNESS_RESTRICT l, const auto& r) {
+            using L = std::remove_reference_t<decltype(l)>;
+            if constexpr (detail::is_tensor_helper<L>::value) {
+              l.axpy_to(r, factor);
+            } else {
+              l += r * factor;
+            }
+          });
+    }
+  }
+
   /// Add a constant to this tensor
 
   /// \param value The constant to be added

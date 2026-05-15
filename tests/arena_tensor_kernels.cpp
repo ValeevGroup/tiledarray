@@ -615,4 +615,26 @@ BOOST_AUTO_TEST_CASE(tot_reductions_match_flat_aggregate) {
   BOOST_CHECK_CLOSE(a.norm(), std::sqrt(expected_sq_norm), 1e-12);
 }
 
+// axpy_to on Tensor<ArenaTensor>: verifies axpy semantics
+// (factor scales only the added operand, not the existing result) —
+// distinct from add_to(right, factor) which is `(result + right) * factor`.
+BOOST_AUTO_TEST_CASE(tot_axpy_to_accumulates_scaled_operand) {
+  Outer result = make_outer(3, 4, 10.0);
+  std::vector<std::vector<double>> initial(3, std::vector<double>(4));
+  for (std::size_t ord = 0; ord < 3; ++ord)
+    for (std::size_t i = 0; i < 4; ++i)
+      initial[ord][i] = result.data()[ord].data()[i];
+  Outer arg = make_outer(3, 4, 1.0);
+  const double factor = 0.5;
+  using TiledArray::axpy_to;
+  axpy_to(result, arg, factor);
+  for (std::size_t ord = 0; ord < 3; ++ord) {
+    const Inner& a = arg.data()[ord];
+    const Inner& d = result.data()[ord];
+    for (std::size_t i = 0; i < a.size(); ++i)
+      BOOST_CHECK_CLOSE(d.data()[i], initial[ord][i] + a.data()[i] * factor,
+                        1e-12);
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

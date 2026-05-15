@@ -53,6 +53,9 @@ template <typename T, typename R>
 void subt_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src);
 template <typename T, typename R>
 void mult_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src);
+template <typename T, typename R, typename Scalar>
+void axpy_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src,
+             Scalar alpha);
 
 template <typename T, typename Range_>
 class ArenaTensor {
@@ -223,6 +226,31 @@ class ArenaTensor {
   }
   ArenaTensor& neg_to() {
     ::TiledArray::scale_to(*this, -T(1));
+    return *this;
+  }
+
+  /// axpy: <tt>*this += other * factor</tt> (axpy semantics; factor scales
+  /// only the added operand). Delegates to the free `axpy` CPO that the
+  /// outer-cell loop ultimately calls. Distinct from
+  /// `add_to(other, factor)` which would be the legacy
+  /// `(*this + other) * factor` semantics -- view tile types don't have
+  /// `operator+=` returning a value, so we keep the names separated.
+  template <typename Scalar>
+    requires(detail::is_numeric_v<Scalar>)
+  ArenaTensor& axpy_to(const ArenaTensor& other, const Scalar factor) {
+    ::TiledArray::axpy_to(*this, other, factor);
+    return *this;
+  }
+
+  /// axpy + fused permutation. ArenaTensor is a fixed-layout view, so any
+  /// non-empty permutation is rejected at runtime.
+  template <typename Scalar, typename Perm>
+    requires(detail::is_numeric_v<Scalar> && detail::is_permutation_v<Perm>)
+  ArenaTensor& axpy_to(const ArenaTensor& other, const Scalar factor,
+                       const Perm& perm) {
+    TA_EXCEPTION(
+        "ArenaTensor::axpy_to(other, factor, perm): inner permutation is not "
+        "supported for view cells");
     return *this;
   }
 
@@ -397,9 +425,13 @@ void mult_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src) {
   for (std::size_t i = 0; i < dst.size(); ++i) d[i] *= s[i];
 }
 
-/// `dst += alpha * src`. Asserts both views non-null and shape-compatible.
+/// `dst += src * alpha` (in-place BLAS-like AXPY). Asserts both views
+/// non-null and shape-compatible. Argument order matches TA's `_to` CPO
+/// convention `(result, arg, factor)`; the BLAS name AXPY captures the
+/// semantics (in-place, not value-producing).
 template <typename T, typename R, typename Scalar>
-void axpy(ArenaTensor<T, R>& dst, Scalar alpha, const ArenaTensor<T, R>& src) {
+void axpy_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src,
+             Scalar alpha) {
   if (!dst || !src) return;
   TA_ASSERT(dst.size() == src.size());
   auto* d = dst.data();

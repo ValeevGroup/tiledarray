@@ -768,11 +768,15 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
               auto &el = tile({k});
 
+              // Fused `el += inner_tensor * scalar` -- no scaled temporary
+              // (axpy_to works in-place, so it also supports view inner
+              // cells that cannot value-return a scaled tensor).
+              using TiledArray::axpy_to;
               for (auto i = 0; i < vol; ++i)
                 if constexpr (IsArrayToT<ArrayA>) {
-                  add_to(el, scale(aik.data()[i], bik.data()[i]));
+                  axpy_to(el, aik.data()[i], bik.data()[i]);
                 } else {
-                  add_to(el, scale(bik.data()[i], aik.data()[i]));
+                  axpy_to(el, bik.data()[i], aik.data()[i]);
                 }
 
             } else {
