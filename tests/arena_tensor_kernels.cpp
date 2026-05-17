@@ -2,7 +2,7 @@
 /// `ArenaTensor` cells: SIMD-aligned data, null cells for zero-volume
 /// shapes, monotonic slab layout, slab survives factory scope.
 
-#include "TiledArray/tensor/arena_tensor_kernels.h"
+#include "TiledArray/tensor/arena_kernels.h"
 
 #include "TiledArray/tensor.h"
 #include "TiledArray/tensor/arena_einsum.h"
@@ -24,8 +24,7 @@ BOOST_AUTO_TEST_SUITE(arena_tensor_kernels_suite, TA_UT_LABEL_SERIAL)
 BOOST_AUTO_TEST_CASE(builds_outer_with_uniform_inners) {
   TA::Range outer_r{4};
   auto shape_fn = [](std::size_t /*ord*/) { return TA::Range{8}; };
-  Outer outer =
-      TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   BOOST_REQUIRE_EQUAL(outer.range().volume(), 4u);
   for (std::size_t ord = 0; ord < 4; ++ord) {
     Inner& inner = outer.data()[ord];
@@ -41,8 +40,7 @@ BOOST_AUTO_TEST_CASE(zero_volume_shapes_yield_null_inners) {
   auto shape_fn = [](std::size_t ord) {
     return ord % 2 == 0 ? TA::Range{4} : TA::Range();
   };
-  Outer outer =
-      TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   for (std::size_t ord = 0; ord < 4; ++ord) {
     Inner& inner = outer.data()[ord];
     if (ord % 2 == 0) {
@@ -57,8 +55,7 @@ BOOST_AUTO_TEST_CASE(zero_volume_shapes_yield_null_inners) {
 BOOST_AUTO_TEST_CASE(non_null_cells_share_one_monotonic_slab) {
   TA::Range outer_r{6};
   auto shape_fn = [](std::size_t /*ord*/) { return TA::Range{6}; };
-  Outer outer =
-      TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   const double* prev_end = nullptr;
   for (std::size_t ord = 0; ord < 6; ++ord) {
     Inner& inner = outer.data()[ord];
@@ -81,7 +78,7 @@ BOOST_AUTO_TEST_CASE(outer_outlives_factory_scope) {
   {
     TA::Range outer_r{3};
     auto shape_fn = [](std::size_t /*ord*/) { return TA::Range{4}; };
-    outer = TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+    outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   }
   for (std::size_t ord = 0; ord < 3; ++ord) {
     Inner& inner = outer.data()[ord];
@@ -100,8 +97,7 @@ BOOST_AUTO_TEST_CASE(jagged_inner_shapes_round_trip) {
   auto shape_fn = [&](std::size_t ord) {
     return sizes[ord] == 0 ? TA::Range() : TA::Range{sizes[ord]};
   };
-  Outer outer =
-      TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   for (std::size_t ord = 0; ord < 4; ++ord) {
     Inner& inner = outer.data()[ord];
     if (sizes[ord] == 0) {
@@ -118,16 +114,14 @@ BOOST_AUTO_TEST_CASE(jagged_inner_shapes_round_trip) {
 BOOST_AUTO_TEST_CASE(empty_outer_range_yields_no_slab) {
   TA::Range outer_r{0};
   auto shape_fn = [](std::size_t /*ord*/) { return TA::Range{4}; };
-  Outer outer =
-      TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   BOOST_CHECK_EQUAL(outer.range().volume(), 0u);
 }
 
 BOOST_AUTO_TEST_CASE(all_null_outer_works) {
   TA::Range outer_r{5};
   auto shape_fn = [](std::size_t /*ord*/) { return TA::Range(); };
-  Outer outer =
-      TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   for (std::size_t ord = 0; ord < 5; ++ord) BOOST_CHECK(!outer.data()[ord]);
 }
 
@@ -139,8 +133,7 @@ Outer make_outer(std::size_t n_outer, std::size_t n_inner, double base) {
   auto shape_fn = [n_inner](std::size_t /*ord*/) {
     return TA::Range{static_cast<long>(n_inner)};
   };
-  Outer outer =
-      TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   for (std::size_t ord = 0; ord < n_outer; ++ord) {
     Inner& inner = outer.data()[ord];
     for (std::size_t i = 0; i < inner.size(); ++i)
@@ -249,14 +242,14 @@ BOOST_AUTO_TEST_CASE(contraction_arena_plan_reserve_and_construct_inner) {
                                 TA::math::blas::NoTranspose, 2, 2, 2);
   TA::math::GemmHelper inner_gh(TA::math::blas::NoTranspose,
                                 TA::math::blas::NoTranspose, 2, 2, 2);
-  auto left = TA::detail::arena_outer_init_pinned<Outer>(
-      TA::Range{2, 3}, 1, [](std::size_t /*ord*/) {
-        return TA::Range{4, 5};
-      });
-  auto right = TA::detail::arena_outer_init_pinned<Outer>(
-      TA::Range{3, 4}, 1, [](std::size_t /*ord*/) {
-        return TA::Range{5, 6};
-      });
+  auto left = TA::detail::arena_outer_init<Outer>(TA::Range{2, 3}, 1,
+                                                  [](std::size_t /*ord*/) {
+                                                    return TA::Range{4, 5};
+                                                  });
+  auto right = TA::detail::arena_outer_init<Outer>(TA::Range{3, 4}, 1,
+                                                   [](std::size_t /*ord*/) {
+                                                     return TA::Range{5, 6};
+                                                   });
   TA::detail::ArenaInnerShapePlan inner_plan{
       TA::detail::ArenaInnerShapeKind::gemm_result_range,
       std::make_optional(inner_gh)};
@@ -286,14 +279,14 @@ BOOST_AUTO_TEST_CASE(outer_gemm_with_arena_tensor_contraction) {
   // (each 2.0). C[2,4] outer of <4,6> inners; each entry =
   //   sum over outer k in [0,3) of sum over inner k in [0,5) of 1.0*2.0
   //   = 3 * 5 * 2.0 = 30.0
-  auto left = TA::detail::arena_outer_init_pinned<Outer>(
-      TA::Range{2, 3}, 1, [](std::size_t /*ord*/) {
-        return TA::Range{4, 5};
-      });
-  auto right = TA::detail::arena_outer_init_pinned<Outer>(
-      TA::Range{3, 4}, 1, [](std::size_t /*ord*/) {
-        return TA::Range{5, 6};
-      });
+  auto left = TA::detail::arena_outer_init<Outer>(TA::Range{2, 3}, 1,
+                                                  [](std::size_t /*ord*/) {
+                                                    return TA::Range{4, 5};
+                                                  });
+  auto right = TA::detail::arena_outer_init<Outer>(TA::Range{3, 4}, 1,
+                                                   [](std::size_t /*ord*/) {
+                                                     return TA::Range{5, 6};
+                                                   });
   for (std::size_t i = 0; i < left.range().volume(); ++i)
     TA::fill(left.data()[i], 1.0);
   for (std::size_t i = 0; i < right.range().volume(); ++i)
@@ -326,7 +319,7 @@ BOOST_AUTO_TEST_CASE(trivial_ops_preserve_null_cells) {
   auto shape_fn = [](std::size_t ord) {
     return ord % 2 == 0 ? TA::Range{4} : TA::Range();
   };
-  Outer src = TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer src = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   for (std::size_t ord = 0; ord < 4; ++ord) {
     Inner& inner = src.data()[ord];
     if (inner) {
@@ -351,8 +344,8 @@ BOOST_AUTO_TEST_CASE(trivial_ops_preserve_null_cells) {
 // gets rebuilt on load.
 BOOST_AUTO_TEST_CASE(outer_tile_serialize_round_trip_arena_tensor) {
   // Build an outer with jagged inner shapes including one null cell.
-  Outer src = TA::detail::arena_outer_init_pinned<Outer>(
-      TA::Range{4}, 1, [](std::size_t ord) {
+  Outer src =
+      TA::detail::arena_outer_init<Outer>(TA::Range{4}, 1, [](std::size_t ord) {
         if (ord == 2) return TA::Range();  // null cell
         return TA::Range{static_cast<long>(3 + ord)};
       });
@@ -388,7 +381,7 @@ BOOST_AUTO_TEST_CASE(outer_tile_serialize_round_trip_arena_tensor) {
     for (std::size_t i = 0; i < s.size(); ++i)
       BOOST_CHECK_EQUAL(d.data()[i], s.data()[i]);
     // The loaded cell's data pointer is SIMD-aligned via
-    // arena_outer_init_pinned.
+    // arena_outer_init.
     auto addr = reinterpret_cast<std::uintptr_t>(d.data());
     BOOST_CHECK_EQUAL(addr % TA::kInnerSimdAlign, 0u);
   }
@@ -403,7 +396,7 @@ BOOST_AUTO_TEST_CASE(distarray_arena_tensor_construct_and_init_tiles) {
   TA::TiledRange tr{TA::TiledRange1{0, 2, 4}};
   Array A(world, tr);
   A.init_tiles([](const TA::Range& tile_range) {
-    return TA::detail::arena_outer_init_pinned<Outer>(
+    return TA::detail::arena_outer_init<Outer>(
         tile_range, 1, [](std::size_t /*ord*/) { return TA::Range{3}; });
   });
   world.gop.fence();
@@ -466,7 +459,7 @@ BOOST_AUTO_TEST_CASE(mixed_outer_mult_preserves_null_cells) {
   auto shape_fn = [](std::size_t ord) {
     return ord % 2 == 0 ? TA::Range{4} : TA::Range();
   };
-  Outer A = TA::detail::arena_outer_init_pinned<Outer>(outer_r, 1, shape_fn);
+  Outer A = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
   for (std::size_t ord = 0; ord < 4; ++ord) {
     Inner& inner = A.data()[ord];
     if (inner)
@@ -561,11 +554,11 @@ static_assert(TA::is_tensor_view_v<typename Outer::value_type>,
 
 // Smoke test: in-place ops on Tensor<ArenaTensor> compile and execute.
 BOOST_AUTO_TEST_CASE(tot_inplace_ops_smoketest) {
-  Outer a = TA::detail::arena_outer_init_pinned<Outer>(
+  Outer a = TA::detail::arena_outer_init<Outer>(
       TA::Range{2}, 1, [](std::size_t) { return TA::Range{3}; });
   for (std::size_t ord = 0; ord < 2; ++ord)
     for (std::size_t i = 0; i < 3; ++i) a.data()[ord].data()[i] = 1.0;
-  Outer b = TA::detail::arena_outer_init_pinned<Outer>(
+  Outer b = TA::detail::arena_outer_init<Outer>(
       TA::Range{2}, 1, [](std::size_t) { return TA::Range{3}; });
   for (std::size_t ord = 0; ord < 2; ++ord)
     for (std::size_t i = 0; i < 3; ++i) b.data()[ord].data()[i] = 2.0;
@@ -594,7 +587,7 @@ BOOST_AUTO_TEST_CASE(tot_inplace_ops_smoketest) {
 BOOST_AUTO_TEST_CASE(tot_reductions_match_flat_aggregate) {
   using Inner = TA::ArenaTensor<double, TA::Range>;
   using Outer = TA::Tensor<Inner>;
-  Outer a = TA::detail::arena_outer_init_pinned<Outer>(
+  Outer a = TA::detail::arena_outer_init<Outer>(
       TA::Range{3}, 1, [](std::size_t /*ord*/) { return TA::Range{4}; });
   double expected_sum = 0.0;
   double expected_product = 1.0;

@@ -511,6 +511,36 @@ constexpr bool is_annotation_v<
 
     >{true};
 
+// Detect whether T exposes a `rebind_t<U>` member template. Owning tensor
+// families (TA::Tensor, btas::Tensor) do; view types (TensorInterface,
+// ShiftWrapper, ArenaTensor) do not.
+template <typename T, typename U, typename = void>
+struct has_rebind_t : std::false_type {};
+template <typename T, typename U>
+struct has_rebind_t<T, U, std::void_t<typename T::template rebind_t<U>>>
+    : std::true_type {};
+
+/// The default freestanding (owning) tensor type associated with tensor type
+/// `T` -- the type a value-returning op must produce when handed a `T`.
+///
+/// This is purely the *view -> owning-tensor* map; rebinding the element
+/// type is a separate concern (`rebind_t`). A tensor that is already
+/// freestanding (exposes `rebind_t`, as `TA::Tensor`/`btas::Tensor` do) maps
+/// to itself. A *view* type (`ArenaTensor`, `TensorInterface`, ...) cannot be
+/// a value result and maps to the owning `TA::Tensor<T::value_type>`. A view
+/// may specialize this trait to name a different owning family (e.g.
+/// `btas::TensorView` -> `btas::Tensor`). The mapped type is always
+/// freestanding and therefore always exposes `rebind_t`.
+template <typename T, typename = void>
+struct default_freestanding_tensor {
+  using type =
+      std::conditional_t<has_rebind_t<T, typename T::value_type>::value, T,
+                         Tensor<typename T::value_type>>;
+};
+template <typename T>
+using default_freestanding_tensor_t =
+    typename default_freestanding_tensor<T>::type;
+
 namespace {
 
 template <typename Op, typename Lhs, typename Rhs>
@@ -522,15 +552,6 @@ constexpr bool is_binop_v{};
 template <typename Op, typename Lhs, typename Rhs>
 constexpr bool
     is_binop_v<Op, Lhs, Rhs, std::void_t<binop_result_t<Op, Lhs, Rhs>>>{true};
-
-// Detect whether T exposes a `rebind_t<U>` member template. Both TA::Tensor
-// and btas::Tensor do; view types like TensorInterface and ShiftWrapper do
-// not, so callers must fall back to a concrete tensor for the result type.
-template <typename T, typename U, typename = void>
-struct has_rebind_t : std::false_type {};
-template <typename T, typename U>
-struct has_rebind_t<T, U, std::void_t<typename T::template rebind_t<U>>>
-    : std::true_type {};
 
 template <typename Op, typename TensorA, typename TensorB,
           typename Allocator = void,
@@ -545,19 +566,18 @@ struct result_tensor_helper {
  public:
   using numeric_type = binop_result_t<Op, value_type_A, value_type_B>;
 
-  // Result tensor type stays in TensorA's family with the allocator rebound to
-  // hold `numeric_type`. TA::Tensor and btas::Tensor expose this as
-  // `rebind_t<U>` (TA::Tensor via std::allocator_traits::rebind_alloc; btas
-  // via storage_traits::rebind_t). View types (TensorInterface, ShiftWrapper)
-  // satisfy is_tensor_v but have no `rebind_t` — fall back to TA::Tensor for
-  // those. An explicit @tparam Allocator override only applies when TensorA
-  // is a TA::Tensor.
-  using result_type = std::conditional_t<
-      std::is_same_v<void, Allocator> || !is_ta_tensor_v<TensorA_>,
-      std::conditional_t<has_rebind_t<TensorA_, numeric_type>::value,
-                         typename TensorA_::template rebind_t<numeric_type>,
-                         TA::Tensor<numeric_type>>,
-      TA::Tensor<numeric_type, Allocator>>;
+  // Result tensor type stays in TensorA's *freestanding* family -- TensorA
+  // itself if already owning, or its owning counterpart if TensorA is a view
+  // (see `default_freestanding_tensor`) -- with the allocator rebound to hold
+  // `numeric_type`. The freestanding type always exposes `rebind_t`. An
+  // explicit @tparam Allocator override only applies when TensorA is a
+  // TA::Tensor.
+  using result_type =
+      std::conditional_t<std::is_same_v<void, Allocator> ||
+                             !is_ta_tensor_v<TensorA_>,
+                         typename default_freestanding_tensor_t<
+                             TensorA_>::template rebind_t<numeric_type>,
+                         TA::Tensor<numeric_type, Allocator>>;
 };
 
 }  // namespace

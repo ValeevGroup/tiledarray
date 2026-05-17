@@ -8,7 +8,6 @@
 #include "TiledArray/permutation.h"
 #include "TiledArray/tensor/arena.h"
 #include "TiledArray/tensor/arena_kernels.h"
-#include "TiledArray/tensor/arena_tensor_kernels.h"
 #include "TiledArray/tensor/kernels.h"
 #include "TiledArray/tensor/type_traits.h"
 
@@ -202,14 +201,8 @@ Result ContractionArenaPlan<Result, Left, Right>::reserve_and_construct(
     return inner_range_t{};
   };
 
-  if constexpr (::TiledArray::is_arena_tensor_v<inner_t>) {
-    return detail::arena_outer_init_pinned<Result>(
-        outer_range, batch_sz, range_for, kArenaCachelineAlign);
-  } else {
-    return detail::arena_outer_init<Result>(outer_range, batch_sz, range_for,
-                                            kArenaCachelineAlign,
-                                            /*zero_init=*/true);
-  }
+  // arena_outer_init dispatches internally on the inner-cell type.
+  return detail::arena_outer_init<Result>(outer_range, batch_sz, range_for);
 }
 
 /// Accumulates a contraction into an already-allocated result cell.
@@ -219,7 +212,10 @@ void fused_contraction_inplace(Result& result, const Left& left,
                                const math::GemmHelper& gh) {
   if (left.empty() || right.empty()) return;
   TA_ASSERT(!result.empty());
-  result.gemm(left, right, alpha, gh);
+  // Free `gemm` CPO, not the member: `ArenaTensor` (a view) provides only the
+  // free in-place overload, while `TA::Tensor` is reached via the
+  // `tile_interface.h` CPO that forwards to its member.
+  gemm(result, left, right, alpha, gh);
 }
 
 /// Accumulates an elementwise product into an already-allocated result cell.
@@ -330,6 +326,27 @@ enum class RegimeAInnerKind {
   scale_right  // plain T × ToT → ToT (left operand contributes scalars)
 };
 
+/// Permute the extents of `src` by `perm` and materialize a range of type
+/// `RangeT`. Generic over the inner-cell range types regime-A einsum sees:
+/// `TA::Range` (legacy `Tensor<Tensor>` inners) and `btas::zb::RangeNd`
+/// (`Tensor<ArenaTensor>` inners). `Permutation * Range` only exists for
+/// `TA::Range`, so the permutation is applied to a plain extent vector and
+/// the target range is rebuilt from the result.
+template <typename RangeT, typename SrcRange>
+RangeT arena_make_permuted_range(const TiledArray::Permutation& perm,
+                                 const SrcRange& src) {
+  const std::size_t rank = src.rank();
+  const auto& src_ext = src.extent();
+  container::svector<std::size_t> ext(rank);
+  for (std::size_t d = 0; d < rank; ++d)
+    ext[d] = static_cast<std::size_t>(src_ext[d]);
+  if (perm && !perm.is_identity()) {
+    TA_ASSERT(perm.size() == rank);
+    return RangeT(perm * ext);
+  }
+  return RangeT(ext);
+}
+
 /// Holds the inner operation plan for arena regime-A dispatch.
 template <typename Result, typename A, typename B, typename Inner>
 struct RegimeAArenaPlan {
@@ -349,7 +366,7 @@ struct RegimeAArenaPlan {
     switch (kind) {
       case RegimeAInnerKind::hadamard:
         TA_ASSERT(h_plan.has_value());
-        return h_plan->perm.AC * l_range;
+        return arena_make_permuted_range<InnerRange>(h_plan->perm.AC, l_range);
       case RegimeAInnerKind::contraction: {
         TA_ASSERT(c_plan.has_value());
         const auto& p = *c_plan;
@@ -364,7 +381,7 @@ struct RegimeAArenaPlan {
         container::vector<Extent> rng;
         rng.reserve(p.e.size());
         for (auto&& ix : p.e) rng.emplace_back(extent[ix]);
-        return InnerRange(TiledArray::Range(rng));
+        return InnerRange(rng);
       }
       case RegimeAInnerKind::scale_left:
         // Scale-left preserves the ToT operand's inner range.
@@ -467,6 +484,15 @@ auto make_regime_a_arena_plan(const A& a, const B& b, const Inner& inner,
         // path collapses to a single GEMM (one tensor_contract_to call,
         // fast path). If any operand or the result needs permuting, leave
         // the plan inactive and let the legacy einsum path handle it.
+        //
+        // TODO(arena-einsum-perm): the legacy fallback value-returns inner
+        // tensors and cannot run for ArenaTensor inner cells. To cover the
+        // general case, handle do_perm here instead of bailing: GEMM into an
+        // owning `TA::Tensor` temp, permute the temp, then fold it into the
+        // pre-allocated arena result cell in place. Note einsum-emitted
+        // contractions can carry *real* permutations (M/K- or M/N-interleaved
+        // inner annotations), not just GEMM-absorbable transposes -- the temp
+        // path must handle both. See the einsum/gemm/perm discussion.
         if (cp.do_perm.A || cp.do_perm.B || cp.do_perm.C) return plan;
       }
     } else if constexpr (a_is_tot && !b_is_tot) {
@@ -553,8 +579,7 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
       };
 
       ResultTensor tile = arena_outer_init<ResultTensor>(
-          TiledArray::Range{batch}, /*batch_sz=*/1, range_for,
-          kArenaCachelineAlign, /*zero_init=*/true);
+          TiledArray::Range{batch}, /*batch_sz=*/1, range_for);
 
       for (IIndex i : tiles) {
         const auto pahi_inv = apply_inverse(pa, h + i);
@@ -625,8 +650,7 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
       };
 
       ResultTensor tile = arena_outer_init<ResultTensor>(
-          TiledArray::Range{batch}, /*batch_sz=*/1, range_for,
-          kArenaCachelineAlign, /*zero_init=*/true);
+          TiledArray::Range{batch}, /*batch_sz=*/1, range_for);
 
       for (IIndex i : tiles) {
         const auto pahi_inv = apply_inverse(pa, h + i);

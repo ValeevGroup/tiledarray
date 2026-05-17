@@ -61,6 +61,8 @@ template <typename T, typename Range_>
 class ArenaTensor {
  public:
   using value_type = T;
+  using numeric_type = typename detail::numeric_type<T>::type;
+  using scalar_type = typename detail::scalar_type<T>::type;
   using range_type = Range_;
   using pointer = T*;
   using const_pointer = const T*;
@@ -107,16 +109,23 @@ class ArenaTensor {
   }
   ~ArenaTensor() = default;
 
-  /// View-level assignment: copy rebinds (alias), move transfers and nulls
-  /// the source. Element-wise copy from another tensor goes through the
-  /// templated `operator=(const Src&)` below.
-  ArenaTensor& operator=(const ArenaTensor&) = default;
-  ArenaTensor& operator=(ArenaTensor&& other) noexcept {
-    if (this != &other) {
-      cell_ = other.cell_;
-      other.cell_ = nullptr;
+  /// Unified assignment, with two regimes keyed on whether `*this` is bound:
+  ///  - bound (non-null) assignee: deep element-wise copy from `src` -- the
+  ///    view's storage already exists, so assignment writes into it;
+  ///  - null assignee: a shallow rebind of the view to `src`'s cell -- there
+  ///    is no storage to deep-copy into.
+  /// This must be a user-provided non-template operator: the implicit
+  /// copy-assignment (a shallow pointer copy) would otherwise be generated
+  /// and, as a non-template exact match, would always shadow the templated
+  /// `operator=` below for `ArenaTensor` sources. There is deliberately no
+  /// move-assignment -- an rvalue `ArenaTensor` binds here and follows the
+  /// same two regimes (moving a view buys nothing over copying it).
+  ArenaTensor& operator=(const ArenaTensor& src) {
+    if (cell_ == nullptr) {
+      cell_ = src.cell_;  // null assignee: rebind the view (shallow)
+      return *this;
     }
-    return *this;
+    return assign_elements_(src);  // bound assignee: deep copy
   }
 
   /// Construct a view onto a `Cell` (placement-newed by the arena factory).
@@ -161,18 +170,17 @@ class ArenaTensor {
     return data()[i];
   }
 
-  /// Element-wise copy from a non-nested tensor of compatible shape.
-  /// Requires `*this` non-null and `src.range().volume() == size()`.
+  /// Element-wise deep copy from a non-`ArenaTensor` tensor `src`. Valid only
+  /// for a bound (non-null) assignee: a null view has no storage to copy into
+  /// and a non-view `src` has no cell to rebind to (use the `ArenaTensor`
+  /// overload above for the rebind regime).
   template <typename Src,
             typename = std::enable_if_t<detail::is_tensor_v<Src> &&
                                         !std::is_same_v<Src, ArenaTensor>>>
   ArenaTensor& operator=(const Src& src) {
-    TA_ASSERT(cell_ != nullptr);
-    TA_ASSERT(size() == static_cast<size_type>(src.range().volume()));
-    auto* dst = data();
-    const auto* src_data = src.data();
-    for (size_type i = 0; i < size(); ++i) dst[i] = src_data[i];
-    return *this;
+    TA_ASSERT(cell_ != nullptr &&
+              "cannot assign a non-ArenaTensor source to a null ArenaTensor");
+    return assign_elements_(src);
   }
 
   /// In-place compound operators -- ArenaTensor is a view (no allocation),
@@ -259,6 +267,18 @@ class ArenaTensor {
   Cell* cell() const noexcept { return cell_; }
 
  private:
+  /// Deep element-wise copy into this bound view's storage from any tensor
+  /// `src` of matching volume (an `ArenaTensor` or an owning tensor alike).
+  template <typename Src>
+  ArenaTensor& assign_elements_(const Src& src) {
+    TA_ASSERT(cell_ != nullptr);
+    TA_ASSERT(size() == static_cast<size_type>(src.size()));
+    auto* dst = data();
+    const auto* src_data = src.data();
+    for (size_type i = 0; i < size(); ++i) dst[i] = src_data[i];
+    return *this;
+  }
+
   Cell* cell_ = nullptr;
 };
 
@@ -348,6 +368,17 @@ struct is_tensor_helper<ArenaTensor<T, R>> : public std::true_type {};
 template <typename T, typename R>
 struct is_contiguous_tensor_helper<ArenaTensor<T, R>> : public std::true_type {
 };
+
+/// `ArenaTensor` counts as one nesting level, so `Tensor<ArenaTensor<T>>`
+/// out-ranks a plain `Tensor<T>`. Without this, `nested_rank<ArenaTensor>`
+/// falls through to the primary `= 0` and `einsum`'s `MaxNestedArray` ties a
+/// ToT arena array with a plain array, picking the wrong result tile type.
+template <typename T, typename R>
+constexpr size_t nested_rank<ArenaTensor<T, R>> = 1 + nested_rank<T>;
+
+template <typename T, typename R>
+constexpr size_t nested_rank<const ArenaTensor<T, R>> =
+    nested_rank<ArenaTensor<T, R>>;
 
 }  // namespace detail
 
@@ -461,7 +492,7 @@ Standalone materialize(const ArenaTensor<T, R>& src) {
 
 /// GEMM CPO for `ArenaTensor`: accumulates `result += factor * left * right`
 /// via BLAS. The result must be pre-allocated (e.g. zero-initialized by
-/// `arena_outer_init_pinned`) -- this overload never resizes. More specific
+/// `arena_outer_init`) -- this overload never resizes. More specific
 /// than `tile_op/tile_interface.h`'s generic `gemm` template (which would
 /// otherwise fall through to a nonexistent `result.gemm(...)` member),
 /// so partial ordering picks it for `ArenaTensor` arguments.

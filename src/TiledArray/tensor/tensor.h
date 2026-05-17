@@ -28,7 +28,6 @@
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/arena_kernels.h"
-#include "TiledArray/tensor/arena_tensor_kernels.h"
 #include "TiledArray/tensor/complex.h"
 #include "TiledArray/tensor/kernels.h"
 #include "TiledArray/tile_interface/clone.h"
@@ -685,7 +684,7 @@ class Tensor {
                        std::size_t n) {
           for (std::size_t i = 0; i < n; ++i) dst[i] = src[i];
         };
-        result = detail::arena_trivial_unary_pinned<Tensor>(*this, fill);
+        result = detail::arena_trivial_unary<Tensor>(*this, fill);
       } else {
         result = detail::tensor_op<Tensor>(
             [](const numeric_type value) -> numeric_type { return value; },
@@ -1246,7 +1245,7 @@ class Tensor {
  private:
   /// ArenaTensor-aware inner-cell serialization. Writes per-cell metadata
   /// (null flag + range) then element bytes; on load, rebuilds the outer
-  /// via `arena_outer_init_pinned` so the slab is reconstructed in one
+  /// via `arena_outer_init` so the slab is reconstructed in one
   /// allocation and the outer-data deleter keeps it alive.
   template <typename Archive>
   void serialize_arena_inner_cells(Archive& ar, range_type range,
@@ -1283,7 +1282,7 @@ class Tensor {
       for (std::size_t i = 0; i < N; ++i) {
         if (flags[i]) ar& ranges[i];
       }
-      *this = detail::arena_outer_init_pinned<Tensor>(
+      *this = detail::arena_outer_init<Tensor>(
           range, nbatch, [&](std::size_t ord) -> InnerRange {
             return flags[ord] ? ranges[ord] : InnerRange{};
           });
@@ -1789,7 +1788,7 @@ class Tensor {
                            std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) dst[i] = src[i] * factor;
       };
-      return detail::arena_trivial_unary_pinned<Tensor>(*this, fill);
+      return detail::arena_trivial_unary<Tensor>(*this, fill);
     } else {
       return unary([factor](const value_type& a) {
         using namespace TiledArray::detail;
@@ -1871,7 +1870,7 @@ class Tensor {
                    const typename value_type::value_type* r, std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] + r[i];
     };
-    return detail::arena_trivial_binary_pinned<Tensor>(*this, right, fill);
+    return detail::arena_trivial_binary<Tensor>(*this, right, fill);
   }
 
   /// Mixed `Tensor<ArenaTensor> + Tensor<scalar>`: each inner element is
@@ -1888,7 +1887,7 @@ class Tensor {
                    std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = arena[i] + s;
     };
-    return detail::arena_trivial_scaled_pinned<Tensor>(*this, right, fill);
+    return detail::arena_trivial_scaled<Tensor>(*this, right, fill);
   }
 
   /// Mixed `Tensor<scalar> + Tensor<ArenaTensor>`: symmetric to above,
@@ -1905,7 +1904,7 @@ class Tensor {
                    std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = s + arena[i];
     };
-    return detail::arena_trivial_scaled_pinned<Right>(right, *this, fill);
+    return detail::arena_trivial_scaled<Right>(right, *this, fill);
   }
 
   /// Add this and \c other to construct a new tensor
@@ -2208,7 +2207,7 @@ class Tensor {
                    const typename value_type::value_type* r, std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] - r[i];
     };
-    return detail::arena_trivial_binary_pinned<Tensor>(*this, right, fill);
+    return detail::arena_trivial_binary<Tensor>(*this, right, fill);
   }
 
   /// Mixed `Tensor<ArenaTensor> - Tensor<scalar>`: subtract per-cell scalar
@@ -2224,7 +2223,7 @@ class Tensor {
                    std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = arena[i] - s;
     };
-    return detail::arena_trivial_scaled_pinned<Tensor>(*this, right, fill);
+    return detail::arena_trivial_scaled<Tensor>(*this, right, fill);
   }
 
   /// Mixed `Tensor<scalar> - Tensor<ArenaTensor>`: for each outer cell,
@@ -2241,7 +2240,7 @@ class Tensor {
                    std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = s - arena[i];
     };
-    return detail::arena_trivial_scaled_pinned<Right>(right, *this, fill);
+    return detail::arena_trivial_scaled<Right>(right, *this, fill);
   }
 
   /// \tparam Right The right-hand tensor type
@@ -2438,7 +2437,7 @@ class Tensor {
                    const typename value_type::value_type* r, std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] * r[i];
     };
-    return detail::arena_trivial_binary_pinned<Tensor>(*this, right, fill);
+    return detail::arena_trivial_binary<Tensor>(*this, right, fill);
   }
 
   /// Mixed `Tensor<ArenaTensor> * Tensor<scalar>`: outer Hadamard, each
@@ -2455,7 +2454,7 @@ class Tensor {
                    std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = arena[i] * s;
     };
-    return detail::arena_trivial_scaled_pinned<Tensor>(*this, right, fill);
+    return detail::arena_trivial_scaled<Tensor>(*this, right, fill);
   }
 
   /// Mixed `Tensor<scalar> * Tensor<ArenaTensor>`: symmetric to above,
@@ -2472,7 +2471,7 @@ class Tensor {
                    std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = s * arena[i];
     };
-    return detail::arena_trivial_scaled_pinned<Right>(right, *this, fill);
+    return detail::arena_trivial_scaled<Right>(right, *this, fill);
   }
 
   template <

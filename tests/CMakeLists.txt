@@ -110,6 +110,7 @@ set(ta_test_src_files  ta_test.cpp
     arena_sizeof_invariant_suite.cpp
     arena_tensor.cpp
     arena_tensor_kernels.cpp
+    tot_construction.cpp
 )
 
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
