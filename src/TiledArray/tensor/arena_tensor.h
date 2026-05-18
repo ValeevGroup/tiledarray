@@ -170,6 +170,17 @@ class ArenaTensor {
     return data()[i];
   }
 
+  /// Sum of all elements; `value_type{}` for a null view. A scalar
+  /// reduction allocates nothing, so it is valid on a view (unlike the
+  /// value-returning tensor ops, which are deliberately absent).
+  value_type sum() const noexcept {
+    value_type acc{};
+    if (cell_ == nullptr) return acc;
+    const auto* s = data();
+    for (size_type i = 0; i < size(); ++i) acc += s[i];
+    return acc;
+  }
+
   /// Element-wise deep copy from a non-`ArenaTensor` tensor `src`. Valid only
   /// for a bound (non-null) assignee: a null view has no storage to copy into
   /// and a non-view `src` has no cell to rebind to (use the `ArenaTensor`

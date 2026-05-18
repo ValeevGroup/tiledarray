@@ -2626,6 +2626,12 @@ class Tensor {
       // that slab (the inner part is identity for a Hadamard t x tot).
       auto result = mult(right);
       return arena_perm_is_trivial(perm) ? result : result.permute(perm);
+    } else if constexpr (is_arena_tensor_v<value_type> &&
+                         detail::is_numeric_v<typename Right::value_type>) {
+      // tot x t: the mirror of the above -- an arena ToT tile times a plain
+      // scalar tile. Same slab-then-reindex handling.
+      auto result = mult(right);
+      return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
       return binary(
           right,
@@ -3326,6 +3332,19 @@ class Tensor {
 #endif
 
 };  // class Tensor
+
+/// \return the number of bytes an `ArenaTensor` view plus its in-arena cell
+/// occupy in memory space `S`. `size_of(Tensor<ArenaTensor>)` recurses here
+/// once per inner cell; summed over the outer tile this counts the slab.
+template <MemorySpace S, typename T, typename R>
+std::size_t size_of(const ArenaTensor<T, R>& t) {
+  std::size_t result = 0;
+  if constexpr (S == MemorySpace::Host) {
+    result += sizeof(t);  // the one-pointer view itself
+    if (!t.empty()) result += ArenaTensor<T, R>::cell_size(t.size());
+  }
+  return result;
+}
 
 /// \return the number of bytes used by \p t in memory space
 /// `S`
