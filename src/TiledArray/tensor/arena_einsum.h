@@ -415,12 +415,12 @@ struct RegimeAArenaPlan {
                       is_arena_inner_cell_v<RCell>) {
           if (l.empty() || rr.empty()) return;
           TA_ASSERT(c_plan.has_value());
-          // make_regime_a_arena_plan bails out unless do_perm.{A,B,C}
-          // are all false -- so tensor_contract_to's fast path fires: one
-          // GEMM into r with beta=1. Uniform for TA::Tensor and ArenaTensor
-          // inner cells (free `gemm` CPO dispatches by type).
+          // run_regime_a_arena has already hoisted any operand inner
+          // permutation, so l and rr are in canonical (blas_layout) order:
+          // the per-cell op is a single canonical GEMM into r with beta=1.
+          // Uniform for TA::Tensor and ArenaTensor cells (free `gemm` CPO).
           using Scalar = typename std::remove_cv_t<ResultCell>::numeric_type;
-          tensor_contract_to(r, l, rr, Scalar{1}, *c_plan);
+          fused_contraction_inplace(r, l, rr, Scalar{1}, c_plan->gemm_helper);
         }
         return;
       }
@@ -479,21 +479,12 @@ auto make_regime_a_arena_plan(const A& a, const B& b, const Inner& inner,
       } else {
         plan.kind = RegimeAInnerKind::contraction;
         plan.c_plan.emplace(inner.A, inner.B, inner.C);
-        const auto& cp = *plan.c_plan;
-        // Inner contraction must be canonically aligned -- the accumulate
-        // path collapses to a single GEMM (one tensor_contract_to call,
-        // fast path). If any operand or the result needs permuting, leave
-        // the plan inactive and let the legacy einsum path handle it.
-        //
-        // TODO(arena-einsum-perm): the legacy fallback value-returns inner
-        // tensors and cannot run for ArenaTensor inner cells. To cover the
-        // general case, handle do_perm here instead of bailing: GEMM into an
-        // owning `TA::Tensor` temp, permute the temp, then fold it into the
-        // pre-allocated arena result cell in place. Note einsum-emitted
-        // contractions can carry *real* permutations (M/K- or M/N-interleaved
-        // inner annotations), not just GEMM-absorbable transposes -- the temp
-        // path must handle both. See the einsum/gemm/perm discussion.
-        if (cp.do_perm.A || cp.do_perm.B || cp.do_perm.C) return plan;
+        // A non-canonical inner contraction (c_plan.do_perm.{A,B,C} set --
+        // e.g. M/K- or M/N-interleaved inner annotations that are not
+        // GEMM-absorbable transposes) is still handled: run_regime_a_arena
+        // hoists each operand inner permutation, and the result inner
+        // permutation, to slab-level rewrites (arena_inner_permute), leaving
+        // the per-cell op a single canonical GEMM. No need to bail here.
       }
     } else if constexpr (a_is_tot && !b_is_tot) {
       plan.kind = RegimeAInnerKind::scale_left;
@@ -589,6 +580,16 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
         auto bi = B.array.find(pbhi_inv).get();
         if (pa) ai = ai.permute(pa);
         if (pb) bi = bi.permute(pb);
+        // Hoist a non-canonical inner contraction's operand inner
+        // permutations to slab-level rewrites, so the per-cell op below
+        // stays a single canonical GEMM (no per-cell view permute).
+        if (plan.kind == RegimeAInnerKind::contraction) {
+          const auto& cp = *plan.c_plan;
+          if (cp.do_perm.A)
+            ai = arena_inner_permute<decltype(ai)>(ai, cp.perm.A);
+          if (cp.do_perm.B)
+            bi = arena_inner_permute<decltype(bi)>(bi, cp.perm.B);
+        }
         auto shape = trange.tile(i);
         ai = ai.reshape(shape, batch);
         bi = bi.reshape(shape, batch);
@@ -607,6 +608,11 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
         }
       }
 
+      // Hoist the result inner permutation: cells were accumulated in
+      // blas_layout (e) order; rewrite the slab to the C inner order.
+      if (plan.kind == RegimeAInnerKind::contraction && plan.c_plan->do_perm.C)
+        tile =
+            arena_inner_permute<ResultTensor>(tile, plan.c_plan->perm.C.inv());
       auto shape = apply_inverse(pc, C.array.trange().tile(c));
       tile = tile.reshape(shape);
       if (pc) tile = tile.permute(pc);

@@ -395,20 +395,22 @@ void test_tot_neg() {
       [](long e, long i) { return -(100.0 * e + i); });
 }
 
-/// End-to-end ToT contraction through TA::einsum -- c(ij;mn) =
-/// sum_k sum_o a(ijk;mo) * b(ijk;on): outer Hadamard over i,j with an outer
-/// contraction over k, plus an inner contraction over o. This routes through
-/// the regime-A arena einsum path (the outer-Hadamard "hadamard reduction"
-/// branch), not the expression-DSL delegation a pure-Hadamard outer would
-/// take. The arena-inner result is checked against a Tensor<Tensor<double>>
-/// reference run of the identical expression on identically-filled operands.
+/// End-to-end ToT contraction through TA::einsum: outer Hadamard over i,j
+/// with an outer contraction over k, plus an inner contraction. This routes
+/// through the regime-A arena einsum path (the outer-Hadamard "hadamard
+/// reduction" branch), not the expression-DSL delegation a pure-Hadamard
+/// outer would take. `annot` is the einsum string; a's inner cells are
+/// `a0 x a1`, b's are `b0 x b1`. A non-canonical inner annotation exercises
+/// the inner-permutation hoist. The arena-inner result is checked against a
+/// Tensor<Tensor<double>> reference run of the identical expression.
 template <typename InnerTile, typename Policy>
-void test_tot_einsum_contraction() {
+void test_tot_einsum_contraction(const char* annot, std::size_t a0,
+                                 std::size_t a1, std::size_t b0,
+                                 std::size_t b1) {
   using Array = TA::DistArray<TA::Tensor<InnerTile>, Policy>;
   using RefArray = TA::DistArray<TA::Tensor<TA::Tensor<double>>, Policy>;
   TA::World& world = *GlobalFixture::world;
   TA::TiledRange trange{{0, 2, 4}, {0, 2, 4}, {0, 2}};
-  constexpr std::size_t M = 2, O = 3, N = 2;
 
   auto fill_a = [](auto& cell, const auto& idx) {
     const long key = 7 * static_cast<long>(idx[0]) +
@@ -427,20 +429,26 @@ void test_tot_einsum_contraction() {
 
   Array a(world, trange), b(world, trange);
   a.init_tiles_nested(
-      [](const auto&) { return inner_range_2d<InnerTile>(M, O); }, fill_a);
+      [a0, a1](const auto&) { return inner_range_2d<InnerTile>(a0, a1); },
+      fill_a);
   b.init_tiles_nested(
-      [](const auto&) { return inner_range_2d<InnerTile>(O, N); }, fill_b);
+      [b0, b1](const auto&) { return inner_range_2d<InnerTile>(b0, b1); },
+      fill_b);
   RefArray a_ref(world, trange), b_ref(world, trange);
   a_ref.init_tiles_nested(
-      [](const auto&) { return inner_range_2d<TA::Tensor<double>>(M, O); },
+      [a0, a1](const auto&) {
+        return inner_range_2d<TA::Tensor<double>>(a0, a1);
+      },
       fill_a);
   b_ref.init_tiles_nested(
-      [](const auto&) { return inner_range_2d<TA::Tensor<double>>(O, N); },
+      [b0, b1](const auto&) {
+        return inner_range_2d<TA::Tensor<double>>(b0, b1);
+      },
       fill_b);
   world.gop.fence();
 
-  auto c = TA::einsum("ijk;mo,ijk;on->ij;mn", a, b);
-  auto c_ref = TA::einsum("ijk;mo,ijk;on->ij;mn", a_ref, b_ref);
+  auto c = TA::einsum(annot, a, b);
+  auto c_ref = TA::einsum(annot, a_ref, b_ref);
   world.gop.fence();
 
   for (const auto& tidx : c.trange().tiles_range()) {
@@ -603,11 +611,25 @@ BOOST_AUTO_TEST_CASE(neg_arena_inner) {
   test_tot_neg<TA::ArenaTensor<double>, TA::DensePolicy>();
 }
 
+// canonical inner contraction: c(ij;mn) = sum_k sum_o a(ijk;mo) b(ijk;on)
 BOOST_AUTO_TEST_CASE(einsum_contraction_tensor_inner) {
-  test_tot_einsum_contraction<TA::Tensor<double>, TA::DensePolicy>();
+  test_tot_einsum_contraction<TA::Tensor<double>, TA::DensePolicy>(
+      "ijk;mo,ijk;on->ij;mn", 2, 3, 3, 2);
 }
 BOOST_AUTO_TEST_CASE(einsum_contraction_arena_inner) {
-  test_tot_einsum_contraction<TA::ArenaTensor<double>, TA::DensePolicy>();
+  test_tot_einsum_contraction<TA::ArenaTensor<double>, TA::DensePolicy>(
+      "ijk;mo,ijk;on->ij;mn", 2, 3, 3, 2);
+}
+
+// non-canonical inner annotations: operand A reordered (o,m) and the result
+// reordered (n,m) -- exercises the regime-A inner-permutation hoist.
+BOOST_AUTO_TEST_CASE(einsum_contraction_perm_tensor_inner) {
+  test_tot_einsum_contraction<TA::Tensor<double>, TA::DensePolicy>(
+      "ijk;om,ijk;on->ij;nm", 3, 2, 3, 2);
+}
+BOOST_AUTO_TEST_CASE(einsum_contraction_perm_arena_inner) {
+  test_tot_einsum_contraction<TA::ArenaTensor<double>, TA::DensePolicy>(
+      "ijk;om,ijk;on->ij;nm", 3, 2, 3, 2);
 }
 
 BOOST_AUTO_TEST_CASE(arena_tile_bipartite_permute) {
