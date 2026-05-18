@@ -452,11 +452,9 @@ BOOST_AUTO_TEST_CASE(subt_arena_inner) {
 BOOST_AUTO_TEST_CASE(mult_tensor_inner) {
   test_tot_mult<TA::Tensor<double>, TA::DensePolicy>();
 }
-// TODO(arena-tot-mult): a("i;j")*b("i;j") routes through MultEngine/ContEngine,
-// which builds a value-returning inner tile op acting on the inner tile itself.
-// ArenaTensor has no value-returning mult (an arena cell cannot own a result
-// slab), so the Hadamard ToT product is not yet wired up for arena inners --
-// it needs an arena-aware engine path, like general ToT contraction.
+BOOST_AUTO_TEST_CASE(mult_arena_inner) {
+  test_tot_mult<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
 
 BOOST_AUTO_TEST_CASE(scaled_add_tensor_inner) {
   test_tot_scaled_add<TA::Tensor<double>, TA::DensePolicy>();

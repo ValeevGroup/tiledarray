@@ -533,6 +533,37 @@ class ContEngine : public BinaryEngine<Derived> {
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>) {
       constexpr bool tot_x_tot = TiledArray::detail::is_tensor_of_tensor_v<
           result_tile_type, left_tile_type, right_tile_type>;
+      if constexpr (tot_x_tot &&
+                    TiledArray::is_tensor_view_v<result_tile_element_type>) {
+        // ToT x ToT with non-owning view inner cells (e.g. ArenaTensor). A
+        // view cell cannot host a value-returning inner op, so the
+        // owning-cell inner-op builder cannot even be instantiated for it.
+        // The only ToT x ToT product such cells support is the elementwise
+        // pure Hadamard, and there the inner element op is unused anyway --
+        // MultEngine::make_tile_op passes none and the outer Mult tile op
+        // recurses through Tensor<view>::mult -- so element_*_op_ is left
+        // null. Every other nested product is deferred.
+        const auto inner_prod = this->inner_product_type();
+        if (inner_prod != TensorProduct::Hadamard ||
+            this->product_type() != TensorProduct::Hadamard)
+          TA_EXCEPTION(
+              "nested contraction on view inner tiles (e.g. ArenaTensor) is "
+              "not yet supported; only the elementwise Hadamard product is");
+      } else {
+        init_inner_tile_op_owning_(inner_target_indices);
+      }
+    }
+  }
+
+  /// Builds the inner-cell element op (element_nonreturn_op_ /
+  /// element_return_op_) for a nested-tensor expression. init_inner_tile_op
+  /// dispatches every case here except ToT x ToT with non-owning view inner
+  /// cells -- a view cell cannot host the value-returning inner ops this
+  /// builder constructs.
+  void init_inner_tile_op_owning_(const IndexList& inner_target_indices) {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>) {
+      constexpr bool tot_x_tot = TiledArray::detail::is_tensor_of_tensor_v<
+          result_tile_type, left_tile_type, right_tile_type>;
       const auto inner_prod = this->inner_product_type();
       TA_ASSERT(inner_prod == TensorProduct::Contraction ||
                 inner_prod == TensorProduct::Hadamard ||
