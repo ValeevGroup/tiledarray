@@ -2,6 +2,7 @@
 /// DistArray::init_tiles_nested, and the DistArray ToT range_fn constructor --
 /// exercised identically for TA::Tensor and ArenaTensor inner tiles.
 
+#include "TiledArray/einsum/tiledarray.h"
 #include "TiledArray/tensor/arena_kernels.h"
 #include "TiledArray/tensor/arena_tensor.h"
 #include "tiledarray.h"
@@ -10,6 +11,7 @@
 #include "unit_test_config.h"
 
 #include <cstddef>
+#include <vector>
 
 namespace {
 
@@ -23,6 +25,14 @@ template <typename InnerTile, typename Index>
 auto inner_range_for(const Index& idx) {
   return
       typename InnerTile::range_type{inner_extent(static_cast<long>(idx[0]))};
+}
+
+/// Build a rank-2 (d0 x d1) inner range of the inner tile's range type.
+/// Works for both TA::Range (TA::Tensor inner) and btas::zb::RangeNd
+/// (ArenaTensor inner), which are both constructible from an extent vector.
+template <typename InnerTile>
+auto inner_range_2d(std::size_t d0, std::size_t d1) {
+  return typename InnerTile::range_type(std::vector<std::size_t>{d0, d1});
 }
 
 template <typename InnerTile>
@@ -385,6 +395,65 @@ void test_tot_neg() {
       [](long e, long i) { return -(100.0 * e + i); });
 }
 
+/// End-to-end ToT contraction through TA::einsum: outer Hadamard over i,j,
+/// inner contraction over o -- c(ij;mn) = sum_o a(ij;mo) * b(ij;on). The
+/// arena-inner result is checked against a Tensor<Tensor<double>> reference
+/// run of the identical expression on identically-filled operands.
+template <typename InnerTile, typename Policy>
+void test_tot_einsum_contraction() {
+  using Array = TA::DistArray<TA::Tensor<InnerTile>, Policy>;
+  using RefArray = TA::DistArray<TA::Tensor<TA::Tensor<double>>, Policy>;
+  TA::World& world = *GlobalFixture::world;
+  TA::TiledRange trange{{0, 2, 4}, {0, 2, 4}};
+  constexpr std::size_t M = 2, O = 3, N = 2;
+
+  auto fill_a = [](auto& cell, const auto& idx) {
+    const long key =
+        7 * static_cast<long>(idx[0]) + 13 * static_cast<long>(idx[1]);
+    for (std::size_t p = 0; p < cell.size(); ++p)
+      cell.data()[p] = static_cast<double>(1 + static_cast<long>(p) + key);
+  };
+  auto fill_b = [](auto& cell, const auto& idx) {
+    const long key =
+        5 * static_cast<long>(idx[0]) + 3 * static_cast<long>(idx[1]);
+    for (std::size_t p = 0; p < cell.size(); ++p)
+      cell.data()[p] = static_cast<double>(2 + static_cast<long>(p) + key);
+  };
+
+  Array a(world, trange), b(world, trange);
+  a.init_tiles_nested(
+      [](const auto&) { return inner_range_2d<InnerTile>(M, O); }, fill_a);
+  b.init_tiles_nested(
+      [](const auto&) { return inner_range_2d<InnerTile>(O, N); }, fill_b);
+  RefArray a_ref(world, trange), b_ref(world, trange);
+  a_ref.init_tiles_nested(
+      [](const auto&) { return inner_range_2d<TA::Tensor<double>>(M, O); },
+      fill_a);
+  b_ref.init_tiles_nested(
+      [](const auto&) { return inner_range_2d<TA::Tensor<double>>(O, N); },
+      fill_b);
+  world.gop.fence();
+
+  auto c = TA::einsum("ij;mo,ij;on->ij;mn", a, b);
+  auto c_ref = TA::einsum("ij;mo,ij;on->ij;mn", a_ref, b_ref);
+  world.gop.fence();
+
+  for (const auto& tidx : c.trange().tiles_range()) {
+    if (!c.is_local(tidx)) continue;
+    auto tile = c.find(tidx).get();
+    auto ref_tile = c_ref.find(tidx).get();
+    BOOST_REQUIRE_EQUAL(tile.range().volume(), ref_tile.range().volume());
+    for (std::size_t ord = 0; ord < tile.range().volume(); ++ord) {
+      const auto& cell = tile.data()[ord];
+      const auto& ref_cell = ref_tile.data()[ord];
+      BOOST_REQUIRE(!cell.empty());
+      BOOST_REQUIRE_EQUAL(cell.size(), ref_cell.size());
+      for (std::size_t p = 0; p < cell.size(); ++p)
+        BOOST_CHECK_EQUAL(cell.data()[p], ref_cell.data()[p]);
+    }
+  }
+}
+
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(tot_construction_suite, TA_UT_LABEL_SERIAL)
@@ -483,6 +552,19 @@ BOOST_AUTO_TEST_CASE(neg_tensor_inner) {
 BOOST_AUTO_TEST_CASE(neg_arena_inner) {
   test_tot_neg<TA::ArenaTensor<double>, TA::DensePolicy>();
 }
+
+BOOST_AUTO_TEST_CASE(einsum_contraction_tensor_inner) {
+  test_tot_einsum_contraction<TA::Tensor<double>, TA::DensePolicy>();
+}
+// TODO(arena-einsum-legacy-fallback): test_tot_einsum_contraction for an
+// ArenaTensor inner does not compile. TA::einsum's per-cell legacy path
+// (einsum/tiledarray.h: tensor_hadamard / tensor_contract, the
+// element_hadamard_op / element_contract_op lambdas) value-returns inner
+// tensors and calls ArenaTensor::mult / ArenaTensor::permute, none of which
+// a view inner cell supports. The regime-A arena path runs first, but the
+// legacy fallback coexists in the same function and is still instantiated.
+// It must be if-constexpr-guarded out for is_tensor_view_v inner cells, with
+// an inactive regime-A plan throwing instead of falling through.
 
 BOOST_AUTO_TEST_SUITE_END()
 
