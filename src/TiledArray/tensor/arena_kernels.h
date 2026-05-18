@@ -254,6 +254,83 @@ OuterTensor arena_trivial_scaled(const ToTSide& tot_outer,
   return result;
 }
 
+/// Grow `result` in place so every cell whose current inner cell is null but
+/// `more_range_fn(cell_ordinal)` yields a non-empty range becomes an
+/// allocated, zero-initialized cell. Data already accumulated in non-empty
+/// cells is preserved -- a fresh slab is built and the old cell data copied
+/// over. A no-op (no reallocation) when nothing grows, so the steady-state
+/// path stays cheap. Used by the SUMMA ToT contraction, which shapes a result
+/// tile from its first K-panel only and must extend it for later panels of a
+/// contracted-dimension-sparse ToT operand.
+template <typename OuterTensor, typename MoreRangeFn>
+void arena_tot_grow_inplace(OuterTensor& result, MoreRangeFn&& more_range_fn) {
+  using inner_t = typename OuterTensor::value_type;
+  using elem_t = typename inner_t::value_type;
+  using inner_range_t = typename inner_t::range_type;
+  const std::size_t N_cells = result.range().volume() * result.nbatch();
+  std::vector<inner_range_t> ranges;
+  ranges.reserve(N_cells);
+  bool grows = false;
+  for (std::size_t ord = 0; ord < N_cells; ++ord) {
+    const auto& rc = result.data()[ord];
+    if (!rc.empty()) {
+      ranges.emplace_back(rc.range());
+      continue;
+    }
+    inner_range_t r = more_range_fn(ord);
+    if (r.volume() != 0) grows = true;
+    ranges.emplace_back(std::move(r));
+  }
+  if (!grows) return;
+  OuterTensor grown = arena_outer_init<OuterTensor>(
+      result.range(), result.nbatch(),
+      [&ranges](std::size_t ord) -> inner_range_t { return ranges[ord]; });
+  for (std::size_t ord = 0; ord < N_cells; ++ord) {
+    const auto& src = result.data()[ord];
+    if (src.empty()) continue;
+    auto& dst = grown.data()[ord];
+    TA_ASSERT(!dst.empty() && dst.size() == src.size());
+    const elem_t* s = src.data();
+    elem_t* d = dst.data();
+    for (std::size_t i = 0; i < src.size(); ++i) d[i] = s[i];
+  }
+  result = std::move(grown);
+}
+
+/// Accumulate `arg` into `result` (`result += arg`), first growing `result`
+/// to the union of the two tiles' inner-cell sparsity. Either tile may be
+/// outer-empty. Used to combine two partial contraction results whose
+/// disjoint K-panel subsets induced different inner-cell sparsity.
+template <typename OuterTensor>
+void arena_tot_add_to(OuterTensor& result, const OuterTensor& arg) {
+  using inner_t = typename OuterTensor::value_type;
+  using elem_t = typename inner_t::value_type;
+  using inner_range_t = typename inner_t::range_type;
+  if (arg.empty()) return;
+  auto arg_range_fn = [&arg](std::size_t ord) -> inner_range_t {
+    const auto& a = arg.data()[ord];
+    return a.empty() ? inner_range_t{} : a.range();
+  };
+  if (result.empty()) {
+    result =
+        arena_outer_init<OuterTensor>(arg.range(), arg.nbatch(), arg_range_fn);
+  } else {
+    TA_ASSERT(result.range().volume() == arg.range().volume());
+    TA_ASSERT(result.nbatch() == arg.nbatch());
+    arena_tot_grow_inplace(result, arg_range_fn);
+  }
+  const std::size_t N_cells = arg.range().volume() * arg.nbatch();
+  for (std::size_t ord = 0; ord < N_cells; ++ord) {
+    const auto& src = arg.data()[ord];
+    if (src.empty()) continue;
+    auto& dst = result.data()[ord];
+    TA_ASSERT(!dst.empty() && dst.size() == src.size());
+    const elem_t* s = src.data();
+    elem_t* d = dst.data();
+    for (std::size_t i = 0; i < src.size(); ++i) d[i] += s[i];
+  }
+}
+
 /// Shallow-permute outer cells while preserving inner storage. The result
 /// shares the source's inner storage (arena slab or aliased element data);
 /// only the outer-cell array is rebuilt in permuted order.

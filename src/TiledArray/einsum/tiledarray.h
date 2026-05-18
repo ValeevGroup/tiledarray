@@ -617,6 +617,14 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     using ::Einsum::index::permutation;
     using TiledArray::Permutation;
 
+    // Temporary sub-Worlds used by the generalized-contraction path below.
+    // Declared before AB/C so it is destroyed *after* them: an ArrayTerm's
+    // `.ei` member is a DistArray bound to one of these sub-Worlds, and
+    // ~DistArray -> lazy_deleter dereferences that World. If a sub-World
+    // outlived only by `worlds` were torn down first, that deref would hit a
+    // dead World (e.g. while unwinding an exception thrown mid-contraction).
+    std::vector<std::shared_ptr<World>> worlds;
+
     std::tuple<ArrayTerm<ArrayA>, ArrayTerm<ArrayB>> AB{{A.array(), a},
                                                         {B.array(), b}};
 
@@ -842,8 +850,6 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
     std::invoke(update_tr, std::get<0>(AB));
     std::invoke(update_tr, std::get<1>(AB));
-
-    std::vector<std::shared_ptr<World>> worlds;
 
     // iterates over tiles of hadamard indices
     for (Index h : H.tiles) {

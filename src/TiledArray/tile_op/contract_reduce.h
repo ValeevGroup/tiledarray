@@ -26,15 +26,15 @@
 #ifndef TILEDARRAY_TILE_OP_CONTRACT_REDUCE_H__INCLUDED
 #define TILEDARRAY_TILE_OP_CONTRACT_REDUCE_H__INCLUDED
 
-#include <optional>
-#include <type_traits>
-#include <variant>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/permutation.h>
 #include <TiledArray/tensor/arena_einsum.h>
 #include <TiledArray/tensor/complex.h>
 #include <TiledArray/tile_op/tile_interface.h>
 #include <TiledArray/util/function.h>
+#include <optional>
+#include <type_traits>
+#include <variant>
 #include "../tile_interface/add.h"
 #include "../tile_interface/permute.h"
 
@@ -85,10 +85,13 @@ class ContractReduceBase {
 
  private:
   struct Impl {
-    using left_tile_type  = std::remove_cv_t<std::remove_reference_t<first_argument_type>>;
-    using right_tile_type = std::remove_cv_t<std::remove_reference_t<second_argument_type>>;
+    using left_tile_type =
+        std::remove_cv_t<std::remove_reference_t<first_argument_type>>;
+    using right_tile_type =
+        std::remove_cv_t<std::remove_reference_t<second_argument_type>>;
     using arena_plan_storage_t =
-        TiledArray::detail::arena_plan_storage_t<result_type, left_tile_type, right_tile_type>;
+        TiledArray::detail::arena_plan_storage_t<result_type, left_tile_type,
+                                                 right_tile_type>;
 
     template <
         typename Perm = BipartitePermutation,
@@ -164,7 +167,8 @@ class ContractReduceBase {
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&> &&
-          std::is_same_v<std::decay_t<Plan>, typename Impl::arena_plan_storage_t>>>
+          std::is_same_v<std::decay_t<Plan>,
+                         typename Impl::arena_plan_storage_t>>>
   ContractReduceBase(const math::blas::Op left_op,
                      const math::blas::Op right_op, const scalar_type alpha,
                      const unsigned int result_rank,
@@ -347,8 +351,19 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// target
   /// \param[in] arg The argument that will be added to \c result
   void operator()(result_type& result, const result_type& arg) const {
-    using TiledArray::add_to;
-    add_to(result, arg);
+    if constexpr (
+        detail::is_contraction_arena_tot_v<
+            result_type,
+            std::remove_cv_t<std::remove_reference_t<first_argument_type>>,
+            std::remove_cv_t<std::remove_reference_t<second_argument_type>>>) {
+      // Two partial contraction results reduced from disjoint K-panel
+      // subsets can carry different inner-cell sparsity; union their shapes
+      // before accumulating.
+      detail::arena_tot_add_to(result, arg);
+    } else {
+      using TiledArray::add_to;
+      add_to(result, arg);
+    }
   }
 
   /// Contract a pair of tiles and add to a target tile
@@ -368,11 +383,22 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
       TA_ASSERT(this->elem_muladd_op());
       if constexpr (detail::is_contraction_arena_tot_v<
                         result_type,
-                        std::remove_cv_t<std::remove_reference_t<first_argument_type>>,
-                        std::remove_cv_t<std::remove_reference_t<second_argument_type>>>) {
-        if (empty(result) && this->arena_plan().has_value()) {
-          result = this->arena_plan()->reserve_and_construct(
-              left, right, this->gemm_helper());
+                        std::remove_cv_t<
+                            std::remove_reference_t<first_argument_type>>,
+                        std::remove_cv_t<
+                            std::remove_reference_t<second_argument_type>>>) {
+        // The result tile is shaped from operand inner cells. A SUMMA
+        // reduction streams K-panels one at a time: the first panel sizes the
+        // result; a later panel of a contracted-dimension-sparse ToT operand
+        // can touch inner cells the first panel left null, so each subsequent
+        // panel extends the result to cover its own cells.
+        if (this->arena_plan().has_value()) {
+          if (empty(result))
+            result = this->arena_plan()->reserve_and_construct(
+                left, right, this->gemm_helper());
+          else
+            this->arena_plan()->grow_to_cover(result, left, right,
+                                              this->gemm_helper());
         }
       }
       gemm(result, left, right, ContractReduceBase_::gemm_helper(),

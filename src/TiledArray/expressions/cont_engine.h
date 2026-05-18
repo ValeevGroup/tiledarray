@@ -258,7 +258,10 @@ class ContEngine : public BinaryEngine<Derived> {
     // 1. if ToT inner tile op has been initialized
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
       TA_ASSERT(element_nonreturn_op_);
-      TA_ASSERT(element_return_op_);
+      // a view inner cell (e.g. ArenaTensor) cannot host a value-returning
+      // inner op, so element_return_op_ is intentionally left null for it
+      if constexpr (!TiledArray::is_tensor_view_v<result_tile_element_type>)
+        TA_ASSERT(element_return_op_);
     }
 
     // Initialize children
@@ -537,18 +540,76 @@ class ContEngine : public BinaryEngine<Derived> {
                     TiledArray::is_tensor_view_v<result_tile_element_type>) {
         // ToT x ToT with non-owning view inner cells (e.g. ArenaTensor). A
         // view cell cannot host a value-returning inner op, so the
-        // owning-cell inner-op builder cannot even be instantiated for it.
-        // The only ToT x ToT product such cells support is the elementwise
-        // pure Hadamard, and there the inner element op is unused anyway --
-        // MultEngine::make_tile_op passes none and the outer Mult tile op
-        // recurses through Tensor<view>::mult -- so element_*_op_ is left
-        // null. Every other nested product is deferred.
+        // owning-cell inner-op builder cannot be used. Two nested products
+        // are supported here:
+        //  - the elementwise pure Hadamard, where the inner element op is
+        //    unused anyway -- MultEngine::make_tile_op passes none and the
+        //    outer Mult tile op recurses through Tensor<view>::mult -- so
+        //    element_*_op_ is left null;
+        //  - the inner contraction (incl. inner outer-product), routed
+        //    through the arena fast path: it writes results in place into
+        //    pre-shaped view cells, so only element_nonreturn_op_ is needed.
+        // Every other nested product is deferred.
         const auto inner_prod = this->inner_product_type();
-        if (inner_prod != TensorProduct::Hadamard ||
-            this->product_type() != TensorProduct::Hadamard)
+        if (inner_prod == TensorProduct::Hadamard &&
+            this->product_type() == TensorProduct::Hadamard) {
+          // pure Hadamard: element_*_op_ left null
+        } else if (inner_prod == TensorProduct::Contraction) {
+          using op_type = TiledArray::detail::ContractReduce<
+              result_tile_element_type, left_tile_element_type,
+              right_tile_element_type, scalar_type>;
+          // The inner op is built *perm-free* on purpose. factor_ is absorbed
+          // into element_nonreturn_op_; operand inner transposes are folded
+          // into the inner GEMM via left_/right_inner_permtype_. A non-identity
+          // inner *result* permutation is deliberately NOT placed on this op:
+          // make_fused_contraction_lambda asserts a perm-free op, and the
+          // result permutation is instead carried by op_'s total_perm (==
+          // perm_) and applied by op_'s post-processing step
+          // (ContractReduce::operator()(temp)), which routes through the
+          // arena-aware Tensor<ArenaTensor>::permute (arena_inner_permute).
+          auto contrreduce_op = op_type(
+              to_cblas_op(this->left_inner_permtype_),
+              to_cblas_op(this->right_inner_permtype_), this->factor_,
+              inner_size(this->indices_), inner_size(this->left_indices_),
+              inner_size(this->right_indices_));
+          constexpr bool arena_eligible =
+              TiledArray::detail::is_contraction_arena_tot_v<
+                  result_tile_type, left_tile_type, right_tile_type>;
+          if constexpr (arena_eligible) {
+            if (this->product_type() == TensorProduct::Contraction)
+              this->arena_plan_ =
+                  TiledArray::detail::make_contraction_arena_plan<
+                      result_tile_type, left_tile_type, right_tile_type>(
+                      TiledArray::detail::ArenaInnerShapeKind::
+                          gemm_result_range,
+                      std::make_optional(contrreduce_op.gemm_helper()),
+                      // perm-free: result permutation is applied by op_, see
+                      // the comment on contrreduce_op above
+                      Permutation{});
+          }
+          bool have_plan = false;
+          if constexpr (arena_eligible) have_plan = bool(this->arena_plan_);
+          if (!have_plan)
+            TA_EXCEPTION(
+                "nested contraction on view inner tiles (e.g. ArenaTensor) "
+                "is supported only via the arena fast path, which was "
+                "inactive for this expression (arena disabled, or a "
+                "non-contraction outer product)");
+          if constexpr (arena_eligible) {
+            this->element_nonreturn_op_ =
+                TiledArray::detail::make_fused_contraction_lambda<
+                    result_tile_element_type, left_tile_element_type,
+                    right_tile_element_type>(contrreduce_op);
+          }
+          // element_return_op_ left null: a view cell cannot be
+          // value-returned, and the outer ContractReduce uses only
+          // element_nonreturn_op_ (see the init_struct precondition check).
+        } else {
           TA_EXCEPTION(
-              "nested contraction on view inner tiles (e.g. ArenaTensor) is "
-              "not yet supported; only the elementwise Hadamard product is");
+              "nested non-contraction product on view inner tiles (e.g. "
+              "ArenaTensor) is not yet supported; only the elementwise "
+              "Hadamard product and the inner contraction are");
+        }
       } else {
         init_inner_tile_op_owning_(inner_target_indices);
       }

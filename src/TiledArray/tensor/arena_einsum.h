@@ -67,7 +67,20 @@ class ContractionArenaPlan {
   Result reserve_and_construct(const Left& left, const Right& right,
                                const math::GemmHelper& outer_gh) const;
 
+  /// Grows an already-constructed result tile in place so it covers every
+  /// inner cell implied by this `left`/`right` K-panel. A SUMMA reduction
+  /// shapes the result from its first K-panel only; a later panel of a
+  /// contracted-dimension-sparse ToT operand can touch inner cells the first
+  /// panel left null, so each subsequent panel must extend the result.
+  void grow_to_cover(Result& result, const Left& left, const Right& right,
+                     const math::GemmHelper& outer_gh) const;
+
  private:
+  /// Per-output-cell inner ranges implied by one `left`/`right` K-panel.
+  std::vector<typename Result::value_type::range_type> operand_inner_ranges(
+      const Left& left, const Right& right,
+      const math::GemmHelper& outer_gh) const;
+
   ArenaInnerShapePlan inner_plan_{};
 };
 
@@ -125,18 +138,15 @@ auto make_contraction_arena_plan(ArenaInnerShapeKind inner_kind,
   }
 }
 
-/// Reserves arena storage and constructs the result tensor-of-tensor tile.
+/// Per-output-cell inner ranges implied by one `left`/`right` K-panel.
 template <typename Result, typename Left, typename Right>
-Result ContractionArenaPlan<Result, Left, Right>::reserve_and_construct(
+std::vector<typename Result::value_type::range_type>
+ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
     const Left& left, const Right& right,
     const math::GemmHelper& outer_gh) const {
   using inner_t = typename Result::value_type;
   using inner_range_t = typename inner_t::range_type;
   using integer = math::blas::integer;
-
-  auto outer_range =
-      outer_gh.template make_result_range<typename Result::range_type>(
-          left.range(), right.range());
 
   integer M, N, K;
   outer_gh.compute_matrix_sizes(M, N, K, left.range(), right.range());
@@ -201,8 +211,42 @@ Result ContractionArenaPlan<Result, Left, Right>::reserve_and_construct(
     return inner_range_t{};
   };
 
+  std::vector<inner_range_t> ranges;
+  const std::size_t N_cells = mn * batch_sz;
+  ranges.reserve(N_cells);
+  for (std::size_t ord = 0; ord < N_cells; ++ord)
+    ranges.emplace_back(range_for(ord));
+  return ranges;
+}
+
+/// Reserves arena storage and constructs the result tensor-of-tensor tile.
+template <typename Result, typename Left, typename Right>
+Result ContractionArenaPlan<Result, Left, Right>::reserve_and_construct(
+    const Left& left, const Right& right,
+    const math::GemmHelper& outer_gh) const {
+  using inner_range_t = typename Result::value_type::range_type;
+  auto outer_range =
+      outer_gh.template make_result_range<typename Result::range_type>(
+          left.range(), right.range());
+  TA_ASSERT(left.nbatch() == right.nbatch());
+  const std::size_t batch_sz = static_cast<std::size_t>(left.nbatch());
+  const auto ranges = operand_inner_ranges(left, right, outer_gh);
   // arena_outer_init dispatches internally on the inner-cell type.
-  return detail::arena_outer_init<Result>(outer_range, batch_sz, range_for);
+  return detail::arena_outer_init<Result>(
+      outer_range, batch_sz,
+      [&ranges](std::size_t ord) -> inner_range_t { return ranges[ord]; });
+}
+
+/// Grows an already-constructed result tile to cover this K-panel's cells.
+template <typename Result, typename Left, typename Right>
+void ContractionArenaPlan<Result, Left, Right>::grow_to_cover(
+    Result& result, const Left& left, const Right& right,
+    const math::GemmHelper& outer_gh) const {
+  using inner_range_t = typename Result::value_type::range_type;
+  const auto ranges = operand_inner_ranges(left, right, outer_gh);
+  detail::arena_tot_grow_inplace(
+      result,
+      [&ranges](std::size_t ord) -> inner_range_t { return ranges[ord]; });
 }
 
 /// Accumulates a contraction into an already-allocated result cell.
@@ -457,7 +501,13 @@ auto make_regime_a_arena_plan(const A& a, const B& b, const Inner& inner,
   if constexpr (!is_arena_eligible_outer_v<Result>) {
     return plan;
   } else {
-    if (bool(inner_perm) && !inner_perm.is_identity()) return plan;
+    // `inner_perm` (== C.permutation at the call site) is the result *outer*
+    // permutation. run_regime_a_arena applies it itself via tile.permute(pc)
+    // -- byte-identical to the legacy non-arena path, and supported for an
+    // arena ToT via arena_permute_shallow -- so it does not gate the plan.
+    // Inner-operand and inner-result permutations are likewise handled, by
+    // hoisting them to slab-level arena_inner_permute rewrites (see below).
+    (void)inner_perm;
 
     using ArrayA_t = std::remove_cvref_t<decltype(a.array)>;
     using ArrayB_t = std::remove_cvref_t<decltype(b.array)>;
