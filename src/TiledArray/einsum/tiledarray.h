@@ -687,6 +687,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
           std::is_same_v<TensorT,
                          typename decltype(A.array)::value_type::value_type>);
       constexpr bool is_tot = detail::is_tensor_v<TensorT>;
+      // A non-owning view inner cell (e.g. ArenaTensor) has no value-returning
+      // per-cell product; the legacy element-op path below cannot run for it.
+      constexpr bool inner_is_view = TiledArray::is_tensor_view_v<TensorT>;
       auto element_hadamard_op =
           (is_tot && inner.h)
               ? std::make_optional(
@@ -749,17 +752,28 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
           for (size_t k = 0; k < batch; ++k) {
             using Ix = ::Einsum::Index<std::string>;
             if constexpr (AreArrayToT<ArrayA, ArrayB>) {
-              auto aik = ai.batch(k);
-              auto bik = bi.batch(k);
-              auto vol = aik.total_size();
-              TA_ASSERT(vol == bik.total_size());
+              if constexpr (inner_is_view) {
+                // View inner cells (e.g. ArenaTensor) have no value-returning
+                // per-cell product; only run_regime_a_arena can produce them.
+                // Reaching this legacy path means the arena plan was inactive
+                // -- typically a permuted inner contraction (see
+                // TODO(arena-einsum-perm) in arena_einsum.h).
+                TA_EXCEPTION(
+                    "TA::einsum: ToT x ToT product with view inner cells "
+                    "(e.g. ArenaTensor) is supported only via the regime-A "
+                    "arena fast path, which was inactive for this expression "
+                    "(likely a permuted inner contraction)");
+              } else {
+                auto aik = ai.batch(k);
+                auto bik = bi.batch(k);
+                auto vol = aik.total_size();
+                TA_ASSERT(vol == bik.total_size());
 
-              auto &el = tile({k});
-              using TensorT = std::remove_reference_t<decltype(el)>;
+                auto &el = tile({k});
 
-              for (auto i = 0; i < vol; ++i)
-                add_to(el, element_product_op(aik.data()[i], bik.data()[i]));
-
+                for (auto i = 0; i < vol; ++i)
+                  add_to(el, element_product_op(aik.data()[i], bik.data()[i]));
+              }
             } else if constexpr (!AreArraySame<ArrayA, ArrayB>) {
               auto aik = ai.batch(k);
               auto bik = bi.batch(k);

@@ -395,27 +395,32 @@ void test_tot_neg() {
       [](long e, long i) { return -(100.0 * e + i); });
 }
 
-/// End-to-end ToT contraction through TA::einsum: outer Hadamard over i,j,
-/// inner contraction over o -- c(ij;mn) = sum_o a(ij;mo) * b(ij;on). The
-/// arena-inner result is checked against a Tensor<Tensor<double>> reference
-/// run of the identical expression on identically-filled operands.
+/// End-to-end ToT contraction through TA::einsum -- c(ij;mn) =
+/// sum_k sum_o a(ijk;mo) * b(ijk;on): outer Hadamard over i,j with an outer
+/// contraction over k, plus an inner contraction over o. This routes through
+/// the regime-A arena einsum path (the outer-Hadamard "hadamard reduction"
+/// branch), not the expression-DSL delegation a pure-Hadamard outer would
+/// take. The arena-inner result is checked against a Tensor<Tensor<double>>
+/// reference run of the identical expression on identically-filled operands.
 template <typename InnerTile, typename Policy>
 void test_tot_einsum_contraction() {
   using Array = TA::DistArray<TA::Tensor<InnerTile>, Policy>;
   using RefArray = TA::DistArray<TA::Tensor<TA::Tensor<double>>, Policy>;
   TA::World& world = *GlobalFixture::world;
-  TA::TiledRange trange{{0, 2, 4}, {0, 2, 4}};
+  TA::TiledRange trange{{0, 2, 4}, {0, 2, 4}, {0, 2}};
   constexpr std::size_t M = 2, O = 3, N = 2;
 
   auto fill_a = [](auto& cell, const auto& idx) {
-    const long key =
-        7 * static_cast<long>(idx[0]) + 13 * static_cast<long>(idx[1]);
+    const long key = 7 * static_cast<long>(idx[0]) +
+                     13 * static_cast<long>(idx[1]) +
+                     31 * static_cast<long>(idx[2]);
     for (std::size_t p = 0; p < cell.size(); ++p)
       cell.data()[p] = static_cast<double>(1 + static_cast<long>(p) + key);
   };
   auto fill_b = [](auto& cell, const auto& idx) {
-    const long key =
-        5 * static_cast<long>(idx[0]) + 3 * static_cast<long>(idx[1]);
+    const long key = 5 * static_cast<long>(idx[0]) +
+                     3 * static_cast<long>(idx[1]) +
+                     11 * static_cast<long>(idx[2]);
     for (std::size_t p = 0; p < cell.size(); ++p)
       cell.data()[p] = static_cast<double>(2 + static_cast<long>(p) + key);
   };
@@ -434,8 +439,8 @@ void test_tot_einsum_contraction() {
       fill_b);
   world.gop.fence();
 
-  auto c = TA::einsum("ij;mo,ij;on->ij;mn", a, b);
-  auto c_ref = TA::einsum("ij;mo,ij;on->ij;mn", a_ref, b_ref);
+  auto c = TA::einsum("ijk;mo,ijk;on->ij;mn", a, b);
+  auto c_ref = TA::einsum("ijk;mo,ijk;on->ij;mn", a_ref, b_ref);
   world.gop.fence();
 
   for (const auto& tidx : c.trange().tiles_range()) {
@@ -556,15 +561,9 @@ BOOST_AUTO_TEST_CASE(neg_arena_inner) {
 BOOST_AUTO_TEST_CASE(einsum_contraction_tensor_inner) {
   test_tot_einsum_contraction<TA::Tensor<double>, TA::DensePolicy>();
 }
-// TODO(arena-einsum-legacy-fallback): test_tot_einsum_contraction for an
-// ArenaTensor inner does not compile. TA::einsum's per-cell legacy path
-// (einsum/tiledarray.h: tensor_hadamard / tensor_contract, the
-// element_hadamard_op / element_contract_op lambdas) value-returns inner
-// tensors and calls ArenaTensor::mult / ArenaTensor::permute, none of which
-// a view inner cell supports. The regime-A arena path runs first, but the
-// legacy fallback coexists in the same function and is still instantiated.
-// It must be if-constexpr-guarded out for is_tensor_view_v inner cells, with
-// an inactive regime-A plan throwing instead of falling through.
+BOOST_AUTO_TEST_CASE(einsum_contraction_arena_inner) {
+  test_tot_einsum_contraction<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
