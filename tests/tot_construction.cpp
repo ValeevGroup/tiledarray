@@ -266,6 +266,125 @@ void test_distributed_arena_tot() {
   world.gop.fence();
 }
 
+/// DistArray-level expression on a tensor-of-tensors, for plain and arena
+/// inner tiles. `fill_a`/`fill_b` populate operands a/b; `expr(c, a, b)`
+/// evaluates the expression under test; `expected(e, i)` is the reference
+/// value for element i of outer element e.
+template <typename InnerTile, typename Policy, typename FillA, typename FillB,
+          typename Expr, typename Expected>
+void run_tot_expr(FillA fill_a, FillB fill_b, Expr expr, Expected expected) {
+  using Array = TA::DistArray<TA::Tensor<InnerTile>, Policy>;
+  TA::World& world = *GlobalFixture::world;
+  TA::TiledRange trange{{0, 2, 4}};
+  Array a(world, trange), b(world, trange);
+  auto range_fn = [](const auto& idx) {
+    return inner_range_for<InnerTile>(idx);
+  };
+  a.init_tiles_nested(range_fn, fill_a);
+  b.init_tiles_nested(range_fn, fill_b);
+  world.gop.fence();
+  Array c;
+  expr(c, a, b);
+  world.gop.fence();
+  for (const auto& tidx : c.trange().tiles_range()) {
+    if (!c.is_local(tidx)) continue;
+    auto tile = c.find(tidx).get();
+    for (std::size_t ord = 0; ord < tile.range().volume(); ++ord) {
+      const long e = static_cast<long>(tile.range().idx(ord)[0]);
+      const auto& cell = tile.data()[ord];
+      BOOST_REQUIRE(!cell.empty());
+      BOOST_CHECK_EQUAL(static_cast<long>(cell.size()), inner_extent(e));
+      for (std::size_t i = 0; i < cell.size(); ++i)
+        BOOST_CHECK_EQUAL(cell.data()[i], expected(e, static_cast<long>(i)));
+    }
+  }
+}
+
+/// c = a + b, element-wise over matching inner cells.
+template <typename InnerTile, typename Policy>
+void test_tot_add() {
+  auto fill = [](auto& cell, const auto& idx) { fill_cell(cell, idx); };
+  run_tot_expr<InnerTile, Policy>(
+      fill, fill,
+      [](auto& c, auto& a, auto& b) { c("i;j") = a("i;j") + b("i;j"); },
+      [](long e, long i) { return 2.0 * (100.0 * e + i); });
+}
+
+/// c = a - b, element-wise over matching inner cells.
+template <typename InnerTile, typename Policy>
+void test_tot_subt() {
+  auto fill_a = [](auto& cell, const auto& idx) {
+    const long e = static_cast<long>(idx[0]);
+    for (std::size_t i = 0; i < cell.size(); ++i)
+      cell.data()[i] = 300.0 * e + 2.0 * i;
+  };
+  auto fill_b = [](auto& cell, const auto& idx) { fill_cell(cell, idx); };
+  run_tot_expr<InnerTile, Policy>(
+      fill_a, fill_b,
+      [](auto& c, auto& a, auto& b) { c("i;j") = a("i;j") - b("i;j"); },
+      [](long e, long i) { return 200.0 * e + i; });
+}
+
+/// c = a * b, full Hadamard (outer and inner) over matching inner cells.
+template <typename InnerTile, typename Policy>
+void test_tot_mult() {
+  auto fill_a = [](auto& cell, const auto& idx) {
+    const long e = static_cast<long>(idx[0]);
+    for (std::size_t i = 0; i < cell.size(); ++i)
+      cell.data()[i] = static_cast<double>(e + static_cast<long>(i) + 1);
+  };
+  auto fill_b = [](auto& cell, const auto&) {
+    for (std::size_t i = 0; i < cell.size(); ++i) cell.data()[i] = 3.0;
+  };
+  run_tot_expr<InnerTile, Policy>(
+      fill_a, fill_b,
+      [](auto& c, auto& a, auto& b) { c("i;j") = a("i;j") * b("i;j"); },
+      [](long e, long i) { return 3.0 * (e + i + 1); });
+}
+
+/// c = 3 * a, scalar scaling over inner cells.
+template <typename InnerTile, typename Policy>
+void test_tot_scale() {
+  auto fill = [](auto& cell, const auto& idx) { fill_cell(cell, idx); };
+  run_tot_expr<InnerTile, Policy>(
+      fill, fill, [](auto& c, auto& a, auto&) { c("i;j") = 3.0 * a("i;j"); },
+      [](long e, long i) { return 3.0 * (100.0 * e + i); });
+}
+
+/// c = 3 * (a + b); exercises the scaled-add tile op (add with a factor).
+template <typename InnerTile, typename Policy>
+void test_tot_scaled_add() {
+  auto fill = [](auto& cell, const auto& idx) { fill_cell(cell, idx); };
+  run_tot_expr<InnerTile, Policy>(
+      fill, fill,
+      [](auto& c, auto& a, auto& b) { c("i;j") = 3.0 * (a("i;j") + b("i;j")); },
+      [](long e, long i) { return 6.0 * (100.0 * e + i); });
+}
+
+/// c = 3 * (a - b); exercises the scaled-subt tile op (subt with a factor).
+template <typename InnerTile, typename Policy>
+void test_tot_scaled_subt() {
+  auto fill_a = [](auto& cell, const auto& idx) {
+    const long e = static_cast<long>(idx[0]);
+    for (std::size_t i = 0; i < cell.size(); ++i)
+      cell.data()[i] = 300.0 * e + 2.0 * i;
+  };
+  auto fill_b = [](auto& cell, const auto& idx) { fill_cell(cell, idx); };
+  run_tot_expr<InnerTile, Policy>(
+      fill_a, fill_b,
+      [](auto& c, auto& a, auto& b) { c("i;j") = 3.0 * (a("i;j") - b("i;j")); },
+      [](long e, long i) { return 3.0 * (200.0 * e + i); });
+}
+
+/// c = -a, negation over inner cells.
+template <typename InnerTile, typename Policy>
+void test_tot_neg() {
+  auto fill = [](auto& cell, const auto& idx) { fill_cell(cell, idx); };
+  run_tot_expr<InnerTile, Policy>(
+      fill, fill, [](auto& c, auto& a, auto&) { c("i;j") = -a("i;j"); },
+      [](long e, long i) { return -(100.0 * e + i); });
+}
+
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(tot_construction_suite, TA_UT_LABEL_SERIAL)
@@ -315,6 +434,57 @@ BOOST_AUTO_TEST_CASE(fill_arena_inner) { test_fill_arena(); }
 BOOST_AUTO_TEST_CASE(set_value_arena_inner) { test_set_value_arena(); }
 
 BOOST_AUTO_TEST_CASE(set_iter_arena_inner) { test_set_iter_arena(); }
+
+BOOST_AUTO_TEST_CASE(add_tensor_inner) {
+  test_tot_add<TA::Tensor<double>, TA::DensePolicy>();
+}
+BOOST_AUTO_TEST_CASE(add_arena_inner) {
+  test_tot_add<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
+
+BOOST_AUTO_TEST_CASE(subt_tensor_inner) {
+  test_tot_subt<TA::Tensor<double>, TA::DensePolicy>();
+}
+BOOST_AUTO_TEST_CASE(subt_arena_inner) {
+  test_tot_subt<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
+
+BOOST_AUTO_TEST_CASE(mult_tensor_inner) {
+  test_tot_mult<TA::Tensor<double>, TA::DensePolicy>();
+}
+// TODO(arena-tot-mult): a("i;j")*b("i;j") routes through MultEngine/ContEngine,
+// which builds a value-returning inner tile op acting on the inner tile itself.
+// ArenaTensor has no value-returning mult (an arena cell cannot own a result
+// slab), so the Hadamard ToT product is not yet wired up for arena inners --
+// it needs an arena-aware engine path, like general ToT contraction.
+
+BOOST_AUTO_TEST_CASE(scaled_add_tensor_inner) {
+  test_tot_scaled_add<TA::Tensor<double>, TA::DensePolicy>();
+}
+BOOST_AUTO_TEST_CASE(scaled_add_arena_inner) {
+  test_tot_scaled_add<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
+
+BOOST_AUTO_TEST_CASE(scaled_subt_tensor_inner) {
+  test_tot_scaled_subt<TA::Tensor<double>, TA::DensePolicy>();
+}
+BOOST_AUTO_TEST_CASE(scaled_subt_arena_inner) {
+  test_tot_scaled_subt<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
+
+BOOST_AUTO_TEST_CASE(scale_tensor_inner) {
+  test_tot_scale<TA::Tensor<double>, TA::DensePolicy>();
+}
+BOOST_AUTO_TEST_CASE(scale_arena_inner) {
+  test_tot_scale<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
+
+BOOST_AUTO_TEST_CASE(neg_tensor_inner) {
+  test_tot_neg<TA::Tensor<double>, TA::DensePolicy>();
+}
+BOOST_AUTO_TEST_CASE(neg_arena_inner) {
+  test_tot_neg<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 

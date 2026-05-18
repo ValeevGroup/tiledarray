@@ -1907,6 +1907,61 @@ class Tensor {
     return detail::arena_trivial_scaled<Right>(right, *this, fill);
   }
 
+  /// Scaled element-wise add for `Tensor<ArenaTensor>` ToT operands:
+  /// `(this + right) * factor`. Routes through the arena binary kernel.
+  template <typename Right, typename Scalar>
+    requires(is_arena_tensor_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type> &&
+             detail::is_numeric_v<Scalar>)
+  Tensor add(const Right& right, const Scalar factor) const {
+    using ElemT = typename value_type::value_type;
+    auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
+                         std::size_t n) {
+      for (std::size_t i = 0; i < n; ++i) dst[i] = (l[i] + r[i]) * factor;
+    };
+    return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+  }
+
+  /// True if \p perm reorders nothing -- empty or identity. Handles a plain
+  /// Permutation and a (bipartite) ToT permutation alike.
+  template <typename Perm>
+  static bool arena_perm_is_trivial(const Perm& perm) {
+    if constexpr (std::is_same_v<Perm, BipartitePermutation>)
+      return !static_cast<bool>(perm) ||
+             (perm.first().is_identity() && perm.second().is_identity());
+    else
+      return !static_cast<bool>(perm) || perm.is_identity();
+  }
+
+  /// Permuted add for `Tensor<ArenaTensor>` ToT operands. A non-trivial
+  /// permutation of arena ToT tiles is not yet supported; an identity (or
+  /// null) permutation falls through to the plain element-wise add.
+  template <typename Right, typename Perm>
+    requires(is_arena_tensor_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type> &&
+             detail::is_permutation_v<Perm>)
+  Tensor add(const Right& right, const Perm& perm) const {
+    if (!arena_perm_is_trivial(perm))
+      TA_EXCEPTION(
+          "TA::Tensor<ArenaTensor>::add: permuted add of a tensor-of-tensors "
+          "is not yet supported");
+    return add(right);
+  }
+
+  /// Permuted scaled add for `Tensor<ArenaTensor>` ToT operands; see the
+  /// permuted-add overload above for the permutation restriction.
+  template <typename Right, typename Scalar, typename Perm>
+    requires(is_arena_tensor_v<value_type> &&
+             is_arena_tensor_v<typename Right::value_type> &&
+             detail::is_numeric_v<Scalar> && detail::is_permutation_v<Perm>)
+  Tensor add(const Right& right, const Scalar factor, const Perm& perm) const {
+    if (!arena_perm_is_trivial(perm))
+      TA_EXCEPTION(
+          "TA::Tensor<ArenaTensor>::add: permuted scaled add of a "
+          "tensor-of-tensors is not yet supported");
+    return add(right, factor);
+  }
+
   /// Add this and \c other to construct a new tensor
 
   /// \tparam Right The right-hand tensor type
@@ -2326,9 +2381,19 @@ class Tensor {
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor subt(const Right& right, const Scalar factor) const {
-    return binary(right, [factor](const value_type& l, const value_type& r) {
-      return (l - r) * factor;
-    });
+    if constexpr (is_arena_tensor_v<value_type> &&
+                  is_arena_tensor_v<typename Right::value_type>) {
+      using ElemT = typename value_type::value_type;
+      auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
+                           std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = (l[i] - r[i]) * factor;
+      };
+      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+    } else {
+      return binary(right, [factor](const value_type& l, const value_type& r) {
+        return (l - r) * factor;
+      });
+    }
   }
 
   /// Subtract \c right from this and return the result scaled by a scaling \c
@@ -2347,12 +2412,21 @@ class Tensor {
                 is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
                 detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor subt(const Right& right, const Scalar factor, const Perm& perm) const {
-    return binary(
-        right,
-        [factor](const value_type& l, const value_type& r) {
-          return (l - r) * factor;
-        },
-        perm);
+    if constexpr (is_arena_tensor_v<value_type> &&
+                  is_arena_tensor_v<typename Right::value_type>) {
+      if (!arena_perm_is_trivial(perm))
+        TA_EXCEPTION(
+            "TA::Tensor<ArenaTensor>::subt: permuted scaled subt of a "
+            "tensor-of-tensors is not yet supported");
+      return subt(right, factor);
+    } else {
+      return binary(
+          right,
+          [factor](const value_type& l, const value_type& r) {
+            return (l - r) * factor;
+          },
+          perm);
+    }
   }
 
   /// Subtract a constant from a copy of this tensor
@@ -2517,10 +2591,19 @@ class Tensor {
       typename std::enable_if<detail::is_nested_tensor_v<Right> &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   decltype(auto) mult(const Right& right, const Perm& perm) const {
-    return binary(
-        right,
-        [](const value_type& l, const value_t<Right>& r) { return l * r; },
-        perm);
+    if constexpr (is_arena_tensor_v<value_type> &&
+                  is_arena_tensor_v<typename Right::value_type>) {
+      if (!arena_perm_is_trivial(perm))
+        TA_EXCEPTION(
+            "TA::Tensor<ArenaTensor>::mult: permuted mult of a "
+            "tensor-of-tensors is not yet supported");
+      return mult(right);
+    } else {
+      return binary(
+          right,
+          [](const value_type& l, const value_t<Right>& r) { return l * r; },
+          perm);
+    }
   }
 
   /// Scale and multiply this by \c right to create a new tensor
@@ -2536,10 +2619,20 @@ class Tensor {
       typename std::enable_if<detail::is_nested_tensor_v<Right> &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   decltype(auto) mult(const Right& right, const Scalar factor) const {
-    return binary(right,
-                  [factor](const value_type& l, const value_t<Right>& r) {
-                    return (l * r) * factor;
-                  });
+    if constexpr (is_arena_tensor_v<value_type> &&
+                  is_arena_tensor_v<typename Right::value_type>) {
+      using ElemT = typename value_type::value_type;
+      auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
+                           std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = (l[i] * r[i]) * factor;
+      };
+      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+    } else {
+      return binary(right,
+                    [factor](const value_type& l, const value_t<Right>& r) {
+                      return (l * r) * factor;
+                    });
+    }
   }
 
   /// Scale and multiply this by \c right to create a new, permuted tensor
@@ -2559,12 +2652,21 @@ class Tensor {
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   decltype(auto) mult(const Right& right, const Scalar factor,
                       const Perm& perm) const {
-    return binary(
-        right,
-        [factor](const value_type& l, const value_t<Right>& r) {
-          return (l * r) * factor;
-        },
-        perm);
+    if constexpr (is_arena_tensor_v<value_type> &&
+                  is_arena_tensor_v<typename Right::value_type>) {
+      if (!arena_perm_is_trivial(perm))
+        TA_EXCEPTION(
+            "TA::Tensor<ArenaTensor>::mult: permuted scaled mult of a "
+            "tensor-of-tensors is not yet supported");
+      return mult(right, factor);
+    } else {
+      return binary(
+          right,
+          [factor](const value_type& l, const value_t<Right>& r) {
+            return (l * r) * factor;
+          },
+          perm);
+    }
   }
 
   /// Multiply this tensor by \c right
