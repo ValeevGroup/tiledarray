@@ -459,6 +459,51 @@ void test_tot_einsum_contraction() {
   }
 }
 
+/// Tensor<ArenaTensor>::permute with a bipartite permutation: outer cells
+/// reorder shallowly, inner cells are permuted into a fresh slab. Here both
+/// the outer and inner parts are transposes.
+void test_arena_tile_permute() {
+  using Inner = TA::ArenaTensor<double>;
+  using Outer = TA::Tensor<Inner>;
+  constexpr long OI = 2, OJ = 3, R = 4, C = 5;
+  auto val = [](long oi, long oj, long ii, long ij) {
+    return 1.0 + oi * 1000.0 + oj * 100.0 + ii * 10.0 + ij;
+  };
+  Outer tile = TA::detail::make_nested_tile<Outer>(
+      TA::Range{OI, OJ},
+      [](const auto&) { return inner_range_2d<Inner>(R, C); },
+      [&val](auto& cell, const auto& idx) {
+        const long oi = static_cast<long>(idx[0]);
+        const long oj = static_cast<long>(idx[1]);
+        for (long ii = 0; ii < R; ++ii)
+          for (long ij = 0; ij < C; ++ij)
+            cell.data()[ii * C + ij] = val(oi, oj, ii, ij);
+      });
+
+  // bipartite transpose over the combined index space {0,1 | 2,3}: outer
+  // part transposes dims 0,1 and inner part transposes dims 2,3; the trailing
+  // 2 marks the second (inner) partition size.
+  TA::BipartitePermutation bperm(TA::Permutation{1, 0, 3, 2}, 2);
+  Outer p = tile.permute(bperm);
+
+  // outer range transposed: {OI,OJ} -> {OJ,OI}
+  BOOST_REQUIRE_EQUAL(p.range().extent(0), OJ);
+  BOOST_REQUIRE_EQUAL(p.range().extent(1), OI);
+  for (long oi = 0; oi < OI; ++oi)
+    for (long oj = 0; oj < OJ; ++oj) {
+      // src outer (oi,oj) lands at result outer (oj,oi)
+      const auto& cell = p.data()[oj * OI + oi];
+      BOOST_REQUIRE(!cell.empty());
+      BOOST_REQUIRE_EQUAL(static_cast<long>(cell.size()), R * C);
+      // inner transposed: result cell range {R,C} -> {C,R}
+      BOOST_CHECK_EQUAL(cell.range().extent(0), C);
+      BOOST_CHECK_EQUAL(cell.range().extent(1), R);
+      for (long ii = 0; ii < R; ++ii)
+        for (long ij = 0; ij < C; ++ij)
+          BOOST_CHECK_EQUAL(cell.data()[ij * R + ii], val(oi, oj, ii, ij));
+    }
+}
+
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(tot_construction_suite, TA_UT_LABEL_SERIAL)
@@ -563,6 +608,10 @@ BOOST_AUTO_TEST_CASE(einsum_contraction_tensor_inner) {
 }
 BOOST_AUTO_TEST_CASE(einsum_contraction_arena_inner) {
   test_tot_einsum_contraction<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
+
+BOOST_AUTO_TEST_CASE(arena_tile_bipartite_permute) {
+  test_arena_tile_permute();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -1535,7 +1535,27 @@ class Tensor {
   template <typename Perm,
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor permute(const Perm& perm) const {
-    return Tensor(*this, perm);
+    if constexpr (is_arena_tensor_v<value_type>) {
+      // View inner cells cannot be permuted in place; the owning tile
+      // rewrites its slab(s). The outer cells reorder shallowly (the 8-byte
+      // views are reindexed, the slab is shared via keep-alive); a
+      // non-trivial inner permutation rewrites every cell into a fresh slab.
+      // The generic Tensor(other, perm) ctor's allocate-then-fill shape does
+      // not fit the arena slab model, so route around it.
+      const auto outer_perm = outer(perm);
+      Tensor result =
+          (outer_perm && !outer_perm.is_identity())
+              ? detail::arena_permute_shallow<Tensor>(*this, outer_perm)
+              : *this;
+      if constexpr (detail::is_bipartite_permutation_v<Perm>) {
+        const auto inner_perm = inner(perm);
+        if (inner_perm && !inner_perm.is_identity())
+          result = detail::arena_inner_permute<Tensor>(result, inner_perm);
+      }
+      return result;
+    } else {
+      return Tensor(*this, perm);
+    }
   }
 
   /// Shift the lower and upper bound of this tensor
