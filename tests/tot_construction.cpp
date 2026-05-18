@@ -632,6 +632,16 @@ BOOST_AUTO_TEST_CASE(einsum_contraction_perm_arena_inner) {
       "ijk;om,ijk;on->ij;nm", 3, 2, 3, 2);
 }
 
+// inner Hadamard with a permuted operand: c(ij;mn) = sum_k a(ijk;mn) b(ijk;nm)
+BOOST_AUTO_TEST_CASE(einsum_hadamard_perm_tensor_inner) {
+  test_tot_einsum_contraction<TA::Tensor<double>, TA::DensePolicy>(
+      "ijk;mn,ijk;nm->ij;mn", 2, 3, 3, 2);
+}
+BOOST_AUTO_TEST_CASE(einsum_hadamard_perm_arena_inner) {
+  test_tot_einsum_contraction<TA::ArenaTensor<double>, TA::DensePolicy>(
+      "ijk;mn,ijk;nm->ij;mn", 2, 3, 3, 2);
+}
+
 BOOST_AUTO_TEST_CASE(arena_tile_bipartite_permute) {
   test_arena_tile_permute();
 }

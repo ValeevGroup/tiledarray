@@ -402,10 +402,9 @@ struct RegimeAArenaPlan {
                       is_arena_inner_cell_v<RCell>) {
           if (l.empty() || rr.empty()) return;
           TA_ASSERT(h_plan.has_value());
-          const auto& hp = *h_plan;
-          TA_ASSERT((hp.no_perm || hp.perm_b) &&
-                    "regime-A arena plan should be inactive for unsupported "
-                    "Hadamard perm branches (perm_to_c/perm_a/else)");
+          // run_regime_a_arena has already hoisted any operand inner
+          // permutation, so l and rr are both in C-layout: the per-cell op
+          // is a flat r += l * rr on congruent cells.
           fused_hadamard_inplace(r, l, rr);
         }
         return;
@@ -474,8 +473,11 @@ auto make_regime_a_arena_plan(const A& a, const B& b, const Inner& inner,
       if (static_cast<bool>(inner.h)) {
         plan.kind = RegimeAInnerKind::hadamard;
         plan.h_plan.emplace(inner.A, inner.B, inner.C);
-        const auto& hp = *plan.h_plan;
-        if (!(hp.no_perm || hp.perm_b)) return plan;
+        // A non-canonical inner Hadamard (h_plan.perm.{AC,BC} non-identity)
+        // is handled the same way as a non-canonical inner contraction:
+        // run_regime_a_arena hoists each operand inner permutation to a
+        // slab-level rewrite (arena_inner_permute) so both operands reach
+        // C-layout before the per-cell flat r += l * rr. No need to bail.
       } else {
         plan.kind = RegimeAInnerKind::contraction;
         plan.c_plan.emplace(inner.A, inner.B, inner.C);
@@ -580,15 +582,22 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
         auto bi = B.array.find(pbhi_inv).get();
         if (pa) ai = ai.permute(pa);
         if (pb) bi = bi.permute(pb);
-        // Hoist a non-canonical inner contraction's operand inner
-        // permutations to slab-level rewrites, so the per-cell op below
-        // stays a single canonical GEMM (no per-cell view permute).
+        // Hoist a non-canonical inner op's operand inner permutations to
+        // slab-level rewrites, so the per-cell op below stays canonical:
+        // contraction -> a single canonical GEMM; Hadamard -> a flat
+        // r += l * rr on congruent C-layout cells. No per-cell view permute.
         if (plan.kind == RegimeAInnerKind::contraction) {
           const auto& cp = *plan.c_plan;
           if (cp.do_perm.A)
             ai = arena_inner_permute<decltype(ai)>(ai, cp.perm.A);
           if (cp.do_perm.B)
             bi = arena_inner_permute<decltype(bi)>(bi, cp.perm.B);
+        } else if (plan.kind == RegimeAInnerKind::hadamard) {
+          const auto& hp = *plan.h_plan;
+          if (!hp.perm.AC.is_identity())
+            ai = arena_inner_permute<decltype(ai)>(ai, hp.perm.AC);
+          if (!hp.perm.BC.is_identity())
+            bi = arena_inner_permute<decltype(bi)>(bi, hp.perm.BC);
         }
         auto shape = trange.tile(i);
         ai = ai.reshape(shape, batch);
