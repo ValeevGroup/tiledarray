@@ -467,6 +467,68 @@ void test_tot_einsum_contraction(const char* annot, std::size_t a0,
   }
 }
 
+/// End-to-end T x ToT Hadamard through TA::einsum: a plain DistArray scales
+/// each inner cell of a ToT array. A pure-Hadamard outer ("ij,ij;a->ij;a")
+/// makes einsum delegate to the expression DSL, exercising the arena
+/// `t x tot` Mult tile op. The arena-inner result is checked against an
+/// identical Tensor<double>-inner reference run (the legacy `binary` path).
+template <typename InnerTile, typename Policy>
+void test_tot_einsum_t_x_tot() {
+  using ToTArray = TA::DistArray<TA::Tensor<InnerTile>, Policy>;
+  using RefArray = TA::DistArray<TA::Tensor<TA::Tensor<double>>, Policy>;
+  using PlainArray = TA::DistArray<TA::Tensor<double>, Policy>;
+  TA::World& world = *GlobalFixture::world;
+  TA::TiledRange trange{{0, 2, 4}, {0, 2, 4}};
+
+  auto plain_fill = [](const TA::Range& r) {
+    TA::Tensor<double> t(r);
+    for (std::size_t p = 0; p < t.size(); ++p)
+      t.data()[p] = 1.0 + static_cast<double>(p);
+    return t;
+  };
+  auto tot_fill = [](auto& cell, const auto& idx) {
+    const long key =
+        7 * static_cast<long>(idx[0]) + 13 * static_cast<long>(idx[1]);
+    for (std::size_t p = 0; p < cell.size(); ++p)
+      cell.data()[p] = static_cast<double>(2 + static_cast<long>(p) + key);
+  };
+
+  PlainArray a(world, trange);
+  a.init_tiles(plain_fill);
+  ToTArray b(world, trange);
+  b.init_tiles_nested(
+      [](const auto&) {
+        return typename InnerTile::range_type(std::vector<std::size_t>{4});
+      },
+      tot_fill);
+  RefArray b_ref(world, trange);
+  b_ref.init_tiles_nested(
+      [](const auto&) {
+        return TA::Tensor<double>::range_type(std::vector<std::size_t>{4});
+      },
+      tot_fill);
+  world.gop.fence();
+
+  auto c = TA::einsum("ij,ij;a->ij;a", a, b);
+  auto c_ref = TA::einsum("ij,ij;a->ij;a", a, b_ref);
+  world.gop.fence();
+
+  for (const auto& tidx : c.trange().tiles_range()) {
+    if (!c.is_local(tidx)) continue;
+    auto tile = c.find(tidx).get();
+    auto ref_tile = c_ref.find(tidx).get();
+    BOOST_REQUIRE_EQUAL(tile.range().volume(), ref_tile.range().volume());
+    for (std::size_t ord = 0; ord < tile.range().volume(); ++ord) {
+      const auto& cell = tile.data()[ord];
+      const auto& ref_cell = ref_tile.data()[ord];
+      BOOST_REQUIRE(!cell.empty());
+      BOOST_REQUIRE_EQUAL(cell.size(), ref_cell.size());
+      for (std::size_t p = 0; p < cell.size(); ++p)
+        BOOST_CHECK_EQUAL(cell.data()[p], ref_cell.data()[p]);
+    }
+  }
+}
+
 /// Tensor<ArenaTensor>::permute with a bipartite permutation: outer cells
 /// reorder shallowly, inner cells are permuted into a fresh slab. Here both
 /// the outer and inner parts are transposes.
@@ -640,6 +702,15 @@ BOOST_AUTO_TEST_CASE(einsum_hadamard_perm_tensor_inner) {
 BOOST_AUTO_TEST_CASE(einsum_hadamard_perm_arena_inner) {
   test_tot_einsum_contraction<TA::ArenaTensor<double>, TA::DensePolicy>(
       "ijk;mn,ijk;nm->ij;mn", 2, 3, 3, 2);
+}
+
+// plain T x ToT Hadamard: c(ij;a) = a(ij) * b(ij;a), routed through the
+// expression-DSL Mult tile op.
+BOOST_AUTO_TEST_CASE(einsum_t_x_tot_tensor_inner) {
+  test_tot_einsum_t_x_tot<TA::Tensor<double>, TA::DensePolicy>();
+}
+BOOST_AUTO_TEST_CASE(einsum_t_x_tot_arena_inner) {
+  test_tot_einsum_t_x_tot<TA::ArenaTensor<double>, TA::DensePolicy>();
 }
 
 BOOST_AUTO_TEST_CASE(arena_tile_bipartite_permute) {

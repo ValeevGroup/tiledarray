@@ -2618,6 +2618,14 @@ class Tensor {
             "TA::Tensor<ArenaTensor>::mult: permuted mult of a "
             "tensor-of-tensors is not yet supported");
       return mult(right);
+    } else if constexpr (detail::is_numeric_v<value_type> &&
+                         is_arena_tensor_v<typename Right::value_type>) {
+      // t x tot: a plain scalar tile times an arena ToT tile. The 2-arg
+      // arena overload scales each inner cell into a fresh slab; a
+      // non-trivial result permutation is then a shallow outer reindex of
+      // that slab (the inner part is identity for a Hadamard t x tot).
+      auto result = mult(right);
+      return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
       return binary(
           right,
