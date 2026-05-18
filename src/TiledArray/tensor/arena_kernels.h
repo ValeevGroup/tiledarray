@@ -289,6 +289,76 @@ OuterTensor arena_permute_shallow(const SrcOuterTensor& src, const Perm& perm) {
   return result;
 }
 
+/// Permute the inner modes of every cell of a slab-backed ToT outer tile.
+///
+/// Produces a fresh slab-backed tile with the same outer layout as `src`,
+/// but with each inner cell's range and data permuted by `inner_perm`
+/// (`result_cell(inner_perm * i) == src_cell(i)`). This is the slab-level
+/// counterpart of a per-cell permute: the owning tile allocates one new
+/// slab and rewrites every cell, so no view inner cell is ever asked to
+/// value-return. `inner_perm` is a plain (non-bipartite) permutation whose
+/// rank matches the inner-cell rank.
+template <typename OuterTensor, typename SrcOuterTensor, typename Perm>
+OuterTensor arena_inner_permute(const SrcOuterTensor& src,
+                                const Perm& inner_perm) {
+  using inner_t = typename OuterTensor::value_type;
+  using elem_t = typename inner_t::value_type;
+  using inner_range_t = typename inner_t::range_type;
+  TA_ASSERT(inner_perm);
+  const std::size_t rank = inner_perm.size();
+
+  // result cell range = inner_perm applied to the src cell range; a null
+  // src cell maps to a default (null) range -> a null result cell.
+  auto range_fn = [&src, &inner_perm, rank](std::size_t ord) -> inner_range_t {
+    const auto& s = src.data()[ord];
+    if (s.empty()) return inner_range_t{};
+    TA_ASSERT(static_cast<std::size_t>(s.range().rank()) == rank);
+    const auto& se = s.range().extent();
+    std::vector<std::size_t> ext(rank);
+    for (std::size_t d = 0; d < rank; ++d)
+      ext[d] = static_cast<std::size_t>(se[d]);
+    return inner_range_t(inner_perm * ext);
+  };
+  // The permute writes every result element exactly once, so no zero-init.
+  OuterTensor result = arena_outer_init<OuterTensor>(src.range(), src.nbatch(),
+                                                     range_fn, alignof(elem_t),
+                                                     /*zero_init=*/false);
+
+  const std::size_t N_cells = src.range().volume() * src.nbatch();
+  // Per-cell scratch (rank is fixed across cells); reused, not reallocated.
+  std::vector<std::size_t> dstride(rank), w(rank), ctr(rank);
+  for (std::size_t ord = 0; ord < N_cells; ++ord) {
+    auto& dst = result.data()[ord];
+    if (dst.empty()) continue;
+    const auto& s = src.data()[ord];
+    const auto& se = s.range().extent();
+    const auto& de = dst.range().extent();
+    // row-major strides of the (permuted) destination cell
+    dstride[rank - 1] = 1;
+    for (std::size_t d = rank - 1; d > 0; --d)
+      dstride[d - 1] = dstride[d] * static_cast<std::size_t>(de[d]);
+    // w[d] = destination stride contributed by source dimension d, since
+    // source dim d maps to destination dim inner_perm[d].
+    for (std::size_t d = 0; d < rank; ++d)
+      w[d] = dstride[static_cast<std::size_t>(inner_perm[d])];
+    // walk the source cell in row-major order, scattering into the dst cell
+    ctr.assign(rank, 0);
+    const std::size_t vol = s.size();
+    const elem_t* sd = s.data();
+    elem_t* dd = dst.data();
+    for (std::size_t so = 0; so < vol; ++so) {
+      std::size_t dofs = 0;
+      for (std::size_t d = 0; d < rank; ++d) dofs += w[d] * ctr[d];
+      dd[dofs] = sd[so];
+      for (std::size_t d = rank; d-- > 0;) {
+        if (++ctr[d] < static_cast<std::size_t>(se[d])) break;
+        ctr[d] = 0;
+      }
+    }
+  }
+  return result;
+}
+
 }  // namespace detail
 }  // namespace TiledArray
 
