@@ -120,9 +120,11 @@ inline constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
 }  // namespace detail
 
 /// Forward decl for the tensor-view predicate. Specializations live in
-/// `tensor/arena_tensor.h` (`ArenaTensor`, `detail::TensorInterface`) and
-/// `external/btas.h` (`btas::TensorView`). Declared here so the operator-body
-/// predicates below can consult it without including arena_tensor.h.
+/// `tensor/arena_tensor.h` (`ArenaTensor`) and `external/btas.h`
+/// (`btas::TensorView`). Declared here so the operator-body predicates below
+/// can consult it without including arena_tensor.h. Note `TensorInterface` /
+/// `TensorMap` is deliberately *not* a view here -- it has value-returning
+/// member arithmetic (see arena_tensor.h).
 template <typename T>
 struct is_tensor_view : std::false_type {};
 template <typename T>

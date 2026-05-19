@@ -811,18 +811,17 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     check_index(i);
     if constexpr (detail::is_tensor_of_tensor_v<value_type> &&
                   is_arena_tensor_v<element_type>) {
-      // arena ToT: the iterated inner tiles carry the ranges needed to size
-      // the slab; buffer them (the iterator is single-pass) and build.
+      // arena ToT: each iterated inner tile carries the range that sizes its
+      // cell. make_arena_nested_tile pulls the source once per cell in
+      // ascending order, so the single-pass iterator feeds straight through.
       const auto outer_range = pimpl_->trange().make_tile_range(i);
       using SrcTile = std::decay_t<decltype(*first)>;
-      std::vector<SrcTile> buf;
-      buf.reserve(outer_range.volume());
-      for (std::size_t k = 0; k < outer_range.volume(); ++k, ++first)
-        buf.emplace_back(*first);
-      pimpl_->set(i, make_arena_nested_tile(
-                         outer_range, [&buf](std::size_t k) -> const SrcTile& {
-                           return buf[k];
-                         }));
+      pimpl_->set(i, make_arena_nested_tile(outer_range,
+                                            [&first](std::size_t) -> SrcTile {
+                                              SrcTile t = *first;
+                                              ++first;
+                                              return t;
+                                            }));
     } else {
       pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
     }
@@ -1165,15 +1164,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                 std::is_assignable_v<element_type&, const R&>,
                 "DistArray::init_elements: op must return a freestanding "
                 "tensor assignable to the inner tile type");
-            // pass 1: collect op's freestanding inner tensors; pass 2:
-            // make_arena_nested_tile sizes the slab and deep-copies them in
-            std::vector<R> collected;
-            collected.reserve(outer_range.volume());
-            for (std::size_t o = 0; o < outer_range.volume(); ++o)
-              collected.emplace_back(op(outer_range.idx(o)));
+            // single pass: make_arena_nested_tile pulls each cell once, in
+            // ascending order, so op runs once per cell with no buffer
             return make_arena_nested_tile(
-                outer_range, [&collected](std::size_t k) -> const R& {
-                  return collected[k];
+                outer_range, [&op, &outer_range](std::size_t k) -> R {
+                  return op(outer_range.idx(k));
                 });
           },
           skip_set);
@@ -1927,29 +1922,31 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Engine behind the arena-ToT paths of \c init_elements and \c set:
   /// \p cell_source(ordinal) returns a freestanding tensor whose range sizes
-  /// inner cell \p ordinal and whose data fills it. The slab is allocated by
-  /// \c detail::make_nested_tile and each cell deep-copies its source.
+  /// inner cell \p ordinal and whose data fills it. Built in one pass with
+  /// \c detail::ArenaToTBuilder; \p cell_source is invoked exactly once per
+  /// cell, in ascending ordinal order, so a single-pass source (a generator
+  /// op or an input iterator) can be fed straight through without buffering.
   /// \param[in] outer_range the outer tile's range
   /// \param[in] cell_source maps a cell ordinal to its source tensor
   template <typename CellSource>
   static value_type make_arena_nested_tile(const TiledArray::Range& outer_range,
                                            CellSource&& cell_source) {
     using InnerRange = typename element_type::range_type;
-    return detail::make_nested_tile<value_type>(
-        outer_range,
-        [&](const auto& idx) -> InnerRange {
-          // the inner-cell range type is built from an extent list -- it is
-          // not constructible from a foreign range type
-          const auto& src = cell_source(outer_range.ordinal(idx)).range();
-          const auto& src_ext = src.extent();
-          std::vector<std::size_t> ext(src.rank());
-          for (std::size_t d = 0; d < src.rank(); ++d)
-            ext[d] = static_cast<std::size_t>(src_ext[d]);
-          return InnerRange(ext);
-        },
-        [&](auto& cell, const auto& idx) {
-          cell = cell_source(outer_range.ordinal(idx));
-        });
+    detail::ArenaToTBuilder<value_type> builder(outer_range);
+    const std::size_t n = outer_range.volume();
+    for (std::size_t k = 0; k < n; ++k) {
+      const auto& src = cell_source(k);
+      // the inner-cell range type is built from an extent list -- it is not
+      // constructible from a foreign range type
+      const auto& src_range = src.range();
+      const auto& src_ext = src_range.extent();
+      std::vector<std::size_t> ext(src_range.rank());
+      for (std::size_t d = 0; d < src_range.rank(); ++d)
+        ext[d] = static_cast<std::size_t>(src_ext[d]);
+      auto& cell = builder.emplace(k, InnerRange(ext));
+      if (!cell.empty()) cell = src;  // deep copy into the bound arena cell
+    }
+    return std::move(builder).finish();
   }
 
   /// Code factorization of the actual assert for the other overloads

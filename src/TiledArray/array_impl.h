@@ -1001,7 +1001,6 @@ std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
     // target cell at global outer element `e` takes its inner range and data
     // from the source cell at `e` (elements outside the source range, e.g. a
     // retile that grows the element range, yield null cells).
-    using inner_range_type = typename Tile::value_type::range_type;
     const auto& source_elements = source_array.trange().elements_range();
     std::map<std::size_t, Tile> src_tile_cache;
     auto source_cell_at =
@@ -1024,21 +1023,20 @@ std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
     };
     for (const auto target_ord : *target_array.pmap()) {
       if (target_array.is_zero(target_ord)) continue;
-      Tile tile = make_nested_tile<Tile>(
-          target_trange.make_tile_range(target_ord),
-          [&](const auto& e) -> inner_range_type {
-            const auto* sc = source_cell_at(e);
-            return (sc && !sc->empty()) ? sc->range() : inner_range_type{};
-          },
-          [&](auto& cell, const auto& e) {
-            const auto* sc = source_cell_at(e);
-            if (sc && !sc->empty()) {
-              const auto* s = sc->data();
-              auto* d = cell.data();
-              for (std::size_t p = 0; p < cell.size(); ++p) d[p] = s[p];
-            }
-          });
-      target_array.set(target_ord, std::move(tile));
+      // build each target tile in one pass: a single source lookup per cell
+      // sizes it and fills it together (no separate all-ranges walk).
+      const auto outer_range = target_trange.make_tile_range(target_ord);
+      ArenaToTBuilder<Tile> builder(outer_range);
+      const std::size_t n = outer_range.volume();
+      for (std::size_t o = 0; o < n; ++o) {
+        const auto* sc = source_cell_at(outer_range.idx(o));
+        if (!sc || sc->empty()) continue;  // leaves a deliberately-null cell
+        auto& cell = builder.emplace(o, sc->range());
+        const auto* s = sc->data();
+        auto* d = cell.data();
+        for (std::size_t p = 0; p < cell.size(); ++p) d[p] = s[p];
+      }
+      target_array.set(target_ord, std::move(builder).finish());
     }
     target_array.world().gop.fence();
   } else {

@@ -16,8 +16,10 @@
 #include "TiledArray/tensor/arena.h"
 #include "TiledArray/tensor/arena_tensor.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
+#include <memory_resource>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -49,15 +51,20 @@ std::shared_ptr<typename OuterTensor::value_type[]> make_outer_data(
 
 }  // namespace
 
-/// Allocate a slab-backed ToT outer tile with caller-provided inner ranges.
+/// Allocate an arena-backed ToT outer tile with caller-provided inner ranges.
 ///
 /// `inner_range_fn(cell_ordinal)` -> inner `range_type` for each cell ordinal
 /// in `[0, outer_range.volume() * batch_sz)`; a zero-volume range yields a
-/// deliberately-null inner cell that consumes no slab bytes. Element storage
+/// deliberately-null inner cell that consumes no arena bytes. Element storage
 /// is left zero-initialized when `zero_init` is true. `cell_stride_align` is
 /// the minimum byte stride between adjacent cells; it is bumped up to the
 /// inner type's natural alignment (`ArenaTensor::cell_alignment()`, or
 /// `alignof(T)` for `TA::Tensor` inners).
+///
+/// This is the *up-front* path: all inner ranges are known, so the total is
+/// pre-walked and laid down as a single exactly-sized arena page -- one
+/// contiguous slab, no page-tail waste. For one-pass construction where the
+/// inner sizes are discovered incrementally, use `ArenaToTBuilder`.
 template <typename OuterTensor, typename InnerRangeFn>
 OuterTensor arena_outer_init(
     const typename OuterTensor::range_type& outer_range, std::size_t batch_sz,
@@ -75,24 +82,19 @@ OuterTensor arena_outer_init(
   } else {
     if (alignof(T) > stride) stride = alignof(T);
   }
-  // Cells pack at `stride` granularity, but the slab base handed to
-  // `Arena::reserve` must be at least `max_align_t`-aligned.
+  // Cells pack at `stride` granularity; the page base must be at least
+  // `max_align_t`-aligned.
   const std::size_t slab_align =
       stride > alignof(std::max_align_t) ? stride : alignof(std::max_align_t);
 
   const std::size_t N_cells = outer_range.volume() * batch_sz;
-  constexpr std::size_t kNull = static_cast<std::size_t>(-1);
   std::vector<InnerRange> ranges;
   ranges.reserve(N_cells);
-  std::vector<std::size_t> offsets(N_cells, 0);
   std::size_t total = 0;
   for (std::size_t ord = 0; ord < N_cells; ++ord) {
     ranges.emplace_back(inner_range_fn(ord));
     const std::size_t vol = ranges.back().volume();
-    if (vol == 0) {
-      offsets[ord] = kNull;
-    } else {
-      offsets[ord] = total;
+    if (vol != 0) {
       // `if constexpr`, not a ternary: `InnerT::cell_size` does not exist for
       // a `TA::Tensor` inner, so the non-arena branch must not be formed.
       std::size_t bytes;
@@ -104,15 +106,19 @@ OuterTensor arena_outer_init(
     }
   }
 
-  auto arena_slab = std::make_shared<Arena>();
-  if (total > 0) arena_slab->reserve(total, zero_init, slab_align);
-  auto data = make_outer_data<OuterTensor>(N_cells, arena_slab,
+  auto arena_ptr = std::make_shared<Arena>(std::pmr::new_delete_resource(),
+                                           kArenaDefaultPageBytes, zero_init);
+  // One exact page holds every cell -- subsequent `claim_bytes` calls pack
+  // into it in order, reproducing the old single-slab layout.
+  if (total > 0) arena_ptr->reserve_page(total, slab_align);
+  auto data = make_outer_data<OuterTensor>(N_cells, arena_ptr,
                                            std::shared_ptr<InnerT[]>{});
   OuterTensor result(outer_range, batch_sz, std::move(data));
 
   for (std::size_t ord = 0; ord < N_cells; ++ord) {
     auto& r = ranges[ord];
-    if (offsets[ord] == kNull) {
+    const std::size_t vol = r.volume();
+    if (vol == 0) {
       if constexpr (arena) {
         ::new (result.data() + ord) InnerT();
       } else {
@@ -123,15 +129,13 @@ OuterTensor arena_outer_init(
           ::new (result.data() + ord) InnerT(r);
       }
     } else if constexpr (arena) {
-      // slice<std::byte>(offset, 1) returns an aliased shared_ptr; we only
-      // need its raw pointer to placement-new the Cell -- the slab's lifetime
-      // is held by `arena_handle` captured in the outer's deleter.
-      auto byte_view = arena_slab->template slice<std::byte>(offsets[ord], 1);
+      auto h = arena_ptr->claim_bytes(InnerT::cell_size(vol), stride);
       ::new (result.data() + ord)
-          InnerT(make_arena_tensor_in<T>(byte_view.get(), std::move(r)));
+          InnerT(make_arena_tensor_in<T>(h.get(), std::move(r)));
     } else {
-      auto elem_data = arena_slab->template slice<T>(offsets[ord], r.volume());
-      ::new (result.data() + ord) InnerT(r, std::move(elem_data));
+      auto h = arena_ptr->claim_bytes(vol * sizeof(T), stride);
+      ::new (result.data() + ord)
+          InnerT(r, std::shared_ptr<T[]>(h, reinterpret_cast<T*>(h.get())));
     }
   }
   return result;
@@ -144,30 +148,123 @@ struct nested_fill_noop {
   void operator()(Cell&, const Index&) const noexcept {}
 };
 
-/// Build one ToT outer tile over `outer_range`, two-pass:
-///   pass 1: `inner_range_fn(outer_element_index)` -> inner `range_type`
-///           sizes every inner cell (zero-volume -> deliberately-null cell);
-///   pass 2: `inner_fill_fn(inner_cell&, outer_element_index)` fills each
-///           non-null cell. The default fill leaves storage zero-initialized.
-/// Dispatches internally on the inner-tile type (see `arena_outer_init`).
+/// One-pass incremental builder for an arena-backed ToT outer tile.
+///
+/// `make_nested_tile` / `arena_outer_init` pre-walk every inner range before
+/// any storage is allocated. `ArenaToTBuilder` instead sizes and binds inner
+/// cells one at a time: the caller discovers each inner range and fills the
+/// returned cell in a single step, driving its own loop. Backed by the
+/// multi-page `Arena`, so no total size is needed up front.
+///
+/// Cells should be `emplace`d in outer cell-ordinal order -- recommended, not
+/// required: a view is a pointer, so any order is correct, but in-order
+/// emplacement keeps the page layout cache-friendly for later iteration.
+/// `arena_compact` coalesces a finished tile into one contiguous slab.
+///
+/// A builder, its `Arena`, and the tile under construction are single-thread
+/// objects (see `Arena`).
+template <typename OuterTensor>
+class ArenaToTBuilder {
+ public:
+  using outer_range_type = typename OuterTensor::range_type;
+  using inner_t = typename OuterTensor::value_type;
+  using inner_range_t = typename inner_t::range_type;
+  using elem_t = typename inner_t::value_type;
+
+  explicit ArenaToTBuilder(const outer_range_type& outer_range,
+                           std::size_t batch_sz = 1, bool zero_init = false,
+                           std::size_t page_size = kArenaDefaultPageBytes)
+      : outer_range_(outer_range),
+        batch_sz_(batch_sz),
+        n_cells_(outer_range.volume() * batch_sz),
+        arena_(std::make_shared<Arena>(std::pmr::new_delete_resource(),
+                                       page_size, zero_init)) {
+    data_ = make_outer_data<OuterTensor>(n_cells_, arena_,
+                                         std::shared_ptr<inner_t[]>{});
+    // Cells start null (the deleter destroys all n_cells_); `emplace` binds.
+    for (std::size_t ord = 0; ord < n_cells_; ++ord)
+      ::new (data_.get() + ord) inner_t();
+  }
+
+  /// Size and bind the inner cell at outer cell ordinal `ord` to
+  /// `inner_range`, returning a reference to the bound cell for the caller to
+  /// fill. A zero-volume range yields an empty cell: an owning inner keeps a
+  /// rank>0 range (a rank-0 range stays null), a view inner stays null.
+  /// Outer element indices translate via `outer_range().ordinal(idx)`.
+  inner_t& emplace(std::size_t ord, inner_range_t inner_range) {
+    TA_ASSERT(ord < n_cells_);
+    inner_t& cell = data_[ord];
+    constexpr bool arena = is_arena_tensor_v<inner_t>;
+    const std::size_t vol = inner_range.volume();
+    if (vol == 0) {
+      // Mirror arena_outer_init: an owning (non-view) inner preserves a
+      // rank>0 zero-volume range as an empty-but-ranked tensor; a rank-0
+      // range -- and any arena view inner -- leaves the cell default/null.
+      if constexpr (!arena) {
+        if (inner_range.rank() != 0) cell = inner_t(std::move(inner_range));
+      }
+      return cell;
+    }
+    std::size_t stride;
+    std::size_t bytes;
+    if constexpr (arena) {
+      stride = inner_t::cell_alignment();
+      bytes = inner_t::cell_size(vol);
+    } else {
+      stride = alignof(elem_t);
+      bytes = vol * sizeof(elem_t);
+    }
+    // Single-cell tile: lay down one exactly-sized page (corner case b).
+    if (n_cells_ == 1 && arena_->empty()) arena_->reserve_page(bytes, stride);
+    auto h = arena_->claim_bytes(bytes, stride);
+    if constexpr (arena) {
+      cell = make_arena_tensor_in<elem_t>(h.get(), std::move(inner_range));
+    } else {
+      cell = inner_t(
+          std::move(inner_range),
+          std::shared_ptr<elem_t[]>(h, reinterpret_cast<elem_t*>(h.get())));
+    }
+    return cell;
+  }
+
+  /// Finalize and hand back the assembled outer tile; the builder is spent.
+  OuterTensor finish() && {
+    return OuterTensor(outer_range_, batch_sz_, std::move(data_));
+  }
+
+  std::size_t cell_count() const noexcept { return n_cells_; }
+  const outer_range_type& outer_range() const noexcept { return outer_range_; }
+  const Arena& arena() const noexcept { return *arena_; }
+
+ private:
+  outer_range_type outer_range_;
+  std::size_t batch_sz_;
+  std::size_t n_cells_;
+  std::shared_ptr<Arena> arena_;
+  std::shared_ptr<inner_t[]> data_;
+};
+
+/// Build one ToT outer tile over `outer_range` in a single pass: each inner
+/// cell is sized by `inner_range_fn(outer_element_index)` and immediately
+/// filled by `inner_fill_fn(inner_cell&, outer_element_index)` before moving
+/// to the next -- no separate all-ranges walk. A zero-volume inner range
+/// yields a deliberately-null cell, which `inner_fill_fn` is not invoked on.
+/// Cells are zero-initialized, so the default no-op fill still leaves zeroed
+/// storage. Backed by `ArenaToTBuilder`.
 template <typename OuterTensor, typename InnerRangeFn,
           typename InnerFillFn = nested_fill_noop>
 OuterTensor make_nested_tile(
     const typename OuterTensor::range_type& outer_range,
     InnerRangeFn&& inner_range_fn, InnerFillFn&& inner_fill_fn = {}) {
-  // arena_outer_init keys ranges on the cell ordinal; user code keys on the
-  // (global) outer element index -- translate via the outer range.
-  auto cell_range_fn = [&](std::size_t ord) {
-    return inner_range_fn(outer_range.idx(ord));
-  };
-  OuterTensor result =
-      arena_outer_init<OuterTensor>(outer_range, 1, cell_range_fn);
+  ArenaToTBuilder<OuterTensor> builder(outer_range, /*batch_sz=*/1,
+                                       /*zero_init=*/true);
   const std::size_t N = outer_range.volume();
   for (std::size_t ord = 0; ord < N; ++ord) {
-    auto& cell = result.data()[ord];
-    if (!cell.empty()) inner_fill_fn(cell, outer_range.idx(ord));
+    const auto idx = outer_range.idx(ord);
+    auto& cell = builder.emplace(ord, inner_range_fn(idx));
+    if (!cell.empty()) inner_fill_fn(cell, idx);
   }
-  return result;
+  return std::move(builder).finish();
 }
 
 /// Apply a unary fill op while preserving each source inner range.
@@ -194,6 +291,19 @@ OuterTensor arena_trivial_unary(const SrcOuterTensor& src, FillOp&& fill_op) {
     fill_op(dst.data(), src.data()[ord].data(), dst.size());
   }
   return result;
+}
+
+/// Coalesce a (possibly multi-page, incrementally built) arena-backed ToT
+/// outer tile into a fresh single-page tile: one exact allocation, no page
+/// tail waste, inner cells laid out contiguously in outer order. Returns a
+/// new tile; `src` is unchanged. A tile already built up-front via
+/// `arena_outer_init` is single-page already, so compacting it just
+/// deep-copies.
+template <typename OuterTensor>
+OuterTensor arena_compact(const OuterTensor& src) {
+  return arena_trivial_unary<OuterTensor>(
+      src,
+      [](auto* dst, const auto* s, std::size_t n) { std::copy_n(s, n, dst); });
 }
 
 /// Apply a binary fill op using the left operand's inner ranges (asserted
