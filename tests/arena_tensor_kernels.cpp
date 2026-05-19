@@ -470,6 +470,43 @@ BOOST_AUTO_TEST_CASE(distarray_arena_tensor_construct_and_init_tiles) {
   }
 }
 
+// DistArray-level incremental construction: each outer tile is built with
+// ArenaToTBuilder *inside* the init_tiles callback -- inner cells are sized
+// and filled one at a time, with no up-front range_fn. This needs no new
+// DistArray API: init_tiles already supplies a per-tile callback. Serial-only.
+BOOST_AUTO_TEST_CASE(distarray_arena_tensor_incremental_init_tiles) {
+  using Array = TA::DistArray<Outer, TA::DensePolicy>;
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr{TA::TiledRange1{0, 2, 4}};
+  Array A(world, tr);
+  A.init_tiles([](const TA::Range& tile_range) {
+    TA::detail::ArenaToTBuilder<Outer> b(tile_range);
+    const std::size_t n = tile_range.volume();
+    for (std::size_t ord = 0; ord < n; ++ord) {
+      // inner extent discovered per cell (jagged) -- no pre-walk
+      const std::size_t inner = 2 + ord;
+      Inner& cell = b.emplace(ord, TA::Range{static_cast<long>(inner)});
+      for (std::size_t i = 0; i < inner; ++i)
+        cell.data()[i] = double(ord * 10 + i);
+    }
+    return std::move(b).finish();
+  });
+  world.gop.fence();
+  BOOST_CHECK_EQUAL(A.trange().tiles_range().volume(), 2u);
+  for (std::size_t t = 0; t < 2; ++t) {
+    if (!A.is_local(t)) continue;
+    Outer tile = A.find(t).get();
+    const std::size_t n = tile.range().volume();
+    for (std::size_t ord = 0; ord < n; ++ord) {
+      const Inner& cell = tile.data()[ord];
+      BOOST_REQUIRE(bool(cell));
+      BOOST_CHECK_EQUAL(cell.size(), 2u + ord);
+      for (std::size_t i = 0; i < cell.size(); ++i)
+        BOOST_CHECK_EQUAL(cell.data()[i], double(ord * 10 + i));
+    }
+  }
+}
+
 // Mixed scalar/ArenaTensor outer Hadamard: each scalar-side outer cell
 // multiplies the corresponding ArenaTensor-side inner element-wise.
 // Exercises Tensor<ArenaTensor>::mult(Tensor<scalar>) and the symmetric
