@@ -408,7 +408,16 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
                                 // dimensions as well
         return op_type(op_base_type());
       } else if (inner_prod == TensorProduct::Contraction) {
-        return op_type(op_base_type(this->element_return_op_));
+        if constexpr (TiledArray::is_tensor_view_v<
+                          typename value_type::value_type>) {
+          // arena ToT: a view inner cell cannot host a value-returning
+          // per-cell op, so delegate the whole tile product to the arena op
+          // built in init_inner_tile_op
+          return op_type(op_base_type(typename op_base_type::tile_op_tag{},
+                                      this->arena_hadamard_tile_op_));
+        } else {
+          return op_type(op_base_type(this->element_return_op_));
+        }
       } else if (inner_prod == TensorProduct::Scale) {
         return op_type(op_base_type());
       } else
@@ -438,13 +447,30 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
       } else if (inner_prod == TensorProduct::Contraction) {
         // inner permutation, if needed, was fused into inner op, do not apply
         // inner part of the perm again
-        return op_type(op_base_type(this->element_return_op_),
-                       outer(std::forward<Perm>(perm)));
+        if constexpr (TiledArray::is_tensor_view_v<
+                          typename value_type::value_type>) {
+          return op_type(op_base_type(typename op_base_type::tile_op_tag{},
+                                      this->arena_hadamard_tile_op_),
+                         outer(std::forward<Perm>(perm)));
+        } else {
+          return op_type(op_base_type(this->element_return_op_),
+                         outer(std::forward<Perm>(perm)));
+        }
       } else if (inner_prod == TensorProduct::Scale) {
-        // inner permutation, if needed, was fused into inner op, do not apply
-        // inner part of the perm again
-        return op_type(op_base_type(this->element_return_op_),
-                       outer(std::forward<Perm>(perm)));
+        if constexpr (TiledArray::is_tensor_view_v<
+                          typename value_type::value_type>) {
+          // arena ToT: a view result cell cannot be value-assigned a scaled
+          // tensor, so the element_return_op_ path is unusable. Route through
+          // the arena-aware mult CPO with the full permutation instead -- it
+          // shapes and fills the result tile as a unit and applies the
+          // (outer + inner) result permutation in place.
+          return op_type(op_base_type(), std::forward<Perm>(perm));
+        } else {
+          // inner permutation, if needed, was fused into inner op, do not
+          // apply inner part of the perm again
+          return op_type(op_base_type(this->element_return_op_),
+                         outer(std::forward<Perm>(perm)));
+        }
       } else
         abort();
     } else {  // plain tensor

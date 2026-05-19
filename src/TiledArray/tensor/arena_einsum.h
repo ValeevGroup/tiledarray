@@ -330,6 +330,40 @@ auto make_fused_contraction_lambda(Op contrreduce_op) {
       };
 }
 
+/// Hadamard-outer, contraction-inner ToT x ToT product into a fresh arena
+/// tile. `left` and `right` share the (Hadamard) outer layout; each result
+/// outer cell is the inner GEMM of the corresponding left/right inner cells,
+/// shaped by `inner_gh`. `cell_op(result_cell, left_cell, right_cell)` runs
+/// the per-cell in-place contraction (e.g. the make_fused_contraction_lambda
+/// callback). The per-cell op is perm-free; a non-identity `inner_perm`
+/// permutes the result cells' inner modes as a slab-level post-pass.
+template <typename Result, typename Left, typename Right, typename CellOp>
+Result arena_hadamard_inner_contract(const Left& left, const Right& right,
+                                     const math::GemmHelper& inner_gh,
+                                     const CellOp& cell_op,
+                                     const Permutation& inner_perm) {
+  using inner_range_t = typename Result::value_type::range_type;
+  TA_ASSERT(left.range().volume() == right.range().volume());
+  TA_ASSERT(left.nbatch() == right.nbatch());
+  const std::size_t N_cells = left.range().volume() * left.nbatch();
+  auto range_fn = [&left, &right, &inner_gh](std::size_t ord) -> inner_range_t {
+    const auto& lc = left.data()[ord];
+    const auto& rc = right.data()[ord];
+    if (lc.empty() || rc.empty()) return inner_range_t{};
+    return inner_gh.template make_result_range<inner_range_t>(lc.range(),
+                                                              rc.range());
+  };
+  Result result =
+      arena_outer_init<Result>(left.range(), left.nbatch(), range_fn);
+  for (std::size_t ord = 0; ord < N_cells; ++ord) {
+    if (result.data()[ord].empty()) continue;
+    cell_op(result.data()[ord], left.data()[ord], right.data()[ord]);
+  }
+  if (inner_perm && !inner_perm.is_identity())
+    result = arena_inner_permute<Result>(result, inner_perm);
+  return result;
+}
+
 /// Creates a fused Hadamard callback.
 template <typename Result, typename Left, typename Right>
 auto make_fused_hadamard_lambda() {
