@@ -188,14 +188,23 @@ class ArenaToTBuilder {
 
   /// Size and bind the inner cell at outer cell ordinal `ord` to
   /// `inner_range`, returning a reference to the bound cell for the caller to
-  /// fill. A zero-volume range leaves the cell null. Outer element indices
-  /// translate via `outer_range().ordinal(idx)`.
+  /// fill. A zero-volume range yields an empty cell: an owning inner keeps a
+  /// rank>0 range (a rank-0 range stays null), a view inner stays null.
+  /// Outer element indices translate via `outer_range().ordinal(idx)`.
   inner_t& emplace(std::size_t ord, inner_range_t inner_range) {
     TA_ASSERT(ord < n_cells_);
     inner_t& cell = data_[ord];
-    const std::size_t vol = inner_range.volume();
-    if (vol == 0) return cell;  // stays null
     constexpr bool arena = is_arena_tensor_v<inner_t>;
+    const std::size_t vol = inner_range.volume();
+    if (vol == 0) {
+      // Mirror arena_outer_init: an owning (non-view) inner preserves a
+      // rank>0 zero-volume range as an empty-but-ranked tensor; a rank-0
+      // range -- and any arena view inner -- leaves the cell default/null.
+      if constexpr (!arena) {
+        if (inner_range.rank() != 0) cell = inner_t(std::move(inner_range));
+      }
+      return cell;
+    }
     std::size_t stride;
     std::size_t bytes;
     if constexpr (arena) {

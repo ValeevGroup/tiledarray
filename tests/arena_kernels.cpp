@@ -199,6 +199,21 @@ BOOST_AUTO_TEST_CASE(builder_single_cell_uses_one_exact_page) {
     BOOST_CHECK_EQUAL(built.data()->at_ordinal(i), double(i));
 }
 
+BOOST_AUTO_TEST_CASE(builder_zero_volume_nonscalar_range_keeps_rank) {
+  // an owning inner given a zero-volume but rank>0 range keeps that range
+  // (mirrors arena_outer_init): the rank-1 range is preserved rather than
+  // collapsed to a rank-0 null cell
+  TA::detail::ArenaToTBuilder<outer_t> b(TA::Range{2l});
+  inner_t& c0 = b.emplace(0, TA::Range{0l});  // rank 1, extent 0, volume 0
+  inner_t& c1 = b.emplace(1, TA::Range{3l});
+  BOOST_CHECK_EQUAL(c0.range().rank(), 1u);
+  BOOST_CHECK_EQUAL(c0.range().volume(), 0u);
+  BOOST_CHECK(!c1.empty());
+  outer_t built = std::move(b).finish();
+  BOOST_CHECK_EQUAL(built.data()[0].range().rank(), 1u);
+  BOOST_CHECK_EQUAL(built.data()[1].range().volume(), 3u);
+}
+
 BOOST_AUTO_TEST_CASE(compact_coalesces_a_multipage_tile) {
   const std::size_t N = 16;
   TA::detail::ArenaToTBuilder<outer_t> b(TA::Range{static_cast<long>(N)}, 1,
