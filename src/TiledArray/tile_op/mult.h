@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_MULT_H__INCLUDED
 
 #include <TiledArray/error.h>
+#include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/tile_op/tile_interface.h>
 #include <TiledArray/util/function.h>
 #include <TiledArray/zero_tensor.h>
@@ -79,6 +80,37 @@ class Mult {
   /// \note the lifetime is managed by the callee!
   TiledArray::function_ref<element_op_type> element_op_;
 
+  /// True when this Mult's result has view inner cells (e.g. ArenaTensor),
+  /// the only case in which tile_op_ is ever populated. Gates instantiation
+  /// of eval_tile_op so non-view result types (which need not provide a
+  /// `permute` member) are unaffected.
+  static constexpr bool uses_tile_op_ =
+      TiledArray::is_tensor_view_v<result_value_type>;
+
+  /// type-erased reference to a whole-tile op. When set, eval() delegates the
+  /// entire tile product to it. Used for arena tensor-of-tensors products
+  /// whose per-cell op cannot value-return (e.g. ArenaTensor view inner
+  /// cells), so the result tile must be shaped and filled as a unit.
+  /// \note the lifetime is managed by the callee!
+  TiledArray::function_ref<result_type(const left_type&, const right_type&)>
+      tile_op_;
+
+  /// Delegates the whole tile product to tile_op_.
+  result_type eval_tile_op(const left_type& first,
+                           const right_type& second) const {
+    return tile_op_(first, second);
+  }
+
+  /// Delegates the whole tile product to tile_op_, then permutes the result.
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  result_type eval_tile_op(const left_type& first, const right_type& second,
+                           const Perm& perm) const {
+    result_type result = tile_op_(first, second);
+    if (perm) result = result.permute(perm);
+    return result;
+  }
+
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
@@ -86,6 +118,9 @@ class Mult {
                                TiledArray::detail::is_permutation_v<Perm>>>
   result_type eval(const left_type& first, const right_type& second,
                    const Perm& perm) const {
+    if constexpr (uses_tile_op_) {
+      if (tile_op_) return eval_tile_op(first, second, perm);
+    }
     if (!element_op_) {
       using TiledArray::mult;
       return mult(first, second, perm);
@@ -117,6 +152,9 @@ class Mult {
   template <bool LC, bool RC,
             typename std::enable_if<!(LC || RC)>::type* = nullptr>
   result_type eval(const left_type& first, const right_type& second) const {
+    if constexpr (uses_tile_op_) {
+      if (tile_op_) return eval_tile_op(first, second);
+    }
     if (!element_op_) {
       using TiledArray::mult;
       return mult(first, second);
@@ -128,9 +166,21 @@ class Mult {
 
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
   result_type eval(left_type& first, const right_type& second) const {
+    if constexpr (uses_tile_op_) {
+      if (tile_op_) return eval_tile_op(first, second);
+    }
     if (!element_op_) {
-      using TiledArray::mult_to;
-      return mult_to(std::move(first), second);
+      if constexpr (uses_tile_op_) {
+        // View inner cells (e.g. ArenaTensor): a "consumable" tile is a
+        // shallow handle whose arena slab may be aliased by a persistent
+        // array, so an in-place mult_to would corrupt that operand. Always
+        // produce a fresh result for view-cell tiles.
+        using TiledArray::mult;
+        return mult(first, second);
+      } else {
+        using TiledArray::mult_to;
+        return mult_to(std::move(first), second);
+      }
     } else {
       // TODO figure out why this does not compiles!!!
       //            using TiledArray::inplace_binary;
@@ -144,9 +194,19 @@ class Mult {
   template <bool LC, bool RC,
             typename std::enable_if<!LC && RC>::type* = nullptr>
   result_type eval(const left_type& first, right_type& second) const {
+    if constexpr (uses_tile_op_) {
+      if (tile_op_) return eval_tile_op(first, second);
+    }
     if (!element_op_) {
-      using TiledArray::mult_to;
-      return mult_to(std::move(second), first);
+      if constexpr (uses_tile_op_) {
+        // View inner cells: never consume a shallow handle in place (see the
+        // consume-left overload above).
+        using TiledArray::mult;
+        return mult(first, second);
+      } else {
+        using TiledArray::mult_to;
+        return mult_to(std::move(second), first);
+      }
     } else {  // WARNING: element_op_ might be noncommuting, so can't swap first
               // and second! for GEMM could optimize, but can't introspect
               // element_op_
@@ -194,6 +254,20 @@ class Mult {
                     result_value_type, std::remove_reference_t<ElementOp>,
                     const left_value_type&, const right_value_type&>>>
   explicit Mult(ElementOp&& op) : element_op_(std::forward<ElementOp>(op)) {}
+
+  /// Tag selecting the whole-tile-op constructor.
+  struct tile_op_tag {};
+
+  /// Construct using a whole-tile op. When set, eval() delegates the entire
+  /// tile product to \p op instead of multiplying element-wise. Used for
+  /// arena tensor-of-tensors products whose per-cell op cannot value-return.
+  /// \tparam TileOp a callable with signature
+  ///         `result_type(const left_type&, const right_type&)`
+  /// \param op the whole-tile operation
+  template <typename TileOp, typename = std::enable_if_t<std::is_invocable_r_v<
+                                 result_type, std::remove_reference_t<TileOp>,
+                                 const left_type&, const right_type&>>>
+  Mult(tile_op_tag, TileOp&& op) : tile_op_(std::forward<TileOp>(op)) {}
 
   /// Multiply-and-permute operator
 

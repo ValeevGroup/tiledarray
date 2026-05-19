@@ -50,7 +50,8 @@ namespace TiledArray {
 /// \return A tensor where element \c i is equal to <tt>tensor[i] + number</tt>
 template <typename T1,
           typename = std::enable_if_t<
-              TA::detail::is_nested_tensor_v<TA::detail::remove_cvr_t<T1>>>>
+              TA::detail::is_nested_tensor_v<TA::detail::remove_cvr_t<T1>> &&
+              !TA::is_tensor_view_v<TA::detail::remove_cvr_t<T1>>>>
 inline decltype(auto) operator+(
     T1&& tensor, TA::detail::numeric_t<TA::detail::remove_cvr_t<T1>> number) {
   return std::forward<T1>(tensor).add(number);
@@ -65,7 +66,8 @@ inline decltype(auto) operator+(
 /// \return A tensor where element \c i is equal to <tt>tensor[i] + number</tt>
 template <typename T1,
           typename = std::enable_if_t<
-              TA::detail::is_nested_tensor_v<TA::detail::remove_cvr_t<T1>>>>
+              TA::detail::is_nested_tensor_v<TA::detail::remove_cvr_t<T1>> &&
+              !TA::is_tensor_view_v<TA::detail::remove_cvr_t<T1>>>>
 inline decltype(auto) operator+(
     TA::detail::numeric_t<TA::detail::remove_cvr_t<T1>> number, T1&& tensor) {
   return std::forward<T1>(tensor).add(number);
@@ -80,7 +82,8 @@ inline decltype(auto) operator+(
 /// \return A tensor where element \c i is equal to <tt>tensor[i] - number</tt>
 template <typename T1,
           typename = std::enable_if_t<
-              TA::detail::is_nested_tensor_v<TA::detail::remove_cvr_t<T1>>>>
+              TA::detail::is_nested_tensor_v<TA::detail::remove_cvr_t<T1>> &&
+              !TA::is_tensor_view_v<TA::detail::remove_cvr_t<T1>>>>
 inline decltype(auto) operator-(
     T1&& tensor, TA::detail::numeric_t<TA::detail::remove_cvr_t<T1>> number) {
   return std::forward<T1>(tensor).subt(number);

@@ -7,6 +7,7 @@
 #include "TiledArray/einsum/range.h"
 #include "TiledArray/expressions/fwd.h"
 #include "TiledArray/fwd.h"
+#include "TiledArray/tensor/arena_einsum.h"
 #include "TiledArray/tiled_range.h"
 #include "TiledArray/tiled_range1.h"
 
@@ -240,6 +241,34 @@ void replicate_tensor(Tensor &to, Tensor const &from) {
   // number of elements to be copied
   // (same as the number of elements in @c from)
   auto const N = from.range().volume();
+
+  if constexpr (TiledArray::is_arena_tensor_v<typename Tensor::value_type>) {
+    // arena ToT: an inner cell is an 8-byte view into the outer tile's slab.
+    // A plain std::copy of cells would leave `to` aliasing `from`'s slab --
+    // dangling once `from` is gone. Build `to` as a fresh slab-backed tile
+    // and deep-copy each replicated inner cell's element data.
+    using inner_t = typename Tensor::value_type;
+    using inner_range_t = typename inner_t::range_type;
+    using elem_t = typename inner_t::value_type;
+    const auto out_range = to.range();
+    const std::size_t M = out_range.volume();
+    auto range_fn = [&from, N](std::size_t ord) -> inner_range_t {
+      const auto &src = from.data()[ord % N];
+      return src.empty() ? inner_range_t{} : src.range();
+    };
+    to = detail::arena_outer_init<Tensor>(out_range, 1, range_fn,
+                                          alignof(elem_t), /*zero_init=*/false);
+    for (std::size_t ord = 0; ord < M; ++ord) {
+      auto &dst = to.data()[ord];
+      if (dst.empty()) continue;
+      const auto &src = from.data()[ord % N];
+      const elem_t *s = src.data();
+      elem_t *d = dst.data();
+      for (std::size_t k = 0; k < dst.size(); ++k) d[k] = s[k];
+    }
+    return;
+  }
+
   for (auto i = 0; i < to.range().volume(); i += N)
     std::copy(from.begin(), from.end(), to.data() + i);
 }
@@ -616,6 +645,14 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     using ::Einsum::index::permutation;
     using TiledArray::Permutation;
 
+    // Temporary sub-Worlds used by the generalized-contraction path below.
+    // Declared before AB/C so it is destroyed *after* them: an ArrayTerm's
+    // `.ei` member is a DistArray bound to one of these sub-Worlds, and
+    // ~DistArray -> lazy_deleter dereferences that World. If a sub-World
+    // outlived only by `worlds` were torn down first, that deref would hit a
+    // dead World (e.g. while unwinding an exception thrown mid-contraction).
+    std::vector<std::shared_ptr<World>> worlds;
+
     std::tuple<ArrayTerm<ArrayA>, ArrayTerm<ArrayB>> AB{{A.array(), a},
                                                         {B.array(), b}};
 
@@ -686,6 +723,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
           std::is_same_v<TensorT,
                          typename decltype(A.array)::value_type::value_type>);
       constexpr bool is_tot = detail::is_tensor_v<TensorT>;
+      // A non-owning view inner cell (e.g. ArenaTensor) has no value-returning
+      // per-cell product; the legacy element-op path below cannot run for it.
+      constexpr bool inner_is_view = TiledArray::is_tensor_view_v<TensorT>;
       auto element_hadamard_op =
           (is_tot && inner.h)
               ? std::make_optional(
@@ -717,6 +757,8 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
       auto pa = A.permutation;
       auto pb = B.permutation;
+      auto arena_plan = detail::make_regime_a_arena_plan<ResultTensor>(
+          A, B, inner, /*inner_perm=*/C.permutation);
       for (Index h : H.tiles) {
         auto const pc = C.permutation;
         auto const c = apply(pc, h);
@@ -725,6 +767,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         for (size_t i = 0; i < h.size(); ++i) {
           batch *= H.batch[i].at(h[i]);
         }
+        if (detail::run_regime_a_arena(arena_plan, h, batch, A, B, C,
+                                       C_local_tiles, tiles, trange))
+          continue;
         ResultTensor tile(TiledArray::Range{batch},
                           typename ResultTensor::value_type{});
         for (Index i : tiles) {
@@ -743,17 +788,28 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
           for (size_t k = 0; k < batch; ++k) {
             using Ix = ::Einsum::Index<std::string>;
             if constexpr (AreArrayToT<ArrayA, ArrayB>) {
-              auto aik = ai.batch(k);
-              auto bik = bi.batch(k);
-              auto vol = aik.total_size();
-              TA_ASSERT(vol == bik.total_size());
+              if constexpr (inner_is_view) {
+                // View inner cells (e.g. ArenaTensor) have no value-returning
+                // per-cell product; only run_regime_a_arena can produce them.
+                // Reaching this legacy path means the arena plan was inactive
+                // -- typically a permuted inner contraction (see
+                // TODO(arena-einsum-perm) in arena_einsum.h).
+                TA_EXCEPTION(
+                    "TA::einsum: ToT x ToT product with view inner cells "
+                    "(e.g. ArenaTensor) is supported only via the regime-A "
+                    "arena fast path, which was inactive for this expression "
+                    "(likely a permuted inner contraction)");
+              } else {
+                auto aik = ai.batch(k);
+                auto bik = bi.batch(k);
+                auto vol = aik.total_size();
+                TA_ASSERT(vol == bik.total_size());
 
-              auto &el = tile({k});
-              using TensorT = std::remove_reference_t<decltype(el)>;
+                auto &el = tile({k});
 
-              for (auto i = 0; i < vol; ++i)
-                add_to(el, element_product_op(aik.data()[i], bik.data()[i]));
-
+                for (auto i = 0; i < vol; ++i)
+                  add_to(el, element_product_op(aik.data()[i], bik.data()[i]));
+              }
             } else if constexpr (!AreArraySame<ArrayA, ArrayB>) {
               auto aik = ai.batch(k);
               auto bik = bi.batch(k);
@@ -762,11 +818,15 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
               auto &el = tile({k});
 
+              // Fused `el += inner_tensor * scalar` -- no scaled temporary
+              // (axpy_to works in-place, so it also supports view inner
+              // cells that cannot value-return a scaled tensor).
+              using TiledArray::axpy_to;
               for (auto i = 0; i < vol; ++i)
                 if constexpr (IsArrayToT<ArrayA>) {
-                  add_to(el, scale(aik.data()[i], bik.data()[i]));
+                  axpy_to(el, aik.data()[i], bik.data()[i]);
                 } else {
-                  add_to(el, scale(bik.data()[i], aik.data()[i]));
+                  axpy_to(el, bik.data()[i], aik.data()[i]);
                 }
 
             } else {
@@ -818,8 +878,6 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
     std::invoke(update_tr, std::get<0>(AB));
     std::invoke(update_tr, std::get<1>(AB));
-
-    std::vector<std::shared_ptr<World>> worlds;
 
     // iterates over tiles of hadamard indices
     for (Index h : H.tiles) {
