@@ -158,6 +158,64 @@ bool outers_equal(const Outer& a, const Outer& b) {
 
 }  // namespace
 
+BOOST_AUTO_TEST_CASE(builder_matches_up_front_baseline) {
+  // incremental one-pass construction of an ArenaTensor-celled outer tile
+  Outer baseline = make_outer(4, 8, 1.0);
+  TA::detail::ArenaToTBuilder<Outer> b(TA::Range{4});
+  for (std::size_t ord = 0; ord < 4; ++ord) {
+    Inner& cell = b.emplace(ord, TA::Range{8});
+    for (std::size_t i = 0; i < 8; ++i)
+      cell.data()[i] = 1.0 + ord * 100.0 + double(i);
+  }
+  Outer built = std::move(b).finish();
+  BOOST_CHECK(outers_equal(built, baseline));
+}
+
+BOOST_AUTO_TEST_CASE(builder_rolls_over_to_multiple_pages) {
+  const std::size_t N = 10;
+  TA::detail::ArenaToTBuilder<Outer> b(TA::Range{static_cast<long>(N)}, 1,
+                                       false,
+                                       /*page_size=*/Inner::cell_size(8) * 4);
+  for (std::size_t ord = 0; ord < N; ++ord) {
+    Inner& cell = b.emplace(ord, TA::Range{8});
+    for (std::size_t i = 0; i < 8; ++i)
+      cell.data()[i] = 1.0 + ord * 100.0 + double(i);
+  }
+  BOOST_CHECK_GT(b.arena().page_count(), 1u);
+  Outer built = std::move(b).finish();
+  BOOST_CHECK(outers_equal(built, make_outer(N, 8, 1.0)));
+}
+
+BOOST_AUTO_TEST_CASE(builder_single_cell_uses_one_exact_page) {
+  // corner case (b): a lone ArenaTensor cell -> one exactly-sized page
+  TA::detail::ArenaToTBuilder<Outer> b(TA::Range{1});
+  Inner& cell = b.emplace(0, TA::Range{7});
+  for (std::size_t i = 0; i < 7; ++i) cell.data()[i] = double(i);
+  BOOST_CHECK_EQUAL(b.arena().page_count(), 1u);
+  BOOST_CHECK_EQUAL(b.arena().bytes_reserved(), Inner::cell_size(7));
+  Outer built = std::move(b).finish();
+  BOOST_REQUIRE_EQUAL(built.range().volume(), 1u);
+  BOOST_REQUIRE(bool(built.data()[0]));
+  for (std::size_t i = 0; i < 7; ++i)
+    BOOST_CHECK_EQUAL(built.data()[0].data()[i], double(i));
+}
+
+BOOST_AUTO_TEST_CASE(compact_coalesces_a_multipage_tile) {
+  const std::size_t N = 9;
+  TA::detail::ArenaToTBuilder<Outer> b(TA::Range{static_cast<long>(N)}, 1,
+                                       false, Inner::cell_size(6) * 4);
+  for (std::size_t ord = 0; ord < N; ++ord) {
+    Inner& cell = b.emplace(ord, TA::Range{6});
+    for (std::size_t i = 0; i < 6; ++i)
+      cell.data()[i] = 1.0 + ord * 100.0 + double(i);
+  }
+  BOOST_CHECK_GT(b.arena().page_count(), 1u);
+  Outer multipage = std::move(b).finish();
+  Outer compacted = TA::detail::arena_compact(multipage);
+  BOOST_CHECK(outers_equal(compacted, multipage));
+  BOOST_CHECK(outers_equal(compacted, make_outer(N, 6, 1.0)));
+}
+
 BOOST_AUTO_TEST_CASE(arena_tensor_is_a_tensor_but_a_view) {
   // ArenaTensor is registered as is_tensor_helper / is_contiguous_tensor so
   // kernel paths treat it like Tensor<double>; the `is_tensor_view` trait

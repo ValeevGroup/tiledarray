@@ -157,4 +157,62 @@ BOOST_AUTO_TEST_CASE(inner_permute_rank3_cell) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(builder_matches_up_front_baseline) {
+  // build a ToT one cell at a time, then compare to the up-front baseline
+  outer_t baseline = make_tot(4, 5, 1.0);
+  TA::detail::ArenaToTBuilder<outer_t> b(TA::Range{4l});
+  for (std::size_t ord = 0; ord < 4; ++ord) {
+    inner_t& cell = b.emplace(ord, TA::Range{5l});
+    for (std::size_t i = 0; i < 5; ++i)
+      cell.at_ordinal(i) = 1.0 + ord * 100.0 + double(i);
+  }
+  outer_t built = std::move(b).finish();
+  BOOST_CHECK(tot_equal(built, baseline));
+}
+
+BOOST_AUTO_TEST_CASE(builder_rolls_over_to_multiple_pages) {
+  // a small page forces the incremental arena to span several pages
+  const std::size_t N = 20;
+  TA::detail::ArenaToTBuilder<outer_t> b(TA::Range{static_cast<long>(N)},
+                                         /*batch=*/1, /*zero_init=*/false,
+                                         /*page_size=*/256);
+  for (std::size_t ord = 0; ord < N; ++ord) {
+    inner_t& cell = b.emplace(ord, TA::Range{5l});
+    for (std::size_t i = 0; i < 5; ++i)
+      cell.at_ordinal(i) = 1.0 + ord * 100.0 + double(i);
+  }
+  BOOST_CHECK_GT(b.arena().page_count(), 1u);
+  outer_t built = std::move(b).finish();
+  BOOST_CHECK(tot_equal(built, make_tot(N, 5, 1.0)));
+}
+
+BOOST_AUTO_TEST_CASE(builder_single_cell_uses_one_exact_page) {
+  // corner case (b): a lone inner tensor -> one exactly-sized page
+  TA::detail::ArenaToTBuilder<outer_t> b(TA::Range{1l});
+  inner_t& cell = b.emplace(0, TA::Range{7l});
+  for (std::size_t i = 0; i < 7; ++i) cell.at_ordinal(i) = double(i);
+  BOOST_CHECK_EQUAL(b.arena().page_count(), 1u);
+  BOOST_CHECK_EQUAL(b.arena().bytes_reserved(), 7u * sizeof(double));
+  outer_t built = std::move(b).finish();
+  BOOST_REQUIRE_EQUAL(built.range().volume(), 1u);
+  for (std::size_t i = 0; i < 7; ++i)
+    BOOST_CHECK_EQUAL(built.data()->at_ordinal(i), double(i));
+}
+
+BOOST_AUTO_TEST_CASE(compact_coalesces_a_multipage_tile) {
+  const std::size_t N = 16;
+  TA::detail::ArenaToTBuilder<outer_t> b(TA::Range{static_cast<long>(N)}, 1,
+                                         false, /*page_size=*/256);
+  for (std::size_t ord = 0; ord < N; ++ord) {
+    inner_t& cell = b.emplace(ord, TA::Range{5l});
+    for (std::size_t i = 0; i < 5; ++i)
+      cell.at_ordinal(i) = 1.0 + ord * 100.0 + double(i);
+  }
+  BOOST_CHECK_GT(b.arena().page_count(), 1u);
+  outer_t multipage = std::move(b).finish();
+  outer_t compacted = TA::detail::arena_compact(multipage);
+  BOOST_CHECK(tot_equal(compacted, multipage));
+  BOOST_CHECK(tot_equal(compacted, make_tot(N, 5, 1.0)));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

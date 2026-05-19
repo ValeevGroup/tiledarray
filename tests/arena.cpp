@@ -4,124 +4,134 @@
 #include "unit_test_config.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <memory_resource>
 #include <vector>
 
 using TiledArray::detail::Arena;
-using TiledArray::detail::ArenaPlan;
 using TiledArray::detail::ArenaResource;
-using TiledArray::detail::plan;
+using TiledArray::detail::kArenaDefaultPageBytes;
 
 namespace {
-// Minimal Range-like shim for plan() tests: supports only volume().
-struct FakeRange {
-  std::size_t v;
-  std::size_t volume() const noexcept { return v; }
-};
+bool is_aligned(const void* p, std::size_t a) {
+  return reinterpret_cast<std::uintptr_t>(p) % a == 0;
 }
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE(arena_suite, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(default_arena_is_empty) {
   Arena a;
-  BOOST_CHECK_EQUAL(a.capacity(), 0u);
-  BOOST_CHECK_EQUAL(a.cursor(), 0u);
   BOOST_CHECK(a.empty());
+  BOOST_CHECK_EQUAL(a.page_count(), 0u);
+  BOOST_CHECK_EQUAL(a.bytes_allocated(), 0u);
+  BOOST_CHECK_EQUAL(a.bytes_reserved(), 0u);
+  BOOST_CHECK_EQUAL(a.page_size(), kArenaDefaultPageBytes);
   BOOST_CHECK(a.resource() != nullptr);
 }
 
-BOOST_AUTO_TEST_CASE(reserve_initializes_capacity) {
+BOOST_AUTO_TEST_CASE(reserve_page_lays_down_one_exact_page) {
   Arena a;
-  a.reserve(1024);
-  BOOST_CHECK_EQUAL(a.capacity(), 1024u);
-  BOOST_CHECK_EQUAL(a.cursor(), 0u);
-  BOOST_CHECK_EQUAL(a.remaining(), 1024u);
+  a.reserve_page(1024, 64);
+  BOOST_CHECK_EQUAL(a.page_count(), 1u);
+  BOOST_CHECK_EQUAL(a.bytes_reserved(), 1024u);
+  // nothing claimed yet
+  BOOST_CHECK(a.empty());
+  BOOST_CHECK_EQUAL(a.bytes_allocated(), 0u);
 }
 
-BOOST_AUTO_TEST_CASE(reserve_zero_init_clears_slab) {
+BOOST_AUTO_TEST_CASE(claims_pack_into_the_reserved_page) {
   Arena a;
-  a.reserve(64, /*zero_init=*/true);
-  auto h = a.slice<unsigned char>(0, 64);
-  for (std::size_t i = 0; i < 64; ++i) BOOST_CHECK_EQUAL(h[i], 0u);
+  a.reserve_page(1024, 128);
+  auto h1 = a.claim_bytes(100, 64);
+  auto h2 = a.claim_bytes(100, 64);
+  auto h3 = a.claim_bytes(100, 64);
+  // all three land in the single reserved page
+  BOOST_CHECK_EQUAL(a.page_count(), 1u);
+  BOOST_CHECK_EQUAL(a.bytes_allocated(), 300u);
+  BOOST_CHECK(is_aligned(h1.get(), 64));
+  BOOST_CHECK(is_aligned(h2.get(), 64));
+  BOOST_CHECK(is_aligned(h3.get(), 64));
+  // distinct, non-overlapping
+  BOOST_CHECK(h2.get() >= h1.get() + 100);
+  BOOST_CHECK(h3.get() >= h2.get() + 100);
 }
 
-BOOST_AUTO_TEST_CASE(slice_random_access_and_aliasing) {
-  Arena a;
-  a.reserve(1024);
-  std::shared_ptr<double[]> p1 = a.slice<double>(0, 4);
-  std::shared_ptr<double[]> p2 = a.slice<double>(64, 4);
-  for (int i = 0; i < 4; ++i) p1[i] = double(i);
-  for (int i = 0; i < 4; ++i) p2[i] = double(10 + i);
-  for (int i = 0; i < 4; ++i) BOOST_CHECK_EQUAL(p1[i], double(i));
-  for (int i = 0; i < 4; ++i) BOOST_CHECK_EQUAL(p2[i], double(10 + i));
-  BOOST_CHECK(static_cast<void*>(&p2[0]) >= static_cast<void*>(&p1[4]));
-}
-
-BOOST_AUTO_TEST_CASE(claim_advances_cursor_and_aligns) {
-  Arena a;
-  a.reserve(1024);
+BOOST_AUTO_TEST_CASE(claim_auto_allocates_a_standard_page) {
+  Arena a;  // no reserve_page
   std::shared_ptr<double[]> h = a.claim<double>(10);
   BOOST_REQUIRE(h.get() != nullptr);
-  BOOST_CHECK_EQUAL(reinterpret_cast<std::uintptr_t>(h.get()) % alignof(double),
-                    0u);
-  BOOST_CHECK(a.cursor() >= 10u * sizeof(double));
+  BOOST_CHECK(is_aligned(h.get(), alignof(double)));
+  BOOST_CHECK_EQUAL(a.page_count(), 1u);
+  BOOST_CHECK_EQUAL(a.bytes_reserved(), kArenaDefaultPageBytes);
+  for (int i = 0; i < 10; ++i) h[i] = double(i);
+  for (int i = 0; i < 10; ++i) BOOST_CHECK_EQUAL(h[i], double(i));
 }
 
-BOOST_AUTO_TEST_CASE(slab_survives_arena_destruction) {
+BOOST_AUTO_TEST_CASE(claims_roll_over_to_fresh_pages) {
+  Arena a(std::pmr::new_delete_resource(), /*page_size=*/256);
+  std::vector<std::shared_ptr<std::byte[]>> handles;
+  // 64 B at 64-B alignment => 4 per 256 B page; 10 claims => >= 3 pages
+  for (int i = 0; i < 10; ++i) handles.push_back(a.claim_bytes(64, 64));
+  BOOST_CHECK_GE(a.page_count(), 3u);
+  BOOST_CHECK_EQUAL(a.bytes_allocated(), 10u * 64u);
+  // every handle is a distinct, valid, writable region
+  for (std::size_t i = 0; i < handles.size(); ++i)
+    std::memset(handles[i].get(), int(i), 64);
+  for (std::size_t i = 0; i < handles.size(); ++i)
+    BOOST_CHECK_EQUAL(static_cast<unsigned char>(handles[i][0]),
+                      static_cast<unsigned char>(i));
+}
+
+BOOST_AUTO_TEST_CASE(oversized_claim_gets_a_dedicated_page) {
+  Arena a(std::pmr::new_delete_resource(), /*page_size=*/256);
+  // request larger than a page -> a dedicated, exactly-sized page
+  auto big = a.claim_bytes(1024, 64);
+  BOOST_REQUIRE(big.get() != nullptr);
+  BOOST_CHECK(is_aligned(big.get(), 64));
+  BOOST_CHECK_EQUAL(a.page_count(), 1u);
+  BOOST_CHECK_EQUAL(a.bytes_reserved(), 1024u);
+  // a following normal claim does not reuse the dedicated page; it opens a
+  // standard page
+  auto small = a.claim_bytes(64, 64);
+  BOOST_CHECK_EQUAL(a.page_count(), 2u);
+  BOOST_CHECK_EQUAL(a.bytes_reserved(), 1024u + 256u);
+  std::memset(big.get(), 1, 1024);
+  std::memset(small.get(), 2, 64);
+}
+
+BOOST_AUTO_TEST_CASE(single_exact_page_corner_case) {
+  // corner case (b): a lone cell -> one exactly-sized page, no waste
+  Arena a;
+  a.reserve_page(640, 128);
+  auto h = a.claim_bytes(640, 128);
+  BOOST_CHECK_EQUAL(a.page_count(), 1u);
+  BOOST_CHECK_EQUAL(a.bytes_reserved(), 640u);
+  BOOST_CHECK_EQUAL(a.bytes_allocated(), 640u);
+  BOOST_CHECK(is_aligned(h.get(), 128));
+}
+
+BOOST_AUTO_TEST_CASE(zero_init_clears_each_page) {
+  Arena a(std::pmr::new_delete_resource(), /*page_size=*/256,
+          /*zero_init=*/true);
+  auto h = a.claim<unsigned char>(200);
+  for (std::size_t i = 0; i < 200; ++i) BOOST_CHECK_EQUAL(h[i], 0u);
+}
+
+BOOST_AUTO_TEST_CASE(claimed_memory_survives_arena_destruction) {
   std::shared_ptr<int[]> survivor;
   {
-    Arena tmp;
-    tmp.reserve(256);
+    Arena tmp(std::pmr::new_delete_resource(), /*page_size=*/256);
     survivor = tmp.claim<int>(10);
     for (int i = 0; i < 10; ++i) survivor[i] = -i;
   }
+  // the aliasing handle keeps its page alive past the Arena
   for (int i = 0; i < 10; ++i) BOOST_CHECK_EQUAL(survivor[i], -i);
-}
-
-BOOST_AUTO_TEST_CASE(plan_uniform_cells) {
-  ArenaPlan p = plan(
-      /*N_cells=*/6,
-      /*shape_fn=*/[](std::size_t /*ord*/) { return FakeRange{10}; },
-      /*element_size=*/sizeof(double),
-      /*alignment=*/alignof(double));
-  BOOST_CHECK_EQUAL(p.total_bytes, 6u * 10u * sizeof(double));
-  BOOST_CHECK_EQUAL(p.offsets.size(), 6u);
-  BOOST_CHECK_EQUAL(p.offsets[0], 0u);
-  BOOST_CHECK_EQUAL(p.offsets[5], 5u * 10u * sizeof(double));
-}
-
-BOOST_AUTO_TEST_CASE(plan_variable_cells_match_pivot_doc_example) {
-  ArenaPlan p = plan(
-      /*N_cells=*/12,
-      /*shape_fn=*/[](std::size_t /*ord*/) { return FakeRange{20}; },
-      /*element_size=*/sizeof(double),
-      /*alignment=*/alignof(double));
-  BOOST_CHECK_EQUAL(p.total_bytes, 12u * 20u * sizeof(double));
-  BOOST_CHECK_EQUAL(p.offsets[1], 20u * sizeof(double));
-}
-
-BOOST_AUTO_TEST_CASE(plan_then_construct_then_read) {
-  const std::size_t N = 4;
-  std::vector<std::size_t> volumes = {3, 5, 2, 7};
-  auto shape_fn = [&volumes](std::size_t ord) { return FakeRange{volumes[ord]}; };
-  ArenaPlan p = plan(N, shape_fn, sizeof(double), alignof(double));
-  Arena a;
-  a.reserve(p.total_bytes);
-  std::vector<std::shared_ptr<double[]>> handles(N);
-  for (std::size_t ord = 0; ord < N; ++ord) {
-    handles[ord] = a.slice<double>(p.offsets[ord], volumes[ord]);
-    for (std::size_t i = 0; i < volumes[ord]; ++i)
-      handles[ord][i] = double(100 * ord + i);
-  }
-  for (std::size_t ord = 0; ord < N; ++ord)
-    for (std::size_t i = 0; i < volumes[ord]; ++i)
-      BOOST_CHECK_EQUAL(handles[ord][i], double(100 * ord + i));
 }
 
 BOOST_AUTO_TEST_CASE(arena_resource_is_identity_equal) {
   Arena a;
-  a.reserve(64);
   ArenaResource r1(&a);
   ArenaResource r2(&a);
   BOOST_CHECK(r1.is_equal(r1));
