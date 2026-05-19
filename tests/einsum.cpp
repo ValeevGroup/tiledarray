@@ -284,11 +284,6 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
                                   {3, 2}));
 }
 
-// TODO(tot-einsum-empty-result): this case intermittently aborts at
-// tensor/kernels.h:395 ("!empty(result, tensors...)" / "0 of N tiles set").
-// Pre-existing on feature/arena_tensor HEAD -- reproduces with the arena/ToT
-// work stashed, and crashes deterministically when einsum_manual is run as a
-// standalone --run_test subset. Root cause not yet diagnosed.
 BOOST_AUTO_TEST_CASE(different_nested_ranks) {
   using ArrayT = TA::DistArray<TA::Tensor<int>>;
   using ArrayToT = TA::DistArray<TA::Tensor<TA::Tensor<int>>>;

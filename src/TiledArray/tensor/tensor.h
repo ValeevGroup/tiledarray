@@ -2243,6 +2243,15 @@ class Tensor {
       return *this;
     } else {
       auto permuted = right.permute(perm);
+      if (empty()) {
+        // first contribution into an unallocated target (e.g. a contraction
+        // result inner cell): initialize to factor * (perm ^ arg) rather
+        // than asserting non-empty in inplace_binary -- mirrors the
+        // non-permuting axpy_to overload above.
+        *this = detail::clone_or_cast<Tensor>(permuted);
+        this->scale_to(factor);
+        return *this;
+      }
       return inplace_binary(
           permuted, [factor](auto& MADNESS_RESTRICT l, const auto& r) {
             using L = std::remove_reference_t<decltype(l)>;
