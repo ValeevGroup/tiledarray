@@ -77,9 +77,12 @@ class ContractionArenaPlan {
 
  private:
   /// Per-output-cell inner ranges implied by one `left`/`right` K-panel.
-  std::vector<typename Result::value_type::range_type> operand_inner_ranges(
-      const Left& left, const Right& right,
-      const math::GemmHelper& outer_gh) const;
+  /// Deduced return type: spelling `Result::value_type::range_type` in the
+  /// declaration would make the whole class ill-formed for a non-ToT
+  /// `Result`, but `make_contraction_arena_plan` names this class in its
+  /// return type unconditionally (and returns nullopt for non-ToT).
+  auto operand_inner_ranges(const Left& left, const Right& right,
+                            const math::GemmHelper& outer_gh) const;
 
   ArenaInnerShapePlan inner_plan_{};
 };
@@ -140,8 +143,7 @@ auto make_contraction_arena_plan(ArenaInnerShapeKind inner_kind,
 
 /// Per-output-cell inner ranges implied by one `left`/`right` K-panel.
 template <typename Result, typename Left, typename Right>
-std::vector<typename Result::value_type::range_type>
-ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
+auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
     const Left& left, const Right& right,
     const math::GemmHelper& outer_gh) const {
   using inner_t = typename Result::value_type;
