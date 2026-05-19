@@ -241,6 +241,34 @@ void replicate_tensor(Tensor &to, Tensor const &from) {
   // number of elements to be copied
   // (same as the number of elements in @c from)
   auto const N = from.range().volume();
+
+  if constexpr (TiledArray::is_arena_tensor_v<typename Tensor::value_type>) {
+    // arena ToT: an inner cell is an 8-byte view into the outer tile's slab.
+    // A plain std::copy of cells would leave `to` aliasing `from`'s slab --
+    // dangling once `from` is gone. Build `to` as a fresh slab-backed tile
+    // and deep-copy each replicated inner cell's element data.
+    using inner_t = typename Tensor::value_type;
+    using inner_range_t = typename inner_t::range_type;
+    using elem_t = typename inner_t::value_type;
+    const auto out_range = to.range();
+    const std::size_t M = out_range.volume();
+    auto range_fn = [&from, N](std::size_t ord) -> inner_range_t {
+      const auto &src = from.data()[ord % N];
+      return src.empty() ? inner_range_t{} : src.range();
+    };
+    to = detail::arena_outer_init<Tensor>(out_range, 1, range_fn,
+                                          alignof(elem_t), /*zero_init=*/false);
+    for (std::size_t ord = 0; ord < M; ++ord) {
+      auto &dst = to.data()[ord];
+      if (dst.empty()) continue;
+      const auto &src = from.data()[ord % N];
+      const elem_t *s = src.data();
+      elem_t *d = dst.data();
+      for (std::size_t k = 0; k < dst.size(); ++k) d[k] = s[k];
+    }
+    return;
+  }
+
   for (auto i = 0; i < to.range().volume(); i += N)
     std::copy(from.begin(), from.end(), to.data() + i);
 }
