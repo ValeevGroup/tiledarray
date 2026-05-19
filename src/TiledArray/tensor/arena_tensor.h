@@ -213,13 +213,10 @@ class ArenaTensor {
     ::TiledArray::mult_to(*this, other);
     return *this;
   }
-  /// Scalar in-place compound assignment.
-  template <typename Scalar>
-    requires(detail::is_numeric_v<Scalar>)
-  ArenaTensor& operator*=(const Scalar factor) {
-    ::TiledArray::scale_to(*this, factor);
-    return *this;
-  }
+  // Scalar `*=` is intentionally not a member: the free `operator*=(T&&, N)`
+  // in operators_body.ipp already covers `view *= scalar`. A member template
+  // alongside it ties under gcc-13's overload resolution (ambiguous), so the
+  // free operator is the single provider of arena-cell `*= scalar`.
 
   /// Member-call mirrors of the free in-place CPOs. Tile-interface paths
   /// (`add_to(result, arg)`, `subt_to`, etc.) and `Tensor`'s legacy
