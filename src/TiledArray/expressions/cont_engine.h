@@ -547,20 +547,69 @@ class ContEngine : public BinaryEngine<Derived> {
                     TiledArray::is_tensor_view_v<result_tile_element_type>) {
         // ToT x ToT with non-owning view inner cells (e.g. ArenaTensor). A
         // view cell cannot host a value-returning inner op, so the
-        // owning-cell inner-op builder cannot be used. Two nested products
-        // are supported here:
-        //  - the elementwise pure Hadamard, where the inner element op is
-        //    unused anyway -- MultEngine::make_tile_op passes none and the
-        //    outer Mult tile op recurses through Tensor<view>::mult -- so
-        //    element_*_op_ is left null;
-        //  - the inner contraction (incl. inner outer-product), routed
-        //    through the arena fast path: it writes results in place into
-        //    pre-shaped view cells, so only element_nonreturn_op_ is needed.
+        // owning-cell inner-op builder cannot be used. The supported nested
+        // products are:
+        //  - the elementwise pure Hadamard (outer Hadamard, inner Hadamard),
+        //    where the inner element op is unused anyway -- MultEngine::
+        //    make_tile_op passes none and the outer Mult tile op recurses
+        //    through Tensor<view>::mult -- so element_*_op_ is left null;
+        //  - inner Hadamard under outer Contraction, routed through the
+        //    arena fast path with a left_range plan and a per-cell
+        //    `r += l * rr` (optionally scaled) op: result cells are
+        //    pre-shaped from non-empty left cells, then accumulated in
+        //    place over the K-panel;
+        //  - inner Contraction (incl. inner outer-product) under either
+        //    outer regime, routed through the arena fast path: it writes
+        //    results in place into pre-shaped view cells, so only
+        //    element_nonreturn_op_ is needed.
         // Every other nested product is deferred.
         const auto inner_prod = this->inner_product_type();
         if (inner_prod == TensorProduct::Hadamard &&
             this->product_type() == TensorProduct::Hadamard) {
           // pure Hadamard: element_*_op_ left null
+        } else if (inner_prod == TensorProduct::Hadamard &&
+                   this->product_type() == TensorProduct::Contraction) {
+          // outer Contraction + inner Hadamard on view inner tiles.
+          // Mirror the owning-tile path (init_inner_tile_op_owning_): the
+          // SUMMA shapes each result cell from a non-empty left inner cell
+          // (left_range plan), and the per-cell op accumulates `r += l * rr`
+          // -- or `r += (l * rr) * factor_` when scaled -- via
+          // fused_hadamard_inplace into the pre-shaped view cell. No
+          // value-returning per-cell op is needed, so this works for view
+          // cells; non-identity inner result permutation is rejected here
+          // (the owning fallback that materializes a permuted return cell
+          // cannot run for views).
+          constexpr bool arena_eligible_h_view =
+              TiledArray::detail::is_contraction_arena_tot_v<
+                  result_tile_type, left_tile_type, right_tile_type>;
+          if constexpr (!arena_eligible_h_view) {
+            TA_EXCEPTION(
+                "nested Hadamard on view inner tiles is supported only for "
+                "arena-backed tensors-of-tensors");
+          } else {
+            this->arena_plan_ = TiledArray::detail::make_contraction_arena_plan<
+                result_tile_type, left_tile_type, right_tile_type>(
+                TiledArray::detail::ArenaInnerShapeKind::left_range,
+                std::nullopt, inner(this->perm_));
+            if (!bool(this->arena_plan_))
+              TA_EXCEPTION(
+                  "nested Hadamard on view inner tiles: the arena fast path "
+                  "was inactive (arena disabled, or a non-identity inner "
+                  "result permutation -- not yet supported on view cells)");
+            if (this->factor_ == scalar_type{1}) {
+              this->element_nonreturn_op_ =
+                  TiledArray::detail::make_fused_hadamard_lambda<
+                      result_tile_element_type, left_tile_element_type,
+                      right_tile_element_type>();
+            } else {
+              this->element_nonreturn_op_ =
+                  TiledArray::detail::make_fused_hadamard_scaled_lambda<
+                      result_tile_element_type, left_tile_element_type,
+                      right_tile_element_type>(this->factor_);
+            }
+          }
+          // element_return_op_ left null: a view cell cannot be
+          // value-returned (see the init_struct precondition check).
         } else if (inner_prod == TensorProduct::Contraction) {
           using op_type = TiledArray::detail::ContractReduce<
               result_tile_element_type, left_tile_element_type,
