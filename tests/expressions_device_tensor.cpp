@@ -25,22 +25,21 @@
 
 #include <TiledArray/device/tensor.h>
 #include <TiledArray/einsum/tiledarray.h>
-#include <range_fixture.h>
 #include <tiledarray.h>
+
+#include <random>
+#include <range_fixture.h>
+
 #include "unit_test_config.h"
 
 using namespace TiledArray;
 
 // Expression-engine tests for the native UMTensor tile type (TA::Tensor
-// backed by device_um_allocator). The pattern follows expressions_device_um.cpp
-// but uses the bare TA::Tensor specialization -- TA::Tensor is already
-// shallow-copy, so we do not wrap it in TA::Tile<> (per CLAUDE.md guidance).
+// backed by device_um_allocator).
 //
-// All correctness checks use a CPU-side TiledArray::Tensor<double> mirror
-// of the input arrays (built from `find().get()` on the device side and a
-// flat std::vector for reference). The expression runs through the engine
-// for both sides; we then compare elements after `gop.fence()` to make sure
-// the device kernels have actually completed.
+// All correctness checks use a host side TiledArray::Tensor<double> mirror
+// of the input arrays. The expression runs through the engine for both sides;
+// we then compare elements after.
 
 struct DeviceTensorExpressionsFixture : public TiledRangeFixture {
   using TileD = UMTensor<double>;
@@ -74,17 +73,13 @@ struct DeviceTensorExpressionsFixture : public TiledRangeFixture {
       const auto tile_range = d.trange().make_tile_range(*it);
       const auto vol = tile_range.volume();
 
-      // Build deterministic data so seeds match across allocators.
-      const auto ord = *it;
+      std::mt19937 rng(seed + static_cast<unsigned>(*it));
+      std::uniform_real_distribution<double> dist(-5.0, 5.0);
+
       typename DeviceArray::value_type d_tile(tile_range);
       typename HostArrayT::value_type h_tile(tile_range);
       for (std::size_t k = 0; k < vol; ++k) {
-        // 1000-element period is plenty for unit testing; division keeps
-        // values in [-5, 5] so dot products stay representable.
-        const double v =
-            static_cast<double>(((ord + 1) * 1664525u + seed + k) % 1000) /
-                100.0 -
-            5.0;
+        const double v = dist(rng);
         d_tile.data()[k] = v;
         h_tile.data()[k] = v;
       }
@@ -212,7 +207,6 @@ BOOST_AUTO_TEST_CASE(hadamard) {
 
 BOOST_AUTO_TEST_CASE(contraction) {
   // C(i,k) = A(i,j) * B(j,k) requires rank-2 arrays; build them on the fly
-  // using the first slice of `tr` so the fixture data is reusable.
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   TArrayD b2(*GlobalFixture::world, tr2);
@@ -231,8 +225,6 @@ BOOST_AUTO_TEST_CASE(contraction) {
 }
 
 BOOST_AUTO_TEST_CASE(norm2_value) {
-  // Scalar reduction across all tiles. Compare device-computed value against
-  // CPU-computed value from the mirror array.
   const double dev_norm = TA::norm2(a);
   const double host_norm = TA::norm2(a_h);
   GlobalFixture::world->gop.fence();
@@ -247,11 +239,24 @@ BOOST_AUTO_TEST_CASE(dot_value) {
   BOOST_CHECK_CLOSE_FRACTION(dev_dot, host_dot, 1.0e-12);
 }
 
+BOOST_AUTO_TEST_CASE(reduce_factories) {
+  // Expression-level reductions through the DSL: scalar = a("...").reduce()
+  GlobalFixture::world->gop.fence();
+
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").sum().get(),
+                             a_h("a,b,c").sum().get(), 1.0e-12);
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").squared_norm().get(),
+                             a_h("a,b,c").squared_norm().get(), 1.0e-12);
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").norm().get(),
+                             a_h("a,b,c").norm().get(), 1.0e-12);
+  BOOST_CHECK_EQUAL(a("a,b,c").min().get(), a_h("a,b,c").min().get());
+  BOOST_CHECK_EQUAL(a("a,b,c").max().get(), a_h("a,b,c").max().get());
+  BOOST_CHECK_EQUAL(a("a,b,c").abs_min().get(), a_h("a,b,c").abs_min().get());
+  BOOST_CHECK_EQUAL(a("a,b,c").abs_max().get(), a_h("a,b,c").abs_max().get());
+  BOOST_CHECK_NO_THROW(auto _ = a("a,b,c").product().get());
+}
+
 BOOST_AUTO_TEST_CASE(reuse_stress) {
-  // MPQC-pattern stress: same input tile referenced multiple times in one
-  // expression, then again across iterations. Catches the LazyArrayTile
-  // conversion race if it surfaces (it should be a known master-branch
-  // baseline failure -- not introduced by this branch).
   const double host_ref =
       static_cast<double>(a_h("a,b,c") * a_h("a,b,c"));
   GlobalFixture::world->gop.fence();
@@ -262,12 +267,8 @@ BOOST_AUTO_TEST_CASE(reuse_stress) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// In-place expression operators (+=, -=, *=). These exercise the engine's
-// "result is consumable" paths that surfaced the dispatch + sign-flip bugs;
-// here we want broad coverage of compound assignment forms beyond the
-// `add_to` / `subt_to` cases already tested.
-// ---------------------------------------------------------------------------
+
+/// In-place expression operators (+=, -=, *=)
 BOOST_AUTO_TEST_CASE(plus_equal_expr) {
   c("a,b,c") = a("a,b,c");
   c_h("a,b,c") = a_h("a,b,c");
@@ -293,7 +294,6 @@ BOOST_AUTO_TEST_CASE(minus_equal_expr) {
 }
 
 BOOST_AUTO_TEST_CASE(times_equal_expr) {
-  // Hadamard, in place.
   c("a,b,c") = a("a,b,c");
   c_h("a,b,c") = a_h("a,b,c");
   c("a,b,c") *= b("a,b,c");
@@ -301,10 +301,6 @@ BOOST_AUTO_TEST_CASE(times_equal_expr) {
   check_close(c, c_h, tolerance);
 }
 
-// ---------------------------------------------------------------------------
-// Negated and scaled-then-negated forms. These force the engine to combine
-// scaling with sign-flip across different operand positions.
-// ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(neg_scaled_sum) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = -(2.0 * (a("a,b,c") + b("a,b,c"))));
   c_h("a,b,c") = -(2.0 * (a_h("a,b,c") + b_h("a,b,c")));
@@ -317,11 +313,36 @@ BOOST_AUTO_TEST_CASE(neg_permuted) {
   check_close(c, c_h, tolerance);
 }
 
-// ---------------------------------------------------------------------------
-// Multi-step chains: results of one expression feed the next. Validates
-// dataflow handoff between dist-evals without an intervening fence (per
-// CLAUDE.md's synchronization-hierarchy section).
-// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(scale_with_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2.5 * a("c,b,a"));
+  c_h("a,b,c") = 2.5 * a_h("c,b,a");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(subt_with_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a") - b("a,b,c"));
+  c_h("a,b,c") = a_h("c,b,a") - b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(mult_with_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a") * b("a,b,c"));
+  c_h("a,b,c") = a_h("c,b,a") * b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+// .conj() on a real-valued tensor is a compile-time no-op in
+// `apply_scale_factor`, but the expression DSL still has to parse and route
+// through the conjugation factory. This verifies it does. Complex-typed
+// fixtures are out of scope here.
+BOOST_AUTO_TEST_CASE(conj_real) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c").conj());
+  c_h("a,b,c") = a_h("a,b,c").conj();
+  check_close(c, c_h, tolerance);
+}
+
+
+/// Multi-step chains
 BOOST_AUTO_TEST_CASE(multi_step_chain) {
   TArrayD t(*GlobalFixture::world, tr);
   HostArray t_h(*GlobalFixture::world, tr);
@@ -332,11 +353,7 @@ BOOST_AUTO_TEST_CASE(multi_step_chain) {
   check_close(c, c_h, tolerance);
 }
 
-// ---------------------------------------------------------------------------
-// Block expressions. PR 531 hit known issues in this area; we cover the
-// common patterns: read-only block, block in a sum, block on the RHS of an
-// accumulating assignment.
-// ---------------------------------------------------------------------------
+/// Block expressions
 BOOST_AUTO_TEST_CASE(block_assign) {
   const std::array<int, 3> lo{3, 3, 3};
   const std::array<int, 3> up{5, 5, 5};
@@ -382,11 +399,98 @@ BOOST_AUTO_TEST_CASE(block_accumulate) {
   check_close(blk_d, blk_h, tolerance);
 }
 
-// ---------------------------------------------------------------------------
-// Outer product: c(i,j) = u(i) * v(j). Exercises the rank-changing GEMM
-// path (different left / right / result ranks) without going through a
-// shared contraction index.
-// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(const_block) {
+  const auto& ca = a;
+  const auto& ca_h = a_h;
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  const TiledRange ctr{TiledRange1{lo[0], up[0]},
+                       TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  blk_d("a,b,c") = ca("a,b,c").block(lo, up);
+  blk_h("a,b,c") = ca_h("a,b,c").block(lo, up);
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scal_block) {
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  const TiledRange ctr{TiledRange1{lo[0], up[0]},
+                       TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  blk_d("a,b,c") = 2.0 * a("a,b,c").block(lo, up);
+  blk_h("a,b,c") = 2.0 * a_h("a,b,c").block(lo, up);
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(permute_block) {
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  const TiledRange ctr{TiledRange1{lo[0], up[0]},
+                       TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  // Permute the source annotation before slicing.
+  blk_d("a,b,c") = a("c,b,a").block(lo, up);
+  blk_h("a,b,c") = a_h("c,b,a").block(lo, up);
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(assign_sub_block) {
+  c.fill_local(0.0);
+  c_h.fill_local(0.0);
+  GlobalFixture::world->gop.fence();
+
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block(lo, up) = a("a,b,c").block(lo, up));
+  c_h("a,b,c").block(lo, up) = a_h("a,b,c").block(lo, up);
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(block_contract) {
+  const TiledRange tr_w{tr.data()[0], tr.data()[1]};
+  TArrayD w(*GlobalFixture::world, tr_w);
+  HostArray w_h(*GlobalFixture::world, tr_w);
+  w.fill_local(0.0);
+  w_h.fill_local(0.0);
+  GlobalFixture::world->gop.fence();
+
+  const std::array<int, 3> alo{3, 2, 3};
+  const std::array<int, 3> aup{5, 5, 5};
+  const std::array<int, 3> blo{2, 3, 3};
+  const std::array<int, 3> bup{5, 5, 5};
+
+  BOOST_REQUIRE_NO_THROW(
+      w("a,b") = a("a,c,d").block(alo, aup) * b("c,d,b").block(blo, bup));
+  w_h("a,b") = a_h("a,c,d").block(alo, aup) * b_h("c,d,b").block(blo, bup);
+  check_close(w, w_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(block_permute_contract) {
+  const TiledRange tr_w{tr.data()[0], tr.data()[1]};
+  TArrayD w(*GlobalFixture::world, tr_w);
+  HostArray w_h(*GlobalFixture::world, tr_w);
+  w.fill_local(0.0);
+  w_h.fill_local(0.0);
+  GlobalFixture::world->gop.fence();
+
+  const std::array<int, 3> alo{3, 3, 2};
+  const std::array<int, 3> aup{5, 5, 5};
+  const std::array<int, 3> blo{2, 3, 3};
+  const std::array<int, 3> bup{5, 5, 5};
+
+  BOOST_REQUIRE_NO_THROW(
+      w("a,b") = a("a,d,c").block(alo, aup) * b("c,d,b").block(blo, bup));
+  w_h("a,b") = a_h("a,d,c").block(alo, aup) * b_h("c,d,b").block(blo, bup);
+  check_close(w, w_h, 1.0e-12);
+}
+
 BOOST_AUTO_TEST_CASE(outer_product) {
   const TiledRange tr_u{tr.data()[0]};
   const TiledRange tr_v{tr.data()[1]};
@@ -407,14 +511,8 @@ BOOST_AUTO_TEST_CASE(outer_product) {
   check_close(w, w_h, 1.0e-12);
 }
 
-// ---------------------------------------------------------------------------
-// Contraction shape variants. Different output ranks and contraction
-// patterns. CC-style: result is rank-4, contraction index is multi-d.
-// ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(contraction_permuted_result) {
-  // c(k,i) = a(i,j) * b(j,k) -- the same contraction as `contraction` but
-  // with the result indices swapped; checks that the engine fuses a final
-  // permutation into the GEMM as CLAUDE.md describes.
+  // c(k,i) = a(i,j) * b(j,k)
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   TArrayD b2(*GlobalFixture::world, tr2);
@@ -429,12 +527,11 @@ BOOST_AUTO_TEST_CASE(contraction_permuted_result) {
   c2_h("k,i") = a2_h("i,j") * b2_h("j,k");
   // Looser tolerance for permuted GEMM: BLAS sums in different
   // tile-internal order than the CPU reference path.
-  check_close(c2, c2_h, 1.0e-10);
+  check_close(c2, c2_h, 1.0e-12);
 }
 
 BOOST_AUTO_TEST_CASE(contraction_with_transpose_on_right) {
-  // c(i,k) = a(i,j) * b(k,j) -- right operand needs transposing to align
-  // the contraction index.
+  // c(i,k) = a(i,j) * b(k,j)
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   TArrayD b2(*GlobalFixture::world, tr2);
@@ -451,9 +548,7 @@ BOOST_AUTO_TEST_CASE(contraction_with_transpose_on_right) {
 }
 
 BOOST_AUTO_TEST_CASE(contraction_rank4_via_two_indices) {
-  // r(a,c) = t(a,b,k,l) * v(c,b,k,l) -- pattern that shows up in CC-style
-  // intermediates; contraction is over (b,k,l), free indices are (a) on
-  // the left and (c) on the right.
+  // r(a,c) = t(a,b,k,l) * v(c,b,k,l)
   const TiledRange tr4{tr.data()[0], tr.data()[1], tr.data()[2], tr.data()[2]};
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD t(*GlobalFixture::world, tr4);
@@ -470,14 +565,8 @@ BOOST_AUTO_TEST_CASE(contraction_rank4_via_two_indices) {
   check_close(r, r_h, 1.0e-12);
 }
 
-// ---------------------------------------------------------------------------
-// TA::einsum entry point. The fully-typed einsum API is the documented way
-// to express patterns the regular `*` operator can't capture (general
-// contraction with explicit output indices, Hadamard with permutation,
-// etc.). For UMTensor we test that einsum dispatches through the same tile
-// ops we already validated above and produces matching results vs. the
-// host-tensor reference.
-// ---------------------------------------------------------------------------
+
+/// TA::einsum
 BOOST_AUTO_TEST_CASE(einsum_matmul) {
   // c(i,k) = a(i,j) * b(j,k) via einsum
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
@@ -491,11 +580,11 @@ BOOST_AUTO_TEST_CASE(einsum_matmul) {
 
   auto c2 = TiledArray::einsum(a2("i,j"), b2("j,k"), "i,k");
   auto c2_h = TiledArray::einsum(a2_h("i,j"), b2_h("j,k"), "i,k");
-  check_close(c2, c2_h, 1.0e-11);
+  check_close(c2, c2_h, 1.0e-12);
 }
 
 BOOST_AUTO_TEST_CASE(einsum_hadamard) {
-  // c(i,j) = a(i,j) * b(i,j) via einsum -- Hadamard / element-wise multiply
+  // c(i,j) = a(i,j) * b(i,j) via einsum: Hadamard / element-wise multiply
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   TArrayD b2(*GlobalFixture::world, tr2);
@@ -510,17 +599,8 @@ BOOST_AUTO_TEST_CASE(einsum_hadamard) {
   check_close(c2, c2_h, tolerance);
 }
 
-// Note: einsum patterns where an index appears in both inputs *and* the
-// output (e.g. `einsum("ij,jk->ijk")`, an outer-product-with-broadcast
-// over `j`) are not yet supported for plain (non-ToT) tile types -- they
-// segfault inside einsum's internals on master regardless of allocator.
-// We don't cover that case here.
-
 BOOST_AUTO_TEST_CASE(einsum_contraction_over_two_indices) {
-  // c(a,c) = t(a,b,k) * v(c,b,k) via einsum -- contraction over (b, k),
-  // free indices (a) on the left and (c) on the right. CC-intermediate
-  // shape, fully expressible with the regular `*` operator but still
-  // worth covering through the einsum entry point.
+  // c(a,c) = t(a,b,k) * v(c,b,k) via einsum: contraction over (b, k),
   const TiledRange tr3{tr.data()[0], tr.data()[1], tr.data()[2]};
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD t(*GlobalFixture::world, tr3);
@@ -533,20 +613,17 @@ BOOST_AUTO_TEST_CASE(einsum_contraction_over_two_indices) {
 
   auto r = TiledArray::einsum(t("a,b,k"), v("c,b,k"), "a,c");
   auto r_h = TiledArray::einsum(t_h("a,b,k"), v_h("c,b,k"), "a,c");
-  check_close(r, r_h, 1.0e-11);
+  check_close(r, r_h, 1.0e-12);
 }
 
-BOOST_AUTO_TEST_CASE(einsum_permuted_result) {
-  // c(j,i) = a(i,j) -- one-operand reshape; not a true einsum binary, but
-  // also useful: verify einsum handles single-input permutation.
+BOOST_AUTO_TEST_CASE(rank2_transpose) {
+  // c(j,i) = a(i,j)
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   HostArray a2_h(*GlobalFixture::world, tr2);
   fill_with_seed(a2, a2_h, 97);
   GlobalFixture::world->gop.fence();
 
-  // For permutation alone we just use the expression DSL, which einsum
-  // delegates to; this verifies that path still works for UMTensor.
   TArrayD a2T;
   HostArray a2T_h;
   a2T("j,i") = a2("i,j");
@@ -554,13 +631,7 @@ BOOST_AUTO_TEST_CASE(einsum_permuted_result) {
   check_close(a2T, a2T_h, tolerance);
 }
 
-// ---------------------------------------------------------------------------
-// Scaled / permuted variants of the elementary arithmetic ops. The first
-// commit of these tests covered the bare forms; the engine fuses scaling
-// and permutation differently across these combinations, so each one is
-// a distinct dispatch path worth validating numerically.
-// ---------------------------------------------------------------------------
-
+/// Scaled and permuted variants of the elementary arithmetic ops.
 BOOST_AUTO_TEST_CASE(scale_add) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5.0 * (a("a,b,c") + b("a,b,c")));
   c_h("a,b,c") = 5.0 * (a_h("a,b,c") + b_h("a,b,c"));
@@ -613,11 +684,7 @@ BOOST_AUTO_TEST_CASE(scale_mult_permute) {
   check_close(c, c_h, tolerance);
 }
 
-// ---------------------------------------------------------------------------
-// Scaled contraction variants. These exercise the engine's scale-fuse-
-// into-GEMM path that PR 531 stumbled on. Tolerance is 1e-10 for GEMM
-// paths to absorb summation-order differences between BLAS and Eigen.
-// ---------------------------------------------------------------------------
+/// Scaled contraction variants
 BOOST_AUTO_TEST_CASE(scale_cont) {
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
@@ -632,7 +699,7 @@ BOOST_AUTO_TEST_CASE(scale_cont) {
 
   BOOST_REQUIRE_NO_THROW(c2("i,k") = 5.0 * (a2("i,j") * b2("j,k")));
   c2_h("i,k") = 5.0 * (a2_h("i,j") * b2_h("j,k"));
-  check_close(c2, c2_h, 1.0e-10);
+  check_close(c2, c2_h, 1.0e-12);
 }
 
 BOOST_AUTO_TEST_CASE(scale_cont_permute) {
@@ -647,14 +714,14 @@ BOOST_AUTO_TEST_CASE(scale_cont_permute) {
   fill_with_seed(b2, b2_h, 109);
   GlobalFixture::world->gop.fence();
 
-  // c(k,i) = 5 * a(i,j) * b(j,k): scaled, result-permuted contraction.
+  // c(k,i) = 5 * a(i,j) * b(j,k)
   BOOST_REQUIRE_NO_THROW(c2("k,i") = 5.0 * (a2("i,j") * b2("j,k")));
   c2_h("k,i") = 5.0 * (a2_h("i,j") * b2_h("j,k"));
-  check_close(c2, c2_h, 1.0e-10);
+  check_close(c2, c2_h, 1.0e-12);
 }
 
 BOOST_AUTO_TEST_CASE(scale_cont_with_input_transpose) {
-  // 5 * a(i,j) * b(k,j) -- contraction needs to transpose b before GEMM.
+  // 5 * a(i,j) * b(k,j)
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   TArrayD b2(*GlobalFixture::world, tr2);
@@ -668,16 +735,10 @@ BOOST_AUTO_TEST_CASE(scale_cont_with_input_transpose) {
 
   BOOST_REQUIRE_NO_THROW(c2("i,k") = 5.0 * (a2("i,j") * b2("k,j")));
   c2_h("i,k") = 5.0 * (a2_h("i,j") * b2_h("k,j"));
-  check_close(c2, c2_h, 1.0e-10);
+  check_close(c2, c2_h, 1.0e-12);
 }
 
-// ---------------------------------------------------------------------------
-// Non-uniform tile sizes for contraction. Mirrors btas-device's
-// cont_non_uniform1/2: the rank-4 inputs use one tiny tiling on the
-// outer dimensions and one wide tiling on an inner dimension, so the
-// GEMM has irregular per-tile k blocks. Catches GEMM kernels that
-// silently assume uniform tile shapes.
-// ---------------------------------------------------------------------------
+/// Non-uniform tile sizes for contraction.
 BOOST_AUTO_TEST_CASE(cont_non_uniform_split_inner) {
   std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
   std::array<std::size_t, 2> tiling2 = {{0, 40}};
@@ -699,7 +760,7 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform_split_inner) {
   BOOST_REQUIRE_NO_THROW(out("x,y") =
                              5.0 * (lhs("x,i,j,k") * rhs("y,i,j,k")));
   out_h("x,y") = 5.0 * (lhs_h("x,i,j,k") * rhs_h("y,i,j,k"));
-  check_close(out, out_h, 1.0e-9);
+  check_close(out, out_h, 1.0e-12);
 }
 
 BOOST_AUTO_TEST_CASE(cont_non_uniform_split_two_inner) {
@@ -723,14 +784,10 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform_split_two_inner) {
   BOOST_REQUIRE_NO_THROW(out("x,y") =
                              5.0 * (lhs("x,i,j,k") * rhs("y,i,j,k")));
   out_h("x,y") = 5.0 * (lhs_h("x,i,j,k") * rhs_h("y,i,j,k"));
-  check_close(out, out_h, 1.0e-9);
+  check_close(out, out_h, 1.0e-12);
 }
 
-// ---------------------------------------------------------------------------
-// Contraction-plus-reduction (norm2 of a contraction). Exercises the
-// dataflow handoff from a binary dist-eval to a reduction without an
-// intervening fence.
-// ---------------------------------------------------------------------------
+/// Contraction-plus-reduction
 BOOST_AUTO_TEST_CASE(cont_plus_reduce) {
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
@@ -748,13 +805,10 @@ BOOST_AUTO_TEST_CASE(cont_plus_reduce) {
   const double dev_n = TA::norm2(c2);
   const double host_n = TA::norm2(c2_h);
   GlobalFixture::world->gop.fence();
-  BOOST_CHECK_CLOSE_FRACTION(dev_n, host_n, 1.0e-10);
+  BOOST_CHECK_CLOSE_FRACTION(dev_n, host_n, 1.0e-12);
 }
 
 BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
-  // `no_alias()` tells the engine the LHS does not alias any RHS operand,
-  // permitting an extra in-place optimization. Validate that path
-  // produces correct values.
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   TArrayD b2(*GlobalFixture::world, tr2);
@@ -772,124 +826,14 @@ BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
 
   BOOST_REQUIRE_NO_THROW(c2("i,k").no_alias() = a2("i,j") * b2("j,k"));
   c2_h("i,k").no_alias() = a2_h("i,j") * b2_h("j,k");
-  check_close(c2, c2_h, 1.0e-10);
+  check_close(c2, c2_h, 1.0e-12);
   const double dev_n = TA::norm2(c2);
   const double host_n = TA::norm2(c2_h);
   GlobalFixture::world->gop.fence();
-  BOOST_CHECK_CLOSE_FRACTION(dev_n, host_n, 1.0e-10);
+  BOOST_CHECK_CLOSE_FRACTION(dev_n, host_n, 1.0e-12);
 }
 
-// ---------------------------------------------------------------------------
-// Block-expression variants beyond the basic three already covered.
-// Block bounds are TILE coordinates; a {3,3,3} -> {5,5,5} block selects
-// the 2x2x2 corner tiles of `tr` (5 tiles per dim).
-// ---------------------------------------------------------------------------
-BOOST_AUTO_TEST_CASE(const_block) {
-  const auto& ca = a;
-  const auto& ca_h = a_h;
-  const std::array<int, 3> lo{3, 3, 3};
-  const std::array<int, 3> up{5, 5, 5};
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
-                       TiledRange1{lo[2], up[2]}};
-  TArrayD blk_d(*GlobalFixture::world, ctr);
-  HostArray blk_h(*GlobalFixture::world, ctr);
-  blk_d("a,b,c") = ca("a,b,c").block(lo, up);
-  blk_h("a,b,c") = ca_h("a,b,c").block(lo, up);
-  check_close(blk_d, blk_h, tolerance);
-}
-
-BOOST_AUTO_TEST_CASE(scal_block) {
-  const std::array<int, 3> lo{3, 3, 3};
-  const std::array<int, 3> up{5, 5, 5};
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
-                       TiledRange1{lo[2], up[2]}};
-  TArrayD blk_d(*GlobalFixture::world, ctr);
-  HostArray blk_h(*GlobalFixture::world, ctr);
-  blk_d("a,b,c") = 2.0 * a("a,b,c").block(lo, up);
-  blk_h("a,b,c") = 2.0 * a_h("a,b,c").block(lo, up);
-  check_close(blk_d, blk_h, tolerance);
-}
-
-BOOST_AUTO_TEST_CASE(permute_block) {
-  const std::array<int, 3> lo{3, 3, 3};
-  const std::array<int, 3> up{5, 5, 5};
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
-                       TiledRange1{lo[2], up[2]}};
-  TArrayD blk_d(*GlobalFixture::world, ctr);
-  HostArray blk_h(*GlobalFixture::world, ctr);
-  // Permute the source annotation before slicing.
-  blk_d("a,b,c") = a("c,b,a").block(lo, up);
-  blk_h("a,b,c") = a_h("c,b,a").block(lo, up);
-  check_close(blk_d, blk_h, tolerance);
-}
-
-BOOST_AUTO_TEST_CASE(assign_sub_block) {
-  // Write into a tile sub-block of an existing array. Tiles outside the
-  // block keep their original contents -- so we initialize both sides
-  // identically with a known value before the block assignment.
-  c.fill_local(0.0);
-  c_h.fill_local(0.0);
-  GlobalFixture::world->gop.fence();
-
-  const std::array<int, 3> lo{3, 3, 3};
-  const std::array<int, 3> up{5, 5, 5};
-  BOOST_REQUIRE_NO_THROW(c("a,b,c").block(lo, up) = a("a,b,c").block(lo, up));
-  c_h("a,b,c").block(lo, up) = a_h("a,b,c").block(lo, up);
-  check_close(c, c_h, tolerance);
-}
-
-// ---------------------------------------------------------------------------
-// Block-fed-into-contraction. PR 531 had known issues here. The result
-// array has rank 2 (carved out of the rank-3 fixture by contracting two
-// indices).
-// ---------------------------------------------------------------------------
-BOOST_AUTO_TEST_CASE(block_contract) {
-  const TiledRange tr_w{tr.data()[0], tr.data()[1]};
-  TArrayD w(*GlobalFixture::world, tr_w);
-  HostArray w_h(*GlobalFixture::world, tr_w);
-  w.fill_local(0.0);
-  w_h.fill_local(0.0);
-  GlobalFixture::world->gop.fence();
-
-  const std::array<int, 3> alo{3, 2, 3};
-  const std::array<int, 3> aup{5, 5, 5};
-  const std::array<int, 3> blo{2, 3, 3};
-  const std::array<int, 3> bup{5, 5, 5};
-
-  BOOST_REQUIRE_NO_THROW(
-      w("a,b") = a("a,c,d").block(alo, aup) * b("c,d,b").block(blo, bup));
-  w_h("a,b") = a_h("a,c,d").block(alo, aup) * b_h("c,d,b").block(blo, bup);
-  check_close(w, w_h, 1.0e-10);
-}
-
-BOOST_AUTO_TEST_CASE(block_permute_contract) {
-  // Same as block_contract but with a permuted left-operand annotation:
-  // `a("a,d,c")` instead of `a("a,c,d")` -- forces a permutation of the
-  // sliced block before GEMM.
-  const TiledRange tr_w{tr.data()[0], tr.data()[1]};
-  TArrayD w(*GlobalFixture::world, tr_w);
-  HostArray w_h(*GlobalFixture::world, tr_w);
-  w.fill_local(0.0);
-  w_h.fill_local(0.0);
-  GlobalFixture::world->gop.fence();
-
-  const std::array<int, 3> alo{3, 3, 2};
-  const std::array<int, 3> aup{5, 5, 5};
-  const std::array<int, 3> blo{2, 3, 3};
-  const std::array<int, 3> bup{5, 5, 5};
-
-  BOOST_REQUIRE_NO_THROW(
-      w("a,b") = a("a,d,c").block(alo, aup) * b("c,d,b").block(blo, bup));
-  w_h("a,b") = a_h("a,d,c").block(alo, aup) * b_h("c,d,b").block(blo, bup);
-  check_close(w, w_h, 1.0e-10);
-}
-
-// ---------------------------------------------------------------------------
-// Dot-product variants beyond the basic case.
-// ---------------------------------------------------------------------------
+/// Dot-product variants
 BOOST_AUTO_TEST_CASE(dot_permute) {
   const double dev_d =
       static_cast<double>(a("a,b,c") * b("c,b,a"));
@@ -903,8 +847,6 @@ BOOST_AUTO_TEST_CASE(dot_permute) {
 
 BOOST_AUTO_TEST_CASE(dot_contr) {
   // Dot of two contraction expressions: scalar = (a*b) . (b*a).
-  // This is a NO_THROW-only check in the btas-device suite; we go one
-  // step further and validate the scalar value against the CPU mirror.
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   TArrayD b2(*GlobalFixture::world, tr2);
@@ -919,14 +861,10 @@ BOOST_AUTO_TEST_CASE(dot_contr) {
   const double host_d = static_cast<double>(
       (a2_h("i,j") * b2_h("j,k")) * (a2_h("i,j") * b2_h("j,k")));
   GlobalFixture::world->gop.fence();
-  BOOST_CHECK_CLOSE_FRACTION(dev_d, host_d, 1.0e-10);
+  BOOST_CHECK_CLOSE_FRACTION(dev_d, host_d, 1.0e-12);
 }
 
-// ---------------------------------------------------------------------------
-// Archive round-trip, host/device array conversions, and bulk to_host /
-// to_device. Smoke + correctness for the helpers in device/tensor.h that
-// are not in the expression-engine path.
-// ---------------------------------------------------------------------------
+/// Archive round-trip, host/device array conversions
 BOOST_AUTO_TEST_CASE(serialize_um_tensor) {
   // Single-tile round-trip: build a UMTensor, write to a buffer archive,
   // read into a fresh UMTensor, compare element-wise. The Store side
@@ -978,7 +916,7 @@ BOOST_AUTO_TEST_CASE(um_to_ta_round_trip) {
   HostArray host_view =
       TiledArray::um_tensor_to_ta_tensor<TileD, HostTile, TA::DensePolicy>(a);
   GlobalFixture::world->gop.fence();
-  // Compare host_view directly against a_h (same data was used for both).
+  // Compare host_view directly against a_h
   check_close(host_view, a_h, tolerance);
 
   TArrayD device_view =
@@ -990,8 +928,6 @@ BOOST_AUTO_TEST_CASE(um_to_ta_round_trip) {
 }
 
 BOOST_AUTO_TEST_CASE(um_to_ta_then_expression) {
-  // After converting a device array to host, plain CPU expressions on the
-  // host array should produce the same values as their device counterpart.
   HostArray sum_h(*GlobalFixture::world, tr);
   sum_h("a,b,c") = a_h("a,b,c") + b_h("a,b,c");
 
@@ -1006,9 +942,6 @@ BOOST_AUTO_TEST_CASE(um_to_ta_then_expression) {
 
 BOOST_AUTO_TEST_CASE(bulk_prefetch_round_trip) {
   // to_host / to_device on a DistArray should be no-ops for correctness:
-  // the array contents are unchanged, only the page residency hints are
-  // adjusted. We just verify the array is still equal to its host mirror
-  // after bouncing through both directions.
   TiledArray::to_host(a);
   TiledArray::to_device(a);
   GlobalFixture::world->gop.fence();
