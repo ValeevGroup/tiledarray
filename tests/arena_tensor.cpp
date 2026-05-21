@@ -69,16 +69,16 @@ BOOST_AUTO_TEST_CASE(sizeof_invariant_across_range_parameterizations) {
 }
 
 BOOST_AUTO_TEST_CASE(element_data_is_simd_aligned) {
-  // data_alignment() should be at least kInnerSimdAlign; cell_alignment()
+  // data_alignment() should be at least kArenaTensorSimdAlign; cell_alignment()
   // should propagate that so the element pointer is SIMD-aligned.
-  BOOST_CHECK(Inner::data_alignment() >= TA::kInnerSimdAlign);
-  BOOST_CHECK_EQUAL(Inner::data_alignment() % TA::kInnerSimdAlign, 0u);
+  BOOST_CHECK(Inner::data_alignment() >= TA::kArenaTensorSimdAlign);
+  BOOST_CHECK_EQUAL(Inner::data_alignment() % TA::kArenaTensorSimdAlign, 0u);
   BOOST_CHECK(Inner::cell_alignment() >= Inner::data_alignment());
   CellBuf buf(8);
   Inner x =
       TA::detail::make_arena_tensor_in<double>(buf.aligned_ptr, TA::Range{8});
   auto addr = reinterpret_cast<std::uintptr_t>(x.data());
-  BOOST_CHECK_EQUAL(addr % TA::kInnerSimdAlign, 0u);
+  BOOST_CHECK_EQUAL(addr % TA::kArenaTensorSimdAlign, 0u);
 }
 
 BOOST_AUTO_TEST_CASE(default_constructed_is_null) {

@@ -26,18 +26,23 @@
 
 namespace TiledArray {
 
-/// Alignment of in-arena element storage, in bytes. Sized to cover the
-/// widest common SIMD register (AVX-512 ZMM = 64 B) and a single x86_64
-/// cache line. Override at configure time by defining
-/// TILEDARRAY_INNER_SIMD_ALIGN to a larger power-of-two (e.g. 128 for
-/// two-cache-line floor / Apple-Silicon L1 line size).
-#ifndef TILEDARRAY_INNER_SIMD_ALIGN
-#define TILEDARRAY_INNER_SIMD_ALIGN 64
-#endif
-
-inline constexpr std::size_t kInnerSimdAlign = TILEDARRAY_INNER_SIMD_ALIGN;
-static_assert((kInnerSimdAlign & (kInnerSimdAlign - 1)) == 0,
-              "kInnerSimdAlign must be a power of two");
+/// Alignment of in-arena element storage, in bytes. Supplied via CMake
+/// (cache variable `TA_ARENATENSOR_SIMD_ALIGN`, propagated through
+/// `TiledArray/config.h`). The default (32 B) matches the SSE/AVX/AVX2
+/// family — AVX2's 256-bit YMM registers being the most common x86_64
+/// SIMD target today. Override at configure time with
+/// `-DTA_ARENATENSOR_SIMD_ALIGN=<N>` for another power of two:
+///   - 64  for AVX-512 ZMM (also matches an x86_64 cache line);
+///   - 16  for NEON-only targets — NEON has no wider register (Apple
+///         Silicon does not implement SVE), so 16 is sufficient there;
+///   - 128 for a two-cache-line / Apple-Silicon L1-line floor (useful
+///         only if cells need that as a false-sharing boundary).
+/// Each ArenaTensor cell pads from `sizeof(Cell)` up to this alignment
+/// before its element storage, so lowering the value cuts per-cell
+/// padding at the cost of narrower vectorized loads/stores.
+inline constexpr std::size_t kArenaTensorSimdAlign = TA_ARENATENSOR_SIMD_ALIGN;
+static_assert((kArenaTensorSimdAlign & (kArenaTensorSimdAlign - 1)) == 0,
+              "TA_ARENATENSOR_SIMD_ALIGN must be a power of two");
 
 template <typename T, typename Range_ = ::btas::zb::RangeNd<>>
 class ArenaTensor;
@@ -79,7 +84,8 @@ class ArenaTensor {
   /// arena slots must honour this so SIMD loads/stores on `data()` are
   /// aligned without an extra runtime check.
   static constexpr size_type data_alignment() noexcept {
-    return alignof(T) > kInnerSimdAlign ? alignof(T) : kInnerSimdAlign;
+    return alignof(T) > kArenaTensorSimdAlign ? alignof(T)
+                                              : kArenaTensorSimdAlign;
   }
 
   /// Offset (in bytes) of the first element past the cell header.

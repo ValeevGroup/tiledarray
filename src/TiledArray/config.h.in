@@ -172,6 +172,9 @@
 /* Specifies the rank for up to which to use Small Object Optimization for metadata (e.g. Range, Range::index, etc.) */
 #cmakedefine TA_MAX_SOO_RANK_METADATA @TA_MAX_SOO_RANK_METADATA@
 
+/* Alignment (in bytes) of element storage inside an ArenaTensor cell; see src/TiledArray/tensor/arena_tensor.h */
+#cmakedefine TA_ARENATENSOR_SIMD_ALIGN @TA_ARENATENSOR_SIMD_ALIGN@
+
 /* Enables tracing MADNESS tasks in TiledArray */
 #cmakedefine TILEDARRAY_ENABLE_TASK_DEBUG_TRACE 1
 

@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(builds_outer_with_uniform_inners) {
     BOOST_CHECK(bool(inner));
     BOOST_CHECK_EQUAL(inner.size(), 8u);
     auto addr = reinterpret_cast<std::uintptr_t>(inner.data());
-    BOOST_CHECK_EQUAL(addr % TA::kInnerSimdAlign, 0u);
+    BOOST_CHECK_EQUAL(addr % TA::kArenaTensorSimdAlign, 0u);
   }
 }
 
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(jagged_inner_shapes_round_trip) {
       BOOST_REQUIRE(bool(inner));
       BOOST_CHECK_EQUAL(inner.size(), static_cast<std::size_t>(sizes[ord]));
       auto addr = reinterpret_cast<std::uintptr_t>(inner.data());
-      BOOST_CHECK_EQUAL(addr % TA::kInnerSimdAlign, 0u);
+      BOOST_CHECK_EQUAL(addr % TA::kArenaTensorSimdAlign, 0u);
     }
   }
 }
@@ -320,7 +320,7 @@ BOOST_AUTO_TEST_CASE(contraction_arena_plan_reserve_and_construct_inner) {
     BOOST_REQUIRE(bool(inner));
     BOOST_CHECK_EQUAL(inner.size(), 24u);
     auto addr = reinterpret_cast<std::uintptr_t>(inner.data());
-    BOOST_CHECK_EQUAL(addr % TA::kInnerSimdAlign, 0u);
+    BOOST_CHECK_EQUAL(addr % TA::kArenaTensorSimdAlign, 0u);
   }
 }
 
@@ -441,7 +441,7 @@ BOOST_AUTO_TEST_CASE(outer_tile_serialize_round_trip_arena_tensor) {
     // The loaded cell's data pointer is SIMD-aligned via
     // arena_outer_init.
     auto addr = reinterpret_cast<std::uintptr_t>(d.data());
-    BOOST_CHECK_EQUAL(addr % TA::kInnerSimdAlign, 0u);
+    BOOST_CHECK_EQUAL(addr % TA::kArenaTensorSimdAlign, 0u);
   }
 }
 

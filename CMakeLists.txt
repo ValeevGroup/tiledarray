@@ -159,6 +159,12 @@ add_feature_info(SIGNED_1INDEX_TYPE TA_SIGNED_1INDEX_TYPE "Use of signed 1-index
 # define this as needed
 set(TA_MAX_SOO_RANK_METADATA 8 CACHE STRING "Specifies the max rank for which small object optimization will be used (hence, heap use avoided) for metadata objects")
 
+# Alignment, in bytes, of element storage inside an ArenaTensor cell. Must be a
+# power of two and at least sizeof(void*). Default 32 covers AVX2 YMM; raise to
+# 64 for AVX-512, drop to 16 for NEON-only / Apple Silicon, raise to 128 for an
+# Apple-Silicon L1 cache-line floor. See src/TiledArray/tensor/arena_tensor.h.
+set(TA_ARENATENSOR_SIMD_ALIGN 32 CACHE STRING "Alignment (B) of in-arena element storage for ArenaTensor; power of two, default 32 covers AVX2 (set 64 for AVX-512, 16 for NEON-only, 128 for Apple-Silicon cache-line floor)")
+
 option(TA_TRACE_TASKS "Enable debug tracing of MADNESS tasks in (some components of) TiledArray" OFF)
 add_feature_info(TASK_TRACE_DEBUG TA_TRACE_TASKS "Debug tracing of MADNESS tasks in (some components of) TiledArray")
 set(TILEDARRAY_ENABLE_TASK_DEBUG_TRACE ${TA_TRACE_TASKS})
