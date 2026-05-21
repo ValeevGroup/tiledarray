@@ -119,6 +119,8 @@ BOOST_AUTO_TEST_CASE(is_device_tile_classification) {
   using detail::is_device_tile_v;
   BOOST_CHECK(is_device_tile_v<UMTensor<double>>);
   BOOST_CHECK(is_device_tile_v<UMTensor<float>>);
+  BOOST_CHECK(is_device_tile_v<UMTensor<std::complex<double>>>);
+  BOOST_CHECK(is_device_tile_v<TiledArray::Tile<UMTensor<double>>>);
   BOOST_CHECK(is_device_tile_v<typename TArrayD::value_type>);
   BOOST_CHECK(!is_device_tile_v<HostTile>);
 }
