@@ -145,22 +145,18 @@ inline void apply_scale_factor(T* data, std::size_t n, const Scalar factor,
   if constexpr (TiledArray::detail::is_blas_numeric_v<Scalar> ||
                 std::is_arithmetic_v<Scalar>) {
     ::blas::scal(n, factor, data, 1, queue);
-  } else {
-    if constexpr (TiledArray::detail::is_complex_v<T>) {
-      TA_EXCEPTION(
-          "UMTensor scale with ComplexConjugate factor on complex T is not "
-          "implemented (requires a fused conjugation kernel)");
-    } else {
-      if constexpr (std::is_same_v<
-                        Scalar, TiledArray::detail::ComplexConjugate<void>>) {
-        // conjugation on a real tensor is a no-op
-      } else if constexpr (std::is_same_v<
-                               Scalar,
-                               TiledArray::detail::ComplexConjugate<
-                                   TiledArray::detail::ComplexNegTag>>) {
-        ::blas::scal(n, static_cast<T>(-1), data, 1, queue);
-      }
-    }
+  } else if constexpr (TiledArray::detail::is_complex_v<T>) {
+    TA_EXCEPTION(
+        "UMTensor scale with ComplexConjugate factor on complex T is not "
+        "implemented (requires a fused conjugation kernel)");
+  } else if constexpr (std::is_same_v<
+                           Scalar,
+                           TiledArray::detail::ComplexConjugate<void>>) {
+    // conjugation on a real tensor is a no-op
+  } else if constexpr (std::is_same_v<
+                           Scalar, TiledArray::detail::ComplexConjugate<
+                                       TiledArray::detail::ComplexNegTag>>) {
+    ::blas::scal(n, static_cast<T>(-1), data, 1, queue);
   }
 }
 
@@ -546,10 +542,7 @@ inline UMTensor<T> shift(const UMTensor<T>& arg, const Index& bound_shift) {
 template <typename T, typename Index>
   requires TiledArray::detail::is_numeric_v<T>
 inline UMTensor<T>& shift_to(UMTensor<T>& arg, const Index& bound_shift) {
-  // `range()` only exposes a const accessor; cast is safe because we are the
-  // tile's owner here and only the range bounds change, not the data layout.
-  const_cast<TiledArray::Range&>(arg.range()).inplace_shift(bound_shift);
-  return arg;
+  return arg.shift_to(bound_shift);
 }
 
 template <typename T, typename Index>
