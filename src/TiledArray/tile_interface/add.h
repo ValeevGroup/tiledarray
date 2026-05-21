@@ -178,6 +178,35 @@ inline decltype(auto) add_to(Result&& result, const Arg& arg,
   return std::forward<Result>(result).add_to(arg, factor);
 }
 
+/// axpy into the result tile: <tt>result[i] += arg[i] * factor</tt>.
+/// Distinct from `add_to(result, arg, factor)` which has the legacy
+/// `(result + arg) * factor` semantics; this one scales only the added
+/// operand. Use this in fused-accumulation paths (e.g. an einsum loop
+/// computing `out += arg * scalar`) where allocating a scaled temporary
+/// would be either wasteful or impossible (e.g. for view tile types that
+/// lack value-returning `scale`).
+template <typename Result, typename Arg, typename Scalar,
+          typename std::enable_if<
+              detail::is_numeric_v<Scalar> &&
+              detail::has_member_function_axpy_to_anyreturn_v<
+                  Result&&, const Arg&, const Scalar>>::type* = nullptr>
+inline decltype(auto) axpy_to(Result&& result, const Arg& arg,
+                              const Scalar factor) {
+  return std::forward<Result>(result).axpy_to(arg, factor);
+}
+
+/// axpy + fused permutation: <tt>result[i] += (perm ^ arg)[i] * factor</tt>.
+template <
+    typename Result, typename Arg, typename Scalar, typename Perm,
+    typename std::enable_if<
+        detail::is_numeric_v<Scalar> && detail::is_permutation_v<Perm> &&
+        detail::has_member_function_axpy_to_anyreturn_v<
+            Result&&, const Arg&, const Scalar, const Perm&>>::type* = nullptr>
+inline decltype(auto) axpy_to(Result&& result, const Arg& arg,
+                              const Scalar factor, const Perm& perm) {
+  return std::forward<Result>(result).axpy_to(arg, factor, perm);
+}
+
 namespace tile_interface {
 
 using TiledArray::add;

@@ -38,6 +38,7 @@ set(ta_test_src_files  ta_test.cpp
     type_traits.cpp
     tensor.cpp
     tensor_of_tensor.cpp
+    btas_zb_inner_tile.cpp
     tensor_tensor_view.cpp
     tensor_shift_wrapper.cpp
     tiled_range1.cpp
@@ -102,6 +103,14 @@ set(ta_test_src_files  ta_test.cpp
     linalg.cpp
     cp.cpp
     btas.cpp
+    arena.cpp
+    arena_kernels.cpp
+    arena_einsum_unit_suite.cpp
+    arena_tot_trivial.cpp
+    arena_sizeof_invariant_suite.cpp
+    arena_tensor.cpp
+    arena_tensor_kernels.cpp
+    tot_construction.cpp
 )
 
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
@@ -185,3 +194,8 @@ else()
           ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT}"
           )
 endif()
+
+if (NOT TARGET test-cases-tiledarray)
+  add_custom_target_subproject(tiledarray test-cases)
+endif()
+add_subdirectory(cases)

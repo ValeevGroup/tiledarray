@@ -237,6 +237,22 @@ BOOST_AUTO_TEST_CASE(equal_nested_ranks) {
                                             {{0, 2}, {0, 3}, {0, 2}},  //
                                             {3},                       //
                                             {2}));
+
+  // H+C;C with permuted inner operands -- no outer permutation, so this
+  // exercises the regime-A arena path; manual_eval is the independent oracle.
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;om,ijk;on->ij;nm",    //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {3, 2},                    //
+                                            {3, 2}));
+
+  // H+C;H with a permuted inner Hadamard operand -- no outer permutation, so
+  // this exercises the regime-A arena Hadamard path against manual_eval.
+  BOOST_REQUIRE(check_manual_eval<ArrayToT>("ijk;mn,ijk;nm->ij;mn",    //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {{0, 2}, {0, 3}, {0, 2}},  //
+                                            {4, 3},                    //
+                                            {3, 4}));
   // H+C;H+C not supported
 
   // H;C(op)

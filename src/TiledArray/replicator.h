@@ -166,8 +166,12 @@ class Replicator : public madness::WorldObject<Replicator<A> >,
     // Generate a list of local tiles from other.
     typename A::pmap_interface::const_iterator end = source.pmap()->end();
     typename A::pmap_interface::const_iterator it = source.pmap()->begin();
-    indices_.reserve(source.pmap()->local_size());
-    data_.reserve(source.pmap()->local_size());
+    // local_size() is only a reserve() hint; some pmaps (e.g. HashPmap) do
+    // not precompute it -- skip the hint rather than assert.
+    if (source.pmap()->known_local_size()) {
+      indices_.reserve(source.pmap()->local_size());
+      data_.reserve(source.pmap()->local_size());
+    }
     if (source.is_dense()) {
       // When dense, all tiles are present
       for (; it != end; ++it) {

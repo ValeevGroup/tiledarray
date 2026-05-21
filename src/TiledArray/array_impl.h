@@ -27,10 +27,13 @@
 #define TILEDARRAY_ARRAY_IMPL_H__INCLUDED
 
 #include <TiledArray/distributed_storage.h>
+#include <TiledArray/tensor/arena_kernels.h>
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/util/function.h>
+
+#include <map>
 
 namespace TiledArray {
 namespace detail {
@@ -476,6 +479,24 @@ class ArrayImpl : public TensorImpl<Policy>,
 
         // wait for all DelayedSet's to vanish
         world.await([&]() { return (pimpl->num_live_ds() == 0); }, true);
+
+        // Fast path when invoked from inside the fence's deferred-cleanup
+        // phase: the global-termination protocol has already established
+        // global quiescence (no in-flight AM, all ranks at the same point),
+        // and symmetric collective use of `defer_deleter_to_next_fence()`
+        // guarantees every rank has this same pimpl in its deferred list
+        // and so reaches this same delete in lockstep. The cross-rank
+        // lazy_sync handshake below is therefore redundant; it would also
+        // schedule a lazy_sync_children task on this world's taskq that the
+        // fence cannot drain (do_cleanup runs after the drain loop) and
+        // that would later be run by some unrelated fence -- against freed
+        // state if this world is destroyed before then (e.g. einsum's
+        // per-Hadamard sub-Worlds).
+        if (world.gop.is_in_do_cleanup()) {
+          delete pimpl;
+          cleanup_counter_--;
+          return;
+        }
 
         try {
           world.gop.lazy_sync(id, [pimpl]() {
@@ -986,48 +1007,102 @@ std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
           Policy::default_pmap(world, target_trange.tiles_range().volume())),
       Array::lazy_deleter);
   auto& target_array = *target_array_sptr;
-  target_array.init_tiles([value = new_value_fill](const Range& range) {
-    return typename Array::value_type(range, value);
-  });
-  target_array.world().gop.fence();
 
-  // loop over local tile and sends its contributions to the targets
-  {
-    const auto e = source_array.cend();
-    auto& target_tiles_range = target_trange.tiles_range();
-    for (auto it = source_array.cbegin(); it != e; ++it) {
-      const auto& source_tile = *it;
-      auto source_tile_idx = it.index();
-
-      // make range for iterating over all possible target tile idx combinations
-      TA::Index target_tile_ord_extent_range(rank);
-      for (auto d = 0; d != rank; ++d) {
-        target_tile_ord_extent_range[d] =
-            all_target_tiles[d][source_tile_idx[d]].size();
+  if constexpr (detail::is_tensor_of_tensor_v<Tile> &&
+                is_arena_tensor_v<typename Tile::value_type>) {
+    // Arena tensor-of-tensor: a ToT tile's inner cells are non-owning views
+    // into that tile's own arena slab. The generic null-init + write_tile_block
+    // scatter (the `else` branch) would rebind the target's null inner cells to
+    // the *source* tiles' slabs, leaving them dangling once the source array is
+    // destroyed. Instead build each local target tile directly (deep copy) by
+    // pulling the source cells: a retile preserves the element space, so the
+    // target cell at global outer element `e` takes its inner range and data
+    // from the source cell at `e` (elements outside the source range, e.g. a
+    // retile that grows the element range, yield null cells).
+    const auto& source_elements = source_array.trange().elements_range();
+    std::map<std::size_t, Tile> src_tile_cache;
+    auto source_cell_at =
+        [&](const auto& e) -> const typename Tile::value_type* {
+      if (!source_elements.includes(e)) return nullptr;
+      const auto src_tile_idx = source_array.trange().element_to_tile(e);
+      const auto src_ord =
+          source_array.trange().tiles_range().ordinal(src_tile_idx);
+      auto it = src_tile_cache.find(src_ord);
+      if (it == src_tile_cache.end()) {
+        it = src_tile_cache
+                 .emplace(src_ord, source_array.is_zero(src_tile_idx)
+                                       ? Tile{}
+                                       : source_array.get(src_tile_idx).get())
+                 .first;
       }
+      const Tile& st = it->second;
+      if (st.empty()) return nullptr;
+      return &st(e);
+    };
+    for (const auto target_ord : *target_array.pmap()) {
+      if (target_array.is_zero(target_ord)) continue;
+      // build each target tile in one pass: a single source lookup per cell
+      // sizes it and fills it together (no separate all-ranges walk).
+      const auto outer_range = target_trange.make_tile_range(target_ord);
+      ArenaToTBuilder<Tile> builder(outer_range);
+      const std::size_t n = outer_range.volume();
+      for (std::size_t o = 0; o < n; ++o) {
+        const auto* sc = source_cell_at(outer_range.idx(o));
+        if (!sc || sc->empty()) continue;  // leaves a deliberately-null cell
+        auto& cell = builder.emplace(o, sc->range());
+        const auto* s = sc->data();
+        auto* d = cell.data();
+        for (std::size_t p = 0; p < cell.size(); ++p) d[p] = s[p];
+      }
+      target_array.set(target_ord, std::move(builder).finish());
+    }
+    target_array.world().gop.fence();
+  } else {
+    target_array.init_tiles([value = new_value_fill](const Range& range) {
+      return typename Array::value_type(range, value);
+    });
+    target_array.world().gop.fence();
 
-      // loop over every target tile combination
-      TA::Range target_tile_ord_extent(target_tile_ord_extent_range);
-      for (auto& target_tile_ord : target_tile_ord_extent) {
-        TA::Index target_tile_idx(rank);
-        container::svector<TA::Range1> target_tile_rngs1(rank);
+    // loop over local tile and sends its contributions to the targets
+    {
+      const auto e = source_array.cend();
+      auto& target_tiles_range = target_trange.tiles_range();
+      for (auto it = source_array.cbegin(); it != e; ++it) {
+        const auto& source_tile = *it;
+        auto source_tile_idx = it.index();
+
+        // make range for iterating over all possible target tile idx
+        // combinations
+        TA::Index target_tile_ord_extent_range(rank);
         for (auto d = 0; d != rank; ++d) {
-          std::tie(target_tile_idx[d], target_tile_rngs1[d]) =
-              all_target_tiles[d][source_tile_idx[d]][target_tile_ord[d]];
+          target_tile_ord_extent_range[d] =
+              all_target_tiles[d][source_tile_idx[d]].size();
         }
-        TA_ASSERT(source_tile.future().probe());
-        Tile target_tile_contribution(
-            source_tile.get().block(target_tile_rngs1));
-        auto target_tile_idx_ord = target_tiles_range.ordinal(target_tile_idx);
-        auto target_proc = target_array.pmap()->owner(target_tile_idx_ord);
-        world.taskq.add(target_proc, &write_tile_block<Tile, Policy>,
-                        target_array.id(), target_tile_idx_ord,
-                        target_tile_contribution);
+
+        // loop over every target tile combination
+        TA::Range target_tile_ord_extent(target_tile_ord_extent_range);
+        for (auto& target_tile_ord : target_tile_ord_extent) {
+          TA::Index target_tile_idx(rank);
+          container::svector<TA::Range1> target_tile_rngs1(rank);
+          for (auto d = 0; d != rank; ++d) {
+            std::tie(target_tile_idx[d], target_tile_rngs1[d]) =
+                all_target_tiles[d][source_tile_idx[d]][target_tile_ord[d]];
+          }
+          TA_ASSERT(source_tile.future().probe());
+          Tile target_tile_contribution(
+              source_tile.get().block(target_tile_rngs1));
+          auto target_tile_idx_ord =
+              target_tiles_range.ordinal(target_tile_idx);
+          auto target_proc = target_array.pmap()->owner(target_tile_idx_ord);
+          world.taskq.add(target_proc, &write_tile_block<Tile, Policy>,
+                          target_array.id(), target_tile_idx_ord,
+                          target_tile_contribution);
+        }
       }
     }
+    // data is mutated in place, so must wait for all tasks to complete
+    target_array.world().gop.fence();
   }
-  // data is mutated in place, so must wait for all tasks to complete
-  target_array.world().gop.fence();
   // WARNING!! need to truncate in DistArray ctor
 
   return target_array_sptr;

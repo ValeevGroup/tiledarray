@@ -279,12 +279,6 @@ if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
           TiledArray/device/kernel/thrust/reduce_kernel.cu
           TiledArray/device/um_storage.cu)
 
-    foreach( f IN LISTS TILEDARRAY_DEVICE_SOURCE_FILES )
-      set_source_files_properties( "${f}"
-          PROPERTIES
-          INCLUDE_DIRECTORIES "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}")
-    endforeach()
-
     # the list of libraries on which TiledArray depends on
     list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cudart CUDA::cublas CUDA::nvtx3)
 

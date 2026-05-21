@@ -117,6 +117,53 @@ struct is_nested_tensor<T1, T2, Ts...> {
 template <typename... Ts>
 inline constexpr const bool is_nested_tensor_v = is_nested_tensor<Ts...>::value;
 
+}  // namespace detail
+
+/// Forward decl for the tensor-view predicate. Specializations live in
+/// `tensor/arena_tensor.h` (`ArenaTensor`) and `external/btas.h`
+/// (`btas::TensorView`). Declared here so the operator-body predicates below
+/// can consult it without including arena_tensor.h. Note `TensorInterface` /
+/// `TensorMap` is deliberately *not* a view here -- it has value-returning
+/// member arithmetic (see arena_tensor.h).
+template <typename T>
+struct is_tensor_view : std::false_type {};
+template <typename T>
+inline constexpr bool is_tensor_view_v = is_tensor_view<T>::value;
+
+namespace detail {
+
+/// Predicate used by the shared operator body in
+/// @c TiledArray/tensor/operators_body.ipp to gate the **value-returning**
+/// element-wise tensor operators (@c +, @c -, @c *, @c neg) that are
+/// injected into @c namespace TiledArray. These ops produce a *new* tensor
+/// and so are only valid for *freestanding* (owning) tensor types -- a view
+/// like `ArenaTensor` cannot allocate on its own.
+///
+/// The btas-side copy of the same operators (in @c external/btas.h)
+/// partial-specializes this predicate to @c std::false_type for @c
+/// btas::Tensor so the two namespaces' operators stay non-overlapping under
+/// ADL.
+template <typename T>
+struct ta_ops_match_tensor
+    : std::bool_constant<is_nested_tensor<T>::value && !is_tensor_view_v<T>> {};
+
+template <typename T>
+inline constexpr bool ta_ops_match_tensor_v = ta_ops_match_tensor<T>::value;
+
+/// Predicate used by the operator body to gate the **compound-assignment**
+/// (in-place) operators (@c +=, @c -=, @c *=). Mutating ops don't allocate,
+/// so they're valid for any tensor whose storage we can mutate -- including
+/// views. By default this is the freestanding predicate union'd with the
+/// tensor-view predicate; the btas-side copy specializes it the same way it
+/// does for the value-returning one.
+template <typename T>
+struct ta_ops_match_tensor_inplace
+    : std::bool_constant<is_nested_tensor<T>::value> {};
+
+template <typename T>
+inline constexpr bool ta_ops_match_tensor_inplace_v =
+    ta_ops_match_tensor_inplace<T>::value;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename Enabler = void>
@@ -466,6 +513,36 @@ constexpr bool is_annotation_v<
 
     >{true};
 
+// Detect whether T exposes a `rebind_t<U>` member template. Owning tensor
+// families (TA::Tensor, btas::Tensor) do; view types (TensorInterface,
+// ShiftWrapper, ArenaTensor) do not.
+template <typename T, typename U, typename = void>
+struct has_rebind_t : std::false_type {};
+template <typename T, typename U>
+struct has_rebind_t<T, U, std::void_t<typename T::template rebind_t<U>>>
+    : std::true_type {};
+
+/// The default freestanding (owning) tensor type associated with tensor type
+/// `T` -- the type a value-returning op must produce when handed a `T`.
+///
+/// This is purely the *view -> owning-tensor* map; rebinding the element
+/// type is a separate concern (`rebind_t`). A tensor that is already
+/// freestanding (exposes `rebind_t`, as `TA::Tensor`/`btas::Tensor` do) maps
+/// to itself. A *view* type (`ArenaTensor`, `TensorInterface`, ...) cannot be
+/// a value result and maps to the owning `TA::Tensor<T::value_type>`. A view
+/// may specialize this trait to name a different owning family (e.g.
+/// `btas::TensorView` -> `btas::Tensor`). The mapped type is always
+/// freestanding and therefore always exposes `rebind_t`.
+template <typename T, typename = void>
+struct default_freestanding_tensor {
+  using type =
+      std::conditional_t<has_rebind_t<T, typename T::value_type>::value, T,
+                         Tensor<typename T::value_type>>;
+};
+template <typename T>
+using default_freestanding_tensor_t =
+    typename default_freestanding_tensor<T>::type;
+
 namespace {
 
 template <typename Op, typename Lhs, typename Rhs>
@@ -487,19 +564,22 @@ struct result_tensor_helper {
   using TensorB_ = std::remove_reference_t<TensorB>;
   using value_type_A = typename TensorA_::value_type;
   using value_type_B = typename TensorB_::value_type;
-  using allocator_type_A = typename TensorA_::allocator_type;
-  using allocator_type_B = typename TensorB_::allocator_type;
 
  public:
   using numeric_type = binop_result_t<Op, value_type_A, value_type_B>;
-  using allocator_type =
-      std::conditional_t<std::is_same_v<void, Allocator> &&
-                             std::is_same_v<allocator_type_A, allocator_type_B>,
-                         allocator_type_A, Allocator>;
+
+  // Result tensor type stays in TensorA's *freestanding* family -- TensorA
+  // itself if already owning, or its owning counterpart if TensorA is a view
+  // (see `default_freestanding_tensor`) -- with the allocator rebound to hold
+  // `numeric_type`. The freestanding type always exposes `rebind_t`. An
+  // explicit @tparam Allocator override only applies when TensorA is a
+  // TA::Tensor.
   using result_type =
-      std::conditional_t<std::is_same_v<void, allocator_type>,
-                         TA::Tensor<numeric_type>,
-                         TA::Tensor<numeric_type, allocator_type>>;
+      std::conditional_t<std::is_same_v<void, Allocator> ||
+                             !is_ta_tensor_v<TensorA_>,
+                         typename default_freestanding_tensor_t<
+                             TensorA_>::template rebind_t<numeric_type>,
+                         TA::Tensor<numeric_type, Allocator>>;
 };
 
 }  // namespace

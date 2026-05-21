@@ -28,6 +28,7 @@
 
 #include <TiledArray/einsum/index.h>
 #include <TiledArray/math/gemm_helper.h>
+#include <TiledArray/tensor/arena_tensor.h>
 #include <TiledArray/tensor/permute.h>
 #include <TiledArray/tensor/utility.h>
 #include <TiledArray/util/vector.h>
@@ -1258,12 +1259,59 @@ auto tensor_contract(TensorA const& A, TensorB const& B,
   using Numeric = typename Result::numeric_type;
 
   // call gemm
-  gemm(Numeric{1},                                   //
-       plan.do_perm.A ? A.permute(plan.perm.A) : A,  //
-       plan.do_perm.B ? B.permute(plan.perm.B) : B,  //
+  gemm(Numeric{1},                                    //
+       plan.do_perm.A ? permute(A, plan.perm.A) : A,  //
+       plan.do_perm.B ? permute(B, plan.perm.B) : B,  //
        Numeric{0}, result, plan.gemm_helper);
 
-  return plan.do_perm.C ? result.permute(plan.perm.C.inv()) : result;
+  return plan.do_perm.C ? permute(result, plan.perm.C.inv()) : result;
+}
+
+/// In-place contraction. Accumulates `factor * (A contracted with B per
+/// plan)` into `result` with beta=1 -- `result` must be pre-allocated and
+/// zero-initialized (or carry an existing partial sum to add into).
+///
+/// Fast path: when `plan.do_perm.{A,B,C}` are all false (the canonical
+/// alignment the expression engine produces), the contraction is exactly
+/// one GEMM into `result` via the free `gemm` CPO. Works uniformly for
+/// `TA::Tensor` and `ArenaTensor` inner cells.
+///
+/// Slow path: when any operand requires permutation, the value-returning
+/// `tensor_contract` is called and its result is accumulated into `result`
+/// via free `add_to`. This requires materialization, which is incompatible
+/// with `ArenaTensor`'s pinned-storage contract; for arena cells the
+/// non-canonical case throws (the expression engine should pre-align).
+template <typename ResultTensor, typename TensorA, typename TensorB,
+          typename Annot, typename Scalar,
+          typename = std::enable_if_t<is_annotation_v<Annot>>>
+ResultTensor& tensor_contract_to(ResultTensor& result, TensorA const& A,
+                                 TensorB const& B, Scalar factor,
+                                 const TensorContractionPlan<Annot>& plan) {
+  if (!plan.do_perm.A && !plan.do_perm.B && !plan.do_perm.C) {
+    return gemm(result, A, B, factor, plan.gemm_helper);
+  }
+  constexpr bool any_arena = ::TiledArray::is_arena_tensor_v<ResultTensor> ||
+                             ::TiledArray::is_arena_tensor_v<TensorA> ||
+                             ::TiledArray::is_arena_tensor_v<TensorB>;
+  if constexpr (any_arena) {
+    TA_EXCEPTION(
+        "tensor_contract_to: non-canonical plan (do_perm.{A,B,C} not all "
+        "false) is unsupported for ArenaTensor cells; the expression "
+        "engine should pre-align inner modes to the canonical layout.");
+    return result;
+  } else {
+    // Value-semantic slow path. tensor_contract internally uses alpha=1;
+    // restrict callers here to factor=1 so the math matches. Regime-A
+    // always passes factor=1; lift this restriction only if a real caller
+    // needs a non-unit scale on the non-canonical path.
+    using Numeric = typename ResultTensor::numeric_type;
+    TA_ASSERT(static_cast<Numeric>(factor) == Numeric{1} &&
+              "tensor_contract_to: non-canonical plan currently supports "
+              "factor == 1 only");
+    auto prod = tensor_contract(A, B, plan);
+    if (!prod.empty()) add_to(result, prod);
+    return result;
+  }
 }
 
 /// contracts 2 tensors, with 1 plan construction per call.
@@ -1334,20 +1382,21 @@ auto tensor_hadamard(TensorA const& A, TensorB const& B,
   TA_ASSERT(B.range().rank() == plan.B.size());
 
   if (plan.no_perm) {
-    return A.mult(B);
+    return mult(A, B);
   } else if (plan.perm_to_c) {
-    return A.mult(B, plan.perm.AC);
+    return mult(A, B, plan.perm.AC);
   } else if (plan.perm_a) {
-    auto pA = A.permute(plan.perm.AC);
-    pA.mult_to(B);
+    auto pA = permute(A, plan.perm.AC);
+    mult_to(pA, B);
     return pA;
   } else if (plan.perm_b) {
-    auto pB = B.permute(plan.perm.BC);
-    pB.mult_to(A);
+    auto pB = permute(B, plan.perm.BC);
+    mult_to(pB, A);
     return pB;
   } else {
-    auto pA = A.permute(plan.perm.AC);
-    return pA.mult_to(B.permute(plan.perm.BC));
+    auto pA = permute(A, plan.perm.AC);
+    mult_to(pA, permute(B, plan.perm.BC));
+    return pA;
   }
 }
 

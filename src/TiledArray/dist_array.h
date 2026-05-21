@@ -28,6 +28,7 @@
 #include "TiledArray/pmap/replicated_pmap.h"
 #include "TiledArray/policies/dense_policy.h"
 #include "TiledArray/replicator.h"
+#include "TiledArray/tensor/arena_kernels.h"
 #include "TiledArray/tile_interface/cast.h"
 #include "TiledArray/util/annotation.h"
 #include "TiledArray/util/initializer_list.h"
@@ -252,6 +253,35 @@ class DistArray : public madness::archive::ParallelSerializableObject {
             const std::shared_ptr<const pmap_interface>& pmap =
                 std::shared_ptr<const pmap_interface>())
       : pimpl_(init(get_default_world(), trange, shape, pmap)) {}
+
+  /// Tensor-of-tensors array constructor
+
+  /// Constructs a tensor-of-tensors array in fully-shaped state: every inner
+  /// cell of every local tile is allocated (its range taken from
+  /// \p inner_range_fn, element storage zero-initialized), so the array
+  /// immediately satisfies the ToT validity invariant and is ready for
+  /// in-place fill (\c fill, \c foreach_inplace, element writes, ...).
+  /// Enabled only when \c Tile is a tensor-of-tensors.
+  /// \tparam InnerRangeFn callable type
+  /// \param world The world where the array will live.
+  /// \param trange The tiled range object that defines the array tiling.
+  /// \param inner_range_fn callable mapping a global outer element index to
+  ///        that inner cell's range; a zero-volume range yields a null cell.
+  /// \param pmap The tile index -> process map
+  template <
+      typename InnerRangeFn,
+      typename = std::enable_if_t<
+          detail::is_tensor_of_tensor_v<Tile> &&
+          !std::is_convertible_v<std::decay_t<InnerRangeFn>, shape_type> &&
+          !std::is_convertible_v<std::decay_t<InnerRangeFn>,
+                                 std::shared_ptr<const pmap_interface>>>>
+  DistArray(World& world, const trange_type& trange,
+            InnerRangeFn&& inner_range_fn,
+            const std::shared_ptr<const pmap_interface>& pmap = {})
+      : DistArray(world, trange, pmap) {
+    init_tiles_nested(std::forward<InnerRangeFn>(inner_range_fn),
+                      detail::nested_fill_noop{});
+  }
 
   /// \name Initializer list constructors
   /// \brief Creates a new tensor containing the elements in the provided
@@ -779,7 +809,22 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                                   detail::is_input_iterator<InIter>::value>>
   void set(const Index& i, InIter first) {
     check_index(i);
-    pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
+    if constexpr (detail::is_tensor_of_tensor_v<value_type> &&
+                  is_arena_tensor_v<element_type>) {
+      // arena ToT: each iterated inner tile carries the range that sizes its
+      // cell. make_arena_nested_tile pulls the source once per cell in
+      // ascending order, so the single-pass iterator feeds straight through.
+      const auto outer_range = pimpl_->trange().make_tile_range(i);
+      using SrcTile = std::decay_t<decltype(*first)>;
+      pimpl_->set(i, make_arena_nested_tile(outer_range,
+                                            [&first](std::size_t) -> SrcTile {
+                                              SrcTile t = *first;
+                                              ++first;
+                                              return t;
+                                            }));
+    } else {
+      pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
+    }
   }
 
   /// Set a tile and fill it using a sequence
@@ -828,7 +873,20 @@ class DistArray : public madness::archive::ParallelSerializableObject {
             typename = enable_if_is_integral_or_integral_range<Index>>
   void set(const Index& i, const element_type& value = element_type()) {
     check_index(i);
-    pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
+    if constexpr (detail::is_tensor_of_tensor_v<value_type> &&
+                  is_arena_tensor_v<element_type>) {
+      // arena ToT: every inner cell takes `value`'s (initialized) range and a
+      // deep copy of its data -- build the slab-backed tile from that range.
+      TA_ASSERT(!value.empty() &&
+                "DistArray::set: a null inner tile has no range to size cells");
+      pimpl_->set(i, make_arena_nested_tile(
+                         pimpl_->trange().make_tile_range(i),
+                         [&value](std::size_t) -> const element_type& {
+                           return value;
+                         }));
+    } else {
+      pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
+    }
   }
 
   /// Set every element of a tile to a specified value
@@ -908,12 +966,33 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already set. Weak throw guarantee.
-  template <Fence fence = Fence::No>
-  std::int64_t fill_local(const element_type& value = element_type(),
-                          bool skip_set = false) {
-    return init_tiles<HostExecutor::Default, fence>(
-        [value](const range_type& range) { return value_type(range, value); },
-        skip_set);
+  ///
+  /// \tparam V the value type; defaults to \c element_type but may be any
+  ///         type assignable to \c element_type& -- a freestanding
+  ///         \c ArenaTensor cannot be minted, so an arena-backed ToT is
+  ///         filled by passing e.g. an owning \c TA::Tensor.
+  /// \note For an *arena-backed* tensor-of-tensors tile type this is an
+  /// in-place mutator over an already-shaped array (constructed via
+  /// \c init_tiles_nested or the ToT range_fn ctor): \p value is deep-copied
+  /// into every (bound) inner cell, so it must match each cell's volume.
+  template <Fence fence = Fence::No, typename V = element_type,
+            typename =
+                std::enable_if_t<std::is_assignable_v<element_type&, const V&>>>
+  std::int64_t fill_local(const V& value = V(), bool skip_set = false) {
+    if constexpr (detail::is_tensor_of_tensor_v<value_type> &&
+                  is_arena_tensor_v<element_type>) {
+      return for_each_local_tile_inplace<fence>([value](value_type& outer) {
+        for (std::size_t o = 0; o < outer.size(); ++o) {
+          auto& cell = outer.data()[o];
+          if (cell.empty()) continue;  // skip deliberately-null cells
+          cell = value;                // deep copy into the bound arena cell
+        }
+      });
+    } else {
+      return init_tiles<HostExecutor::Default, fence>(
+          [value](const range_type& range) { return value_type(range, value); },
+          skip_set);
+    }
   }
 
   /// Fill all local tiles with the specified value
@@ -930,11 +1009,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already set. Weak throw guarantee.
-  template <Fence fence = Fence::No>
-  std::int64_t fill(const element_type& value = numeric_type(),
-                    bool skip_set = false) {
-    // for sparse arrays filled with zero, replace with an empty array
-    if constexpr (!is_dense_v<Policy>) {
+  template <Fence fence = Fence::No, typename V = element_type,
+            typename =
+                std::enable_if_t<std::is_assignable_v<element_type&, const V&>>>
+  std::int64_t fill(const V& value = V(), bool skip_set = false) {
+    // for sparse arrays filled with zero, replace with an empty array;
+    // an arena-backed ToT is shaped before fill (fill_local mutates in place),
+    // and its inner view tiles have no zero-comparison -- skip for those
+    if constexpr (!is_dense_v<Policy> &&
+                  !(detail::is_tensor_of_tensor_v<value_type> &&
+                    is_arena_tensor_v<element_type>)) {
       if (value == element_type()) {
         *this = DistArray(
             world(), trange(),
@@ -957,7 +1041,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \tparam fence If Fence::No, the operation will return early,
   ///         before the tasks have completed
   /// \tparam T The type of random value to generate. Defaults to
-  ///           element_type.
+  ///           numeric_type (the scalar type), so this works for
+  ///           tensor-of-tensors arrays, where it fills every inner scalar
+  ///           in place over an already-shaped array (see \c init_elements).
   /// \param[in] skip_set If false, will throw if any tiles are already set
   /// \return the total number of tiles that have been (or will be) initialized
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
@@ -965,11 +1051,25 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already initialized. Weak throw guarantee.
   template <HostExecutor Exec = HostExecutor::Default,
-            typename T = element_type, Fence fence = Fence::No,
+            typename T = numeric_type, Fence fence = Fence::No,
             typename = detail::enable_if_can_make_random_t<T>>
   std::int64_t fill_random(bool skip_set = false) {
-    return init_elements<Exec, fence>(
-        [](const auto&) { return detail::MakeRandom<T>::generate_value(); });
+    if constexpr (detail::is_tensor_of_tensor_v<value_type>) {
+      // in-place over an already-shaped ToT array (plain or arena-backed):
+      // overwrite every inner scalar, leaving inner ranges untouched
+      return for_each_local_tile_inplace<fence>([](value_type& outer) {
+        for (std::size_t o = 0; o < outer.size(); ++o) {
+          auto& cell = outer.data()[o];
+          if (cell.empty()) continue;
+          const std::size_t n = cell.size();
+          for (std::size_t i = 0; i < n; ++i)
+            cell.data()[i] = detail::MakeRandom<T>::generate_value();
+        }
+      });
+    } else {
+      return init_elements<Exec, fence>(
+          [](const auto&) { return detail::MakeRandom<T>::generate_value(); });
+    }
   }
 
   /// Initialize (local) tiles with a user provided functor
@@ -1042,20 +1142,90 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if skip_set is false and a local, non-zero
   ///                              tile is already initialized. Weak throw
   ///                              guarantee.
+  ///
+  /// \note \p op must return a freestanding value assignable to
+  /// \c element_type&. For an *arena-backed* tensor-of-tensors tile type the
+  /// inner cell is a non-owning view that cannot be minted standalone, so
+  /// \p op returns an owning tensor (e.g. \c TA::Tensor): each outer tile
+  /// collects its \p op outputs, then allocates one arena slab sized to them
+  /// (via \c detail::make_nested_tile) and deep-copies the outputs into the
+  /// bound inner cells.
   template <HostExecutor Exec = HostExecutor::Default, Fence fence = Fence::No,
             typename Op>
   std::int64_t init_elements(Op&& op, bool skip_set = false) {
     auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
+    if constexpr (detail::is_tensor_of_tensor_v<value_type> &&
+                  is_arena_tensor_v<element_type>) {
+      return init_tiles<Exec, fence>(
+          [op = std::move(op_shared_handle)](
+              const TiledArray::Range& outer_range) -> value_type {
+            using R = std::decay_t<decltype(op(outer_range.idx(0)))>;
+            static_assert(
+                std::is_assignable_v<element_type&, const R&>,
+                "DistArray::init_elements: op must return a freestanding "
+                "tensor assignable to the inner tile type");
+            // single pass: make_arena_nested_tile pulls each cell once, in
+            // ascending order, so op runs once per cell with no buffer
+            return make_arena_nested_tile(
+                outer_range, [&op, &outer_range](std::size_t k) -> R {
+                  return op(outer_range.idx(k));
+                });
+          },
+          skip_set);
+    } else {
+      return init_tiles<Exec, fence>(
+          [op = std::move(op_shared_handle)](
+              const TiledArray::Range& range) -> value_type {
+            // Initialize the tile with the given range object
+            Tile tile(range);
+
+            // Initialize tile elements
+            for (auto& idx : range) tile[idx] = op(idx);
+
+            return tile;
+          },
+          skip_set);
+    }
+  }
+
+  /// Initialize tensor-of-tensors tiles two-pass with user-provided functors
+
+  /// A whole-tile constructor (like \c init_tiles), specialized for
+  /// tensor-of-tensors \c Tile s: each local tile is built via
+  /// \c detail::make_nested_tile -- \p inner_range_fn sizes every inner cell,
+  /// \p inner_fill_fn fills it -- so arena-backed inner cells are allocated in
+  /// one slab per tile. The work is done in parallel, so both functors must be
+  /// thread safe. The expected signatures are:
+  /// \code
+  /// inner_range_type inner_range_fn(const Index& outer_element_index)
+  /// void inner_fill_fn(inner_tile& cell, const Index& outer_element_index)
+  /// \endcode
+  /// where \c outer_element_index is a global element index. A zero-volume
+  /// inner range yields a deliberately-null inner cell, which \p inner_fill_fn
+  /// is not invoked on.
+  /// \tparam InnerRangeFn callable producing each inner cell's range
+  /// \tparam InnerFillFn callable filling each non-null inner cell
+  /// \param[in] inner_range_fn maps a global outer element index to an inner
+  ///            range
+  /// \param[in] inner_fill_fn fills a non-null inner cell
+  /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \return the total number of tiles that have been (or will be) initialized
+  template <HostExecutor Exec = HostExecutor::Default, Fence fence = Fence::No,
+            typename InnerRangeFn, typename InnerFillFn,
+            typename V = value_type,
+            typename = std::enable_if_t<detail::is_tensor_of_tensor_v<V>>>
+  std::int64_t init_tiles_nested(InnerRangeFn&& inner_range_fn,
+                                 InnerFillFn&& inner_fill_fn,
+                                 bool skip_set = false) {
+    auto range_fn =
+        make_op_shared_handle(std::forward<InnerRangeFn>(inner_range_fn));
+    auto fill_fn =
+        make_op_shared_handle(std::forward<InnerFillFn>(inner_fill_fn));
     return init_tiles<Exec, fence>(
-        [op = std::move(op_shared_handle)](
-            const TiledArray::Range& range) -> value_type {
-          // Initialize the tile with the given range object
-          Tile tile(range);
-
-          // Initialize tile elements
-          for (auto& idx : range) tile[idx] = op(idx);
-
-          return tile;
+        [range_fn = std::move(range_fn), fill_fn = std::move(fill_fn)](
+            const TiledArray::Range& outer_tile_range) -> value_type {
+          return detail::make_nested_tile<value_type>(outer_tile_range,
+                                                      range_fn, fill_fn);
         },
         skip_set);
   }
@@ -1705,6 +1875,80 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 #endif  // NDEBUG
   }
 
+  /// Applies an in-place mutator to every local, non-zero tile.
+
+  /// This is the engine behind the tensor-of-tensors \c fill* / \c
+  /// init_elements path: the array must already be shaped (every local tile
+  /// future registered, e.g. by the ToT range_fn constructor or \c
+  /// init_tiles_nested), and \p tile_op mutates each tile's data in place
+  /// without re-shaping it. \p tile_op must be callable as \c void(value_type&)
+  /// and thread safe. The mutation tasks chain off the existing tile futures,
+  /// so they run only after tile construction completes; this call blocks
+  /// locally until every mutation finishes, so on return all local tiles hold
+  /// their final data.
+  /// \tparam fence if Fence::Global, also fences the array's World on exit
+  /// \param[in] tile_op the in-place per-tile mutator
+  /// \return the number of tiles mutated
+  template <Fence fence = Fence::No, typename TileOp>
+  std::int64_t for_each_local_tile_inplace(TileOp&& tile_op) {
+    auto op = make_op_shared_handle(std::forward<TileOp>(tile_op));
+    World& w = world();
+    std::atomic<std::int64_t> ndone{0};
+    // hold the mutation-task futures so they (and the callbacks below) stay
+    // alive until every task has run; the futures are not re-set into the
+    // array -- the mutation happens behind the existing tile futures.
+    std::vector<Future<value_type>> done;
+    for (const auto& index : *(pmap())) {
+      if (is_zero(index)) continue;
+      Future<value_type>& fut = find_local(index);
+      Future<value_type> mutated = w.taskq.add(
+          [op](value_type& tile) -> value_type {
+            op(tile);
+            return tile;
+          },
+          fut);
+      mutated.register_callback(
+          new detail::IncrementCounter<std::atomic<std::int64_t>>(ndone));
+      done.emplace_back(std::move(mutated));
+    }
+    const std::int64_t ntiles = static_cast<std::int64_t>(done.size());
+    if (ntiles > 0)
+      w.await([&ndone, ntiles]() { return ndone.load() == ntiles; });
+    if constexpr (fence == Fence::Global) w.gop.fence();
+    return ntiles;
+  }
+
+  /// Builds one slab-backed arena tensor-of-tensors outer tile.
+
+  /// Engine behind the arena-ToT paths of \c init_elements and \c set:
+  /// \p cell_source(ordinal) returns a freestanding tensor whose range sizes
+  /// inner cell \p ordinal and whose data fills it. Built in one pass with
+  /// \c detail::ArenaToTBuilder; \p cell_source is invoked exactly once per
+  /// cell, in ascending ordinal order, so a single-pass source (a generator
+  /// op or an input iterator) can be fed straight through without buffering.
+  /// \param[in] outer_range the outer tile's range
+  /// \param[in] cell_source maps a cell ordinal to its source tensor
+  template <typename CellSource>
+  static value_type make_arena_nested_tile(const TiledArray::Range& outer_range,
+                                           CellSource&& cell_source) {
+    using InnerRange = typename element_type::range_type;
+    detail::ArenaToTBuilder<value_type> builder(outer_range);
+    const std::size_t n = outer_range.volume();
+    for (std::size_t k = 0; k < n; ++k) {
+      const auto& src = cell_source(k);
+      // the inner-cell range type is built from an extent list -- it is not
+      // constructible from a foreign range type
+      const auto& src_range = src.range();
+      const auto& src_ext = src_range.extent();
+      std::vector<std::size_t> ext(src_range.rank());
+      for (std::size_t d = 0; d < src_range.rank(); ++d)
+        ext[d] = static_cast<std::size_t>(src_ext[d]);
+      auto& cell = builder.emplace(k, InnerRange(ext));
+      if (!cell.empty()) cell = src;  // deep copy into the bound arena cell
+    }
+    return std::move(builder).finish();
+  }
+
   /// Code factorization of the actual assert for the other overloads
   void assert_pimpl() const {
     TA_ASSERT(pimpl_ &&
@@ -1852,8 +2096,20 @@ size_t volume(const DistArray<Tile, Policy>& array) {
 
   auto local_vol = [&vol](Tile const& in_tile) {
     if constexpr (detail::is_tensor_of_tensor_v<Tile>) {
+      // Inner tile pointer is passed (see is_reduce_op_v in
+      // tensor/type_traits.h selecting the pointer-passing tensor_reduce
+      // overload). Prefer `total_size()` (TA::Tensor exposes it, batches
+      // included); fall back to `size()` for inner tile types that don't
+      // (e.g. btas::Tensor).
       auto reduce_op = [](size_t& MADNESS_RESTRICT result, auto&& arg) {
-        result += arg->total_size();
+        using InnerTile =
+            std::remove_cv_t<std::remove_reference_t<decltype(*arg)>>;
+        if constexpr (detail::has_member_function_total_size_anyreturn_v<
+                          InnerTile>) {
+          result += arg->total_size();
+        } else {
+          result += arg->size();
+        }
       };
       auto join_op = [](auto& MADNESS_RESTRICT result, size_t count) {
         result += count;
