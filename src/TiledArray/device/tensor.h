@@ -673,6 +673,15 @@ inline UMTensor<T> gemm(const UMTensor<T>& left, const UMTensor<T>& right,
   TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
   TA_ASSERT(left.nbatch() == 1 && right.nbatch() == 1);
 
+  TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
+                                             right.range().extent_data()));
+  TA_ASSERT(ignore_tile_position() ||
+            gemm_helper.left_right_congruent(left.range().lobound_data(),
+                                             right.range().lobound_data()));
+  TA_ASSERT(ignore_tile_position() ||
+            gemm_helper.left_right_congruent(left.range().upbound_data(),
+                                             right.range().upbound_data()));
+
   auto result_range = gemm_helper.template make_result_range<TiledArray::Range>(
       left.range(), right.range());
 
@@ -726,6 +735,31 @@ inline void gemm(UMTensor<T>& result, const UMTensor<T>& left,
   TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
   TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
   TA_ASSERT(left.nbatch() == 1 && right.nbatch() == 1 && result.nbatch() == 1);
+
+  TA_ASSERT(gemm_helper.left_result_congruent(left.range().extent_data(),
+                                              result.range().extent_data()));
+  TA_ASSERT(ignore_tile_position() ||
+            gemm_helper.left_result_congruent(left.range().lobound_data(),
+                                              result.range().lobound_data()));
+  TA_ASSERT(ignore_tile_position() ||
+            gemm_helper.left_result_congruent(left.range().upbound_data(),
+                                              result.range().upbound_data()));
+  TA_ASSERT(gemm_helper.right_result_congruent(right.range().extent_data(),
+                                               result.range().extent_data()));
+  TA_ASSERT(ignore_tile_position() ||
+            gemm_helper.right_result_congruent(right.range().lobound_data(),
+                                               result.range().lobound_data()));
+  TA_ASSERT(ignore_tile_position() ||
+            gemm_helper.right_result_congruent(right.range().upbound_data(),
+                                               result.range().upbound_data()));
+  TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
+                                             right.range().extent_data()));
+  TA_ASSERT(ignore_tile_position() ||
+            gemm_helper.left_right_congruent(left.range().lobound_data(),
+                                             right.range().lobound_data()));
+  TA_ASSERT(ignore_tile_position() ||
+            gemm_helper.left_right_congruent(left.range().upbound_data(),
+                                             right.range().upbound_data()));
 
   auto& queue = blasqueue_for(result.range());
   const device::Stream stream(queue.device(), queue.stream());
