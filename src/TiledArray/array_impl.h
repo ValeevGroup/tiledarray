@@ -480,6 +480,24 @@ class ArrayImpl : public TensorImpl<Policy>,
         // wait for all DelayedSet's to vanish
         world.await([&]() { return (pimpl->num_live_ds() == 0); }, true);
 
+        // Fast path when invoked from inside the fence's deferred-cleanup
+        // phase: the global-termination protocol has already established
+        // global quiescence (no in-flight AM, all ranks at the same point),
+        // and symmetric collective use of `defer_deleter_to_next_fence()`
+        // guarantees every rank has this same pimpl in its deferred list
+        // and so reaches this same delete in lockstep. The cross-rank
+        // lazy_sync handshake below is therefore redundant; it would also
+        // schedule a lazy_sync_children task on this world's taskq that the
+        // fence cannot drain (do_cleanup runs after the drain loop) and
+        // that would later be run by some unrelated fence -- against freed
+        // state if this world is destroyed before then (e.g. einsum's
+        // per-Hadamard sub-Worlds).
+        if (world.gop.is_in_do_cleanup()) {
+          delete pimpl;
+          cleanup_counter_--;
+          return;
+        }
+
         try {
           world.gop.lazy_sync(id, [pimpl]() {
             delete pimpl;
