@@ -653,6 +653,38 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     // dead World (e.g. while unwinding an exception thrown mid-contraction).
     std::vector<std::shared_ptr<World>> worlds;
 
+    // RAII fencer: on normal exit and (critically) on exception unwind,
+    // fence every live sub-World before it is destroyed. ~DistArray ->
+    // lazy_deleter calls world.gop.lazy_sync(...) which enqueues a
+    // lazy_sync_children task onto the sub-World's taskq; without a fence
+    // those tasks survive into the global ThreadPool past the sub-World's
+    // ~World, then trip ~WorldObject's `World::exists(&world)` assertion
+    // when some later fence (e.g. an enclosing scope's fence run during
+    // unwind) picks them up. Declared *after* `worlds` so it destructs
+    // *before* `worlds` (LIFO); destructs *after* AB/C so it sees the
+    // tasks they scheduled via lazy_deleter.
+    //
+    // One fence per sub-World is sufficient: lazy_deleter's fast path
+    // skips lazy_sync when invoked from inside fence_impl's do_cleanup
+    // (gated by `world.gop.is_in_do_cleanup()`), so the deferred-cleanup
+    // path performs direct deletes rather than scheduling cross-rank
+    // tasks. Tasks scheduled by *non*-deferred ~DistArray's (e.g. AB
+    // during exception unwind) are drained by this fence's drain loop;
+    // all participating ranks of a sub-World reach this RAII guard in
+    // lockstep at function exit, so their lazy_sync handshakes match up.
+    struct FenceSubWorldsOnExit {
+      std::vector<std::shared_ptr<World>> &worlds_;
+      ~FenceSubWorldsOnExit() {
+        for (auto &w : worlds_) {
+          if (!w) continue;
+          try {
+            w->gop.fence();
+          } catch (...) {
+          }
+        }
+      }
+    } fence_subworlds_on_exit{worlds};
+
     std::tuple<ArrayTerm<ArrayA>, ArrayTerm<ArrayB>> AB{{A.array(), a},
                                                         {B.array(), b}};
 
