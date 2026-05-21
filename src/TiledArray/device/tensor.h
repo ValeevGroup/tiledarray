@@ -836,7 +836,9 @@ inline std::enable_if_t<!std::is_same_v<UMTile, HostTile>,
                         TiledArray::DistArray<HostTile, Policy>>
 um_tensor_to_ta_tensor(const TiledArray::DistArray<UMTile, Policy>& um_array) {
   auto convert_tile = [](const UMTile& tile) {
+    auto stream = device::stream_for(tile.range());
     detail::to_host(tile);
+    device::sync_madness_task_with(stream);
     HostTile result(tile.range());
     std::copy_n(tile.data(), tile.total_size(), result.data());
     return result;
@@ -894,9 +896,12 @@ struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
   static inline void store(const Archive& ar,
                            const TiledArray::UMTensor<T>& t) {
     if constexpr (TiledArray::detail::is_numeric_v<T>) {
-      TiledArray::detail::to_host(t);
+      if (!t.empty()) {
+        auto stream = TiledArray::device::stream_for(t.range());
+        TiledArray::detail::to_host(t);
+        TiledArray::device::sync_madness_task_with(stream);
+      }
     }
-    // Mirror TA::Tensor::serialize's store side
     const bool empty = t.empty();
     ar & empty;
     if (!empty) {
