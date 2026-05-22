@@ -153,9 +153,9 @@ inline void apply_scale_factor(T* data, std::size_t n, const Scalar factor,
                            Scalar,
                            TiledArray::detail::ComplexConjugate<void>>) {
     // conjugation on a real tensor is a no-op
-  } else if constexpr (std::is_same_v<
-                           Scalar, TiledArray::detail::ComplexConjugate<
-                                       TiledArray::detail::ComplexNegTag>>) {
+  } else if constexpr (std::is_same_v<Scalar,
+                                      TiledArray::detail::ComplexConjugate<
+                                          TiledArray::detail::ComplexNegTag>>) {
     ::blas::scal(n, static_cast<T>(-1), data, 1, queue);
   }
 }

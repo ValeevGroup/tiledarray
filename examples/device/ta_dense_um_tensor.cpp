@@ -57,10 +57,9 @@ void run(TiledArray::World &world, long Nm, long Bm, long Nn, long Bn, long Nk,
 
   constexpr bool complex_T = TA::detail::is_complex_v<T>;
   // GEMM flops: 2 * M * N * K (8 * for complex).
-  const std::int64_t nflops = (complex_T ? 8 : 2) *
-                              static_cast<std::int64_t>(Nm) *
-                              static_cast<std::int64_t>(Nn) *
-                              static_cast<std::int64_t>(Nk);
+  const std::int64_t nflops =
+      (complex_T ? 8 : 2) * static_cast<std::int64_t>(Nm) *
+      static_cast<std::int64_t>(Nn) * static_cast<std::int64_t>(Nk);
 
   auto blocking = [](long N, long B) {
     std::vector<unsigned int> v;
@@ -133,8 +132,8 @@ void run(TiledArray::World &world, long Nm, long Bm, long Nn, long Bn, long Nk,
 
   if (world.rank() == 0)
     std::cout << "  Average time   = " << (total_time / double(nrepeat))
-              << " s\n  Average gflops = "
-              << (total_gflops / double(nrepeat)) << "\n";
+              << " s\n  Average gflops = " << (total_gflops / double(nrepeat))
+              << "\n";
 
   // Verify: every result element should be Nk * val_a * val_b.
   const T expected = T(Nk) * val_a * val_b;
@@ -169,8 +168,7 @@ int try_main(int argc, char **argv) {
   if (argc < 7) {
     if (world.rank() == 0)
       std::cerr
-          << "Usage: " << argv[0]
-          << " Nm Bm Nn Bn Nk Bk [nrepeat=5]\n"
+          << "Usage: " << argv[0] << " Nm Bm Nn Bn Nk Bk [nrepeat=5]\n"
           << "  Computes c(Nm,Nn) = a(Nm,Nk) * b(Nk,Nn) with UMTensor tiles\n";
     return 1;
   }

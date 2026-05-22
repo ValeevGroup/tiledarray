@@ -124,8 +124,7 @@ int try_main(int argc, char **argv) {
   if (argc < 5) {
     if (world.rank() == 0)
       std::cerr
-          << "Usage: " << argv[0]
-          << " Nm Bm Nn Bn [nrepeat=5]\n"
+          << "Usage: " << argv[0] << " Nm Bm Nn Bn [nrepeat=5]\n"
           << "  Times element-wise vector ops on Nm x Nn UMTensor matrices\n";
     return 1;
   }
