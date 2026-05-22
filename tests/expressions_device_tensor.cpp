@@ -27,8 +27,8 @@
 #include <TiledArray/einsum/tiledarray.h>
 #include <tiledarray.h>
 
-#include <random>
 #include <range_fixture.h>
+#include <random>
 
 #include "unit_test_config.h"
 
@@ -243,12 +243,12 @@ BOOST_AUTO_TEST_CASE(reduce_factories) {
   // Expression-level reductions through the DSL: scalar = a("...").reduce()
   GlobalFixture::world->gop.fence();
 
-  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").sum().get(),
-                             a_h("a,b,c").sum().get(), 1.0e-12);
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").sum().get(), a_h("a,b,c").sum().get(),
+                             1.0e-12);
   BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").squared_norm().get(),
                              a_h("a,b,c").squared_norm().get(), 1.0e-12);
-  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").norm().get(),
-                             a_h("a,b,c").norm().get(), 1.0e-12);
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").norm().get(), a_h("a,b,c").norm().get(),
+                             1.0e-12);
   BOOST_CHECK_EQUAL(a("a,b,c").min().get(), a_h("a,b,c").min().get());
   BOOST_CHECK_EQUAL(a("a,b,c").max().get(), a_h("a,b,c").max().get());
   BOOST_CHECK_EQUAL(a("a,b,c").abs_min().get(), a_h("a,b,c").abs_min().get());
@@ -257,8 +257,7 @@ BOOST_AUTO_TEST_CASE(reduce_factories) {
 }
 
 BOOST_AUTO_TEST_CASE(reuse_stress) {
-  const double host_ref =
-      static_cast<double>(a_h("a,b,c") * a_h("a,b,c"));
+  const double host_ref = static_cast<double>(a_h("a,b,c") * a_h("a,b,c"));
   GlobalFixture::world->gop.fence();
   for (int iter = 0; iter < 8; ++iter) {
     const double d = static_cast<double>(a("a,b,c") * a("a,b,c"));
@@ -266,7 +265,6 @@ BOOST_AUTO_TEST_CASE(reuse_stress) {
     BOOST_CHECK_CLOSE_FRACTION(d, host_ref, 1.0e-12);
   }
 }
-
 
 /// In-place expression operators (+=, -=, *=)
 BOOST_AUTO_TEST_CASE(plus_equal_expr) {
@@ -341,7 +339,6 @@ BOOST_AUTO_TEST_CASE(conj_real) {
   check_close(c, c_h, tolerance);
 }
 
-
 /// Multi-step chains
 BOOST_AUTO_TEST_CASE(multi_step_chain) {
   TArrayD t(*GlobalFixture::world, tr);
@@ -360,8 +357,7 @@ BOOST_AUTO_TEST_CASE(block_assign) {
 
   // Result range matches the block's element range; build small companion
   // arrays to receive the result.
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
                        TiledRange1{lo[2], up[2]}};
   TArrayD blk_d(*GlobalFixture::world, ctr);
   HostArray blk_h(*GlobalFixture::world, ctr);
@@ -373,8 +369,7 @@ BOOST_AUTO_TEST_CASE(block_assign) {
 BOOST_AUTO_TEST_CASE(block_add_then_scale) {
   const std::array<int, 3> lo{3, 3, 3};
   const std::array<int, 3> up{5, 5, 5};
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
                        TiledRange1{lo[2], up[2]}};
   TArrayD blk_d(*GlobalFixture::world, ctr);
   HostArray blk_h(*GlobalFixture::world, ctr);
@@ -387,8 +382,7 @@ BOOST_AUTO_TEST_CASE(block_add_then_scale) {
 BOOST_AUTO_TEST_CASE(block_accumulate) {
   const std::array<int, 3> lo{3, 3, 3};
   const std::array<int, 3> up{5, 5, 5};
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
                        TiledRange1{lo[2], up[2]}};
   TArrayD blk_d(*GlobalFixture::world, ctr);
   HostArray blk_h(*GlobalFixture::world, ctr);
@@ -404,8 +398,7 @@ BOOST_AUTO_TEST_CASE(const_block) {
   const auto& ca_h = a_h;
   const std::array<int, 3> lo{3, 3, 3};
   const std::array<int, 3> up{5, 5, 5};
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
                        TiledRange1{lo[2], up[2]}};
   TArrayD blk_d(*GlobalFixture::world, ctr);
   HostArray blk_h(*GlobalFixture::world, ctr);
@@ -417,8 +410,7 @@ BOOST_AUTO_TEST_CASE(const_block) {
 BOOST_AUTO_TEST_CASE(scal_block) {
   const std::array<int, 3> lo{3, 3, 3};
   const std::array<int, 3> up{5, 5, 5};
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
                        TiledRange1{lo[2], up[2]}};
   TArrayD blk_d(*GlobalFixture::world, ctr);
   HostArray blk_h(*GlobalFixture::world, ctr);
@@ -430,8 +422,7 @@ BOOST_AUTO_TEST_CASE(scal_block) {
 BOOST_AUTO_TEST_CASE(permute_block) {
   const std::array<int, 3> lo{3, 3, 3};
   const std::array<int, 3> up{5, 5, 5};
-  const TiledRange ctr{TiledRange1{lo[0], up[0]},
-                       TiledRange1{lo[1], up[1]},
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
                        TiledRange1{lo[2], up[2]}};
   TArrayD blk_d(*GlobalFixture::world, ctr);
   HostArray blk_h(*GlobalFixture::world, ctr);
@@ -466,8 +457,8 @@ BOOST_AUTO_TEST_CASE(block_contract) {
   const std::array<int, 3> blo{2, 3, 3};
   const std::array<int, 3> bup{5, 5, 5};
 
-  BOOST_REQUIRE_NO_THROW(
-      w("a,b") = a("a,c,d").block(alo, aup) * b("c,d,b").block(blo, bup));
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block(alo, aup) *
+                                    b("c,d,b").block(blo, bup));
   w_h("a,b") = a_h("a,c,d").block(alo, aup) * b_h("c,d,b").block(blo, bup);
   check_close(w, w_h, 1.0e-12);
 }
@@ -485,8 +476,8 @@ BOOST_AUTO_TEST_CASE(block_permute_contract) {
   const std::array<int, 3> blo{2, 3, 3};
   const std::array<int, 3> bup{5, 5, 5};
 
-  BOOST_REQUIRE_NO_THROW(
-      w("a,b") = a("a,d,c").block(alo, aup) * b("c,d,b").block(blo, bup));
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,d,c").block(alo, aup) *
+                                    b("c,d,b").block(blo, bup));
   w_h("a,b") = a_h("a,d,c").block(alo, aup) * b_h("c,d,b").block(blo, bup);
   check_close(w, w_h, 1.0e-12);
 }
@@ -564,7 +555,6 @@ BOOST_AUTO_TEST_CASE(contraction_rank4_via_two_indices) {
   r_h("a,c") = t_h("a,b,k,l") * v_h("c,b,k,l");
   check_close(r, r_h, 1.0e-12);
 }
-
 
 /// TA::einsum
 BOOST_AUTO_TEST_CASE(einsum_matmul) {
@@ -757,8 +747,7 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform_split_inner) {
   fill_with_seed(rhs, rhs_h, 137);
   GlobalFixture::world->gop.fence();
 
-  BOOST_REQUIRE_NO_THROW(out("x,y") =
-                             5.0 * (lhs("x,i,j,k") * rhs("y,i,j,k")));
+  BOOST_REQUIRE_NO_THROW(out("x,y") = 5.0 * (lhs("x,i,j,k") * rhs("y,i,j,k")));
   out_h("x,y") = 5.0 * (lhs_h("x,i,j,k") * rhs_h("y,i,j,k"));
   check_close(out, out_h, 1.0e-12);
 }
@@ -781,8 +770,7 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform_split_two_inner) {
   fill_with_seed(rhs, rhs_h, 149);
   GlobalFixture::world->gop.fence();
 
-  BOOST_REQUIRE_NO_THROW(out("x,y") =
-                             5.0 * (lhs("x,i,j,k") * rhs("y,i,j,k")));
+  BOOST_REQUIRE_NO_THROW(out("x,y") = 5.0 * (lhs("x,i,j,k") * rhs("y,i,j,k")));
   out_h("x,y") = 5.0 * (lhs_h("x,i,j,k") * rhs_h("y,i,j,k"));
   check_close(out, out_h, 1.0e-12);
 }
@@ -812,12 +800,10 @@ BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
   TArrayD a2(*GlobalFixture::world, tr2);
   TArrayD b2(*GlobalFixture::world, tr2);
-  TArrayD c2(*GlobalFixture::world,
-             TiledRange{tr.data()[0], tr.data()[1]});
+  TArrayD c2(*GlobalFixture::world, TiledRange{tr.data()[0], tr.data()[1]});
   HostArray a2_h(*GlobalFixture::world, tr2);
   HostArray b2_h(*GlobalFixture::world, tr2);
-  HostArray c2_h(*GlobalFixture::world,
-                 TiledRange{tr.data()[0], tr.data()[1]});
+  HostArray c2_h(*GlobalFixture::world, TiledRange{tr.data()[0], tr.data()[1]});
   fill_with_seed(a2, a2_h, 163);
   fill_with_seed(b2, b2_h, 167);
   c2.fill_local(0.0);
@@ -835,10 +821,8 @@ BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
 
 /// Dot-product variants
 BOOST_AUTO_TEST_CASE(dot_permute) {
-  const double dev_d =
-      static_cast<double>(a("a,b,c") * b("c,b,a"));
-  const double host_d =
-      static_cast<double>(a_h("a,b,c") * b_h("c,b,a"));
+  const double dev_d = static_cast<double>(a("a,b,c") * b("c,b,a"));
+  const double host_d = static_cast<double>(a_h("a,b,c") * b_h("c,b,a"));
   GlobalFixture::world->gop.fence();
   // Looser tolerance because permuted dot reads tiles in a different
   // order, so the partial-sum accumulation order differs.
@@ -856,10 +840,10 @@ BOOST_AUTO_TEST_CASE(dot_contr) {
   fill_with_seed(b2, b2_h, 179);
   GlobalFixture::world->gop.fence();
 
-  const double dev_d = static_cast<double>(
-      (a2("i,j") * b2("j,k")) * (a2("i,j") * b2("j,k")));
-  const double host_d = static_cast<double>(
-      (a2_h("i,j") * b2_h("j,k")) * (a2_h("i,j") * b2_h("j,k")));
+  const double dev_d =
+      static_cast<double>((a2("i,j") * b2("j,k")) * (a2("i,j") * b2("j,k")));
+  const double host_d = static_cast<double>((a2_h("i,j") * b2_h("j,k")) *
+                                            (a2_h("i,j") * b2_h("j,k")));
   GlobalFixture::world->gop.fence();
   BOOST_CHECK_CLOSE_FRACTION(dev_d, host_d, 1.0e-12);
 }
