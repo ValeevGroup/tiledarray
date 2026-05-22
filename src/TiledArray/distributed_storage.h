@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 #define TILEDARRAY_DISTRIBUTED_STORAGE_H__INCLUDED
 
+#include <TiledArray/platform.h>
 #include <TiledArray/pmap/pmap.h>
 
 namespace TiledArray {
@@ -359,6 +360,25 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
   /// \return The number of local elements stored by the container.
   /// \throw nothing
   size_type size() const { return data_.size(); }
+
+  /// Apply \p op to each locally-owned tile whose future is already set.
+
+  /// Pending (unset) and remote-cached elements are skipped. No
+  /// communication; intended to be called at a quiescent point (e.g. after a
+  /// fence). This is the per-rank local tile set, the same one
+  /// `size_of(DistArray)` iterates. Any summation it enables (e.g. of
+  /// `size_of<S>(tile)`) is left to the caller, which sees the tile-type
+  /// overloads -- those need not be visible where this low-level header is
+  /// parsed.
+  /// \tparam Op a callable invocable as `op(const value_type&)`
+  /// \param op the callable to apply to each set local tile
+  template <typename Op>
+  void for_each_local_tile(Op&& op) const {
+    for (auto it = data_.begin(); it != data_.end(); ++it) {
+      const future& f = it->second;
+      if (f.probe()) op(f.get());
+    }
+  }
 
   /// Max size accessor
 

@@ -1020,6 +1020,71 @@ BOOST_AUTO_TEST_CASE(size_of) {
   BOOST_REQUIRE(sz0 == sz0_expected);
 }
 
+BOOST_AUTO_TEST_CASE(live_storage_size_in_world) {
+  using T = Tensor<double>;
+  using ToT = Tensor<T>;
+  using Policy = SparsePolicy;
+  using ArrayT = DistArray<T, Policy>;
+  using ArrayToT = DistArray<ToT, Policy>;
+
+  auto& world = get_default_world();
+  world.gop.fence();
+
+  // arrays from earlier test cases may still be registered (destruction is
+  // deferred to the next fence), so measure a baseline and compare deltas
+  auto const base_T = TiledArray::size_of_live_distarray_storage<ArrayT>(world);
+  auto const base_ToT =
+      TiledArray::size_of_live_distarray_storage<ArrayToT>(world);
+
+  TiledRange const trange({{0, 2, 5, 7}, {0, 5, 7, 10, 12}});
+
+  // two distinct regular arrays
+  auto a1 = make_array<ArrayT>(world, trange, [](T& tile, Range const& rng) {
+    tile = T(rng, 1.0);
+    return tile.norm();
+  });
+  auto a2 = make_array<ArrayT>(world, trange, [](T& tile, Range const& rng) {
+    tile = T(rng, 2.0);
+    return tile.norm();
+  });
+  // shallow copy: shares a1's storage WorldObject, must NOT be double-counted
+  ArrayT a1_copy = a1;
+  BOOST_REQUIRE(a1_copy.trange() == a1.trange());  // keep a1_copy alive & used
+
+  world.gop.fence();
+
+  // per-array local tile-data bytes = size_of(array) - size_of(shape); the
+  // storage walk reports tile data only, so subtract the shape from the
+  // handle-based full-array size_of
+  auto tiles_only = [](ArrayT const& a) {
+    return TiledArray::size_of<MemorySpace::Host>(a) -
+           TiledArray::size_of<MemorySpace::Host>(a.shape());
+  };
+
+  // the storage walk counts each distinct DistributedStorage once: a1 + a2,
+  // NOT a1 + a2 + a1_copy
+  auto const expected_T = tiles_only(a1) + tiles_only(a2);
+  auto const got_T =
+      TiledArray::size_of_live_distarray_storage<ArrayT>(world) - base_T;
+  BOOST_CHECK_EQUAL(got_T, expected_T);
+
+  // the ToT-typed walk must not pick up the regular (T) arrays
+  auto const got_ToT_delta =
+      TiledArray::size_of_live_distarray_storage<ArrayToT>(world) - base_ToT;
+  BOOST_CHECK_EQUAL(got_ToT_delta, 0u);
+
+  // variadic matrix: one world (one row), two types (two columns)
+  auto const mat = TiledArray::size_of_live_distarrays_storage<
+      MemorySpace::Host, ArrayT, ArrayToT>(std::vector<World*>{&world});
+  BOOST_REQUIRE_EQUAL(mat.size(), 1u);
+  BOOST_CHECK_EQUAL(mat[0][0],
+                    TiledArray::size_of_live_distarray_storage<ArrayT>(world));
+  BOOST_CHECK_EQUAL(
+      mat[0][1], TiledArray::size_of_live_distarray_storage<ArrayToT>(world));
+
+  world.gop.fence();
+}
+
 BOOST_FIXTURE_TEST_CASE(fill_zero_sparse, ArrayFixture) {
   // construct a sparse array with some non-zero tiles and fill it
   SpArrayN as(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr));
