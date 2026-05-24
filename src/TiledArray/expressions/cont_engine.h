@@ -305,9 +305,18 @@ class ContEngine : public BinaryEngine<Derived> {
           // this->product_type() is Tensor::Contraction, and,
           // this->implicit_permute_inner_ is false
 
-          return this->inner_product_type() == TensorProduct::Scale
-                     ? BipartitePermutation(outer(this->perm_))
-                     : this->perm_;
+          if (this->inner_product_type() == TensorProduct::Scale) {
+            // Owning inner cells apply the inner result permutation in the
+            // per-cell scale op, so they carry only the outer perm here. View
+            // (arena) cells instead use a perm-free per-cell op + an unpermuted
+            // arena plan and rely on op_'s post-processing permute for the
+            // inner perm -- so they carry the full perm, like inner
+            // Contraction.
+            if constexpr (!TiledArray::is_tensor_view_v<
+                              result_tile_element_type>)
+              return BipartitePermutation(outer(this->perm_));
+          }
+          return this->perm_;
         };
 
         auto total_perm = make_total_perm();
@@ -341,9 +350,18 @@ class ContEngine : public BinaryEngine<Derived> {
           // this->product_type() is Tensor::Contraction, and,
           // this->implicit_permute_inner_ is false
 
-          return this->inner_product_type() == TensorProduct::Scale
-                     ? BipartitePermutation(outer(this->perm_))
-                     : this->perm_;
+          if (this->inner_product_type() == TensorProduct::Scale) {
+            // Owning inner cells apply the inner result permutation in the
+            // per-cell scale op, so they carry only the outer perm here. View
+            // (arena) cells instead use a perm-free per-cell op + an unpermuted
+            // arena plan and rely on op_'s post-processing permute for the
+            // inner perm -- so they carry the full perm, like inner
+            // Contraction.
+            if constexpr (!TiledArray::is_tensor_view_v<
+                              result_tile_element_type>)
+              return BipartitePermutation(outer(this->perm_));
+          }
+          return this->perm_;
         };
 
         auto total_perm = make_total_perm();
@@ -949,10 +967,16 @@ class ContEngine : public BinaryEngine<Derived> {
                   result_tile_type, left_tile_type, right_tile_type>;
           if constexpr (arena_eligible_scale) {
             if (this->product_type() == TensorProduct::Contraction) {
+              // Pass an identity inner perm: a non-identity inner *result*
+              // permutation is applied downstream by op_'s post-processing
+              // permute (carried in make_total_perm for view cells), not by
+              // the per-cell op -- so the plan must not bail on it. The plan
+              // pre-shapes result cells in the unpermuted (operand) inner
+              // layout; the perm-free fused scale op accumulates into them.
               this->arena_plan_ =
                   TiledArray::detail::make_contraction_arena_plan<
                       result_tile_type, left_tile_type, right_tile_type>(
-                      kind, std::nullopt, inner(this->perm_));
+                      kind, std::nullopt, Permutation{});
             }
           }
           // Fallback per-element op for the scale inner-product when no
