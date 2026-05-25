@@ -967,16 +967,30 @@ class ContEngine : public BinaryEngine<Derived> {
                   result_tile_type, left_tile_type, right_tile_type>;
           if constexpr (arena_eligible_scale) {
             if (this->product_type() == TensorProduct::Contraction) {
-              // Pass an identity inner perm: a non-identity inner *result*
-              // permutation is applied downstream by op_'s post-processing
-              // permute (carried in make_total_perm for view cells), not by
-              // the per-cell op -- so the plan must not bail on it. The plan
-              // pre-shapes result cells in the unpermuted (operand) inner
-              // layout; the perm-free fused scale op accumulates into them.
+              // The inner perm handed to the plan must match how the inner
+              // *result* permutation is applied for this result cell type --
+              // and the two cell types apply it in different places:
+              //
+              //   * View (arena) cells: pass an identity inner perm so the
+              //     plan is always built (pre-shaping result cells in the
+              //     unpermuted operand inner layout) and the perm-free fused
+              //     scale op is selected; the inner result perm is applied
+              //     downstream by op_'s post-processing permute (carried in
+              //     make_total_perm for view cells).
+              //
+              //   * Owning cells: pass the inner result perm so the plan bails
+              //     (nullopt) on a non-identity inner perm, falling back to the
+              //     per-cell op that applies the inner perm itself -- matching
+              //     the outer-only total_perm make_total_perm carries here.
+              //     (A trivial inner perm still lets the plan + fused op run.)
+              Permutation plan_inner_perm;
+              if constexpr (!TiledArray::is_tensor_view_v<
+                                result_tile_element_type>)
+                plan_inner_perm = inner(this->perm_);
               this->arena_plan_ =
                   TiledArray::detail::make_contraction_arena_plan<
                       result_tile_type, left_tile_type, right_tile_type>(
-                      kind, std::nullopt, Permutation{});
+                      kind, std::nullopt, plan_inner_perm);
             }
           }
           // Fallback per-element op for the scale inner-product when no
