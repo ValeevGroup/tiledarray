@@ -316,21 +316,44 @@ OuterTensor arena_trivial_binary(const LeftTensor& left,
   using inner_range_t = typename OuterTensor::value_type::range_type;
   TA_ASSERT(left.range().volume() == right.range().volume());
   TA_ASSERT(left.nbatch() == right.nbatch());
-  auto range_fn = [&left](std::size_t ord) -> inner_range_t {
+  // Union sparsity: a result cell is present if *either* operand cell is.
+  // ToT arrays with the same outer shape can still differ in which inner cells
+  // are populated within an outer tile (e.g. occ_tile_size>1 aggregates several
+  // pairs, some screened to null). A cell present in only one operand is
+  // combined against an implicit zero slab below -- correct for the linear ops
+  // (add: l+0 / 0+r; subt: l-0 / 0-r) and numerically correct for mult (l*0=0,
+  // emitted as an explicit zero tile). Without this, a lone-left cell would
+  // read a null right slab (segfault) and a lone-right cell would be silently
+  // dropped, losing that addend.
+  auto range_fn = [&left, &right](std::size_t ord) -> inner_range_t {
     const auto& l = left.data()[ord];
-    return l.empty() ? inner_range_t{} : l.range();
+    if (!l.empty()) return l.range();
+    const auto& r = right.data()[ord];
+    return r.empty() ? inner_range_t{} : r.range();
   };
   OuterTensor result = arena_outer_init<OuterTensor>(
       left.range(), left.nbatch(), range_fn, alignof(elem_t),
       /*zero_init=*/false);
   const std::size_t N_cells = left.range().volume() * left.nbatch();
+  std::vector<elem_t> zeros;  // grown lazily; implicit-zero slab for lone cells
   for (std::size_t ord = 0; ord < N_cells; ++ord) {
     auto& dst = result.data()[ord];
     if (dst.empty()) continue;
-    TA_ASSERT(left.data()[ord].size() == right.data()[ord].size());
-    TA_ASSERT(left.data()[ord].size() == dst.size());
-    fill_op(dst.data(), left.data()[ord].data(), right.data()[ord].data(),
-            dst.size());
+    const auto& l = left.data()[ord];
+    const auto& r = right.data()[ord];
+    const std::size_t n = dst.size();
+    const bool have_l = !l.empty();
+    const bool have_r = !r.empty();
+    TA_ASSERT(!have_l || l.size() == n);
+    TA_ASSERT(!have_r || r.size() == n);
+    if (have_l && have_r) {
+      fill_op(dst.data(), l.data(), r.data(), n);
+    } else {
+      if (zeros.size() < n) zeros.assign(n, elem_t{});
+      const elem_t* l_ptr = have_l ? l.data() : zeros.data();
+      const elem_t* r_ptr = have_r ? r.data() : zeros.data();
+      fill_op(dst.data(), l_ptr, r_ptr, n);
+    }
   }
   return result;
 }

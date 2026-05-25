@@ -55,7 +55,7 @@ bool inners_share_one_slab(const outer_t& tot) {
   return true;
 }
 
-}
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE(arena_tot_trivial_suite, TA_UT_LABEL_SERIAL)
 
@@ -88,8 +88,8 @@ BOOST_AUTO_TEST_CASE(add_bit_equal_and_one_slab) {
   for (std::size_t ord = 0; ord < L.range().volume(); ++ord) {
     inner_t inner((L.data() + ord)->range());
     for (std::size_t i = 0; i < inner.range().volume(); ++i)
-      inner.at_ordinal(i) = (L.data() + ord)->at_ordinal(i) +
-                            (R.data() + ord)->at_ordinal(i);
+      inner.at_ordinal(i) =
+          (L.data() + ord)->at_ordinal(i) + (R.data() + ord)->at_ordinal(i);
     *(baseline.data() + ord) = std::move(inner);
   }
   BOOST_CHECK(tot_equal(arena_result, baseline));
@@ -104,8 +104,8 @@ BOOST_AUTO_TEST_CASE(subt_bit_equal_and_one_slab) {
   for (std::size_t ord = 0; ord < L.range().volume(); ++ord) {
     inner_t inner((L.data() + ord)->range());
     for (std::size_t i = 0; i < inner.range().volume(); ++i)
-      inner.at_ordinal(i) = (L.data() + ord)->at_ordinal(i) -
-                            (R.data() + ord)->at_ordinal(i);
+      inner.at_ordinal(i) =
+          (L.data() + ord)->at_ordinal(i) - (R.data() + ord)->at_ordinal(i);
     *(baseline.data() + ord) = std::move(inner);
   }
   BOOST_CHECK(tot_equal(arena_result, baseline));
@@ -120,8 +120,8 @@ BOOST_AUTO_TEST_CASE(mult_elementwise_bit_equal_and_one_slab) {
   for (std::size_t ord = 0; ord < L.range().volume(); ++ord) {
     inner_t inner((L.data() + ord)->range());
     for (std::size_t i = 0; i < inner.range().volume(); ++i)
-      inner.at_ordinal(i) = (L.data() + ord)->at_ordinal(i) *
-                            (R.data() + ord)->at_ordinal(i);
+      inner.at_ordinal(i) =
+          (L.data() + ord)->at_ordinal(i) * (R.data() + ord)->at_ordinal(i);
     *(baseline.data() + ord) = std::move(inner);
   }
   BOOST_CHECK(tot_equal(arena_result, baseline));
@@ -139,6 +139,96 @@ BOOST_AUTO_TEST_CASE(arena_outlives_source) {
          ++i)
       BOOST_CHECK_EQUAL((arena_result.data() + ord)->at_ordinal(i),
                         (9.0 + ord * 100.0 + i) * 2.0);
+}
+
+// --- mismatched null-inner-cell coverage (non-arena inner) ---------------
+// Same kernel (arena_trivial_binary) backs Tensor<Tensor<double>>; exercise
+// the union-sparsity / implicit-zero path with mismatched per-cell nulls.
+// An unassigned outer cell is a default (empty) inner Tensor.
+
+namespace {
+
+/// `present[ord]==false` leaves cell `ord` a null (empty) inner tensor.
+outer_t make_tot_sparse(std::size_t N_outer, std::size_t n_inner, double base,
+                        const std::vector<bool>& present) {
+  outer_t outer(TA::Range{static_cast<long>(N_outer)}, 1);
+  for (std::size_t ord = 0; ord < N_outer; ++ord) {
+    if (!present[ord]) continue;  // leave default-constructed -> empty
+    inner_t inner(TA::Range{static_cast<long>(n_inner)});
+    for (std::size_t i = 0; i < n_inner; ++i)
+      inner.at_ordinal(i) = base + ord * 100.0 + i;
+    *(outer.data() + ord) = std::move(inner);
+  }
+  return outer;
+}
+
+// 0 = lone-left, 1&2 = both, 3 = both-null, 4 = lone-right.
+const std::vector<bool> nz_L{true, true, true, false, false};
+const std::vector<bool> nz_R{false, true, true, false, true};
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(add_mismatched_null_inners) {
+  outer_t L = make_tot_sparse(5, 4, 1.0, nz_L);
+  outer_t R = make_tot_sparse(5, 4, 0.5, nz_R);
+  outer_t sum = L.add(R);  // must not segfault on lone-left cell 0
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const inner_t& l = *(L.data() + ord);
+    const inner_t& r = *(R.data() + ord);
+    const inner_t& d = *(sum.data() + ord);
+    const bool hl = !l.empty(), hr = !r.empty();
+    if (!hl && !hr) {
+      BOOST_CHECK(d.empty());
+    } else {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.range().volume(); ++i) {
+        const double lv = hl ? l.at_ordinal(i) : 0.0;
+        const double rv = hr ? r.at_ordinal(i) : 0.0;
+        BOOST_CHECK_EQUAL(d.at_ordinal(i), lv + rv);
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(subt_mismatched_null_inners) {
+  outer_t L = make_tot_sparse(5, 4, 5.0, nz_L);
+  outer_t R = make_tot_sparse(5, 4, 1.0, nz_R);
+  outer_t diff = L.subt(R);
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const inner_t& l = *(L.data() + ord);
+    const inner_t& r = *(R.data() + ord);
+    const inner_t& d = *(diff.data() + ord);
+    const bool hl = !l.empty(), hr = !r.empty();
+    if (!hl && !hr) {
+      BOOST_CHECK(d.empty());
+    } else {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.range().volume(); ++i) {
+        const double lv = hl ? l.at_ordinal(i) : 0.0;
+        const double rv = hr ? r.at_ordinal(i) : 0.0;
+        BOOST_CHECK_EQUAL(d.at_ordinal(i), lv - rv);
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(mult_mismatched_null_inners) {
+  outer_t L = make_tot_sparse(5, 4, 2.0, nz_L);
+  outer_t R = make_tot_sparse(5, 4, 0.5, nz_R);
+  outer_t prod = L.mult(R);
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const inner_t& l = *(L.data() + ord);
+    const inner_t& r = *(R.data() + ord);
+    const inner_t& d = *(prod.data() + ord);
+    if (!l.empty() && !r.empty()) {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.range().volume(); ++i)
+        BOOST_CHECK_EQUAL(d.at_ordinal(i), l.at_ordinal(i) * r.at_ordinal(i));
+    } else if (!d.empty()) {
+      for (std::size_t i = 0; i < d.range().volume(); ++i)
+        BOOST_CHECK_EQUAL(d.at_ordinal(i), 0.0);
+    }
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
