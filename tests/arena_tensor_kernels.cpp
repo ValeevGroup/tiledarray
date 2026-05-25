@@ -725,4 +725,100 @@ BOOST_AUTO_TEST_CASE(tot_axpy_to_accumulates_scaled_operand) {
   }
 }
 
+// --- mismatched null-inner-cell coverage --------------------------------
+// occ_tile_size>1 (and any block-sparse ToT) can produce two operands with
+// the same outer shape but different *inner*-cell sparsity within an outer
+// tile. Regression coverage for the bug where arena_trivial_binary sized the
+// result by the left operand only and read the right unconditionally: a cell
+// present in left but null in right read a null slab (segfault), and a cell
+// present in right but null in left was silently dropped.
+
+namespace {
+
+/// Build an Outer of `n_outer` cells; cell `ord` is null iff `present[ord]`
+/// is false, otherwise a length-`n_inner` ArenaTensor filled deterministically.
+Outer make_outer_sparse(std::size_t n_outer, std::size_t n_inner, double base,
+                        const std::vector<bool>& present) {
+  TA::Range outer_r{static_cast<long>(n_outer)};
+  auto shape_fn = [n_inner, &present](std::size_t ord) {
+    return present[ord] ? TA::Range{static_cast<long>(n_inner)} : TA::Range();
+  };
+  Outer outer = TA::detail::arena_outer_init<Outer>(outer_r, 1, shape_fn);
+  for (std::size_t ord = 0; ord < n_outer; ++ord) {
+    Inner& inner = outer.data()[ord];
+    if (!inner) continue;
+    for (std::size_t i = 0; i < inner.size(); ++i)
+      inner.data()[i] = base + ord * 100.0 + i;
+  }
+  return outer;
+}
+
+// L present on {0,1,2}, R present on {1,2,4}, over 5 outer cells:
+//   0 = lone-left, 1&2 = both, 3 = both-null, 4 = lone-right.
+constexpr std::size_t kNo = 5, kNi = 4;
+const std::vector<bool> kLpresent{true, true, true, false, false};
+const std::vector<bool> kRpresent{false, true, true, false, true};
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(trivial_add_mismatched_null_inners) {
+  Outer L = make_outer_sparse(kNo, kNi, 1.0, kLpresent);
+  Outer R = make_outer_sparse(kNo, kNi, 0.5, kRpresent);
+  Outer sum = L.add(R);  // must not segfault on lone-left cell 0
+  for (std::size_t ord = 0; ord < kNo; ++ord) {
+    const Inner &l = L.data()[ord], &r = R.data()[ord], &d = sum.data()[ord];
+    const bool hl = bool(l), hr = bool(r);
+    if (!hl && !hr) {
+      BOOST_CHECK(!d);  // both null -> null result
+    } else {
+      BOOST_REQUIRE(bool(d));
+      for (std::size_t i = 0; i < d.size(); ++i) {
+        const double lv = hl ? l.data()[i] : 0.0;
+        const double rv = hr ? r.data()[i] : 0.0;
+        BOOST_CHECK_EQUAL(d.data()[i], lv + rv);  // union: lone-right kept too
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(trivial_subt_mismatched_null_inners) {
+  Outer L = make_outer_sparse(kNo, kNi, 5.0, kLpresent);
+  Outer R = make_outer_sparse(kNo, kNi, 1.0, kRpresent);
+  Outer diff = L.subt(R);
+  for (std::size_t ord = 0; ord < kNo; ++ord) {
+    const Inner &l = L.data()[ord], &r = R.data()[ord], &d = diff.data()[ord];
+    const bool hl = bool(l), hr = bool(r);
+    if (!hl && !hr) {
+      BOOST_CHECK(!d);
+    } else {
+      BOOST_REQUIRE(bool(d));
+      for (std::size_t i = 0; i < d.size(); ++i) {
+        const double lv = hl ? l.data()[i] : 0.0;
+        const double rv = hr ? r.data()[i] : 0.0;
+        BOOST_CHECK_EQUAL(d.data()[i], lv - rv);  // lone-right -> -r
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(trivial_mult_mismatched_null_inners) {
+  Outer L = make_outer_sparse(kNo, kNi, 2.0, kLpresent);
+  Outer R = make_outer_sparse(kNo, kNi, 0.5, kRpresent);
+  Outer prod = L.mult(R);
+  for (std::size_t ord = 0; ord < kNo; ++ord) {
+    const Inner &l = L.data()[ord], &r = R.data()[ord], &d = prod.data()[ord];
+    const bool hl = bool(l), hr = bool(r);
+    if (hl && hr) {
+      BOOST_REQUIRE(bool(d));
+      for (std::size_t i = 0; i < d.size(); ++i)
+        BOOST_CHECK_EQUAL(d.data()[i], l.data()[i] * r.data()[i]);
+    } else if (bool(d)) {
+      // a lone cell multiplies against an implicit zero -> a zero tile
+      // (numerically equivalent to absent); tolerate either policy.
+      for (std::size_t i = 0; i < d.size(); ++i)
+        BOOST_CHECK_EQUAL(d.data()[i], 0.0);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
