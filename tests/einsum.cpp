@@ -414,6 +414,16 @@ BOOST_AUTO_TEST_CASE(nested_rank_reduction) {
                                                  {{0, 2, 4}, {0, 4}},  //
                                                  {3, 2},               //
                                                  {3, 2})));
+  // external indices present (branch-2 generalized contraction): Hadamard i,
+  // external p (from A) and q (from B), contracted-outer k, inner ab fully
+  // contracted. This is the shape that motivated the rewrite (cf. the CSV-CC
+  // term g*C*t*...). Exercises the ContEngine inner phantom-dot path.
+  BOOST_REQUIRE((check_manual_eval<ArrayToT, DeNest::True>(
+      "ipk;ab,iqk;ab->ipq",            //
+      {{0, 2}, {0, 2, 3}, {0, 2, 4}},  // A outer: i, p, k
+      {{0, 2}, {0, 3}, {0, 2, 4}},     // B outer: i, q, k
+      {3, 2},                          // A inner: ab
+      {3, 2})));                       // B inner: ab
 }
 
 BOOST_AUTO_TEST_CASE(corner_cases) {
