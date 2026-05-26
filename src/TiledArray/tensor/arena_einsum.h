@@ -10,6 +10,7 @@
 #include "TiledArray/tensor/arena_kernels.h"
 #include "TiledArray/tensor/kernels.h"
 #include "TiledArray/tensor/type_traits.h"
+#include "TiledArray/util/annotation.h"
 
 #include <optional>
 #include <type_traits>
@@ -26,15 +27,19 @@ namespace TiledArray::detail {
 
 /// Specifies how an inner-cell range is derived from operand inner cells.
 enum class ArenaInnerShapeKind {
-  left_range,        // Hadamard inner; Scale tot_x_t
-  right_range,       // Scale t_x_tot
-  gemm_result_range  // inner Contraction (uses inner_gh)
+  left_range,         // Hadamard inner; Scale tot_x_t
+  right_range,        // Scale t_x_tot
+  gemm_result_range,  // inner Contraction (uses inner_gh)
+  unit_range  // phantom-unit denest: a unit-extent [1]^phantom_rank cell
+              // independent of operand inner ranges (the inner product is a
+              // flat dot; see RegimeAInnerKind::phantom_dot)
 };
 
 /// Inner-shape derivation plan: kind + (optional) inner GemmHelper.
 struct ArenaInnerShapePlan {
   ArenaInnerShapeKind kind;
   std::optional<math::GemmHelper> inner_gh;  // only for gemm_result_range
+  std::size_t phantom_rank = 0;              // only for unit_range
 
   /// Derives one result inner range from operand inner cells.
   template <typename ResultInnerRange, typename LInner, typename RInner>
@@ -48,6 +53,10 @@ struct ArenaInnerShapePlan {
         TA_ASSERT(inner_gh.has_value());
         return inner_gh->template make_result_range<ResultInnerRange>(
             l.range(), r.range());
+      case ArenaInnerShapeKind::unit_range: {
+        container::vector<std::size_t> ext(phantom_rank, std::size_t{1});
+        return ResultInnerRange(ext);
+      }
     }
     TA_ASSERT(false);
     return ResultInnerRange{};
@@ -125,7 +134,8 @@ using arena_plan_storage_t =
 template <typename Result, typename Left, typename Right>
 auto make_contraction_arena_plan(ArenaInnerShapeKind inner_kind,
                                  std::optional<math::GemmHelper> inner_gh,
-                                 const Permutation& inner_perm)
+                                 const Permutation& inner_perm,
+                                 std::size_t phantom_rank = 0)
     -> std::optional<ContractionArenaPlan<Result, Left, Right>> {
   if (arena_disabled()) return std::nullopt;
   if constexpr (!is_contraction_arena_tot_v<Result, Left, Right>) {
@@ -137,7 +147,8 @@ auto make_contraction_arena_plan(ArenaInnerShapeKind inner_kind,
     else if (!inner_gh.has_value())
       return std::nullopt;
     return std::optional<ContractionArenaPlan<Result, Left, Right>>(
-        std::in_place, ArenaInnerShapePlan{inner_kind, std::move(inner_gh)});
+        std::in_place,
+        ArenaInnerShapePlan{inner_kind, std::move(inner_gh), phantom_rank});
   }
 }
 
@@ -366,6 +377,36 @@ Result arena_hadamard_inner_contract(const Left& left, const Right& right,
   return result;
 }
 
+/// Hadamard-outer, phantom-unit-denest-inner ToT x ToT product into a fresh
+/// arena tile. Like arena_hadamard_inner_contract, but each result outer cell
+/// is a unit-extent [1]^phantom_rank cell (the inner product is a full
+/// contraction = a flat dot; there are no real result inner modes). `cell_op`
+/// (the phantom-dot per-cell op) fills the pre-shaped unit cell. No inner
+/// permutation: phantom modes are all unit-extent.
+template <typename Result, typename Left, typename Right, typename CellOp>
+Result arena_hadamard_phantom_dot(const Left& left, const Right& right,
+                                  std::size_t phantom_rank,
+                                  const CellOp& cell_op) {
+  using inner_range_t = typename Result::value_type::range_type;
+  TA_ASSERT(left.range().volume() == right.range().volume());
+  TA_ASSERT(left.nbatch() == right.nbatch());
+  const std::size_t N_cells = left.range().volume() * left.nbatch();
+  const container::vector<std::size_t> unit_ext(phantom_rank, std::size_t{1});
+  auto range_fn = [&left, &right, &unit_ext](std::size_t ord) -> inner_range_t {
+    const auto& lc = left.data()[ord];
+    const auto& rc = right.data()[ord];
+    if (lc.empty() || rc.empty()) return inner_range_t{};
+    return inner_range_t(unit_ext);
+  };
+  Result result =
+      arena_outer_init<Result>(left.range(), left.nbatch(), range_fn);
+  for (std::size_t ord = 0; ord < N_cells; ++ord) {
+    if (result.data()[ord].empty()) continue;
+    cell_op(result.data()[ord], left.data()[ord], right.data()[ord]);
+  }
+  return result;
+}
+
 /// Creates a fused Hadamard callback.
 template <typename Result, typename Left, typename Right>
 auto make_fused_hadamard_lambda() {
@@ -402,8 +443,13 @@ auto make_fused_scale_t_x_tot_lambda() {
 enum class RegimeAInnerKind {
   hadamard,
   contraction,
-  scale_left,  // ToT × plain T → ToT (right operand contributes scalars)
-  scale_right  // plain T × ToT → ToT (left operand contributes scalars)
+  scale_left,   // ToT × plain T → ToT (right operand contributes scalars)
+  scale_right,  // plain T × ToT → ToT (left operand contributes scalars)
+  phantom_dot   // full inner contraction (dot) into a unit-extent result cell;
+                // the result keeps only phantom-unit inner modes (see
+                // is_phantom_unit_label). Operand cells are read flat, so no
+                // operand carries the phantom mode and no GEMM rank match is
+  // required. Realizes the ToT×ToT→plain-T (DeNest) inner product.
 };
 
 /// Permute the extents of `src` by `perm` and materialize a range of type
@@ -439,6 +485,10 @@ struct RegimeAArenaPlan {
   std::optional<TensorHadamardPlan<Annot>> h_plan{};
   std::optional<TensorContractionPlan<Annot>> c_plan{};
 
+  // For kind == phantom_dot: the number of phantom-unit result modes (the rank
+  // of the unit-extent result inner cell, e.g. 1 for `⊗₁`).
+  std::size_t phantom_rank = 0;
+
   /// Derives the result inner range from a non-empty input-cell pair.
   template <typename InnerRange, typename LRange, typename RRange>
   InnerRange derive_inner_range(const LRange& l_range,
@@ -468,6 +518,12 @@ struct RegimeAArenaPlan {
         return InnerRange(l_range);
       case RegimeAInnerKind::scale_right:
         return InnerRange(r_range);
+      case RegimeAInnerKind::phantom_dot: {
+        // The result keeps only phantom-unit modes: a rank-`phantom_rank`,
+        // all-unit-extent cell (e.g. [1] for `⊗₁`).
+        container::vector<std::size_t> ext(phantom_rank, std::size_t{1});
+        return InnerRange(ext);
+      }
     }
     TA_ASSERT(false && "RegimeAInnerKind: unhandled kind");
     return InnerRange{};
@@ -520,6 +576,27 @@ struct RegimeAArenaPlan {
         }
         return;
       }
+      case RegimeAInnerKind::phantom_dot: {
+        if constexpr (is_arena_inner_cell_v<LCell> &&
+                      is_arena_inner_cell_v<RCell>) {
+          if (l.empty() || rr.empty()) return;
+          // Full inner contraction with only phantom-unit modes surviving: a
+          // flat (non-conjugating) dot of the operand cells -- the same value a
+          // GEMM with M=N=1,K=vol would compute -- accumulated into the lone
+          // element of the unit-extent result cell. Reads operands flat, so no
+          // operand need carry the phantom mode and no rank match is required;
+          // uniform for TA::Tensor and ArenaTensor cells.
+          using Numeric = typename std::remove_cv_t<ResultCell>::numeric_type;
+          const std::size_t n = l.range().volume();
+          TA_ASSERT(n == rr.range().volume());
+          const auto* MADNESS_RESTRICT lp = l.data();
+          const auto* MADNESS_RESTRICT rp = rr.data();
+          Numeric acc{0};
+          for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
+          r.data()[0] += acc;
+        }
+        return;
+      }
     }
   }
 };
@@ -564,6 +641,19 @@ auto make_regime_a_arena_plan(const A& a, const B& b, const Inner& inner,
         // run_regime_a_arena hoists each operand inner permutation to a
         // slab-level rewrite (arena_inner_permute) so both operands reach
         // C-layout before the per-cell flat r += l * rr. No need to bail.
+      } else if (bool(inner.C) && [&] {
+                   for (const auto& lbl : inner.C)
+                     if (!::TiledArray::detail::is_phantom_unit_label(lbl))
+                       return false;
+                   return true;
+                 }()) {
+        // Phantom-unit denest: every surviving result inner mode is a phantom
+        // unit (⊗ₙ), i.e. the real inner modes are fully contracted. Realize
+        // the inner product as a flat dot into a unit-extent result cell --
+        // operands are read flat, so neither needs to carry the phantom mode
+        // (no GEMM, no TensorContractionPlan rank match). See accumulate().
+        plan.kind = RegimeAInnerKind::phantom_dot;
+        plan.phantom_rank = inner.C.size();
       } else {
         plan.kind = RegimeAInnerKind::contraction;
         plan.c_plan.emplace(inner.A, inner.B, inner.C);

@@ -142,6 +142,28 @@ inline bool is_tot_index(const std::string& idx) {
   return idx.find(";") != std::string::npos;
 }
 
+/// The reserved prefix marking a *phantom unit* inner-mode annotator. A phantom
+/// unit mode (spelled `⊗₁`, `⊗₂`, … = U+2297 CIRCLED TIMES followed by a
+/// subscript) denotes a unit-extent inner mode that is *not* physically present
+/// in the annotated tensor. It is used by the ToT×ToT→plain-T (DeNest) path to
+/// express a full inner contraction (a dot) as a contraction whose result keeps
+/// a unit inner mode, so the result inner cell is a genuine (≥ order-1) tensor
+/// rather than the unsupported order-0. The einsum machinery recognizes such
+/// labels and realizes the inner product as a flat dot into a unit-extent cell,
+/// without requiring the operand to carry the extra mode.
+inline const char* phantom_unit_label_prefix() {
+  return "\xE2\x8A\x97";  // UTF-8 for U+2297 (⊗)
+}
+
+/// \param[in] label a single (already split) index label
+/// \return true if \p label is a phantom-unit annotator (see
+///         phantom_unit_label_prefix)
+inline bool is_phantom_unit_label(const std::string& label) {
+  const std::string prefix = phantom_unit_label_prefix();
+  return label.size() >= prefix.size() &&
+         label.compare(0, prefix.size(), prefix) == 0;
+}
+
 /// Splits and sanitizes a string labeling a tensor's modes.
 ///
 /// This function encapsulates TiledArray's string index parsing. It is a free
