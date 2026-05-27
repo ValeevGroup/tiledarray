@@ -234,6 +234,7 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
           TiledArray/device/blas.h
           TiledArray/device/btas.h
           TiledArray/device/btas_um_tensor.h
+          TiledArray/device/tensor.h
           TiledArray/device/device_task_fn.h
           TiledArray/device/kernel/mult_kernel.h
           TiledArray/device/kernel/reduce_kernel.h
@@ -267,6 +268,7 @@ if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
   set(TILEDARRAY_DEVICE_SOURCE_FILES
           TiledArray/device/btas_um_tensor.cpp
+          TiledArray/device/tensor.cpp
   )
 
   if(TILEDARRAY_HAS_CUDA)
