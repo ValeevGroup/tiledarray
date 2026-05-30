@@ -136,6 +136,11 @@ class ContEngine : public BinaryEngine<Derived> {
                                 ///< (view-inner-cell) ToT tiles, where a
                                 ///< value-returning per-cell op cannot be
                                 ///< used; null otherwise
+  std::function<void(result_tile_type&, const left_tile_type&,
+                     const right_tile_type&, const math::GemmHelper&)>
+      arena_strided_dgemm_ce_e_tile_op_;  ///< whole-tile ce+e strided DGEMM op
+                                          ///< (arena inner OUTER-PRODUCT under an
+                                          ///< outer contraction); null otherwise
   using arena_plan_storage_t =
       TiledArray::detail::arena_plan_storage_t<result_tile_type, left_tile_type,
                                                right_tile_type>;
@@ -326,6 +331,10 @@ class ContEngine : public BinaryEngine<Derived> {
                       outer_size(left_indices_), outer_size(right_indices_),
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
+        if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+          if (this->arena_strided_dgemm_ce_e_tile_op_)
+            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
+        }
         // Plan ownership transferred to op_; mark carrier slot empty so any
         // later use of arena_plan_ reads as "no plan" rather than moved-from.
         if constexpr (!std::is_same_v<arena_plan_storage_t, std::monostate>) {
@@ -371,6 +380,10 @@ class ContEngine : public BinaryEngine<Derived> {
                       outer_size(left_indices_), outer_size(right_indices_),
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
+        if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+          if (this->arena_strided_dgemm_ce_e_tile_op_)
+            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
+        }
         // Plan ownership transferred to op_; mark carrier slot empty so any
         // later use of arena_plan_ reads as "no plan" rather than moved-from.
         if constexpr (!std::is_same_v<arena_plan_storage_t, std::monostate>) {
@@ -730,6 +743,40 @@ class ContEngine : public BinaryEngine<Derived> {
                   TA_EXCEPTION(
                       "nested contraction on view inner tiles: the arena fast "
                       "path was inactive (arena disabled)");
+                // ce+e (hce+e): inner OUTER product (no inner contraction)
+                // under outer contraction on arena view cells -> one strided
+                // DGEMM per result cell (ride the contracted index into BLAS
+                // K). Only the canonical perm-free layout is fused; a
+                // non-identity inner result perm is applied downstream and left
+                // to the per-cell path here.
+                // The strided kernel is specialized to double storage; gate on
+                // the numeric type so float/complex view-inner ToT stay on the
+                // generic per-cell path (and never instantiate the double-only
+                // kernel).
+                if constexpr (TiledArray::is_tensor_view_v<
+                                  result_tile_element_type> &&
+                              std::is_same_v<typename result_tile_element_type::
+                                                 numeric_type,
+                                             double>) {
+                  if (contrreduce_op.gemm_helper().num_contract_ranks() == 0 &&
+                      !bool(inner(this->perm_))) {
+                    const scalar_type factor = this->factor_;
+                    this->arena_strided_dgemm_ce_e_tile_op_ =
+                        [factor](result_tile_type& Cc, const left_tile_type& Lt,
+                                 const right_tile_type& Rt,
+                                 const math::GemmHelper& gh) {
+                          using integer = TiledArray::math::blas::integer;
+                          integer M, N, K;
+                          gh.compute_matrix_sizes(M, N, K, Lt.range(),
+                                                  Rt.range());
+                          TiledArray::detail::arena_strided_dgemm_ce_e(
+                              Cc, Lt, Rt, static_cast<std::size_t>(M),
+                              static_cast<std::size_t>(N),
+                              static_cast<std::size_t>(K), gh.left_op(),
+                              gh.right_op(), double(factor));
+                        };
+                  }
+                }
               } else {
                 // outer Hadamard: MultEngine builds a binary tile op, which
                 // cannot use a value-returning per-cell op. Supply a whole-tile
