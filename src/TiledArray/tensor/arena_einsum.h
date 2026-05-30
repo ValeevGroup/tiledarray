@@ -12,6 +12,7 @@
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/util/annotation.h"
 
+#include <atomic>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -330,6 +331,126 @@ void fused_scale_t_x_tot_inplace(Result& result, const Scalar& s,
         r += rr * s;
       },
       result, right);
+}
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+inline std::atomic<std::size_t> g_strided_dgemm_ce_e_calls{0};
+#endif
+
+/// ce+e strided-DGEMM core (inner OUTER-PRODUCT), looped over the Hadamard-
+/// folded nbatch. For each batch b and result cell (m,n):
+///   C[m,n](p,q) += factor * sum_k L[m,k](p) * R[k,n](q)
+/// as ONE P x Q DGEMM riding the outer-contracted k into BLAS K via the
+/// inter-cell slab stride (zero-copy) when the k-run is "clean" (all cells
+/// present, uniform inner size, single constant stride); else an inline per-k
+/// rank-1 fallback for THAT cell only. Orientation-aware (left_op/right_op pick
+/// per-(m,n,k) offsets). M=left-external, N=right-external, K=outer-contracted.
+template <typename ResultOuter, typename LeftOuter, typename RightOuter>
+void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
+                              const RightOuter& R, std::size_t M, std::size_t N,
+                              std::size_t K, math::blas::Op left_op,
+                              math::blas::Op right_op, double factor) {
+  namespace blas = TiledArray::math::blas;
+  using integer = blas::integer;
+  static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
+                    is_tensor_view_v<typename LeftOuter::value_type> &&
+                    is_tensor_view_v<typename RightOuter::value_type>,
+                "arena_strided_dgemm_ce_e: arena (view) inner cells only");
+  static_assert(
+      std::is_same_v<typename ResultOuter::value_type::numeric_type, double> &&
+          std::is_same_v<typename LeftOuter::value_type::numeric_type, double> &&
+          std::is_same_v<typename RightOuter::value_type::numeric_type, double>,
+      "arena_strided_dgemm_ce_e: double inner storage only");
+  if (M == 0 || N == 0 || K == 0) return;
+  const std::size_t nbatch = static_cast<std::size_t>(C.nbatch());
+  if (nbatch == 0) return;
+  const bool shape_ok =
+      (C.range().volume() == M * N && L.range().volume() == M * K &&
+       R.range().volume() == K * N &&
+       static_cast<std::size_t>(L.nbatch()) == nbatch &&
+       static_cast<std::size_t>(R.nbatch()) == nbatch);
+  TA_ASSERT(shape_ok);
+  if (!shape_ok) return;
+  const std::size_t lda = (left_op == blas::NoTranspose) ? K : M;
+  const std::size_t ldb = (right_op == blas::NoTranspose) ? N : K;
+  auto a_off = [&](std::size_t m, std::size_t k) {
+    return (left_op == blas::NoTranspose) ? m * lda + k : k * lda + m;
+  };
+  auto b_off = [&](std::size_t k, std::size_t n) {
+    return (right_op == blas::NoTranspose) ? k * ldb + n : n * ldb + k;
+  };
+  const auto* lc = L.data();
+  const auto* rc = R.data();
+  auto* cc = C.data();
+  for (std::size_t b = 0; b < nbatch; ++b) {
+    const std::size_t cbase = b * M * N;
+    const std::size_t lbase = b * M * K;
+    const std::size_t rbase = b * K * N;
+    for (std::size_t m = 0; m < M; ++m) {
+      for (std::size_t n = 0; n < N; ++n) {
+        auto& Cc = cc[cbase + m * N + n];
+        if (!Cc) continue;
+        const auto& l0 = lc[lbase + a_off(m, 0)];
+        const auto& r0 = rc[rbase + b_off(0, n)];
+        long P = l0 ? static_cast<long>(l0.size()) : -1;
+        long Q = r0 ? static_cast<long>(r0.size()) : -1;
+        bool clean = (P > 0 && Q > 0 && static_cast<long>(Cc.size()) == P * Q);
+        // presence-first: verify every k-cell present + uniform size BEFORE
+        // any .data() pointer subtraction.
+        for (std::size_t k = 0; clean && k < K; ++k) {
+          const auto& lk = lc[lbase + a_off(m, k)];
+          const auto& rk = rc[rbase + b_off(k, n)];
+          if (!lk || static_cast<long>(lk.size()) != P) clean = false;
+          else if (!rk || static_cast<long>(rk.size()) != Q) clean = false;
+        }
+        long ldA = P, ldB = Q;
+        if (clean && K > 1) {
+          ldA = static_cast<long>(lc[lbase + a_off(m, 1)].data() - l0.data());
+          ldB = static_cast<long>(rc[rbase + b_off(1, n)].data() - r0.data());
+          if (ldA < P || ldB < Q) clean = false;
+          for (std::size_t k = 0; clean && k < K; ++k) {
+            if (lc[lbase + a_off(m, k)].data() !=
+                l0.data() + static_cast<std::ptrdiff_t>(k) * ldA)
+              clean = false;
+            else if (rc[rbase + b_off(k, n)].data() !=
+                     r0.data() + static_cast<std::ptrdiff_t>(k) * ldB)
+              clean = false;
+          }
+        }
+        if (clean) {
+          // C(P x Q) += factor * Lmat(P x K) . Rmat^T... realized as
+          // gemm(Transpose, NoTranspose): A=K x P slab, B=K x Q slab.
+          blas::gemm(blas::Transpose, blas::NoTranspose,
+                     /*M=*/static_cast<integer>(P),
+                     /*N=*/static_cast<integer>(Q),
+                     /*K=*/static_cast<integer>(K), factor,
+                     /*A=*/l0.data(), /*lda=*/static_cast<integer>(ldA),
+                     /*B=*/r0.data(), /*ldb=*/static_cast<integer>(ldB),
+                     /*beta=*/1.0,
+                     /*C=*/Cc.data(), /*ldc=*/static_cast<integer>(Q));
+#ifdef TA_STRIDED_DGEMM_COUNT
+          g_strided_dgemm_ce_e_calls.fetch_add(1, std::memory_order_relaxed);
+#endif
+        } else {
+          // inline per-k rank-1 fallback for THIS cell (computed once)
+          double* c = Cc.data();
+          for (std::size_t k = 0; k < K; ++k) {
+            const auto& lk = lc[lbase + a_off(m, k)];
+            const auto& rk = rc[rbase + b_off(k, n)];
+            if (!lk || !rk) continue;
+            const std::size_t pp = lk.size(), qq = rk.size();
+            if (static_cast<long>(Cc.size()) != static_cast<long>(pp * qq))
+              continue;
+            const double* lp = lk.data();
+            const double* rp = rk.data();
+            for (std::size_t p = 0; p < pp; ++p)
+              for (std::size_t q = 0; q < qq; ++q)
+                c[p * qq + q] += factor * lp[p] * rp[q];
+          }
+        }
+      }
+    }
+  }
 }
 
 /// Creates a fused contraction callback.
