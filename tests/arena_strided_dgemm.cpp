@@ -590,6 +590,101 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_multi_batch) {
     }
 }
 
+// Addition B coverage: Mo>1 with the non-canonical right orientation
+// (right_op == NoTranspose, R outer (k,mu)). Mirrors
+// ce_ce_orientation_aware_no_transpose but with a left-external loop, so the
+// orientation-aware r_off is exercised together with the m-loop.
+BOOST_AUTO_TEST_CASE(ce_ce_left_external_orientation_no_transpose) {
+  const std::size_t Mo = 2, Mmu = 3, nK = 2, P = 4, Q = 5;
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, nK}, 1, [&](std::size_t){return TA::Range{P, Q};});
+  for (std::size_t o = 0; o < Mo * nK; ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  // non-canonical: R outer (k,mu) -> k slow, mu fast => right_op==NoTranspose.
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{nK, Mmu}, 1, [&](std::size_t){return TA::Range{Q};});
+  for (std::size_t k = 0; k < nK; ++k)
+    for (std::size_t mu = 0; mu < Mmu; ++mu) {
+      double* r = R.data()[k * Mmu + mu].data();
+      for (std::size_t e = 0; e < Q; ++e) r[e] = 2.0 + 0.01 * (k * Mmu + mu) + e;
+    }
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, Mmu}, 1, [&](std::size_t){return TA::Range{P};});
+  namespace blas = TiledArray::math::blas;
+  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, Mo, Mmu, nK, blas::NoTranspose,
+                                        blas::NoTranspose, 1.0);
+  for (std::size_t m = 0; m < Mo; ++m) {
+    std::vector<double> ref(Mmu * P, 0.0);
+    for (std::size_t k = 0; k < nK; ++k) {
+      const double* l = L.data()[m * nK + k].data();
+      for (std::size_t mu = 0; mu < Mmu; ++mu) {
+        const double* r = R.data()[k * Mmu + mu].data();  // (k,mu) layout
+        for (std::size_t a1 = 0; a1 < P; ++a1) {
+          double acc = 0;
+          for (std::size_t a4 = 0; a4 < Q; ++a4) acc += l[a1 * Q + a4] * r[a4];
+          ref[mu * P + a1] += acc;
+        }
+      }
+    }
+    for (std::size_t mu = 0; mu < Mmu; ++mu) {
+      const double* got = C.data()[m * Mmu + mu].data();
+      for (std::size_t a1 = 0; a1 < P; ++a1)
+        BOOST_CHECK_CLOSE(got[a1], ref[mu * P + a1], 1e-12);
+    }
+  }
+}
+
+// Addition B coverage: ragged inner size under Mo>1. One R mu-cell is ragged,
+// so the strided clean-check declines (per-m) and the inline per-cell fallback
+// runs for EACH left-external block (each cell computed exactly once, the
+// size-mismatched (mu,k) skipped just as the kernel skips it).
+BOOST_AUTO_TEST_CASE(ce_ce_left_external_ragged_falls_back) {
+  const std::size_t Mo = 2, Mmu = 2, nK = 2, P = 3, Q0 = 4, Q1 = 5;
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, nK}, 1, [&](std::size_t){return TA::Range{P, Q0};});
+  for (std::size_t o = 0; o < Mo * nK; ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  // R[mu=1,k=0] ragged (Q1) -> mu-run not uniform -> clean-check fails (both m).
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu, nK}, 1, [&](std::size_t o){
+        const std::size_t mu = o / nK, k = o % nK;
+        return TA::Range{(mu == 1 && k == 0) ? Q1 : Q0};
+      });
+  for (std::size_t o = 0; o < Mmu * nK; ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, Mmu}, 1, [&](std::size_t){return TA::Range{P};});
+  namespace blas = TiledArray::math::blas;
+  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, Mo, Mmu, nK, blas::NoTranspose,
+                                        blas::Transpose, 1.0);
+  for (std::size_t m = 0; m < Mo; ++m) {
+    std::vector<double> ref(Mmu * P, 0.0);
+    for (std::size_t k = 0; k < nK; ++k) {
+      const auto& lk = L.data()[m * nK + k];
+      const double* l = lk.data();
+      for (std::size_t mu = 0; mu < Mmu; ++mu) {
+        const auto& rk = R.data()[mu * nK + k];
+        const std::size_t Ql = rk.size();
+        if (lk.size() != P * Ql) continue;  // mirror kernel fallback skip
+        const double* r = rk.data();
+        for (std::size_t a1 = 0; a1 < P; ++a1) {
+          double acc = 0;
+          for (std::size_t a4 = 0; a4 < Ql; ++a4) acc += l[a1 * Ql + a4] * r[a4];
+          ref[mu * P + a1] += acc;
+        }
+      }
+    }
+    for (std::size_t mu = 0; mu < Mmu; ++mu) {
+      const double* got = C.data()[m * Mmu + mu].data();
+      for (std::size_t a1 = 0; a1 < P; ++a1)
+        BOOST_CHECK_CLOSE(got[a1], ref[mu * P + a1], 1e-12);
+    }
+  }
+}
+
 #ifdef TA_STRIDED_DGEMM_COUNT
 BOOST_AUTO_TEST_CASE(ce_ce_fires_clean_path) {
   const std::size_t Mmu = 3, nK = 2, P = 4, Q = 5, NB = 2;

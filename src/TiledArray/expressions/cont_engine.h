@@ -768,15 +768,29 @@ class ContEngine : public BinaryEngine<Derived> {
                 // K). Only the canonical perm-free layout is fused; a
                 // non-identity inner result perm is applied downstream and left
                 // to the per-cell path here.
-                // The strided kernel is specialized to double storage; gate on
-                // the numeric type so float/complex view-inner ToT stay on the
-                // generic per-cell path (and never instantiate the double-only
-                // kernel).
+                // The strided kernel is specialized to view (arena) inner cells
+                // with double storage, and its static_assert requires that of
+                // ALL THREE operands (result, left, right). Gate on the same
+                // 3-operand predicate so a mixed-operand contraction (e.g. a
+                // view/double result with a non-view or non-double operand, or
+                // float/complex inner) stays on the generic per-cell path and
+                // never instantiates the double-view-only kernel (which would be
+                // a hard compile error rather than a graceful fallback).
                 if constexpr (TiledArray::is_tensor_view_v<
                                   result_tile_element_type> &&
+                              TiledArray::is_tensor_view_v<
+                                  left_tile_element_type> &&
+                              TiledArray::is_tensor_view_v<
+                                  right_tile_element_type> &&
                               std::is_same_v<typename result_tile_element_type::
                                                  numeric_type,
-                                             double>) {
+                                             double> &&
+                              std::is_same_v<
+                                  typename left_tile_element_type::numeric_type,
+                                  double> &&
+                              std::is_same_v<
+                                  typename right_tile_element_type::numeric_type,
+                                  double>) {
                   if (contrreduce_op.gemm_helper().num_contract_ranks() == 0 &&
                       !bool(inner(this->perm_))) {
                     const scalar_type factor = this->factor_;

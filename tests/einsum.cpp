@@ -1557,6 +1557,69 @@ BOOST_AUTO_TEST_CASE(hce_e_uses_strided_path) {
   ca.world().gop.fence();
   BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
 }
+
+// Codex must-fix #2 guard: an OWNING ToT contraction (TA::Tensor inner, NOT a
+// view) must stay on the generic per-cell path -- the strided op is never
+// installed (is_tensor_view_v is false), so neither counter moves. This pins
+// the install-gate symmetry fix: the gate now requires view+double on ALL
+// THREE operands, so a non-view operand can never instantiate the
+// double-view-only kernel (which would otherwise be a hard compile error, not a
+// fallback). That this translation unit compiles with owning ToT contractions
+// present is itself the compile-time half of the guard.
+BOOST_AUTO_TEST_CASE(owning_tot_does_not_use_strided_path) {
+  using OwnInner = TA::Tensor<double>;
+  using OwnOuter = TA::Tensor<OwnInner>;
+  using OwnArr = TA::DistArray<OwnOuter, TA::DensePolicy>;
+
+  auto& world = TiledArray::get_default_world();
+  constexpr long H = 2, I = 2, J = 2, K = 3, P = 3, Q = 4;
+  TA::TiledRange a_trange{{0l, H}, {0l, I}, {0l, J}};  // (h,i,j)
+  TA::TiledRange b_trange{{0l, H}, {0l, K}, {0l, J}};  // (h,k,j)
+  auto a_val = [](long h, long i, long j, long p) {
+    return 1.0 + 0.5 * i + 0.25 * j + 0.125 * p + 0.0625 * h;
+  };
+  auto b_val = [](long h, long k, long j, long q) {
+    return 2.0 - 0.3 * k + 0.2 * j + 0.05 * q + 0.03 * h;
+  };
+  OwnArr ao(world, a_trange);
+  ao.init_tiles([&](const TA::Range& tr) {
+    OwnOuter t(tr);
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      OwnInner cell(TA::Range{P});
+      const long h = static_cast<long>(o / (I * J));
+      const long i = static_cast<long>((o / J) % I);
+      const long j = static_cast<long>(o % J);
+      for (long p = 0; p < P; ++p) cell.data()[p] = a_val(h, i, j, p);
+      t.data()[o] = cell;
+    }
+    return t;
+  });
+  OwnArr bo(world, b_trange);
+  bo.init_tiles([&](const TA::Range& tr) {
+    OwnOuter t(tr);
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      OwnInner cell(TA::Range{Q});
+      const long h = static_cast<long>(o / (K * J));
+      const long k = static_cast<long>((o / J) % K);
+      const long j = static_cast<long>(o % J);
+      for (long q = 0; q < Q; ++q) cell.data()[q] = b_val(h, k, j, q);
+      t.data()[o] = cell;
+    }
+    return t;
+  });
+  world.gop.fence();
+
+  TiledArray::detail::g_strided_dgemm_ce_e_calls.store(0);
+  TiledArray::detail::g_strided_dgemm_ce_ce_calls.store(0);
+  auto co = einsum(ao("h,i,j;p"), bo("h,k,j;q"), "h,i,k;p,q");
+  co.world().gop.fence();
+  // owning inner cells never take the view-only strided path
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_ce_calls.load(), 0u);
+  // sanity: the contraction actually ran and produced the expected outer shape
+  BOOST_CHECK_EQUAL(co.trange().elements_range().volume(),
+                    static_cast<std::size_t>(H * I * K));
+}
 #endif
 
 // Addition A (no-Hadamard, multi-external inner): both operands carry 2 inner
