@@ -481,7 +481,12 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
                                const RightOuter& R, std::size_t Mo,
                                std::size_t No, std::size_t Ko,
                                math::blas::Op left_op, math::blas::Op right_op,
-                               double factor) {
+                               double factor,
+                               bool left_inner_transposed = false) {
+  // left_inner_transposed: the external-carrying LEFT inner cell is stored
+  // (a4,a1)=Q x P (matrix_transpose) instead of canonical (a1,a4)=P x Q. Folded
+  // into the inner GEMM via transb (zero-copy); the right contraction-vector
+  // side must remain canonical (gated upstream).
   namespace blas = TiledArray::math::blas;
   using integer = blas::integer;
   static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
@@ -596,16 +601,23 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
         for (std::size_t k = 0; k < nK; ++k) {
           const double* Rk =
               rc[rbase + r_off(k, 0)].data();  // μ̃-run base for k, stride sR
-          const double* Lk = lc[lbase + l_off(m, k)].data();  // P x Q row-major
-          // C(Mμ x P) += factor * R̃(Mμ x Q) · L(P x Q)^T ; contract a_4(=Q)
-          blas::gemm(blas::NoTranspose, blas::Transpose,
-                     /*M=*/static_cast<integer>(Mmu),
-                     /*N=*/static_cast<integer>(P),
-                     /*K=*/static_cast<integer>(Q), factor,
-                     /*A=*/Rk, /*lda=*/static_cast<integer>(sR),
-                     /*B=*/Lk, /*ldb=*/static_cast<integer>(Q),
-                     /*beta=*/1.0,
-                     /*C=*/Cd, /*ldc=*/static_cast<integer>(sC));
+          const double* Lk = lc[lbase + l_off(m, k)].data();
+          // C(Mμ x P) += factor * R̃(Mμ x Q) · op(L) ; contract a_4(=Q).
+          // Canonical L is (a1,b... a4)=P x Q row-major, used transposed
+          // (transb=T, ldb=Q) so op(L)=(a4,a1)=Q x P. When the left inner cell
+          // is matrix_transpose it is already stored (a4,a1)=Q x P row-major,
+          // so feed transb=N with ldb=P (op(L) unchanged); zero-copy.
+          blas::gemm(
+              blas::NoTranspose,
+              left_inner_transposed ? blas::NoTranspose : blas::Transpose,
+              /*M=*/static_cast<integer>(Mmu),
+              /*N=*/static_cast<integer>(P),
+              /*K=*/static_cast<integer>(Q), factor,
+              /*A=*/Rk, /*lda=*/static_cast<integer>(sR),
+              /*B=*/Lk,
+              /*ldb=*/static_cast<integer>(left_inner_transposed ? P : Q),
+              /*beta=*/1.0,
+              /*C=*/Cd, /*ldc=*/static_cast<integer>(sC));
 #ifdef TA_STRIDED_DGEMM_COUNT
           g_strided_dgemm_ce_ce_right_calls.fetch_add(1, std::memory_order_relaxed);
 #endif
@@ -623,12 +635,18 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
             if (!lk || !rk) continue;
             const long Ql = static_cast<long>(rk.size());
             if (Ql == 0 || static_cast<long>(lk.size()) != Pl * Ql) continue;
-            const double* l = lk.data();   // Pl x Ql row-major
+            const double* l = lk.data();   // canonical Pl x Ql row-major
             const double* rr = rk.data();  // Ql
+            // canonical L(a1,a4) = l[a1*Ql + a4]; transposed (a4,a1)=Ql x Pl
+            // row-major L(a1,a4) = l[a4*Pl + a1].
             for (long a1 = 0; a1 < Pl; ++a1) {
               double acc = 0;
-              const double* lr = l + a1 * Ql;
-              for (long a4 = 0; a4 < Ql; ++a4) acc += lr[a4] * rr[a4];
+              if (left_inner_transposed) {
+                for (long a4 = 0; a4 < Ql; ++a4) acc += l[a4 * Pl + a1] * rr[a4];
+              } else {
+                const double* lr = l + a1 * Ql;
+                for (long a4 = 0; a4 < Ql; ++a4) acc += lr[a4] * rr[a4];
+              }
               c[a1] += factor * acc;
             }
           }
@@ -662,7 +680,12 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
                                     const RightOuter& R, std::size_t Mo,
                                     std::size_t No, std::size_t Ko,
                                     math::blas::Op left_op,
-                                    math::blas::Op right_op, double factor) {
+                                    math::blas::Op right_op, double factor,
+                                    bool right_inner_transposed = false) {
+  // right_inner_transposed: the external-carrying RIGHT inner cell is stored
+  // (b1,a4)=P x Q (matrix_transpose) instead of canonical (a4,b1)=Q x P. Folded
+  // into the inner GEMM via transb (zero-copy); the left contraction-vector
+  // side must remain canonical (gated upstream).
   namespace blas = TiledArray::math::blas;
   using integer = blas::integer;
   static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
@@ -770,16 +793,22 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
         for (std::size_t k = 0; k < nK; ++k) {
           const double* Ak =
               lc[lbase + l_off(0, k)].data();  // m-run base for k, stride sA
-          const double* Bk = rc[rbase + r_off(k, n)].data();  // Q x P row-major
-          // C(Mo x P) += factor * A(Mo x Q) . B(Q x P) ; contract a4(=Q)
-          blas::gemm(blas::NoTranspose, blas::NoTranspose,
-                     /*M=*/static_cast<integer>(Mo),
-                     /*N=*/static_cast<integer>(P),
-                     /*K=*/static_cast<integer>(Q), factor,
-                     /*A=*/Ak, /*lda=*/static_cast<integer>(sA),
-                     /*B=*/Bk, /*ldb=*/static_cast<integer>(P),
-                     /*beta=*/1.0,
-                     /*C=*/Cd, /*ldc=*/static_cast<integer>(sC));
+          const double* Bk = rc[rbase + r_off(k, n)].data();
+          // C(Mo x P) += factor * A(Mo x Q) . B(Q x P) ; contract a4(=Q).
+          // Canonical B is (a4,b1)=Q x P row-major (transb=N, ldb=P). When the
+          // right inner cell is matrix_transpose it is stored (b1,a4)=P x Q
+          // row-major, so feed transb=T with ldb=Q (op(B)=(a4,b1)); zero-copy.
+          blas::gemm(
+              blas::NoTranspose,
+              right_inner_transposed ? blas::Transpose : blas::NoTranspose,
+              /*M=*/static_cast<integer>(Mo),
+              /*N=*/static_cast<integer>(P),
+              /*K=*/static_cast<integer>(Q), factor,
+              /*A=*/Ak, /*lda=*/static_cast<integer>(sA),
+              /*B=*/Bk,
+              /*ldb=*/static_cast<integer>(right_inner_transposed ? Q : P),
+              /*beta=*/1.0,
+              /*C=*/Cd, /*ldc=*/static_cast<integer>(sC));
 #ifdef TA_STRIDED_DGEMM_COUNT
           g_strided_dgemm_ce_ce_left_calls.fetch_add(1,
                                                      std::memory_order_relaxed);
@@ -799,11 +828,18 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
             const long Ql = static_cast<long>(lk.size());
             if (Ql == 0 || static_cast<long>(rk.size()) != Ql * Pl) continue;
             const double* a = lk.data();   // Ql vector
-            const double* bd = rk.data();  // Ql x Pl row-major
+            const double* bd = rk.data();  // canonical Ql x Pl row-major
+            // canonical B(a4,p) = bd[a4*Pl + p]; transposed (b1,a4)=Pl x Ql
+            // row-major B(a4,p) = bd[p*Ql + a4].
             for (long a4 = 0; a4 < Ql; ++a4) {
               const double av = a[a4];
-              const double* br = bd + a4 * Pl;
-              for (long p = 0; p < Pl; ++p) c[p] += factor * av * br[p];
+              if (right_inner_transposed) {
+                for (long p = 0; p < Pl; ++p)
+                  c[p] += factor * av * bd[p * Ql + a4];
+              } else {
+                const double* br = bd + a4 * Pl;
+                for (long p = 0; p < Pl; ++p) c[p] += factor * av * br[p];
+              }
             }
           }
         }

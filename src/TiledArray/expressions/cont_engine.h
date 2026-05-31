@@ -884,13 +884,44 @@ class ContEngine : public BinaryEngine<Derived> {
                       this->right_inner_permtype_ ==
                           TiledArray::expressions::PermutationType::identity &&
                       !bool(inner(this->perm_));
-                  if (inner_contraction && inner_canonical &&
-                      right_inner_clean && right_has_ext) {
+                  // RELAXED gate. The strided kernel can fold a matrix_transpose
+                  // of the EXTERNAL-carrying operand into the inner GEMM op flag
+                  // (zero-copy), because matrix_transpose is a contiguous
+                  // two-block swap (permopt) so the cell still flattens cleanly.
+                  // The CLEAN (pure contraction vector) side must stay identity,
+                  // the result inner must not be permuted, and a `general` inner
+                  // perm still falls back. right arm: left carries the external
+                  // (may be T), right is the vector (id). left arm: mirror.
+                  auto inner_pt_ok =
+                      [](TiledArray::expressions::PermutationType p) {
+                        return p == TiledArray::expressions::PermutationType::
+                                        identity ||
+                               p == TiledArray::expressions::PermutationType::
+                                        matrix_transpose;
+                      };
+                  const bool no_result_inner_perm = !bool(inner(this->perm_));
+                  const bool right_arm_ok =
+                      inner_contraction && no_result_inner_perm &&
+                      right_inner_clean && right_has_ext &&
+                      this->right_inner_permtype_ ==
+                          TiledArray::expressions::PermutationType::identity &&
+                      inner_pt_ok(this->left_inner_permtype_);
+                  const bool left_arm_ok =
+                      inner_contraction && no_result_inner_perm &&
+                      left_inner_clean && left_has_ext &&
+                      this->left_inner_permtype_ ==
+                          TiledArray::expressions::PermutationType::identity &&
+                      inner_pt_ok(this->right_inner_permtype_);
+                  if (right_arm_ok) {
                     const scalar_type factor = this->factor_;
+                    const bool left_inner_T =
+                        this->left_inner_permtype_ ==
+                        TiledArray::expressions::PermutationType::matrix_transpose;
                     this->arena_strided_dgemm_ce_ce_right_tile_op_ =
-                        [factor](result_tile_type& Cc, const left_tile_type& Lt,
-                                 const right_tile_type& Rt,
-                                 const math::GemmHelper& gh) {
+                        [factor, left_inner_T](
+                            result_tile_type& Cc, const left_tile_type& Lt,
+                            const right_tile_type& Rt,
+                            const math::GemmHelper& gh) {
                           math::blas::integer Mo = 0, No = 0, Ko = 0;
                           gh.compute_matrix_sizes(Mo, No, Ko, Lt.range(),
                                                   Rt.range());
@@ -898,15 +929,18 @@ class ContEngine : public BinaryEngine<Derived> {
                               Cc, Lt, Rt, static_cast<std::size_t>(Mo),
                               static_cast<std::size_t>(No),
                               static_cast<std::size_t>(Ko), gh.left_op(),
-                              gh.right_op(), double(factor));
+                              gh.right_op(), double(factor), left_inner_T);
                         };
-                  } else if (inner_contraction && inner_canonical &&
-                             left_inner_clean && left_has_ext) {
+                  } else if (left_arm_ok) {
                     const scalar_type factor = this->factor_;
+                    const bool right_inner_T =
+                        this->right_inner_permtype_ ==
+                        TiledArray::expressions::PermutationType::matrix_transpose;
                     this->arena_strided_dgemm_ce_ce_left_tile_op_ =
-                        [factor](result_tile_type& Cc, const left_tile_type& Lt,
-                                 const right_tile_type& Rt,
-                                 const math::GemmHelper& gh) {
+                        [factor, right_inner_T](
+                            result_tile_type& Cc, const left_tile_type& Lt,
+                            const right_tile_type& Rt,
+                            const math::GemmHelper& gh) {
                           math::blas::integer Mo = 0, No = 0, Ko = 0;
                           gh.compute_matrix_sizes(Mo, No, Ko, Lt.range(),
                                                   Rt.range());
@@ -914,7 +948,7 @@ class ContEngine : public BinaryEngine<Derived> {
                               Cc, Lt, Rt, static_cast<std::size_t>(Mo),
                               static_cast<std::size_t>(No),
                               static_cast<std::size_t>(Ko), gh.left_op(),
-                              gh.right_op(), double(factor));
+                              gh.right_op(), double(factor), right_inner_T);
                         };
                   }
                 }
