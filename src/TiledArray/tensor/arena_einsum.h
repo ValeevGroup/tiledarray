@@ -453,6 +453,191 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
   }
 }
 
+#ifdef TA_STRIDED_DGEMM_COUNT
+inline std::atomic<std::size_t> g_strided_dgemm_ce_ce_calls{0};
+#endif
+
+/// ce+ce strided-DGEMM core (inner CONTRACTION; ride right-external μ̃ into BLAS
+/// M). ORIENTATION-AWARE (offsets derived from left_op/right_op of the OUTER
+/// GemmHelper, exactly as arena_strided_dgemm_ce_e) and Hadamard-agnostic:
+/// Hadamard is carried as nbatch by the einsum driver, so a thin nbatch loop
+/// wraps a fixed-Hadamard ce+ce core and serves both hce+ce (nbatch>1) and the
+/// no-Hadamard ce+ce (nbatch==1). Do NOT assert nbatch==1.
+///
+/// Outer GemmHelper mapping: Mo = left outer-external, No = right outer-external
+/// = Mμ, Ko = outer-contracted = nK. The left-external `m` (Mo) is an OUTER loop
+/// around the per-(b) body; R (a function of k,μ̃ only) is reused across m.
+/// For each batch b, each left-external m, and each outer-contraction cell Κ=k:
+///   C̃[m,μ̃, a_1] += factor * Σ_{a_4} R[k,μ̃](a_4) · L[m,k](a_1,a_4)
+/// realized as ONE M=μ̃ × N=a_1 × K=a_4 DGEMM riding μ̃ into BLAS M via the
+/// (empirically measured) inter-μ̃-cell slab stride (zero-copy), looping k with
+/// beta=1. Mo==1 reduces to the original ce+ce kernel exactly. If a per-(b,m)
+/// run is not clean, an inline per-cell GEMV fallback handles THAT (b,m) only
+/// (each cell once -> no double-count). C must be pre-shaped (a_1-major); the
+/// result outer is (m, μ̃) row-major (left-then-right concatenation, matching
+/// make_result_range). Accumulates into C (beta=1).
+template <typename ResultOuter, typename LeftOuter, typename RightOuter>
+void arena_strided_dgemm_ce_ce(ResultOuter& C, const LeftOuter& L,
+                               const RightOuter& R, std::size_t Mo,
+                               std::size_t No, std::size_t Ko,
+                               math::blas::Op left_op, math::blas::Op right_op,
+                               double factor) {
+  namespace blas = TiledArray::math::blas;
+  using integer = blas::integer;
+  static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
+                    is_tensor_view_v<typename LeftOuter::value_type> &&
+                    is_tensor_view_v<typename RightOuter::value_type>,
+                "arena_strided_dgemm_ce_ce: arena (view) inner cells only");
+  static_assert(
+      std::is_same_v<typename ResultOuter::value_type::numeric_type, double> &&
+          std::is_same_v<typename LeftOuter::value_type::numeric_type, double> &&
+          std::is_same_v<typename RightOuter::value_type::numeric_type, double>,
+      "arena_strided_dgemm_ce_ce: double inner storage only");
+  const std::size_t Mmu = No;  // right outer-external rides BLAS M
+  const std::size_t nK = Ko;   // outer-contracted is looped with beta=1
+  const std::size_t nbatch = static_cast<std::size_t>(C.nbatch());
+  if (nbatch == 0 || Mmu == 0 || nK == 0 || Mo == 0) return;
+  // structural + self-defense (a mis-gated shape falls back / no-ops, never
+  // miscomputes). The left-external Mo>=1 is supported (rides as an outer loop).
+  const bool shape_ok =
+      (C.range().volume() == Mo * Mmu && L.range().volume() == Mo * nK &&
+       R.range().volume() == Mmu * nK &&
+       static_cast<std::size_t>(L.nbatch()) == nbatch &&
+       static_cast<std::size_t>(R.nbatch()) == nbatch);
+  // If the structural invariant is violated, do nothing rather than form
+  // out-of-bounds cell offsets below. This is only reachable via a mis-gate.
+  TA_ASSERT(shape_ok);
+  if (!shape_ok) return;
+  // orientation-aware outer offsets (mirror arena_strided_dgemm_ce_e a_off/b_off)
+  const std::size_t ldb_o = (right_op == blas::NoTranspose) ? No : Ko;
+  auto r_off = [&](std::size_t k, std::size_t mu) {
+    return (right_op == blas::NoTranspose) ? k * ldb_o + mu : mu * ldb_o + k;
+  };
+  // L: 2-D (m,k) offset (orientation-aware). l_off(k)==k only held for Mo==1.
+  const std::size_t lda_o = (left_op == blas::NoTranspose) ? Ko : Mo;
+  auto l_off = [&](std::size_t m, std::size_t k) {
+    return (left_op == blas::NoTranspose) ? m * lda_o + k : k * lda_o + m;
+  };
+  // result outer (Mo x Mμ) row-major: (m, μ̃) = m*Mmu + mu.
+  auto c_off = [&](std::size_t m, std::size_t mu) { return m * Mmu + mu; };
+  const auto* lc = L.data();
+  const auto* rc = R.data();
+  auto* cc = C.data();
+  for (std::size_t b = 0; b < nbatch; ++b) {
+    const std::size_t cbase = b * Mo * Mmu;
+    const std::size_t rbase = b * Mmu * nK;
+    const std::size_t lbase = b * Mo * nK;
+    for (std::size_t m = 0; m < Mo; ++m) {
+      const auto& c0 = cc[cbase + c_off(m, 0)];
+      long P = c0 ? static_cast<long>(c0.size()) : -1;
+      bool clean = (P > 0);
+      // C μ̃-run: uniform size P, constant stride sC>=P (page-jump guard).
+      // Presence-first: verify every μ̃ cell present + uniform size BEFORE
+      // probing the cell-0->1 stride via pointer subtraction.
+      long sC = P;
+      if (clean && Mmu > 1) {
+        for (std::size_t mu = 0; clean && mu < Mmu; ++mu) {
+          const auto& cmu = cc[cbase + c_off(m, mu)];
+          if (!cmu || static_cast<long>(cmu.size()) != P) clean = false;
+        }
+        if (clean) {
+          sC = static_cast<long>(cc[cbase + c_off(m, 1)].data() - c0.data());
+          if (sC < P) clean = false;
+          for (std::size_t mu = 0; clean && mu < Mmu; ++mu) {
+            if (cc[cbase + c_off(m, mu)].data() !=
+                c0.data() + static_cast<std::ptrdiff_t>(mu) * sC)
+              clean = false;
+          }
+        }
+      }
+      // Q from R[k=0, μ̃=0]; L_{m,k} size P*Q; R μ̃-run per k uniform Q at
+      // constant stride sR>=Q (uniform across k) -- page-jump guard on R too.
+      const auto* r00 = clean ? &rc[rbase + r_off(0, 0)] : nullptr;
+      long Q = (r00 && *r00) ? static_cast<long>(r00->size()) : -1;
+      if (Q <= 0) clean = false;
+      long sR = Q;
+      for (std::size_t k = 0; clean && k < nK; ++k) {
+        const auto& lk = lc[lbase + l_off(m, k)];
+        if (!lk || static_cast<long>(lk.size()) != P * Q) {
+          clean = false;
+          break;
+        }
+        const auto& rk0 = rc[rbase + r_off(k, 0)];
+        if (!rk0 || static_cast<long>(rk0.size()) != Q) {
+          clean = false;
+          break;
+        }
+        if (Mmu > 1) {
+          for (std::size_t mu = 0; clean && mu < Mmu; ++mu) {
+            const auto& rmu = rc[rbase + r_off(k, mu)];
+            if (!rmu || static_cast<long>(rmu.size()) != Q) clean = false;
+          }
+          if (!clean) break;
+          const long sRk =
+              static_cast<long>(rc[rbase + r_off(k, 1)].data() - rk0.data());
+          if (sRk < Q) {
+            clean = false;
+            break;
+          }
+          if (k == 0) sR = sRk;
+          else if (sRk != sR) {
+            clean = false;
+            break;
+          }
+          for (std::size_t mu = 0; clean && mu < Mmu; ++mu) {
+            if (rc[rbase + r_off(k, mu)].data() !=
+                rk0.data() + static_cast<std::ptrdiff_t>(mu) * sR)
+              clean = false;
+          }
+        }
+      }
+      if (clean) {
+        double* Cd = cc[cbase + c_off(m, 0)].data();  // μ̃-run base, stride sC
+        for (std::size_t k = 0; k < nK; ++k) {
+          const double* Rk =
+              rc[rbase + r_off(k, 0)].data();  // μ̃-run base for k, stride sR
+          const double* Lk = lc[lbase + l_off(m, k)].data();  // P x Q row-major
+          // C(Mμ x P) += factor * R̃(Mμ x Q) · L(P x Q)^T ; contract a_4(=Q)
+          blas::gemm(blas::NoTranspose, blas::Transpose,
+                     /*M=*/static_cast<integer>(Mmu),
+                     /*N=*/static_cast<integer>(P),
+                     /*K=*/static_cast<integer>(Q), factor,
+                     /*A=*/Rk, /*lda=*/static_cast<integer>(sR),
+                     /*B=*/Lk, /*ldb=*/static_cast<integer>(Q),
+                     /*beta=*/1.0,
+                     /*C=*/Cd, /*ldc=*/static_cast<integer>(sC));
+#ifdef TA_STRIDED_DGEMM_COUNT
+          g_strided_dgemm_ce_ce_calls.fetch_add(1, std::memory_order_relaxed);
+#endif
+        }
+      } else {
+        // inline per-cell GEMV fallback for THIS (b,m) (each cell once)
+        for (std::size_t mu = 0; mu < Mmu; ++mu) {
+          auto& Cc = cc[cbase + c_off(m, mu)];
+          if (!Cc) continue;
+          const long Pl = static_cast<long>(Cc.size());
+          double* c = Cc.data();
+          for (std::size_t k = 0; k < nK; ++k) {
+            const auto& lk = lc[lbase + l_off(m, k)];
+            const auto& rk = rc[rbase + r_off(k, mu)];
+            if (!lk || !rk) continue;
+            const long Ql = static_cast<long>(rk.size());
+            if (Ql == 0 || static_cast<long>(lk.size()) != Pl * Ql) continue;
+            const double* l = lk.data();   // Pl x Ql row-major
+            const double* rr = rk.data();  // Ql
+            for (long a1 = 0; a1 < Pl; ++a1) {
+              double acc = 0;
+              const double* lr = l + a1 * Ql;
+              for (long a4 = 0; a4 < Ql; ++a4) acc += lr[a4] * rr[a4];
+              c[a1] += factor * acc;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 /// Creates a fused contraction callback.
 template <typename Result, typename Left, typename Right, typename Op>
 auto make_fused_contraction_lambda(Op contrreduce_op) {
