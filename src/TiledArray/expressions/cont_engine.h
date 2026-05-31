@@ -141,6 +141,17 @@ class ContEngine : public BinaryEngine<Derived> {
       arena_strided_dgemm_ce_e_tile_op_;  ///< whole-tile ce+e strided DGEMM op
                                           ///< (arena inner OUTER-PRODUCT under an
                                           ///< outer contraction); null otherwise
+  std::function<void(result_tile_type&, const left_tile_type&,
+                     const right_tile_type&, const math::GemmHelper&)>
+      arena_strided_dgemm_ce_ce_tile_op_;  ///< whole-tile ce+ce strided DGEMM op
+                                           ///< (arena inner CONTRACTION under an
+                                           ///< outer contraction; right-external
+                                           ///< rides BLAS M, left-external rides
+                                           ///< an outer loop); null otherwise.
+                                           ///< Mutually exclusive with
+                                           ///< arena_strided_dgemm_ce_e_tile_op_
+                                           ///< (disjoint num_contract_ranks()
+                                           ///< gates)
   using arena_plan_storage_t =
       TiledArray::detail::arena_plan_storage_t<result_tile_type, left_tile_type,
                                                right_tile_type>;
@@ -332,8 +343,12 @@ class ContEngine : public BinaryEngine<Derived> {
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
         if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+          // ce+e and ce+ce are mutually exclusive (disjoint num_contract_ranks()
+          // 0 vs >=1), so at most one is non-null and only one install fires.
           if (this->arena_strided_dgemm_ce_e_tile_op_)
             op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
+          if (this->arena_strided_dgemm_ce_ce_tile_op_)
+            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_tile_op_);
         }
         // Plan ownership transferred to op_; mark carrier slot empty so any
         // later use of arena_plan_ reads as "no plan" rather than moved-from.
@@ -381,8 +396,12 @@ class ContEngine : public BinaryEngine<Derived> {
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
         if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+          // ce+e and ce+ce are mutually exclusive (disjoint num_contract_ranks()
+          // 0 vs >=1), so at most one is non-null and only one install fires.
           if (this->arena_strided_dgemm_ce_e_tile_op_)
             op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
+          if (this->arena_strided_dgemm_ce_ce_tile_op_)
+            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_tile_op_);
         }
         // Plan ownership transferred to op_; mark carrier slot empty so any
         // later use of arena_plan_ reads as "no plan" rather than moved-from.
@@ -773,6 +792,53 @@ class ContEngine : public BinaryEngine<Derived> {
                               Cc, Lt, Rt, static_cast<std::size_t>(M),
                               static_cast<std::size_t>(N),
                               static_cast<std::size_t>(K), gh.left_op(),
+                              gh.right_op(), double(factor));
+                        };
+                  }
+                  // ce+ce (hce+ce): inner CONTRACTION (num_contract_ranks() >=
+                  // 1) under outer contraction with a right-external -> ride the
+                  // right-external into BLAS M with one strided DGEMM per
+                  // (batch, left-external, outer-contraction) cell. Sibling of
+                  // the ce+e arm above: gated on disjoint num_contract_ranks()
+                  // so at most one strided op installs per contraction. A
+                  // left-external (Mo>1) is supported (rides as an outer loop in
+                  // the kernel); only a right-external is REQUIRED (to ride BLAS
+                  // M).
+                  const auto& inner_gh = contrreduce_op.gemm_helper();
+                  const bool inner_contraction =
+                      inner_gh.num_contract_ranks() >= 1;
+                  // Derive the outer-contracted rank `oc` from the outer index
+                  // sizes (same helper used by the outer op when building op_).
+                  const auto oc = (outer_size(this->left_indices_) +
+                                   outer_size(this->right_indices_) -
+                                   outer_size(this->indices_)) /
+                                  2;
+                  const bool outer_structure_ok =
+                      outer_size(this->right_indices_) > oc;  // R: right ext
+                  // canonical inner orientation: identity == "no inner
+                  // transpose". The kernel assumes L=(a1,a4), R=(a4), B=L^T
+                  // ldb=Q, so BOTH inner permtypes must be identity, and no inner
+                  // result perm. This gate is LOAD-BEARING for correctness.
+                  const bool inner_canonical =
+                      this->left_inner_permtype_ ==
+                          TiledArray::expressions::PermutationType::identity &&
+                      this->right_inner_permtype_ ==
+                          TiledArray::expressions::PermutationType::identity &&
+                      !bool(inner(this->perm_));
+                  if (inner_contraction && outer_structure_ok &&
+                      inner_canonical) {
+                    const scalar_type factor = this->factor_;
+                    this->arena_strided_dgemm_ce_ce_tile_op_ =
+                        [factor](result_tile_type& Cc, const left_tile_type& Lt,
+                                 const right_tile_type& Rt,
+                                 const math::GemmHelper& gh) {
+                          math::blas::integer Mo = 0, No = 0, Ko = 0;
+                          gh.compute_matrix_sizes(Mo, No, Ko, Lt.range(),
+                                                  Rt.range());
+                          TiledArray::detail::arena_strided_dgemm_ce_ce(
+                              Cc, Lt, Rt, static_cast<std::size_t>(Mo),
+                              static_cast<std::size_t>(No),
+                              static_cast<std::size_t>(Ko), gh.left_op(),
                               gh.right_op(), double(factor));
                         };
                   }
