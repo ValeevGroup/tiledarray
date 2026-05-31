@@ -554,7 +554,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_matches_reference_canonical) {
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});  // zero-init
   namespace blas = TiledArray::math::blas;
   // Mo=1 (no left external), No=Mmu (mu), Ko=nK (k); canonical right_op=Transpose.
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
@@ -587,7 +587,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_orientation_aware_no_transpose) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, 1, Mmu, nK,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
                                         blas::NoTranspose, blas::NoTranspose, 1.0);
   auto ref = ref_ce_ce(L, Rc, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
@@ -612,7 +612,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_multi_batch) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, 1, Mmu, nK,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
   for (std::size_t b = 0; b < NB; ++b) {
     std::vector<double> ref(Mmu * P, 0.0);
@@ -657,7 +657,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_ragged_batch_falls_back_inline) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, NB, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, 1, Mmu, nK,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
   for (std::size_t b = 0; b < NB; ++b) {
     std::vector<double> ref(Mmu * P, 0.0);
@@ -697,7 +697,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_applies_factor) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, 1, Mmu, nK,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
                                         blas::NoTranspose, blas::Transpose, 0.5);
   auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 0.5);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
@@ -726,7 +726,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_empty_mid_run_falls_back) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
   std::vector<double> ref(Mmu * P, 0.0);
   for (std::size_t k = 0; k < nK; ++k) {
@@ -770,7 +770,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, /*Mo=*/Mo, /*No=*/Mmu,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/Mo, /*No=*/Mmu,
                                         /*Ko=*/nK, blas::NoTranspose,
                                         blas::Transpose, 1.0);
   for (std::size_t m = 0; m < Mo; ++m) {
@@ -810,7 +810,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_multi_batch) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, Mo, Mmu, nK,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
   for (std::size_t b = 0; b < NB; ++b)
     for (std::size_t m = 0; m < Mo; ++m) {
@@ -856,7 +856,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_orientation_no_transpose) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, Mo, Mmu, nK, blas::NoTranspose,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK, blas::NoTranspose,
                                         blas::NoTranspose, 1.0);
   for (std::size_t m = 0; m < Mo; ++m) {
     std::vector<double> ref(Mmu * P, 0.0);
@@ -902,7 +902,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_ragged_falls_back) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, Mo, Mmu, nK, blas::NoTranspose,
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK, blas::NoTranspose,
                                         blas::Transpose, 1.0);
   for (std::size_t m = 0; m < Mo; ++m) {
     std::vector<double> ref(Mmu * P, 0.0);
@@ -929,6 +929,50 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_ragged_falls_back) {
   }
 }
 
+// LEFT-clean mirror core: the LEFT operand inner is the pure contraction vector
+// L[m,k](a4); the RIGHT operand carries the inner external R[k,n](a4,b1); result
+// inner is the right inner-external b1. The kernel rides the LEFT-external m into
+// BLAS M and loops the RIGHT-external n as an outer loop. Independent reference:
+//   c[m,n](p) = sum_k sum_{a4} L[m,k](a4) * R[k,n](a4,p).
+BOOST_AUTO_TEST_CASE(ce_ce_left_clean_core) {
+  const std::size_t Mo = 2, No = 3, nK = 2, P = 4, Q = 5;
+  // L (clean) outer (Mo,nK) row-major (m slow, k fast), inner {Q}.
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, nK}, 1, [&](std::size_t) { return TA::Range{Q}; });
+  for (std::size_t o = 0; o < Mo * nK; ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  // R (matrix) outer (nK,No) canonical (k slow, n fast), inner {Q,P} row-major.
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{nK, No}, 1, [&](std::size_t) { return TA::Range{Q, P}; });
+  for (std::size_t o = 0; o < nK * No; ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  // C outer (Mo,No) row-major (m slow, n fast), inner {P}.
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, No}, 1, [&](std::size_t) { return TA::Range{P}; });
+  namespace blas = TiledArray::math::blas;
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, /*Mo=*/Mo, /*No=*/No,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::NoTranspose, 1.0);
+  for (std::size_t m = 0; m < Mo; ++m)
+    for (std::size_t n = 0; n < No; ++n) {
+      std::vector<double> ref(P, 0.0);
+      for (std::size_t k = 0; k < nK; ++k) {
+        const double* l = L.data()[m * nK + k].data();  // Q vector
+        const double* r = R.data()[k * No + n].data();  // Q x P row-major
+        for (std::size_t p = 0; p < P; ++p) {
+          double acc = 0;
+          for (std::size_t a4 = 0; a4 < Q; ++a4) acc += l[a4] * r[a4 * P + p];
+          ref[p] += acc;
+        }
+      }
+      const double* got = C.data()[m * No + n].data();
+      for (std::size_t p = 0; p < P; ++p)
+        BOOST_CHECK_CLOSE(got[p], ref[p], 1e-12);
+    }
+}
+
 #ifdef TA_STRIDED_DGEMM_COUNT
 BOOST_AUTO_TEST_CASE(ce_ce_fires_clean_path) {
   const std::size_t Mmu = 3, nK = 2, P = 4, Q = 5, NB = 2;
@@ -946,11 +990,11 @@ BOOST_AUTO_TEST_CASE(ce_ce_fires_clean_path) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, 1, Mmu, nK,
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
   // per-DGEMM count: Mo(==1) * nK per batch
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_calls.load(), NB * 1 * nK);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), NB * 1 * nK);
 }
 
 // Addition B firing count: Mo>1, nbatch>1 -> clean count == NB*Mo*nK.
@@ -969,10 +1013,10 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_fires_clean_path) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, Mo, Mmu, nK,
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_calls.load(), NB * Mo * nK);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), NB * Mo * nK);
 }
 
 BOOST_AUTO_TEST_CASE(ce_ce_scattered_run_does_not_fire_but_is_correct) {
@@ -989,10 +1033,10 @@ BOOST_AUTO_TEST_CASE(ce_ce_scattered_run_does_not_fire_but_is_correct) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_calls.load(), 0u);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
   std::vector<double> ref(Mmu * P, 0.0);
   for (std::size_t k = 0; k < nK; ++k) {
     const auto& lk = L.data()[k];
@@ -1050,16 +1094,41 @@ BOOST_AUTO_TEST_CASE(ce_ce_page_jump_run_does_not_fire_but_is_correct) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_calls.load(), 0u);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
   auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
     const double* got = C.data()[mu].data();
     for (std::size_t a1 = 0; a1 < P; ++a1)
       BOOST_CHECK_CLOSE(got[a1], ref[mu * P + a1], 1e-12);
   }
+}
+
+// LEFT-clean firing count: Mo>1, No>1, single batch -> one DGEMM per (n,k)
+// (the left-external m is ridden into BLAS M) => count == No*nK.
+BOOST_AUTO_TEST_CASE(ce_ce_left_clean_fires_clean_path) {
+  const std::size_t Mo = 2, No = 3, nK = 2, P = 4, Q = 5;
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, nK}, 1, [&](std::size_t) { return TA::Range{Q}; });
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{nK, No}, 1, [&](std::size_t) { return TA::Range{Q, P}; });
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, No}, 1, [&](std::size_t) { return TA::Range{P}; });
+  for (std::size_t o = 0; o < Mo * nK; ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  for (std::size_t o = 0; o < nK * No; ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  namespace blas = TiledArray::math::blas;
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+                                             blas::NoTranspose, blas::NoTranspose,
+                                             1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_left_calls.load(),
+                    No * nK);
 }
 #endif
 

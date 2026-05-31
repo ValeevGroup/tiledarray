@@ -143,7 +143,7 @@ class ContEngine : public BinaryEngine<Derived> {
                                           ///< outer contraction); null otherwise
   std::function<void(result_tile_type&, const left_tile_type&,
                      const right_tile_type&, const math::GemmHelper&)>
-      arena_strided_dgemm_ce_ce_tile_op_;  ///< whole-tile ce+ce strided DGEMM op
+      arena_strided_dgemm_ce_ce_right_tile_op_;  ///< whole-tile ce+ce strided DGEMM op
                                            ///< (arena inner CONTRACTION under an
                                            ///< outer contraction; right-external
                                            ///< rides BLAS M, left-external rides
@@ -152,6 +152,15 @@ class ContEngine : public BinaryEngine<Derived> {
                                            ///< arena_strided_dgemm_ce_e_tile_op_
                                            ///< (disjoint num_contract_ranks()
                                            ///< gates)
+  std::function<void(result_tile_type&, const left_tile_type&,
+                     const right_tile_type&, const math::GemmHelper&)>
+      arena_strided_dgemm_ce_ce_left_tile_op_;  ///< whole-tile ce+ce strided
+                                                ///< DGEMM op, LEFT-clean mirror:
+                                                ///< left-external rides BLAS M,
+                                                ///< right-external rides an
+                                                ///< outer loop. Mutually
+                                                ///< exclusive with the ce_e and
+                                                ///< ce_ce_right ops.
   using arena_plan_storage_t =
       TiledArray::detail::arena_plan_storage_t<result_tile_type, left_tile_type,
                                                right_tile_type>;
@@ -343,12 +352,16 @@ class ContEngine : public BinaryEngine<Derived> {
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
         if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-          // ce+e and ce+ce are mutually exclusive (disjoint num_contract_ranks()
-          // 0 vs >=1), so at most one is non-null and only one install fires.
+          // ce+e, ce+ce_right and ce+ce_left are mutually exclusive (ce+e gates
+          // on num_contract_ranks()==0; the two ce+ce orientations on disjoint
+          // right-/left-clean inner structure), so at most one is non-null and
+          // only one install fires.
           if (this->arena_strided_dgemm_ce_e_tile_op_)
             op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
-          if (this->arena_strided_dgemm_ce_ce_tile_op_)
-            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_tile_op_);
+          if (this->arena_strided_dgemm_ce_ce_right_tile_op_)
+            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_right_tile_op_);
+          if (this->arena_strided_dgemm_ce_ce_left_tile_op_)
+            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_left_tile_op_);
         }
         // Plan ownership transferred to op_; mark carrier slot empty so any
         // later use of arena_plan_ reads as "no plan" rather than moved-from.
@@ -396,12 +409,16 @@ class ContEngine : public BinaryEngine<Derived> {
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
         if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-          // ce+e and ce+ce are mutually exclusive (disjoint num_contract_ranks()
-          // 0 vs >=1), so at most one is non-null and only one install fires.
+          // ce+e, ce+ce_right and ce+ce_left are mutually exclusive (ce+e gates
+          // on num_contract_ranks()==0; the two ce+ce orientations on disjoint
+          // right-/left-clean inner structure), so at most one is non-null and
+          // only one install fires.
           if (this->arena_strided_dgemm_ce_e_tile_op_)
             op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
-          if (this->arena_strided_dgemm_ce_ce_tile_op_)
-            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_tile_op_);
+          if (this->arena_strided_dgemm_ce_ce_right_tile_op_)
+            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_right_tile_op_);
+          if (this->arena_strided_dgemm_ce_ce_left_tile_op_)
+            op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_left_tile_op_);
         }
         // Plan ownership transferred to op_; mark carrier slot empty so any
         // later use of arena_plan_ reads as "no plan" rather than moved-from.
@@ -810,46 +827,90 @@ class ContEngine : public BinaryEngine<Derived> {
                         };
                   }
                   // ce+ce (hce+ce): inner CONTRACTION (num_contract_ranks() >=
-                  // 1) under outer contraction with a right-external -> ride the
-                  // right-external into BLAS M with one strided DGEMM per
-                  // (batch, left-external, outer-contraction) cell. Sibling of
-                  // the ce+e arm above: gated on disjoint num_contract_ranks()
-                  // so at most one strided op installs per contraction. A
-                  // left-external (Mo>1) is supported (rides as an outer loop in
-                  // the kernel); only a right-external is REQUIRED (to ride BLAS
-                  // M).
+                  // 1) under outer contraction. One operand inner must be a pure
+                  // contraction vector; that side's outer-external rides BLAS M
+                  // with one strided DGEMM per (batch, other-external,
+                  // outer-contraction) cell. Two orientations (right-clean ->
+                  // ce_ce_right, left-clean -> ce_ce_left); see the either-side
+                  // rule below. Sibling of the ce+e arm above (disjoint
+                  // num_contract_ranks gate) so at most one strided op installs.
                   const auto& inner_gh = contrreduce_op.gemm_helper();
                   const bool inner_contraction =
                       inner_gh.num_contract_ranks() >= 1;
+                  // STRIDED-APPLICABILITY RULE (matrix x matrix exclusion).
+                  // The ce+ce core assumes the RIGHT inner cell is a pure
+                  // contraction vector R[k,μ̃](a4) -- i.e. the right operand
+                  // carries NO inner external. When BOTH operand inners carry an
+                  // external (a genuine inner matrix x matrix, e.g.
+                  // C(m,n;μ,ν) = A(m,k;μ,κ) * B(k,n;κ,ν)), riding μ̃ into BLAS M
+                  // would need a two-level stride the kernel cannot represent:
+                  // the per-cell `clean` probe fails and the GEMV fallback then
+                  // silently contributes nothing (the result cell volume P*Q no
+                  // longer matches the left cell). Refuse the install so such
+                  // shapes take the generic per-cell contraction path. The right
+                  // inner-external rank is right_rank - num_contract_ranks; the
+                  // supported (right-clean) shape has it == 0.
+                  // EITHER-SIDE rule: an inner contraction is strided-castable
+                  // iff at least ONE operand inner is a pure contraction vector
+                  // (no inner external). right-clean -> ce_ce_right (ride the
+                  // right-external into BLAS M); left-clean -> ce_ce_left (ride
+                  // the left-external into BLAS M). When BOTH inners carry an
+                  // external (a genuine inner matrix x matrix, e.g.
+                  // C(m,n;μ,ν) = A(m,k;μ,κ) * B(k,n;κ,ν)) neither fires and the
+                  // generic per-cell path runs. An operand's inner-external rank
+                  // is its rank - num_contract_ranks; clean == 0.
+                  const bool right_inner_clean =
+                      inner_gh.right_rank() == inner_gh.num_contract_ranks();
+                  const bool left_inner_clean =
+                      inner_gh.left_rank() == inner_gh.num_contract_ranks();
                   // Derive the outer-contracted rank `oc` from the outer index
                   // sizes (same helper used by the outer op when building op_).
                   const auto oc = (outer_size(this->left_indices_) +
                                    outer_size(this->right_indices_) -
                                    outer_size(this->indices_)) /
                                   2;
-                  const bool outer_structure_ok =
-                      outer_size(this->right_indices_) > oc;  // R: right ext
+                  // the ridden operand must carry an outer external to ride.
+                  const bool right_has_ext =
+                      outer_size(this->right_indices_) > oc;
+                  const bool left_has_ext = outer_size(this->left_indices_) > oc;
                   // canonical inner orientation: identity == "no inner
-                  // transpose". The kernel assumes L=(a1,a4), R=(a4), B=L^T
-                  // ldb=Q, so BOTH inner permtypes must be identity, and no inner
-                  // result perm. This gate is LOAD-BEARING for correctness.
+                  // transpose". right core assumes L=(a1,a4), R=(a4); left core
+                  // assumes L=(a4), R=(a4,b1). Either way BOTH inner permtypes
+                  // must be identity and there must be no inner result perm. This
+                  // gate is LOAD-BEARING for correctness.
                   const bool inner_canonical =
                       this->left_inner_permtype_ ==
                           TiledArray::expressions::PermutationType::identity &&
                       this->right_inner_permtype_ ==
                           TiledArray::expressions::PermutationType::identity &&
                       !bool(inner(this->perm_));
-                  if (inner_contraction && outer_structure_ok &&
-                      inner_canonical) {
+                  if (inner_contraction && inner_canonical &&
+                      right_inner_clean && right_has_ext) {
                     const scalar_type factor = this->factor_;
-                    this->arena_strided_dgemm_ce_ce_tile_op_ =
+                    this->arena_strided_dgemm_ce_ce_right_tile_op_ =
                         [factor](result_tile_type& Cc, const left_tile_type& Lt,
                                  const right_tile_type& Rt,
                                  const math::GemmHelper& gh) {
                           math::blas::integer Mo = 0, No = 0, Ko = 0;
                           gh.compute_matrix_sizes(Mo, No, Ko, Lt.range(),
                                                   Rt.range());
-                          TiledArray::detail::arena_strided_dgemm_ce_ce(
+                          TiledArray::detail::arena_strided_dgemm_ce_ce_right(
+                              Cc, Lt, Rt, static_cast<std::size_t>(Mo),
+                              static_cast<std::size_t>(No),
+                              static_cast<std::size_t>(Ko), gh.left_op(),
+                              gh.right_op(), double(factor));
+                        };
+                  } else if (inner_contraction && inner_canonical &&
+                             left_inner_clean && left_has_ext) {
+                    const scalar_type factor = this->factor_;
+                    this->arena_strided_dgemm_ce_ce_left_tile_op_ =
+                        [factor](result_tile_type& Cc, const left_tile_type& Lt,
+                                 const right_tile_type& Rt,
+                                 const math::GemmHelper& gh) {
+                          math::blas::integer Mo = 0, No = 0, Ko = 0;
+                          gh.compute_matrix_sizes(Mo, No, Ko, Lt.range(),
+                                                  Rt.range());
+                          TiledArray::detail::arena_strided_dgemm_ce_ce_left(
                               Cc, Lt, Rt, static_cast<std::size_t>(Mo),
                               static_cast<std::size_t>(No),
                               static_cast<std::size_t>(Ko), gh.left_op(),

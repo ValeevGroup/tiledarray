@@ -2056,12 +2056,12 @@ BOOST_AUTO_TEST_CASE(owning_tot_does_not_use_strided_path) {
   world.gop.fence();
 
   TiledArray::detail::g_strided_dgemm_ce_e_calls.store(0);
-  TiledArray::detail::g_strided_dgemm_ce_ce_calls.store(0);
+  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
   auto co = einsum(ao("h,i,j;p"), bo("h,k,j;q"), "h,i,k;p,q");
   co.world().gop.fence();
   // owning inner cells never take the view-only strided path
   BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
-  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_ce_calls.load(), 0u);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
   // sanity: the contraction actually ran and produced the expected outer shape
   BOOST_CHECK_EQUAL(co.trange().elements_range().volume(),
                     static_cast<std::size_t>(H * I * K));
@@ -2466,10 +2466,10 @@ BOOST_AUTO_TEST_CASE(hce_ce_uses_strided_path) {
   });
   world.gop.fence();
 
-  TiledArray::detail::g_strided_dgemm_ce_ce_calls.store(0);
+  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
   auto ca = einsum(ah("i,k;a1,a4"), bh("i,m,k;a4"), "i,m;a1");
   ca.world().gop.fence();
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_calls.load(), 0u);
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
 }
 #endif
 
@@ -2550,13 +2550,13 @@ BOOST_AUTO_TEST_CASE(ce_ce_no_hadamard_arena_matches_owning) {
   world.gop.fence();
 
 #ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_ce_calls.store(0);
+  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("k;a1,a4"), bh("m,k;a4"), "m;a1");
   OwnArr co = einsum(ao("k;a1,a4"), bo("m,k;a4"), "m;a1");
   world.gop.fence();
 #ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_calls.load(), 0u);
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
 #endif
 
   double max_abs_diff = 0.0;
@@ -2583,6 +2583,244 @@ BOOST_AUTO_TEST_CASE(ce_ce_no_hadamard_arena_matches_owning) {
     }
   }
   BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(M));
+  BOOST_CHECK_LT(max_abs_diff, 1e-12);
+}
+
+// LEFT-clean ce+ce (either-side generalization): the LEFT operand inner is a
+// pure contraction vector a(m,k;a4); the RIGHT carries the inner external
+// b(k,n;a4,b1); result inner is b1. The left-oriented strided core must fire.
+//   c(m,n;b1) = sum_{k,a4} a(m,k;a4) * b(k,n;a4,b1)
+BOOST_AUTO_TEST_CASE(ce_ce_left_clean_arena_matches_owning) {
+  using ArenaInner = TA::ArenaTensor<double, TA::Range>;
+  using ArenaOuter = TA::Tensor<ArenaInner>;
+  using ArenaArr = TA::DistArray<ArenaOuter, TA::DensePolicy>;
+  using OwnInner = TA::Tensor<double>;
+  using OwnOuter = TA::Tensor<OwnInner>;
+  using OwnArr = TA::DistArray<OwnOuter, TA::DensePolicy>;
+
+  auto& world = TiledArray::get_default_world();
+  constexpr long M = 3, N = 2, K = 2, Q = 5, P = 4;  // a4=Q, b1=P
+
+  TA::TiledRange a_trange{{0l, M}, {0l, K}};  // (m,k)
+  TA::TiledRange b_trange{{0l, K}, {0l, N}};  // (k,n)
+
+  auto a_val = [](long m, long k, long a4) {
+    return 1.0 + 0.25 * m + 0.125 * k + 0.0625 * a4;
+  };
+  auto b_val = [](long k, long n, long a4, long b1) {
+    return 2.0 + 0.2 * k + 0.1 * n + 0.05 * a4 + 0.025 * b1;
+  };
+
+  ArenaArr ah(world, a_trange);
+  ah.init_tiles([&](const TA::Range& tr) {
+    ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
+        tr, 1, [](std::size_t) { return TA::Range{Q}; });
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      ArenaInner& c = t.data()[o];
+      if (!c) continue;
+      const long m = static_cast<long>(o / K), k = static_cast<long>(o % K);
+      for (long a4 = 0; a4 < Q; ++a4) c.data()[a4] = a_val(m, k, a4);
+    }
+    return t;
+  });
+  ArenaArr bh(world, b_trange);
+  bh.init_tiles([&](const TA::Range& tr) {
+    ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
+        tr, 1, [](std::size_t) { return TA::Range{Q, P}; });
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      ArenaInner& c = t.data()[o];
+      if (!c) continue;
+      const long k = static_cast<long>(o / N), n = static_cast<long>(o % N);
+      for (long a4 = 0; a4 < Q; ++a4)
+        for (long b1 = 0; b1 < P; ++b1)
+          c.data()[a4 * P + b1] = b_val(k, n, a4, b1);
+    }
+    return t;
+  });
+  world.gop.fence();
+
+  OwnArr ao(world, a_trange);
+  ao.init_tiles([&](const TA::Range& tr) {
+    OwnOuter t(tr);
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      OwnInner cell(TA::Range{Q});
+      const long m = static_cast<long>(o / K), k = static_cast<long>(o % K);
+      for (long a4 = 0; a4 < Q; ++a4) cell.data()[a4] = a_val(m, k, a4);
+      t.data()[o] = cell;
+    }
+    return t;
+  });
+  OwnArr bo(world, b_trange);
+  bo.init_tiles([&](const TA::Range& tr) {
+    OwnOuter t(tr);
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      OwnInner cell(TA::Range{Q, P});
+      const long k = static_cast<long>(o / N), n = static_cast<long>(o % N);
+      for (long a4 = 0; a4 < Q; ++a4)
+        for (long b1 = 0; b1 < P; ++b1)
+          cell.data()[a4 * P + b1] = b_val(k, n, a4, b1);
+      t.data()[o] = cell;
+    }
+    return t;
+  });
+  world.gop.fence();
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+  ArenaArr ca = einsum(ah("m,k;a4"), bh("k,n;a4,b1"), "m,n;b1");
+  OwnArr co = einsum(ao("m,k;a4"), bo("k,n;a4,b1"), "m,n;b1");
+  world.gop.fence();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_left_calls.load(), 0u);
+#endif
+
+  double max_abs_diff = 0.0;
+  std::size_t result_outer_cells_seen = 0;
+  const auto& tiles = ca.trange().tiles_range();
+  for (std::size_t ord = 0; ord < tiles.volume(); ++ord) {
+    const bool a_here = ca.is_local(ord) && !ca.is_zero(ord);
+    const bool o_here = co.is_local(ord) && !co.is_zero(ord);
+    BOOST_REQUIRE_EQUAL(a_here, o_here);
+    if (!a_here) continue;
+    const ArenaOuter& at = ca.find(ord).get();
+    const OwnOuter& ot = co.find(ord).get();
+    for (std::size_t o = 0; o < at.range().volume(); ++o) {
+      const ArenaInner& ac = at.data()[o];
+      const OwnInner& oc = ot.data()[o];
+      if (!ac) continue;
+      BOOST_REQUIRE_EQUAL(ac.size(), static_cast<std::size_t>(P));
+      ++result_outer_cells_seen;
+      for (std::size_t e = 0; e < ac.size(); ++e)
+        max_abs_diff =
+            std::max(max_abs_diff, std::abs(ac.data()[e] - oc.data()[e]));
+    }
+  }
+  BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(M * N));
+  BOOST_CHECK_LT(max_abs_diff, 1e-12);
+}
+
+// GENERAL ce+ce (matrix x matrix inner): BOTH operands carry an inner external
+// (a1 on the left, b1 on the right) alongside the inner contraction a4. Not
+// strided-castable; NEITHER the right- nor left-oriented strided core may fire,
+// and the generic per-cell path must still match the owning oracle.
+//   c(m,n;a1,b1) = sum_{k,a4} a(m,k;a1,a4) * b(k,n;a4,b1)
+BOOST_AUTO_TEST_CASE(ce_ce_general_matrix_matrix_not_strided) {
+  using ArenaInner = TA::ArenaTensor<double, TA::Range>;
+  using ArenaOuter = TA::Tensor<ArenaInner>;
+  using ArenaArr = TA::DistArray<ArenaOuter, TA::DensePolicy>;
+  using OwnInner = TA::Tensor<double>;
+  using OwnOuter = TA::Tensor<OwnInner>;
+  using OwnArr = TA::DistArray<OwnOuter, TA::DensePolicy>;
+
+  auto& world = TiledArray::get_default_world();
+  constexpr long M = 3, N = 2, K = 2, P1 = 3, Q = 4, P2 = 5;  // a1,a4,b1
+
+  TA::TiledRange a_trange{{0l, M}, {0l, K}};  // (m,k)
+  TA::TiledRange b_trange{{0l, K}, {0l, N}};  // (k,n)
+
+  auto a_val = [](long m, long k, long a1, long a4) {
+    return 1.0 + 0.25 * m + 0.125 * k + 0.0625 * a1 + 0.03 * a4;
+  };
+  auto b_val = [](long k, long n, long a4, long b1) {
+    return 2.0 + 0.2 * k + 0.1 * n + 0.05 * a4 + 0.025 * b1;
+  };
+
+  ArenaArr ah(world, a_trange);
+  ah.init_tiles([&](const TA::Range& tr) {
+    ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
+        tr, 1, [](std::size_t) { return TA::Range{P1, Q}; });
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      ArenaInner& c = t.data()[o];
+      if (!c) continue;
+      const long m = static_cast<long>(o / K), k = static_cast<long>(o % K);
+      for (long a1 = 0; a1 < P1; ++a1)
+        for (long a4 = 0; a4 < Q; ++a4)
+          c.data()[a1 * Q + a4] = a_val(m, k, a1, a4);
+    }
+    return t;
+  });
+  ArenaArr bh(world, b_trange);
+  bh.init_tiles([&](const TA::Range& tr) {
+    ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
+        tr, 1, [](std::size_t) { return TA::Range{Q, P2}; });
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      ArenaInner& c = t.data()[o];
+      if (!c) continue;
+      const long k = static_cast<long>(o / N), n = static_cast<long>(o % N);
+      for (long a4 = 0; a4 < Q; ++a4)
+        for (long b1 = 0; b1 < P2; ++b1)
+          c.data()[a4 * P2 + b1] = b_val(k, n, a4, b1);
+    }
+    return t;
+  });
+  world.gop.fence();
+
+  OwnArr ao(world, a_trange);
+  ao.init_tiles([&](const TA::Range& tr) {
+    OwnOuter t(tr);
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      OwnInner cell(TA::Range{P1, Q});
+      const long m = static_cast<long>(o / K), k = static_cast<long>(o % K);
+      for (long a1 = 0; a1 < P1; ++a1)
+        for (long a4 = 0; a4 < Q; ++a4)
+          cell.data()[a1 * Q + a4] = a_val(m, k, a1, a4);
+      t.data()[o] = cell;
+    }
+    return t;
+  });
+  OwnArr bo(world, b_trange);
+  bo.init_tiles([&](const TA::Range& tr) {
+    OwnOuter t(tr);
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      OwnInner cell(TA::Range{Q, P2});
+      const long k = static_cast<long>(o / N), n = static_cast<long>(o % N);
+      for (long a4 = 0; a4 < Q; ++a4)
+        for (long b1 = 0; b1 < P2; ++b1)
+          cell.data()[a4 * P2 + b1] = b_val(k, n, a4, b1);
+      t.data()[o] = cell;
+    }
+    return t;
+  });
+  world.gop.fence();
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TiledArray::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+  ArenaArr ca = einsum(ah("m,k;a1,a4"), bh("k,n;a4,b1"), "m,n;a1,b1");
+  OwnArr co = einsum(ao("m,k;a1,a4"), bo("k,n;a4,b1"), "m,n;a1,b1");
+  world.gop.fence();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // matrix x matrix inner: neither strided orientation may fire.
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(),
+                    0u);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_ce_left_calls.load(),
+                    0u);
+#endif
+
+  double max_abs_diff = 0.0;
+  std::size_t result_outer_cells_seen = 0;
+  const auto& tiles = ca.trange().tiles_range();
+  for (std::size_t ord = 0; ord < tiles.volume(); ++ord) {
+    const bool a_here = ca.is_local(ord) && !ca.is_zero(ord);
+    const bool o_here = co.is_local(ord) && !co.is_zero(ord);
+    BOOST_REQUIRE_EQUAL(a_here, o_here);
+    if (!a_here) continue;
+    const ArenaOuter& at = ca.find(ord).get();
+    const OwnOuter& ot = co.find(ord).get();
+    for (std::size_t o = 0; o < at.range().volume(); ++o) {
+      const ArenaInner& ac = at.data()[o];
+      const OwnInner& oc = ot.data()[o];
+      if (!ac) continue;
+      BOOST_REQUIRE_EQUAL(ac.size(), static_cast<std::size_t>(P1 * P2));
+      ++result_outer_cells_seen;
+      for (std::size_t e = 0; e < ac.size(); ++e)
+        max_abs_diff =
+            std::max(max_abs_diff, std::abs(ac.data()[e] - oc.data()[e]));
+    }
+  }
+  BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(M * N));
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
 
@@ -2670,13 +2908,13 @@ BOOST_AUTO_TEST_CASE(hce_ce_left_external_arena_matches_owning) {
   world.gop.fence();
 
 #ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_ce_calls.store(0);
+  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("h,i,j;a1,a4"), bh("h,j,k;a4"), "h,i,k;a1");
   OwnArr co = einsum(ao("h,i,j;a1,a4"), bo("h,j,k;a4"), "h,i,k;a1");
   world.gop.fence();
 #ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_calls.load(), 0u);
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
 #endif
 
   double max_abs_diff = 0.0;
@@ -2909,13 +3147,13 @@ BOOST_AUTO_TEST_CASE(hce_ce_combined_equivalence_strided) {
   world.gop.fence();
 
 #ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_ce_calls.store(0);
+  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("h,i,j;a1,a2,a4"), bh("h,j,k;a4"), "h,i,k;a1,a2");
   OwnArr co = einsum(ao("h,i,j;a1,a2,a4"), bo("h,j,k;a4"), "h,i,k;a1,a2");
   world.gop.fence();
 #ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_calls.load(), 0u);
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
 #endif
 
   double max_abs_diff = 0.0;
