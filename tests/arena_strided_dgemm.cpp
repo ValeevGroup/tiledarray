@@ -62,6 +62,110 @@ std::vector<double> ref_ce_ce(const Outer& L, const Outer& R, std::size_t Mmu,
   return c;
 }
 
+// ---------------------------------------------------------------------------
+// Sparsity-aware helpers for the per-k segmented strided-DGEMM tests (T1-T15).
+//
+// make_sparse: like make_filled, but a cell whose dense_shape(o) is selected by
+// is_hole(o) is built from a zero-volume TA::Range{}, which arena_outer_init
+// leaves NULL (a hole). Present cells get deterministic data. nbatch>=1.
+Outer make_sparse(const TA::Range& outer_range, std::size_t nbatch,
+                  const std::function<TA::Range(std::size_t)>& dense_shape,
+                  const std::function<bool(std::size_t)>& is_hole, double base) {
+  Outer t = TA::detail::arena_outer_init<Outer>(
+      outer_range, nbatch,
+      [&](std::size_t o) { return is_hole(o) ? TA::Range{} : dense_shape(o); });
+  for (std::size_t o = 0; o < t.range().volume() * nbatch; ++o) {
+    Inner& c = t.data()[o];
+    if (!c) continue;
+    for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = base + 0.01 * o + e;
+  }
+  return t;
+}
+
+// Sparsity-aware reference for arena_strided_dgemm_ce_ce_right in the SAME
+// canonical convention as ref_ce_ce (L=strided P x Q matrix, R=single Q-vector),
+// but generalized to Mo>=1 outer rows, NB batches, holes, and the left-inner
+// transpose. Per the kernel: for result cell C[m,mu] (length P),
+//   C[m,mu](a1) = factor * sum_k present L[m,k] (P x Q) * present R[mu,k] (Q),
+// skipping any k where L[m,k] or R[mu,k] is absent or size-mismatched.
+//   L outer (Mo x nK), canonical index b*Mo*nK + m*nK + k, inner {P,Q}
+//   R outer (Mmu x nK), canonical (mu slow, k fast) b*Mmu*nK + mu*nK + k, inner {Q}
+//   C outer (Mo x Mmu), index b*Mo*Mmu + m*Mmu + mu, inner {P}
+// out[(b*Mo+m)*Mmu+mu] is the expected length-P vector (empty == expect absent).
+// lt mirrors left_inner_transposed: lt=false L stored P x Q (l[a1*Q+a4]),
+// lt=true L stored Q x P (l[a4*P+a1]).
+std::vector<std::vector<double>> ref_ce_ce_right_sparse(
+    const Outer& L, const Outer& R, std::size_t Mo, std::size_t Mmu,
+    std::size_t nK, std::size_t P, double factor, std::size_t nbatch = 1,
+    bool lt = false) {
+  std::vector<std::vector<double>> out(nbatch * Mo * Mmu);
+  for (std::size_t b = 0; b < nbatch; ++b)
+    for (std::size_t m = 0; m < Mo; ++m)
+      for (std::size_t mu = 0; mu < Mmu; ++mu) {
+        std::vector<double> c(P, 0.0);
+        bool any = false;
+        for (std::size_t k = 0; k < nK; ++k) {
+          const Inner& lk = L.data()[b * Mo * nK + m * nK + k];
+          const Inner& rk = R.data()[b * Mmu * nK + mu * nK + k];
+          if (!lk || !rk) continue;
+          const std::size_t Q = rk.size();
+          if (Q == 0 || lk.size() != P * Q) continue;
+          const double* l = lk.data();
+          const double* r = rk.data();
+          for (std::size_t a1 = 0; a1 < P; ++a1) {
+            double acc = 0.0;
+            for (std::size_t a4 = 0; a4 < Q; ++a4)
+              acc += (lt ? l[a4 * P + a1] : l[a1 * Q + a4]) * r[a4];
+            c[a1] += factor * acc;
+          }
+          any = true;
+        }
+        out[(b * Mo + m) * Mmu + mu] = any ? c : std::vector<double>{};
+      }
+  return out;
+}
+
+// Sparsity-aware reference for arena_strided_dgemm_ce_ce_left. Here m (Mo) is
+// the strided axis, n (No) the fixed result column; the RIGHT operand cell
+// R[k,n] (the P x Q matrix) is the single non-strided operand and L[m,k] (the
+// length-Q contraction vector) is the strided run. Per the kernel:
+//   C[m,n](b1) = factor * sum_k present L[m,k] (Q) * present R[k,n] (Q x P),
+// where result inner length P = b1. R canonical (a4,b1)=Q x P row-major
+// (rt=false: r[a4*P+b1]); rt mirrors right_inner_transposed (P x Q, r[b1*Q+a4]).
+//   L outer (Mo x nK), index b*Mo*nK + m*nK + k, inner {Q}
+//   R outer (nK x No), canonical (k slow, n fast) b*nK*No + k*No + n, inner {Q,P}
+//   C outer (Mo x No), index b*Mo*No + m*No + n, inner {P}
+std::vector<std::vector<double>> ref_ce_ce_left_sparse(
+    const Outer& L, const Outer& R, std::size_t Mo, std::size_t No,
+    std::size_t nK, std::size_t P, double factor, std::size_t nbatch = 1,
+    bool rt = false) {
+  std::vector<std::vector<double>> out(nbatch * Mo * No);
+  for (std::size_t b = 0; b < nbatch; ++b)
+    for (std::size_t m = 0; m < Mo; ++m)
+      for (std::size_t n = 0; n < No; ++n) {
+        std::vector<double> c(P, 0.0);
+        bool any = false;
+        for (std::size_t k = 0; k < nK; ++k) {
+          const Inner& lk = L.data()[b * Mo * nK + m * nK + k];
+          const Inner& rk = R.data()[b * nK * No + k * No + n];
+          if (!lk || !rk) continue;
+          const std::size_t Q = lk.size();
+          if (Q == 0 || rk.size() != P * Q) continue;
+          const double* l = lk.data();
+          const double* r = rk.data();
+          for (std::size_t b1 = 0; b1 < P; ++b1) {
+            double acc = 0.0;
+            for (std::size_t a4 = 0; a4 < Q; ++a4)
+              acc += l[a4] * (rt ? r[b1 * Q + a4] : r[a4 * P + b1]);
+            c[b1] += factor * acc;
+          }
+          any = true;
+        }
+        out[(b * Mo + m) * No + n] = any ? c : std::vector<double>{};
+      }
+  return out;
+}
+
 #ifdef TA_STRIDED_DGEMM_COUNT
 // Assemble an Outer whose outer-cell views point at the cells of `src` in the
 // order given by `phys[ord]` (assembled.data()[ord] aliases the SAME Cell as
@@ -1019,7 +1123,11 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_fires_clean_path) {
   BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), NB * Mo * nK);
 }
 
-BOOST_AUTO_TEST_CASE(ce_ce_scattered_run_does_not_fire_but_is_correct) {
+// Was "does_not_fire": under per-k segmentation a mid-run hole no longer drops
+// the whole run to scalar -- it splits into per-k contiguous segments that still
+// fire as strided GEMMs. Correctness is unchanged; the count now reflects the
+// segments the walker issues (the empty mu=1 row breaks each k's run).
+BOOST_AUTO_TEST_CASE(ce_ce_scattered_run_segments_and_is_correct) {
   const std::size_t Mmu = 3, nK = 2, P = 4, Q0 = 5, Q1 = 6;
   Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q0};}, 1.0);
   Outer R = TA::detail::arena_outer_init<Outer>(
@@ -1036,7 +1144,9 @@ BOOST_AUTO_TEST_CASE(ce_ce_scattered_run_does_not_fire_but_is_correct) {
   TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
   TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
+  // mu=1 has a mismatched size, so per k the walker emits segments {0} and {2}
+  // (the size-mismatched mu=1 cannot join either) => 2 segments x nK(=2) = 4.
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 4u);
   std::vector<double> ref(Mmu * P, 0.0);
   for (std::size_t k = 0; k < nK; ++k) {
     const auto& lk = L.data()[k];
@@ -1063,7 +1173,10 @@ BOOST_AUTO_TEST_CASE(ce_ce_scattered_run_does_not_fire_but_is_correct) {
 // Page-jump / constant-stride guard in isolation: every R cell has the SAME
 // size Q (uniform-size guard passes), but the per-k mu-run is laid at a
 // NON-CONSTANT stride -> page-jump guard rejects. Fully-independent reference.
-BOOST_AUTO_TEST_CASE(ce_ce_page_jump_run_does_not_fire_but_is_correct) {
+// Was "does_not_fire": a page-jump (non-constant inter-cell stride) no longer
+// drops the whole run -- the walker ends a segment at the stride break and
+// starts a new strided GEMM, so it fires (correctly) while staying exact.
+BOOST_AUTO_TEST_CASE(ce_ce_page_jump_run_segments_and_is_correct) {
   const std::size_t Mmu = 3, nK = 2, P = 4, Q = 5;
   Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
   Outer Rsrc = TA::detail::arena_outer_init<Outer>(
@@ -1097,7 +1210,9 @@ BOOST_AUTO_TEST_CASE(ce_ce_page_jump_run_does_not_fire_but_is_correct) {
   TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
   TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
                                         blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
+  // perm {0,2,1} makes the inter-cell stride non-constant, so per k the walker
+  // breaks the run into constant-stride segments {0,1} and {2} => 2 x nK(=2) = 4.
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 4u);
   auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
     const double* got = C.data()[mu].data();
@@ -1131,5 +1246,385 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_clean_fires_clean_path) {
                     No * nK);
 }
 #endif
+
+// ===========================================================================
+// Per-k segmented strided-DGEMM tests (T1-T15). The kernel walks each present k
+// and emits one strided GEMM per maximal contiguous (present + uniform-stride +
+// size-matched) segment along the strided axis, skipping holes, accumulating
+// with beta=1 across k and across segments, never touching absent result cells.
+// All use the canonical right convention (right_op=Transpose: R outer mu slow,
+// k fast). Result/operand outer layouts match ref_ce_ce_right/left_sparse.
+// ===========================================================================
+
+namespace {
+// Compare every result cell against the sparsity-aware reference: a present
+// reference vector must match to 1e-10. An empty reference vector means the
+// cell received no contribution: an ABSENT (hole) result cell must stay absent
+// (invariant 2 / "no writes to holes"), and a PRESENT result cell (e.g. a dense
+// C whose only k was size-mismatched) must remain exactly its zero-init value.
+// ordinal of C[b,row,col] = (b*nrow+row)*ncol + col.
+void check_ce_ce(const Outer& C, const std::vector<std::vector<double>>& ref,
+                 std::size_t nbatch, std::size_t nrow, std::size_t ncol,
+                 std::size_t P) {
+  for (std::size_t b = 0; b < nbatch; ++b)
+    for (std::size_t r = 0; r < nrow; ++r)
+      for (std::size_t cc = 0; cc < ncol; ++cc) {
+        const std::size_t ord = (b * nrow + r) * ncol + cc;
+        const Inner& cell = C.data()[ord];
+        const std::vector<double>& want = ref[ord];
+        if (want.empty()) {
+          // No contribution: a hole stays absent; a present cell stays zero
+          // (the kernel must not have written anything to it).
+          if (cell)
+            for (std::size_t a1 = 0; a1 < cell.size(); ++a1)
+              BOOST_CHECK_SMALL(cell.data()[a1], 1e-12);
+          continue;
+        }
+        BOOST_REQUIRE(bool(cell));
+        BOOST_REQUIRE_EQUAL(cell.size(), P);
+        for (std::size_t a1 = 0; a1 < P; ++a1)
+          BOOST_CHECK_CLOSE(cell.data()[a1], want[a1], 1e-10);
+      }
+}
+
+// Zero-fill the present cells of an already-built result tile (the kernel
+// accumulates with beta=1, so C must start at zero).
+void zero_result(Outer& C, std::size_t ncells) {
+  for (std::size_t o = 0; o < ncells; ++o) {
+    Inner& c = C.data()[o];
+    if (!c) continue;
+    for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = 0.0;
+  }
+}
+}  // namespace
+
+// T1: dense run, no holes -> one full-run segment per k == today's clean path.
+// Pins golden values (also matches the original dense ref_ce_ce).
+BOOST_AUTO_TEST_CASE(ce_ce_seg_dense_regression) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 6, nK = 2, P = 3, Q = 4;
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu, nK}, 1, [&](std::size_t){ return TA::Range{Q}; });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+  auto ref0 = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);  // original golden
+  for (std::size_t mu = 0; mu < Mmu; ++mu)
+    for (std::size_t a1 = 0; a1 < P; ++a1)
+      BOOST_CHECK_CLOSE(C.data()[mu].data()[a1], ref0[mu * P + a1], 1e-10);
+}
+
+// T2: single interior hole at mu=4 in BOTH C and R (all k) -> two segments
+// [0,4),[5,8); C[4] stays absent; rest exact.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_single_interior_hole) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 8, nK = 2, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) { return (o / nK) == 4; };  // R[mu=4,*]
+  auto chole = [&](std::size_t o) { return o == 4; };          // C[mu=4]
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = make_sparse(TA::Range{Mmu}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// T3: holes at both edges (mu=0 and mu=Mmu-1) -> one interior segment.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_edge_holes) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 6, nK = 2, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) {
+    const std::size_t mu = o / nK;
+    return mu == 0 || mu == Mmu - 1;
+  };
+  auto chole = [&](std::size_t o) { return o == 0 || o == Mmu - 1; };
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = make_sparse(TA::Range{Mmu}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// T4: present at even mu, absent at odd (all k) -> every segment is M=1 (GEMV).
+BOOST_AUTO_TEST_CASE(ce_ce_seg_alternating_gemv) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 6, nK = 1, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) { return ((o / nK) % 2) == 1; };
+  auto chole = [&](std::size_t o) { return (o % 2) == 1; };
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = make_sparse(TA::Range{Mmu}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// T5 (crux): per-k misaligned holes. nK=2, Mmu=3, Mo=1.
+//   R canonical index = mu*nK + k. k=0 present at mu={0,2} (hole mu=1,k=0 -> 2);
+//   k=1 present at mu={1,2} (hole mu=0,k=1 -> 1). C present at {0,1,2} (union).
+//   Per-k segmentation: k=0 -> {0},{2}; k=1 -> {1,2}. C[2] both-k accumulated.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_per_k_misaligned) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 3, nK = 2, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) { return o == 2 || o == 1; };  // (mu=1,k=0),(mu=0,k=1)
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// T6: one full k has L[m,k] absent -> that k skipped; others contribute.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_absent_k) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 5, nK = 3, P = 3, Q = 4;
+  auto lhole = [&](std::size_t o) { return o == 1; };  // L[k=1] absent
+  Outer L = make_sparse(TA::Range{nK}, 1,
+                        [&](std::size_t){ return TA::Range{P, Q}; }, lhole, 1.0);
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu, nK}, 1, [&](std::size_t){ return TA::Range{Q}; });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// T7: left_inner_transposed=true together with an interior hole; verifies the
+// transb folding is correct per segment. L stored Q x P (matrix_transpose).
+BOOST_AUTO_TEST_CASE(ce_ce_seg_transposed_inner) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 6, nK = 2, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) { return (o / nK) == 3; };
+  auto chole = [&](std::size_t o) { return o == 3; };
+  // L stored Q x P (transposed layout), filled deterministically.
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{Q, P};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = make_sparse(TA::Range{Mmu}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0, /*left_inner_transposed=*/true);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0, 1, /*lt=*/true);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// T8: NB=2; batch 0 dense, batch 1 has the T5 per-k misaligned pattern.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_multi_batch_sparse) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 3, nK = 2, P = 3, Q = 4, NB = 2;
+  // R index within batch = mu*nK + k; holes only in batch 1 (offsets 2 and 1).
+  auto rhole = [&](std::size_t o) {
+    const std::size_t per = Mmu * nK;
+    return (o / per) == 1 && ((o % per) == 2 || (o % per) == 1);
+  };
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  // Need NB batches of L too (kernel indexes L per-batch).
+  Outer Lb = TA::detail::arena_outer_init<Outer>(
+      TA::Range{nK}, NB, [&](std::size_t){ return TA::Range{P, Q}; });
+  for (std::size_t o = 0; o < NB * nK; ++o)
+    for (std::size_t e = 0; e < Lb.data()[o].size(); ++e)
+      Lb.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  Outer R = make_sparse(TA::Range{Mmu, nK}, NB,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu}, NB, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, NB * Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, Lb, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(Lb, R, Mo, Mmu, nK, P, 1.0, NB);
+  check_ce_ce(C, ref, NB, Mo, Mmu, P);
+}
+
+// T9: T2 hole pattern with factor=2.5 -> scaling correct with holes.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_applies_factor) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 8, nK = 2, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) { return (o / nK) == 4; };
+  auto chole = [&](std::size_t o) { return o == 4; };
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = make_sparse(TA::Range{Mmu}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 2.5);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 2.5);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// T10: one R[mu,k] present but the WRONG inner size (!= Q) for the single k.
+// Defensive: a segment cannot include it (size mismatch), so it is skipped; the
+// reference skips it too via its lk.size()!=P*Q / Q-mismatch guard. No crash.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_size_mismatch_defensive) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 5, nK = 1, P = 3, Q = 4;
+  // R[mu=2,k=0] gets size Q+1; that breaks size-match so it cannot join a Q-run.
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu, nK}, 1,
+      [&](std::size_t o){ return (o / nK) == 2 ? TA::Range{Q + 1} : TA::Range{Q}; });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// T11: T5 mirrored for the LEFT kernel (strided over m). nK=2, Mo=3, No=1.
+//   L canonical index = m*nK + k. k=0 present at m={0,2} (hole m=1,k=0 -> 2);
+//   k=1 present at m={1,2} (hole m=0,k=1 -> 1). C present at {0,1,2} (union).
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_per_k_misaligned) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 3, No = 1, nK = 2, P = 3, Q = 4;
+  auto lhole = [&](std::size_t o) { return o == 2 || o == 1; };
+  Outer L = make_sparse(TA::Range{Mo, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, lhole, 1.0);
+  // R (matrix) canonical (k slow, n fast) outer (nK,No), inner {Q,P} row-major.
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{nK, No}, 1, [&](std::size_t){ return TA::Range{Q, P}; });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, No}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mo * No);
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+}
+
+// T12: T2 mirrored for the LEFT kernel: single interior hole along m (m=4).
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_single_interior_hole) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 8, No = 1, nK = 2, P = 3, Q = 4;
+  auto lhole = [&](std::size_t o) { return (o / nK) == 4; };  // L[m=4,*]
+  auto chole = [&](std::size_t o) { return (o / No) == 4; };  // C[m=4]
+  Outer L = make_sparse(TA::Range{Mo, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, lhole, 1.0);
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{nK, No}, 1, [&](std::size_t){ return TA::Range{Q, P}; });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = make_sparse(TA::Range{Mo, No}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mo * No);
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+}
+
+// ---- Segment-count assertions (need -DTA_STRIDED_DGEMM_COUNT) ----
+
+// T13: dense Mmu=6, nK=2 -> 2 segment-GEMMs (one full-run segment per k).
+BOOST_AUTO_TEST_CASE(ce_ce_seg_count_dense) {
+#ifdef TA_STRIDED_DGEMM_COUNT
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 6, nK = 2, P = 3, Q = 4;
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu, nK}, 1, [&](std::size_t){ return TA::Range{Q}; });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mmu);
+  TA::detail::g_strided_dgemm_ce_ce_right_calls = 0;
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(
+      TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), std::size_t{2});
+#else
+  BOOST_TEST_MESSAGE("ce_ce_seg_count_dense skipped (no TA_STRIDED_DGEMM_COUNT)");
+#endif
+}
+
+// T14: T5 pattern -> 3 segment-GEMMs total (k=0: {0},{2}=2; k=1: {1,2}=1).
+BOOST_AUTO_TEST_CASE(ce_ce_seg_count_per_k_misaligned) {
+#ifdef TA_STRIDED_DGEMM_COUNT
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 3, nK = 2, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) { return o == 2 || o == 1; };
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mmu);
+  TA::detail::g_strided_dgemm_ce_ce_right_calls = 0;
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(
+      TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), std::size_t{3});
+#else
+  BOOST_TEST_MESSAGE(
+      "ce_ce_seg_count_per_k_misaligned skipped (no TA_STRIDED_DGEMM_COUNT)");
+#endif
+}
+
+// T15: T4 pattern (even present, Mmu=6, nK=1) -> 3 segment-GEMMs (M=1 each).
+BOOST_AUTO_TEST_CASE(ce_ce_seg_count_alternating) {
+#ifdef TA_STRIDED_DGEMM_COUNT
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 6, nK = 1, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) { return ((o / nK) % 2) == 1; };
+  auto chole = [&](std::size_t o) { return (o % 2) == 1; };
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = make_sparse(TA::Range{Mmu}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mmu);
+  TA::detail::g_strided_dgemm_ce_ce_right_calls = 0;
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(
+      TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), std::size_t{3});
+#else
+  BOOST_TEST_MESSAGE(
+      "ce_ce_seg_count_alternating skipped (no TA_STRIDED_DGEMM_COUNT)");
+#endif
+}
 
 BOOST_AUTO_TEST_SUITE_END()
