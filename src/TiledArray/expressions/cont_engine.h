@@ -951,6 +951,79 @@ class ContEngine : public BinaryEngine<Derived> {
                               gh.right_op(), double(factor), right_inner_T);
                         };
                   }
+                  // [strided-dgemm] install-decision instrumentation. For each
+                  // ToT contraction reaching this double-view path, report
+                  // whether a strided-DGEMM regime (hce+e / hc+e / hce+ce)
+                  // FIRED or the contraction REVERTED to the generic by-cell
+                  // evaluation path (with the blocking guard). Gated by
+                  // TA_STRIDED_DGEMM_VERBOSE; a no-op otherwise.
+                  if (TiledArray::detail::strided_dgemm_verbose()) {
+                    if (this->arena_strided_dgemm_ce_e_tile_op_) {
+                      TiledArray::detail::strided_dgemm_log(
+                          left_has_ext ? "hce+e  FIRES (ce+e)"
+                                       : "hc+e   FIRES (ce+e)");
+                    } else if (this->arena_strided_dgemm_ce_ce_right_tile_op_) {
+                      TiledArray::detail::strided_dgemm_log(
+                          "hce+ce FIRES (ce+ce right)");
+                    } else if (this->arena_strided_dgemm_ce_ce_left_tile_op_) {
+                      TiledArray::detail::strided_dgemm_log(
+                          "hce+ce FIRES (ce+ce left)");
+                    } else if (!inner_contraction) {
+                      // ce+e candidate (no inner contraction); the only guard
+                      // that can block its install is a non-identity inner
+                      // result perm.
+                      TiledArray::detail::strided_dgemm_log(
+                          left_has_ext
+                              ? "hce+e  REVERTED -> by-cell (inner result perm)"
+                              : "hc+e   REVERTED -> by-cell (inner result perm)");
+                    } else if (!inner_canonical) {
+                      // ce+ce candidate blocked by a non-canonical inner perm.
+                      // Break down WHICH operand/result perm is non-identity
+                      // (matrix_transpose 'T' vs general 'gen') and the inner
+                      // ranks, so free transposes can be told apart from
+                      // interleaving general perms.
+                      auto pt = [](TiledArray::expressions::PermutationType p)
+                          -> const char* {
+                        switch (p) {
+                          case TiledArray::expressions::PermutationType::
+                              identity:
+                            return "id";
+                          case TiledArray::expressions::PermutationType::
+                              matrix_transpose:
+                            return "T";
+                          case TiledArray::expressions::PermutationType::
+                              general:
+                            return "gen";
+                        }
+                        return "?";
+                      };
+                      std::string msg =
+                          "hce+ce REVERTED -> by-cell (non-canonical inner "
+                          "perm: L=";
+                      msg += pt(this->left_inner_permtype_);
+                      msg += " R=";
+                      msg += pt(this->right_inner_permtype_);
+                      msg += " resInner=";
+                      msg += (bool(inner(this->perm_)) ? "perm" : "id");
+                      msg += "; innerRank L/R/contract=";
+                      msg += std::to_string(inner_gh.left_rank());
+                      msg += "/";
+                      msg += std::to_string(inner_gh.right_rank());
+                      msg += "/";
+                      msg += std::to_string(inner_gh.num_contract_ranks());
+                      msg += ")";
+                      TiledArray::detail::strided_dgemm_log(msg.c_str());
+                    } else {
+                      // ce+ce candidate, canonical inner, but no clean side /
+                      // no outer external to ride.
+                      TiledArray::detail::strided_dgemm_log(
+                          !(right_inner_clean || left_inner_clean)
+                              ? "hce+ce REVERTED -> by-cell (matrix x matrix, "
+                                "no clean inner side)"
+                              : "hce+ce REVERTED -> by-cell (no outer external "
+                                "to ride)");
+                    }
+                  }
                 }
               } else {
                 // outer Hadamard: MultEngine builds a binary tile op, which
