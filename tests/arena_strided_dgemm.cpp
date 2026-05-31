@@ -293,6 +293,250 @@ BOOST_AUTO_TEST_CASE(ce_e_fires_clean_path) {
 }
 #endif
 
+// Regime-A hc+e calling convention: M=N=1, K=vol, kernel-nbatch == Hadamard
+// batch. Result tile is (Range{batch}, nbatch=1); presented to the kernel as
+// (Range{1}, nbatch=batch) via a storage-aliasing reshape. Two operand
+// "tiles" accumulate into the SAME result with beta=1 (cross-tile reduction).
+BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_two_tiles) {
+  namespace blas = TiledArray::math::blas;
+  const std::size_t NB = 2;            // Hadamard-folded batch
+  const std::size_t P = 3, Q = 4;      // inner outer-product extents (left, right)
+  const std::size_t VOL0 = 3, VOL1 = 2;  // within-tile contraction cells per tile
+
+  // Result: outer Range{NB}, single batch; each cell inner {P,Q}, zero-filled.
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{NB}, /*batch=*/1, [&](std::size_t) { return TA::Range{P, Q}; });
+  // Operand tile t: outer Range{VOL_t}, nbatch=NB; left cells {P}, right {Q}.
+  auto make_L = [&](std::size_t VOL, double seed) {
+    Outer L = TA::detail::arena_outer_init<Outer>(
+        TA::Range{VOL}, NB, [&](std::size_t) { return TA::Range{P}; });
+    for (std::size_t o = 0; o < NB * VOL; ++o)
+      for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+        L.data()[o].data()[e] = seed + 0.01 * o + e;
+    return L;
+  };
+  auto make_R = [&](std::size_t VOL, double seed) {
+    Outer R = TA::detail::arena_outer_init<Outer>(
+        TA::Range{VOL}, NB, [&](std::size_t) { return TA::Range{Q}; });
+    for (std::size_t o = 0; o < NB * VOL; ++o)
+      for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+        R.data()[o].data()[e] = seed + 0.02 * o + e;
+    return R;
+  };
+  Outer L0 = make_L(VOL0, 1.0), R0 = make_R(VOL0, 2.0);
+  Outer L1 = make_L(VOL1, 5.0), R1 = make_R(VOL1, 7.0);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  // Regime-A call: present C as (Range{1}, nbatch=NB), M=N=1, K=vol, per tile.
+  auto cview = C.reshape(TA::Range{1}, NB);
+  TA::detail::arena_strided_dgemm_ce_e(cview, L0, R0, /*M=*/std::size_t{1},
+                                       /*N=*/std::size_t{1}, /*K=*/VOL0,
+                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  auto cview2 = C.reshape(TA::Range{1}, NB);
+  TA::detail::arena_strided_dgemm_ce_e(cview2, L1, R1, /*M=*/std::size_t{1},
+                                       /*N=*/std::size_t{1}, /*K=*/VOL1,
+                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+
+  // Reference: for each batch b, sum the rank-1 outer products over BOTH tiles.
+  for (std::size_t b = 0; b < NB; ++b) {
+    std::vector<double> ref(P * Q, 0.0);
+    auto add_tile = [&](const Outer& L, const Outer& R, std::size_t VOL) {
+      for (std::size_t k = 0; k < VOL; ++k) {
+        const double* l = L.data()[b * VOL + k].data();  // P
+        const double* r = R.data()[b * VOL + k].data();  // Q
+        for (std::size_t p = 0; p < P; ++p)
+          for (std::size_t q = 0; q < Q; ++q) ref[p * Q + q] += l[p] * r[q];
+      }
+    };
+    add_tile(L0, R0, VOL0);
+    add_tile(L1, R1, VOL1);
+    const double* got = C.data()[b].data();  // C still (Range{NB}, nbatch=1)
+    for (std::size_t e = 0; e < P * Q; ++e)
+      BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
+  }
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // clean operands => one DGEMM per (tile, batch); both tiles clean.
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+                    std::size_t{2} * NB);
+#endif
+}
+
+// Task 3.2 (tile-level fallback): regime-A hc+e convention (M=N=1, K=vol>1)
+// with a RAGGED left operand so the kernel's clean-check rejects and the
+// inline per-k fallback runs for the (single) result cell.
+//
+// WHY TILE-LEVEL: the einsum driver lays arena cells out as clean contiguous
+// slabs (uniform-size, constant-stride), so e2e the kernel's clean-check
+// always passes and the inline fallback is not reliably reachable from the
+// einsum entry point. We therefore exercise the fallback directly at the
+// kernel call, modeled on ce_e_ragged_cell_still_correct_inline, but in the
+// regime-A reshape(Range{1}, NB) / M=N=1 / K=vol presentation from R1.
+//
+// The reference uses the SAME guard the kernel uses: only k-cells whose LEFT
+// inner size equals the result-cell P (==P0, the k=0 size) contribute; the
+// ragged k-cell is skipped. (See ce_e_ragged_cell_still_correct_inline.)
+BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_scattered_falls_back) {
+  namespace blas = TiledArray::math::blas;
+  const std::size_t NB = 2;            // Hadamard-folded batch
+  const std::size_t P0 = 3, Q = 4;     // left P (from k=0), right Q
+  const std::size_t VOL = 3;           // within-tile contraction cells (K)
+  // Left operand: outer Range{VOL}, nbatch=NB, inner {P0} EXCEPT one ragged
+  // k-cell (k==1) in EVERY batch gets inner {P0+1} -> kernel's clean-check
+  // rejects (non-uniform left size) and falls back to inline per-k for the
+  // result cell. (The ragged cell is then skipped under the size guard.)
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{VOL}, NB, [&](std::size_t ord) {
+        const std::size_t k = ord % VOL;  // ord runs batch-major over (b,k)
+        return TA::Range{k == 1 ? P0 + 1 : P0};
+      });
+  for (std::size_t o = 0; o < NB * VOL; ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  // Right operand: clean, inner {Q}.
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{VOL}, NB, [&](std::size_t) { return TA::Range{Q}; });
+  for (std::size_t o = 0; o < NB * VOL; ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.02 * o + e;
+  // Result: outer Range{NB}, single batch; each cell inner {P0,Q}, zero-init.
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{NB}, /*batch=*/1, [&](std::size_t) { return TA::Range{P0, Q}; });
+
+  auto cview = C.reshape(TA::Range{1}, NB);
+  TA::detail::arena_strided_dgemm_ce_e(cview, L, R, /*M=*/std::size_t{1},
+                                       /*N=*/std::size_t{1}, /*K=*/VOL,
+                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+
+  // Reference: per batch b, sum rank-1 outer products over k, but ONLY for k
+  // whose left inner size == P0 (the kernel's fallback guard skips the ragged k).
+  for (std::size_t b = 0; b < NB; ++b) {
+    std::vector<double> ref(P0 * Q, 0.0);
+    for (std::size_t k = 0; k < VOL; ++k) {
+      const auto& lk = L.data()[b * VOL + k];
+      if (lk.size() != P0) continue;  // guard: ragged k-cell does not contribute
+      const double* l = lk.data();  // P0
+      const double* r = R.data()[b * VOL + k].data();  // Q
+      for (std::size_t p = 0; p < P0; ++p)
+        for (std::size_t q = 0; q < Q; ++q) ref[p * Q + q] += l[p] * r[q];
+    }
+    const double* got = C.data()[b].data();
+    for (std::size_t e = 0; e < P0 * Q; ++e)
+      BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
+  }
+  // Counter intentionally NOT asserted: the ragged cell takes the inline
+  // fallback (no clean DGEMM), so firing is not the property under test --
+  // correctness of the fallback is.
+}
+
+// Task 3.3 Step 2a: VOL=1 edge -> K=1, a single rank-1 outer product per batch.
+// One operand tile (one strided call). Hand reference + (count build) exactly
+// NB DGEMMs (one per batch, one tile, clean).
+BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_vol1) {
+  namespace blas = TiledArray::math::blas;
+  const std::size_t NB = 2;
+  const std::size_t P = 3, Q = 4;
+  const std::size_t VOL = 1;  // single contraction cell -> K=1
+
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{NB}, /*batch=*/1, [&](std::size_t) { return TA::Range{P, Q}; });
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{VOL}, NB, [&](std::size_t) { return TA::Range{P}; });
+  for (std::size_t o = 0; o < NB * VOL; ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{VOL}, NB, [&](std::size_t) { return TA::Range{Q}; });
+  for (std::size_t o = 0; o < NB * VOL; ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.02 * o + e;
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  auto cview = C.reshape(TA::Range{1}, NB);
+  TA::detail::arena_strided_dgemm_ce_e(cview, L, R, /*M=*/std::size_t{1},
+                                       /*N=*/std::size_t{1}, /*K=*/VOL,
+                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  for (std::size_t b = 0; b < NB; ++b) {
+    std::vector<double> ref(P * Q, 0.0);
+    const double* l = L.data()[b * VOL + 0].data();  // P
+    const double* r = R.data()[b * VOL + 0].data();  // Q
+    for (std::size_t p = 0; p < P; ++p)
+      for (std::size_t q = 0; q < Q; ++q) ref[p * Q + q] += l[p] * r[q];
+    const double* got = C.data()[b].data();
+    for (std::size_t e = 0; e < P * Q; ++e)
+      BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
+  }
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // one DGEMM per batch, one (clean) tile.
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(), NB);
+#endif
+}
+
+// Task 3.3 Step 2b: P=1 and Q=1 inner-extent edges -> the rank-1 outer product
+// degenerates to a scalar*scalar per k. Two operand tiles (like R1), cross-tile
+// beta=1; (count build) == 2*NB DGEMMs (one per tile per batch, all clean).
+BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_p1_q1) {
+  namespace blas = TiledArray::math::blas;
+  const std::size_t NB = 2;
+  const std::size_t P = 1, Q = 1;  // degenerate inner extents
+  const std::size_t VOL0 = 3, VOL1 = 2;
+
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{NB}, /*batch=*/1, [&](std::size_t) { return TA::Range{P, Q}; });
+  auto make_L = [&](std::size_t VOL, double seed) {
+    Outer L = TA::detail::arena_outer_init<Outer>(
+        TA::Range{VOL}, NB, [&](std::size_t) { return TA::Range{P}; });
+    for (std::size_t o = 0; o < NB * VOL; ++o)
+      for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+        L.data()[o].data()[e] = seed + 0.01 * o + e;
+    return L;
+  };
+  auto make_R = [&](std::size_t VOL, double seed) {
+    Outer R = TA::detail::arena_outer_init<Outer>(
+        TA::Range{VOL}, NB, [&](std::size_t) { return TA::Range{Q}; });
+    for (std::size_t o = 0; o < NB * VOL; ++o)
+      for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+        R.data()[o].data()[e] = seed + 0.02 * o + e;
+    return R;
+  };
+  Outer L0 = make_L(VOL0, 1.0), R0 = make_R(VOL0, 2.0);
+  Outer L1 = make_L(VOL1, 5.0), R1 = make_R(VOL1, 7.0);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  auto cview = C.reshape(TA::Range{1}, NB);
+  TA::detail::arena_strided_dgemm_ce_e(cview, L0, R0, /*M=*/std::size_t{1},
+                                       /*N=*/std::size_t{1}, /*K=*/VOL0,
+                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  auto cview2 = C.reshape(TA::Range{1}, NB);
+  TA::detail::arena_strided_dgemm_ce_e(cview2, L1, R1, /*M=*/std::size_t{1},
+                                       /*N=*/std::size_t{1}, /*K=*/VOL1,
+                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+
+  for (std::size_t b = 0; b < NB; ++b) {
+    std::vector<double> ref(P * Q, 0.0);
+    auto add_tile = [&](const Outer& L, const Outer& R, std::size_t VOL) {
+      for (std::size_t k = 0; k < VOL; ++k) {
+        const double* l = L.data()[b * VOL + k].data();  // P==1
+        const double* r = R.data()[b * VOL + k].data();  // Q==1
+        ref[0] += l[0] * r[0];  // scalar*scalar
+      }
+    };
+    add_tile(L0, R0, VOL0);
+    add_tile(L1, R1, VOL1);
+    const double* got = C.data()[b].data();
+    BOOST_CHECK_CLOSE(got[0], ref[0], 1e-12);
+  }
+#ifdef TA_STRIDED_DGEMM_COUNT
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+                    std::size_t{2} * NB);
+#endif
+}
+
 // ------------------------------- ce+ce ------------------------------------
 
 BOOST_AUTO_TEST_CASE(ce_ce_matches_reference_canonical) {

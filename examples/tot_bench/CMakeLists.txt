@@ -20,7 +20,7 @@
 
 # Strided-DGEMM ToT throughput benches (strided-vs-current arena DGEMM).
 
-foreach(_exec opa_strided_arena_dgemm opb_strided_arena_dgemm)
+foreach(_exec opa_strided_arena_dgemm opb_strided_arena_dgemm regime_a_hce_e_strided_bench)
   add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
   add_dependencies(examples-tiledarray ${_exec})
 endforeach()

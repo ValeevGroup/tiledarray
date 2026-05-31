@@ -984,6 +984,16 @@ auto make_regime_a_arena_plan(const A& a, const B& b, const Inner& inner,
   }
 }
 
+/// Kill switch for the regime-A hc+e strided-DGEMM reuse path: when true,
+/// run_regime_a_arena keeps the legacy per-cell accumulate. Test/bench hook
+/// for the strided-vs-per-cell differential (correctness) and the perf
+/// measurement; production default is false (strided on). Mirrors
+/// arena_disabled().
+inline bool& regime_a_strided_disabled() {
+  static bool flag = false;
+  return flag;
+}
+
 /// Runs the arena regime-A path for one H-slice when the plan is active.
 template <typename Plan, typename HIndex, typename TermA, typename TermB,
           typename TermC, typename LocalTiles, typename Tiles, typename Trange>
@@ -1025,6 +1035,24 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
 
     if constexpr (a_is_tot && b_is_tot) {
       using IIndex = ::Einsum::index::Index<std::size_t>;
+      // hc+e reuse gate: the result/operand inner cells must be the kernel's
+      // (view + double) inner type; mirror arena_strided_dgemm_ce_e's
+      // static_assert so non-view / non-double ToT keep the per-cell path.
+      using LInnerT = typename ArrayA_t::value_type::value_type;
+      using RInnerT = typename ArrayB_t::value_type::value_type;
+      constexpr bool ce_e_kernel_ok =
+          is_tensor_view_v<InnerT> && is_tensor_view_v<LInnerT> &&
+          is_tensor_view_v<RInnerT> &&
+          std::is_same_v<typename InnerT::numeric_type, double> &&
+          std::is_same_v<typename LInnerT::numeric_type, double> &&
+          std::is_same_v<typename RInnerT::numeric_type, double>;
+      // Inner OUTER-PRODUCT (K_inner==0) is the strided-reusable shape; any
+      // inner contraction (hc+ce) stays per-cell (two-level stride). The
+      // runtime toggle lets tests/benches force the per-cell path.
+      const bool hce_e_strided =
+          plan.kind == RegimeAInnerKind::contraction && plan.c_plan &&
+          plan.c_plan->gemm_helper.num_contract_ranks() == 0 &&
+          !regime_a_strided_disabled();
       auto range_for = [&](std::size_t k) -> InnerRange {
         if (k >= batch) return InnerRange{};
         for (IIndex i : tiles) {
@@ -1084,6 +1112,23 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
         auto shape = trange.tile(i);
         ai = ai.reshape(shape, batch);
         bi = bi.reshape(shape, batch);
+        if constexpr (ce_e_kernel_ok) {
+          if (hce_e_strided) {
+            // hc+e: ride the within-tile contraction cells into BLAS K via the
+            // landed ce+e core. M=N=1, K=vol; kernel nbatch == Hadamard batch.
+            // cview shares tile's data_ (storage-aliasing reshape), so the
+            // kernel's beta=1 writes accumulate into tile across the i-loop.
+            namespace blas = TiledArray::math::blas;
+            const std::size_t Kvol =
+                static_cast<std::size_t>(trange.tile(i).volume());
+            auto cview = tile.reshape(TiledArray::Range{1}, batch);
+            arena_strided_dgemm_ce_e(cview, ai, bi, /*M=*/std::size_t{1},
+                                     /*N=*/std::size_t{1}, /*K=*/Kvol,
+                                     blas::NoTranspose, blas::NoTranspose,
+                                     /*factor=*/1.0);
+            continue;  // tile-i contribution complete
+          }
+        }
         for (std::size_t k = 0; k < batch; ++k) {
           auto& cell = tile({k});
           if (cell.empty()) continue;
