@@ -166,7 +166,6 @@ std::vector<std::vector<double>> ref_ce_ce_left_sparse(
   return out;
 }
 
-#ifdef TA_STRIDED_DGEMM_COUNT
 // Assemble an Outer whose outer-cell views point at the cells of `src` in the
 // order given by `phys[ord]` (assembled.data()[ord] aliases the SAME Cell as
 // src.data()[phys[ord]]). Because ArenaTensor is a non-owning view, the
@@ -189,7 +188,6 @@ Outer assemble_aliased(const Outer& src, const TA::Range& outer_range,
   std::shared_ptr<Inner[]> data(raw, std::move(deleter));
   return Outer(outer_range, /*nbatch=*/1, std::move(data));
 }
-#endif
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(arena_strided_dgemm_suite, TA_UT_LABEL_SERIAL)
@@ -1077,6 +1075,48 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_clean_core) {
     }
 }
 
+namespace {
+// Compare every result cell against the sparsity-aware reference: a present
+// reference vector must match to 1e-10. An empty reference vector means the
+// cell received no contribution: an ABSENT (hole) result cell must stay absent
+// (invariant 2 / "no writes to holes"), and a PRESENT result cell (e.g. a dense
+// C whose only k was size-mismatched) must remain exactly its zero-init value.
+// ordinal of C[b,row,col] = (b*nrow+row)*ncol + col.
+void check_ce_ce(const Outer& C, const std::vector<std::vector<double>>& ref,
+                 std::size_t nbatch, std::size_t nrow, std::size_t ncol,
+                 std::size_t P) {
+  for (std::size_t b = 0; b < nbatch; ++b)
+    for (std::size_t r = 0; r < nrow; ++r)
+      for (std::size_t cc = 0; cc < ncol; ++cc) {
+        const std::size_t ord = (b * nrow + r) * ncol + cc;
+        const Inner& cell = C.data()[ord];
+        const std::vector<double>& want = ref[ord];
+        if (want.empty()) {
+          // No contribution: a hole stays absent; a present cell stays zero
+          // (the kernel must not have written anything to it).
+          if (cell)
+            for (std::size_t a1 = 0; a1 < cell.size(); ++a1)
+              BOOST_CHECK_SMALL(cell.data()[a1], 1e-12);
+          continue;
+        }
+        BOOST_REQUIRE(bool(cell));
+        BOOST_REQUIRE_EQUAL(cell.size(), P);
+        for (std::size_t a1 = 0; a1 < P; ++a1)
+          BOOST_CHECK_CLOSE(cell.data()[a1], want[a1], 1e-10);
+      }
+}
+
+// Zero-fill the present cells of an already-built result tile (the kernel
+// accumulates with beta=1, so C must start at zero).
+void zero_result(Outer& C, std::size_t ncells) {
+  for (std::size_t o = 0; o < ncells; ++o) {
+    Inner& c = C.data()[o];
+    if (!c) continue;
+    for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = 0.0;
+  }
+}
+}  // namespace
+
 #ifdef TA_STRIDED_DGEMM_COUNT
 BOOST_AUTO_TEST_CASE(ce_ce_fires_clean_path) {
   const std::size_t Mmu = 3, nK = 2, P = 4, Q = 5, NB = 2;
@@ -1245,6 +1285,85 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_clean_fires_clean_path) {
   BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_left_calls.load(),
                     No * nK);
 }
+
+// LEFT page-jump: a non-constant stride on the strided LEFT operand L (along m)
+// must break the m-run into constant-stride segments. perm {0,2,1} over Mo=3
+// makes L[1],L[2] non-uniformly spaced => per (n,k) the walker emits segments
+// {0,1} and {2} => 2 x No(=1) x nK(=2) = 4 segment GEMMs. Result stays exact.
+BOOST_AUTO_TEST_CASE(ce_ce_left_page_jump_run_segments_and_is_correct) {
+  const std::size_t Mo = 3, No = 1, nK = 2, P = 4, Q = 5;
+  Outer Lsrc = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, nK}, 1, [&](std::size_t){ return TA::Range{Q}; });
+  for (std::size_t o = 0; o < Lsrc.range().volume(); ++o)
+    for (std::size_t e = 0; e < Lsrc.data()[o].size(); ++e)
+      Lsrc.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  // Alias L cells in a non-monotone m order (k stays fast): logical (m,k) ->
+  // physical (perm[m],k). This yields a uniform-size run with non-constant stride.
+  const std::size_t perm[Mo] = {0, 2, 1};
+  std::vector<std::size_t> phys(Mo * nK);
+  for (std::size_t m = 0; m < Mo; ++m)
+    for (std::size_t k = 0; k < nK; ++k)
+      phys[m * nK + k] = perm[m] * nK + k;
+  Outer L = assemble_aliased(Lsrc, TA::Range{Mo, nK}, phys);
+  // Confirm the stride really is non-constant for at least one k.
+  for (std::size_t k = 0; k < nK; ++k) {
+    const std::ptrdiff_t d01 =
+        L.data()[1 * nK + k].data() - L.data()[0 * nK + k].data();
+    const std::ptrdiff_t d12 =
+        L.data()[2 * nK + k].data() - L.data()[1 * nK + k].data();
+    BOOST_REQUIRE_NE(d01, d12);
+  }
+  Outer R = make_filled(TA::Range{nK, No},
+                        [&](std::size_t){ return TA::Range{Q, P}; }, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, No}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, C.range().volume());
+  namespace blas = TiledArray::math::blas;
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_left_calls.load(), 4u);
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+}
+
+// RIGHT result-C page-jump: a non-constant stride on the RESULT C cells (along
+// μ̃) must also break segments (the sC guard, distinct from the sR operand
+// guard). perm {0,2,1} over Mmu=3 aliases C in non-monotone order. The kernel
+// writes to logical C[μ̃]; with non-constant C stride it segments {0,1},{2}
+// per k => 2 x nK(=2) = 4 segment GEMMs, still exact.
+BOOST_AUTO_TEST_CASE(ce_ce_right_result_page_jump_segments_and_is_correct) {
+  const std::size_t Mmu = 3, nK = 2, P = 4, Q = 5;
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu, nK}, 1, [&](std::size_t){return TA::Range{Q};});
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  // Build a dense C, then alias its cells in non-monotone μ̃ order so the result
+  // run has a non-constant .data() stride. C is 1-D over μ̃ (Mo=1).
+  Outer Csrc = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
+  zero_result(Csrc, Csrc.range().volume());
+  const std::size_t perm[Mmu] = {0, 2, 1};
+  std::vector<std::size_t> phys(Mmu);
+  for (std::size_t mu = 0; mu < Mmu; ++mu) phys[mu] = perm[mu];
+  Outer C = assemble_aliased(Csrc, TA::Range{Mmu}, phys);
+  const std::ptrdiff_t d01 = C.data()[1].data() - C.data()[0].data();
+  const std::ptrdiff_t d12 = C.data()[2].data() - C.data()[1].data();
+  BOOST_REQUIRE_NE(d01, d12);  // non-constant result stride
+  namespace blas = TiledArray::math::blas;
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 4u);
+  auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);
+  for (std::size_t mu = 0; mu < Mmu; ++mu) {
+    const double* got = C.data()[mu].data();
+    for (std::size_t a1 = 0; a1 < P; ++a1)
+      BOOST_CHECK_CLOSE(got[a1], ref[mu * P + a1], 1e-12);
+  }
+}
 #endif
 
 // ===========================================================================
@@ -1255,48 +1374,6 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_clean_fires_clean_path) {
 // All use the canonical right convention (right_op=Transpose: R outer mu slow,
 // k fast). Result/operand outer layouts match ref_ce_ce_right/left_sparse.
 // ===========================================================================
-
-namespace {
-// Compare every result cell against the sparsity-aware reference: a present
-// reference vector must match to 1e-10. An empty reference vector means the
-// cell received no contribution: an ABSENT (hole) result cell must stay absent
-// (invariant 2 / "no writes to holes"), and a PRESENT result cell (e.g. a dense
-// C whose only k was size-mismatched) must remain exactly its zero-init value.
-// ordinal of C[b,row,col] = (b*nrow+row)*ncol + col.
-void check_ce_ce(const Outer& C, const std::vector<std::vector<double>>& ref,
-                 std::size_t nbatch, std::size_t nrow, std::size_t ncol,
-                 std::size_t P) {
-  for (std::size_t b = 0; b < nbatch; ++b)
-    for (std::size_t r = 0; r < nrow; ++r)
-      for (std::size_t cc = 0; cc < ncol; ++cc) {
-        const std::size_t ord = (b * nrow + r) * ncol + cc;
-        const Inner& cell = C.data()[ord];
-        const std::vector<double>& want = ref[ord];
-        if (want.empty()) {
-          // No contribution: a hole stays absent; a present cell stays zero
-          // (the kernel must not have written anything to it).
-          if (cell)
-            for (std::size_t a1 = 0; a1 < cell.size(); ++a1)
-              BOOST_CHECK_SMALL(cell.data()[a1], 1e-12);
-          continue;
-        }
-        BOOST_REQUIRE(bool(cell));
-        BOOST_REQUIRE_EQUAL(cell.size(), P);
-        for (std::size_t a1 = 0; a1 < P; ++a1)
-          BOOST_CHECK_CLOSE(cell.data()[a1], want[a1], 1e-10);
-      }
-}
-
-// Zero-fill the present cells of an already-built result tile (the kernel
-// accumulates with beta=1, so C must start at zero).
-void zero_result(Outer& C, std::size_t ncells) {
-  for (std::size_t o = 0; o < ncells; ++o) {
-    Inner& c = C.data()[o];
-    if (!c) continue;
-    for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = 0.0;
-  }
-}
-}  // namespace
 
 // T1: dense run, no holes -> one full-run segment per k == today's clean path.
 // Pins golden values (also matches the original dense ref_ce_ce).
@@ -1315,10 +1392,27 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_dense_regression) {
       blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
-  auto ref0 = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);  // original golden
+  // Independent naive-oracle cross-check.
+  auto ref0 = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu)
     for (std::size_t a1 = 0; a1 < P; ++a1)
       BOOST_CHECK_CLOSE(C.data()[mu].data()[a1], ref0[mu * P + a1], 1e-10);
+  // Frozen golden baseline: the verified dense-path output for exactly this
+  // Mmu=6,nK=2,P=3,Q=4 dense fill, cross-validated by the independent naive
+  // ref_ce_ce oracle (checked above at 1e-10). The segmented kernel on a dense
+  // run must reproduce these bitwise-stable values; a drift here flags a
+  // regression the recomputed references could not (invariant 4 / T1 golden).
+  static const double T1_GOLD[18] = {
+      80.2404000000, 192.4004000000, 304.5604000000,
+      80.6412000000, 193.4412000000, 306.2412000000,
+      81.0420000000, 194.4820000000, 307.9220000000,
+      81.4428000000, 195.5228000000, 309.6028000000,
+      81.8436000000, 196.5636000000, 311.2836000000,
+      82.2444000000, 197.6044000000, 312.9644000000,
+  };
+  for (std::size_t mu = 0; mu < Mmu; ++mu)
+    for (std::size_t a1 = 0; a1 < P; ++a1)
+      BOOST_CHECK_CLOSE(C.data()[mu].data()[a1], T1_GOLD[mu * P + a1], 1e-10);
 }
 
 // T2: single interior hole at mu=4 in BOTH C and R (all k) -> two segments
@@ -1336,6 +1430,34 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_single_interior_hole) {
   zero_result(C, Mmu);
   TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
       blas::NoTranspose, blas::Transpose, 1.0);
+  auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, Mmu, P);
+}
+
+// Invariant 2 (no writes to absent result cells): a result run with holes must
+// leave those hole cells ABSENT (null) after the kernel runs -- the segmenter
+// only ever writes into pre-existing present cells, never allocates a tile in a
+// hole. Strictly pins what check_ce_ce's empty-ref branch only checks leniently.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_holes_stay_absent) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 5, nK = 1, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) { return o == 1 || o == 3; };
+  auto chole = [&](std::size_t o) { return o == 1 || o == 3; };
+  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
+  Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = make_sparse(TA::Range{Mmu}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  // hole cells stay absent; present cells stay present.
+  for (std::size_t mu = 0; mu < Mmu; ++mu) {
+    if (chole(mu))
+      BOOST_CHECK(!C.data()[mu]);
+    else
+      BOOST_CHECK(bool(C.data()[mu]));
+  }
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1449,8 +1571,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_multi_batch_sparse) {
     const std::size_t per = Mmu * nK;
     return (o / per) == 1 && ((o % per) == 2 || (o % per) == 1);
   };
-  Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
-  // Need NB batches of L too (kernel indexes L per-batch).
+  // NB batches of L (the kernel indexes L per-batch).
   Outer Lb = TA::detail::arena_outer_init<Outer>(
       TA::Range{nK}, NB, [&](std::size_t){ return TA::Range{P, Q}; });
   for (std::size_t o = 0; o < NB * nK; ++o)
@@ -1660,6 +1781,332 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_count_per_k_misaligned) {
   BOOST_TEST_MESSAGE(
       "ce_ce_left_seg_count_per_k_misaligned skipped (no TA_STRIDED_DGEMM_COUNT)");
 #endif
+}
+
+// T7 mirror for the LEFT kernel: right_inner_transposed=true with a hole along
+// m. Pins the transb=T / ldb=Q segment path and its scalar-fallback indexing.
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_transposed_inner) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 8, No = 1, nK = 2, P = 3, Q = 4;
+  auto lhole = [&](std::size_t o) { return (o / nK) == 3; };  // L[m=3,*]
+  auto chole = [&](std::size_t o) { return (o / No) == 3; };  // C[m=3]
+  Outer L = make_sparse(TA::Range{Mo, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, lhole, 1.0);
+  // R stored P x Q (matrix_transpose layout): (b1,a4) row-major.
+  Outer R = make_filled(TA::Range{nK, No},
+                        [&](std::size_t){ return TA::Range{P, Q}; }, 2.0);
+  Outer C = make_sparse(TA::Range{Mo, No}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, Mo * No);
+  TA::detail::arena_strided_dgemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0,
+      /*right_inner_transposed=*/true);
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0, 1, /*rt=*/true);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+}
+
+// Non-canonical outer orientation for _right: left_op=Transpose exercises the
+// transposed l_off branch (L physically laid out (k,m) = k*Mo+m). Dense -> one
+// full-run segment per k; compared to an inline reference over logical operands.
+BOOST_AUTO_TEST_CASE(ce_ce_right_seg_left_op_transpose) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 2, Mmu = 3, nK = 2, P = 2, Q = 3;
+  Outer L = make_filled(TA::Range{nK, Mo},
+                        [&](std::size_t){ return TA::Range{P, Q}; }, 1.0);
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mmu, nK}, 1, [&](std::size_t){ return TA::Range{Q}; });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mo * Mmu);
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
+      blas::Transpose, blas::Transpose, 1.0);
+  // C[m,mu](a1) = sum_k sum_a4 L_phys[k*Mo+m](a1,a4) * R[mu,k](a4)
+  for (std::size_t m = 0; m < Mo; ++m)
+    for (std::size_t mu = 0; mu < Mmu; ++mu) {
+      const double* got = C.data()[m * Mmu + mu].data();
+      for (std::size_t a1 = 0; a1 < P; ++a1) {
+        double acc = 0.0;
+        for (std::size_t k = 0; k < nK; ++k) {
+          const double* l = L.data()[k * Mo + m].data();   // P x Q
+          const double* r = R.data()[mu * nK + k].data();  // Q
+          for (std::size_t a4 = 0; a4 < Q; ++a4) acc += l[a1 * Q + a4] * r[a4];
+        }
+        BOOST_CHECK_CLOSE(got[a1], acc, 1e-10);
+      }
+    }
+}
+
+// Non-canonical outer orientation for _left: right_op=Transpose exercises the
+// transposed r_off branch (R physically laid out (n,k) = n*nK+k). Dense -> one
+// full-run segment per k; compared to an inline reference over logical operands.
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_right_op_transpose) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 3, No = 2, nK = 2, P = 2, Q = 3;
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, nK}, 1, [&](std::size_t){ return TA::Range{Q}; });
+  for (std::size_t o = 0; o < L.range().volume(); ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  // R physical (n slow, k fast) = n*nK+k, inner Q x P (canonical a4,b1).
+  Outer R = make_filled(TA::Range{No, nK},
+                        [&](std::size_t){ return TA::Range{Q, P}; }, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, No}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mo * No);
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  // C[m,n](b1) = sum_k sum_a4 L[m*nK+k](a4) * R_phys[n*nK+k](a4,b1)
+  for (std::size_t m = 0; m < Mo; ++m)
+    for (std::size_t n = 0; n < No; ++n) {
+      const double* got = C.data()[m * No + n].data();
+      for (std::size_t b1 = 0; b1 < P; ++b1) {
+        double acc = 0.0;
+        for (std::size_t k = 0; k < nK; ++k) {
+          const double* l = L.data()[m * nK + k].data();   // Q
+          const double* r = R.data()[n * nK + k].data();   // Q x P
+          for (std::size_t a4 = 0; a4 < Q; ++a4) acc += l[a4] * r[a4 * P + b1];
+        }
+        BOOST_CHECK_CLOSE(got[b1], acc, 1e-10);
+      }
+    }
+}
+
+// L1: left mirror of T2/T9 with a hole and a non-unit factor. Hole at m=4 in
+// BOTH C and L (all k) -> two m-segments [0,4),[5,8); C[4] absent; factor=2.5.
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_hole_and_factor) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 8, No = 1, nK = 2, P = 3, Q = 4;
+  const double factor = 2.5;
+  auto lhole = [&](std::size_t o) { return (o / nK) == 4; };  // L[m=4,*]
+  auto chole = [&](std::size_t o) { return o == 4; };         // C[m=4,n=0]
+  Outer L = make_sparse(TA::Range{Mo, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, lhole, 1.0);
+  Outer R = make_filled(TA::Range{nK, No},
+                        [&](std::size_t){ return TA::Range{Q, P}; }, 2.0);
+  Outer C = make_sparse(TA::Range{Mo, No}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, C.range().volume());
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, factor);
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, factor);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+}
+
+// L2: left mirror of T6. The SINGLE-CELL operand R[k=1,n] is absent for all n
+// -> the kernel's `if (!rk) continue;` skips k=1 entirely (beta=1); other k
+// contribute. (The complementary "strided operand absent" guard is L2b below.)
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_absent_k) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 5, No = 1, nK = 3, P = 3, Q = 4;
+  // R[k=1,n] absent for all n -> k=1 skipped entirely (beta=1).
+  auto rhole = [&](std::size_t o) { return (o / No) == 1; };  // R[k=1,*]
+  Outer L = make_filled(TA::Range{Mo, nK},
+                        [&](std::size_t){ return TA::Range{Q}; }, 1.0);
+  Outer R = make_sparse(TA::Range{nK, No}, 1,
+                        [&](std::size_t){ return TA::Range{Q, P}; }, rhole, 2.0);
+  Outer C = make_filled(TA::Range{Mo, No},
+                        [&](std::size_t){ return TA::Range{P}; }, 0.0);
+  zero_result(C, C.range().volume());
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+}
+
+// L2b: the STRIDED operand is entirely absent for one k. All L[m,k=1] are holes
+// while R[k=1,n] stays present -> Q cannot be discovered for k=1, so the kernel's
+// `if (Q <= 0) continue;` skips it; other k contribute. The reference skips the
+// same k (its `!lk` branch), so results stay exact.
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_strided_operand_absent_k) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 5, No = 1, nK = 3, P = 3, Q = 4;
+  // L[m,k=1] absent for all m (ordinal o = m*nK + k, so k==1).
+  auto lhole = [&](std::size_t o) { return (o % nK) == 1; };
+  Outer L = make_sparse(TA::Range{Mo, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, lhole, 1.0);
+  Outer R = make_filled(TA::Range{nK, No},
+                        [&](std::size_t){ return TA::Range{Q, P}; }, 2.0);
+  Outer C = make_filled(TA::Range{Mo, No},
+                        [&](std::size_t){ return TA::Range{P}; }, 0.0);
+  zero_result(C, C.range().volume());
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+}
+
+// L3: left mirror of T10 (defensive size mismatch). One L[m,k] present but the
+// wrong inner size (Q+1) -> that (m,k) is skipped by the per-cell guard, the
+// rest stay exact, no crash.
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_size_mismatch_defensive) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 4, No = 1, nK = 2, P = 3, Q = 4;
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, nK}, 1, [&](std::size_t o) {
+        // L[m=2,k=0] (ordinal 2*nK+0 = 4) has size Q+1; all others size Q.
+        return (o == 4) ? TA::Range{Q + 1} : TA::Range{Q};
+      });
+  for (std::size_t o = 0; o < L.range().volume(); ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  Outer R = make_filled(TA::Range{nK, No},
+                        [&](std::size_t){ return TA::Range{Q, P}; }, 2.0);
+  Outer C = make_filled(TA::Range{Mo, No},
+                        [&](std::size_t){ return TA::Range{P}; }, 0.0);
+  zero_result(C, C.range().volume());
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  // Reference skips any k where L[m,k].size() != Q (R[k,n].size()==P*Q gate).
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+}
+
+// L4: left mirror of T8 (per-batch independent segmentation). NB=2; batch 0
+// dense, batch 1 has a single interior hole at m=2.
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_multi_batch_sparse) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 4, No = 1, nK = 2, P = 3, Q = 4, NB = 2;
+  // hole at batch-1 m=2: ordinal in L is b*Mo*nK + m*nK + k; in C b*Mo*No+m*No+n.
+  auto lhole = [&](std::size_t o) {
+    const std::size_t b = o / (Mo * nK);
+    const std::size_t m = (o % (Mo * nK)) / nK;
+    return b == 1 && m == 2;
+  };
+  auto chole = [&](std::size_t o) {
+    const std::size_t b = o / (Mo * No);
+    const std::size_t m = (o % (Mo * No)) / No;
+    return b == 1 && m == 2;
+  };
+  Outer L = make_sparse(TA::Range{Mo, nK}, NB,
+                        [&](std::size_t){ return TA::Range{Q}; }, lhole, 1.0);
+  // R is shared per batch; build NB batches explicitly (make_filled gives nbatch=1).
+  Outer Rb = TA::detail::arena_outer_init<Outer>(
+      TA::Range{nK, No}, NB, [&](std::size_t){ return TA::Range{Q, P}; });
+  for (std::size_t o = 0; o < Rb.range().volume() * NB; ++o)
+    for (std::size_t e = 0; e < Rb.data()[o].size(); ++e)
+      Rb.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = make_sparse(TA::Range{Mo, No}, NB,
+                        [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+  zero_result(C, C.range().volume() * NB);
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, Rb, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  auto ref = ref_ce_ce_left_sparse(L, Rb, Mo, No, nK, P, 1.0, NB);
+  check_ce_ce(C, ref, NB, Mo, No, P);
+}
+
+// L5: an entirely-absent result run must be a clean no-op (P<=0 early continue)
+// for BOTH orientations -- no writes, no crash.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_all_absent_run_is_noop) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 4, No = 1, nK = 2, P = 3, Q = 4;
+  // RIGHT: every C[mu] absent.
+  Outer Lr = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P,Q};}, 1.0);
+  Outer Rr = make_filled(TA::Range{Mmu, nK}, [&](std::size_t){return TA::Range{Q};}, 2.0);
+  Outer Cr = make_sparse(TA::Range{Mmu}, 1,
+                         [&](std::size_t){ return TA::Range{P}; },
+                         [](std::size_t){ return true; }, 0.0);  // all holes
+  BOOST_REQUIRE_NO_THROW(TA::detail::arena_strided_dgemm_ce_ce_right(
+      Cr, Lr, Rr, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0));
+  for (std::size_t o = 0; o < Cr.range().volume(); ++o)
+    BOOST_CHECK(!Cr.data()[o]);  // all stay absent
+  // LEFT: every C[m,n] absent.
+  Outer Ll = make_filled(TA::Range{Mo, nK}, [&](std::size_t){return TA::Range{Q};}, 1.0);
+  Outer Rl = make_filled(TA::Range{nK, No}, [&](std::size_t){return TA::Range{Q,P};}, 2.0);
+  Outer Cl = make_sparse(TA::Range{Mo, No}, 1,
+                         [&](std::size_t){ return TA::Range{P}; },
+                         [](std::size_t){ return true; }, 0.0);
+  BOOST_REQUIRE_NO_THROW(TA::detail::arena_strided_dgemm_ce_ce_left(
+      Cl, Ll, Rl, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0));
+  for (std::size_t o = 0; o < Cl.range().volume(); ++o)
+    BOOST_CHECK(!Cl.data()[o]);
+}
+
+// K1: the kill switch is a FAITHFUL equivalent. On a hole-containing,
+// per-k-misaligned pattern, the segment-walker path (switch off) and the
+// per-cell path (switch on) must produce bitwise-identical results -- this both
+// proves the per-cell reference the bench times is correct AND that the switch
+// changes only the evaluation strategy, not the math. RIGHT orientation.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_killswitch_matches_right) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 1, Mmu = 8, nK = 3, P = 3, Q = 4;
+  auto rhole = [&](std::size_t o) {
+    const std::size_t mu = o / nK, k = o % nK;
+    return ((mu + k) % 3) == 0;  // staggered per k
+  };
+  auto chole = [&](std::size_t o) {  // C[mu] present iff present for some k
+    for (std::size_t k = 0; k < nK; ++k)
+      if (!(((o + k) % 3) == 0)) return false;
+    return true;
+  };
+  auto build = [&]() {
+    Outer L = make_filled(TA::Range{nK},
+                          [&](std::size_t){ return TA::Range{P, Q}; }, 1.0);
+    Outer R = make_sparse(TA::Range{Mmu, nK}, 1,
+                          [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+    Outer C = make_sparse(TA::Range{Mmu}, 1,
+                          [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+    zero_result(C, C.range().volume());
+    return std::make_tuple(std::move(L), std::move(R), std::move(C));
+  };
+  auto [Ls, Rs, Cs] = build();  // switch OFF (segment walker)
+  TA::detail::ce_ce_strided_disabled() = false;
+  TA::detail::arena_strided_dgemm_ce_ce_right(Cs, Ls, Rs, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  auto [Lp, Rp, Cp] = build();  // switch ON (per-cell)
+  TA::detail::ce_ce_strided_disabled() = true;
+  TA::detail::arena_strided_dgemm_ce_ce_right(Cp, Lp, Rp, Mo, Mmu, nK,
+      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::ce_ce_strided_disabled() = false;  // restore production default
+  for (std::size_t o = 0; o < Cs.range().volume(); ++o) {
+    BOOST_REQUIRE_EQUAL(bool(Cs.data()[o]), bool(Cp.data()[o]));
+    if (!Cs.data()[o]) continue;
+    BOOST_REQUIRE_EQUAL(Cs.data()[o].size(), Cp.data()[o].size());
+    for (std::size_t a1 = 0; a1 < Cs.data()[o].size(); ++a1)
+      BOOST_CHECK_CLOSE(Cs.data()[o].data()[a1], Cp.data()[o].data()[a1], 1e-12);
+  }
+}
+
+// K2: same faithful-equivalent check, LEFT orientation, per-k misaligned on L.
+BOOST_AUTO_TEST_CASE(ce_ce_seg_killswitch_matches_left) {
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 8, No = 1, nK = 3, P = 3, Q = 4;
+  auto lhole = [&](std::size_t o) {
+    const std::size_t m = o / nK, k = o % nK;
+    return ((m + k) % 3) == 0;
+  };
+  auto chole = [&](std::size_t o) {
+    for (std::size_t k = 0; k < nK; ++k)
+      if (!(((o + k) % 3) == 0)) return false;
+    return true;
+  };
+  auto build = [&]() {
+    Outer L = make_sparse(TA::Range{Mo, nK}, 1,
+                          [&](std::size_t){ return TA::Range{Q}; }, lhole, 1.0);
+    Outer R = make_filled(TA::Range{nK, No},
+                          [&](std::size_t){ return TA::Range{Q, P}; }, 2.0);
+    Outer C = make_sparse(TA::Range{Mo, No}, 1,
+                          [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
+    zero_result(C, C.range().volume());
+    return std::make_tuple(std::move(L), std::move(R), std::move(C));
+  };
+  auto [Ls, Rs, Cs] = build();
+  TA::detail::ce_ce_strided_disabled() = false;
+  TA::detail::arena_strided_dgemm_ce_ce_left(Cs, Ls, Rs, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  auto [Lp, Rp, Cp] = build();
+  TA::detail::ce_ce_strided_disabled() = true;
+  TA::detail::arena_strided_dgemm_ce_ce_left(Cp, Lp, Rp, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::ce_ce_strided_disabled() = false;
+  for (std::size_t o = 0; o < Cs.range().volume(); ++o) {
+    BOOST_REQUIRE_EQUAL(bool(Cs.data()[o]), bool(Cp.data()[o]));
+    if (!Cs.data()[o]) continue;
+    for (std::size_t a1 = 0; a1 < Cs.data()[o].size(); ++a1)
+      BOOST_CHECK_CLOSE(Cs.data()[o].data()[a1], Cp.data()[o].data()[a1], 1e-12);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

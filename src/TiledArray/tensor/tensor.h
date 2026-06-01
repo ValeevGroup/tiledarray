@@ -38,6 +38,12 @@
 
 #include <umpire_cxx_allocator.hpp>
 
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <iostream>
+
 namespace TiledArray {
 
 namespace detail {
@@ -83,6 +89,164 @@ To clone_or_cast(From&& f) {
         "need to provide a conversion operator to To");
   }
 }
+
+/// ---------------------------------------------------------------------------
+/// Env-gated timing probe for the strided-GEMM ToT "scale" outer-contraction
+/// path (Tensor::gemm, commit 266f0a48): measures how much of the scale work
+/// runs on the fast strided BLAS GEMM vs. how much reverts to the per-cell
+/// AXPY fallback. Mirrors the ce+e / ce+ce probes in arena_einsum.h: switched
+/// on by the SAME env var TA_GEMM_TIMING=1 (single master switch); takes no
+/// clock samples and touches no atomics when unset (zero production overhead).
+/// Two regimes are tracked separately:
+///   [0] tot_x_t : left ToT x plain scalar, "m,k;a * k,n -> m,n;a" (per-row m)
+///   [1] t_x_tot : plain scalar x right ToT, "m,k * k,n;a -> m,n;a" (per-col n)
+/// Per-regime totals print to stderr at process exit.
+inline bool scale_gemm_timing_enabled() {
+  static const bool enabled = [] {
+    const char* e = std::getenv("TA_GEMM_TIMING");
+    return e != nullptr && e[0] != '\0' && !(e[0] == '0' && e[1] == '\0');
+  }();
+  return enabled;
+}
+
+/// Counters for one scale regime. `{0}` member-init gives well-defined zero.
+struct ScaleRegimeCounters {
+  std::atomic<std::uint64_t> gemm_ns{0};   // wall ns inside the strided gemm
+  std::atomic<std::uint64_t> fb_ns{0};     // wall ns inside the AXPY fallback
+  std::atomic<std::uint64_t> gemm_runs{0}; // clean rows/cols (one strided GEMM)
+  std::atomic<std::uint64_t> fb_runs{0};   // rows/cols that fell back to AXPY
+  std::atomic<std::uint64_t> gemm_flop{0}; // 2*K*N*A (clean), summed
+  std::atomic<std::uint64_t> fb_flop{0};   // exact 2*K*Sum(cellsize) (fallback)
+  std::atomic<std::uint64_t> fb_absent{0}; // fallback reason: an empty cell
+  std::atomic<std::uint64_t> fb_ragged{0}; // fallback reason: ragged inner size
+  std::atomic<std::uint64_t> fb_stride{0}; // fallback reason: multi-page stride
+  // --- phase breakdown of the per-(b,m) loop (Amdahl of the 75% overhead) ---
+  std::atomic<std::uint64_t> kernel_ns{0};    // whole for-b/for-m loop body
+  std::atomic<std::uint64_t> check_pres_ns{0};// per-row presence + size scan
+  std::atomic<std::uint64_t> check_str_ns{0}; // per-row constant-stride walk
+  // beta-eligibility: how many Tensor::gemm CALLS land on a freshly-allocated
+  // (this->empty()) output tile -- where beta=0 would be valid -- vs an
+  // accumulation into an existing tile (beta=1 required for correctness).
+  std::atomic<std::uint64_t> calls_firstwrite{0};
+  std::atomic<std::uint64_t> calls_accum{0};
+  // loop-residual := kernel_ns - check_pres - check_str - gemm_ns - fb_ns
+  //   (row pointer setup, loop control, A<=0 skips; absorbs probe clock cost)
+};
+inline ScaleRegimeCounters g_scale[2];  // [0]=tot_x_t, [1]=t_x_tot
+
+/// Manual (non-scoped) phase clock for regions that set locals used later, so a
+/// timed scope can't wrap them. No-op unless TA_GEMM_TIMING is set. Mirrors the
+/// arena_einsum.h phase_start/phase_stop pattern.
+inline std::chrono::steady_clock::time_point scale_phase_start() {
+  return scale_gemm_timing_enabled() ? std::chrono::steady_clock::now()
+                                     : std::chrono::steady_clock::time_point{};
+}
+inline void scale_phase_stop(std::atomic<std::uint64_t>& acc,
+                             std::chrono::steady_clock::time_point t0) {
+  if (!scale_gemm_timing_enabled()) return;
+  acc.fetch_add(static_cast<std::uint64_t>(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - t0)
+                        .count()),
+                std::memory_order_relaxed);
+}
+
+/// RAII timer over one strided GEMM / one AXPY-fallback run; no-op (no clock
+/// read, no atomic touch) unless TA_GEMM_TIMING is set. Mirrors the
+/// arena_einsum.h ScopedPhaseTimer.
+class ScopedScaleTimer {
+ public:
+  explicit ScopedScaleTimer(std::atomic<std::uint64_t>& acc)
+      : acc_(scale_gemm_timing_enabled() ? &acc : nullptr) {
+    if (acc_) t0_ = std::chrono::steady_clock::now();
+  }
+  ~ScopedScaleTimer() {
+    if (!acc_) return;
+    const auto dt = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - t0_)
+                        .count();
+    acc_->fetch_add(static_cast<std::uint64_t>(dt), std::memory_order_relaxed);
+  }
+  ScopedScaleTimer(const ScopedScaleTimer&) = delete;
+  ScopedScaleTimer& operator=(const ScopedScaleTimer&) = delete;
+
+ private:
+  std::atomic<std::uint64_t>* acc_;
+  std::chrono::steady_clock::time_point t0_;
+};
+
+/// Prints the scale-path coverage at process exit (only if TA_GEMM_TIMING set).
+struct ScaleGemmTimingDumper {
+  ~ScaleGemmTimingDumper() {
+    if (!scale_gemm_timing_enabled()) return;
+    auto L = [](std::atomic<std::uint64_t>& a) {
+      return a.load(std::memory_order_relaxed);
+    };
+    const char* names[2] = {"tot_x_t (left ToT x scalar, per-row)",
+                            "t_x_tot (scalar x right ToT, per-col)"};
+    std::uint64_t tg_ns = 0, tf_ns = 0, tg_fl = 0, tf_fl = 0;
+    for (int r = 0; r < 2; ++r) {
+      const auto gns = L(g_scale[r].gemm_ns), fns = L(g_scale[r].fb_ns);
+      const auto gr = L(g_scale[r].gemm_runs), fr = L(g_scale[r].fb_runs);
+      const auto gf = L(g_scale[r].gemm_flop), ff = L(g_scale[r].fb_flop);
+      tg_ns += gns; tf_ns += fns; tg_fl += gf; tf_fl += ff;
+      const double tt = static_cast<double>(gns + fns);
+      const double ftot = static_cast<double>(gf + ff);
+      std::cerr << "[scale-timing] " << names[r] << ":\n";
+      std::cerr << "[scale-timing]   strided GEMM : " << gns / 1e9 << " s  ("
+                << gr << " runs)\n";
+      std::cerr << "[scale-timing]   fallback AXPY: " << fns / 1e9 << " s  ("
+                << fr << " runs)\n";
+      std::cerr << "[scale-timing]   time coverage (GEMM / total) : "
+                << (tt > 0 ? 100.0 * gns / tt : 0.0) << "%\n";
+      std::cerr << "[scale-timing]   FLOP coverage (GEMM / total) : "
+                << (ftot > 0 ? 100.0 * gf / ftot : 0.0) << "%  ("
+                << gf / 1e9 << " GFLOP gemm / " << ftot / 1e9 << " GFLOP)\n";
+      std::cerr << "[scale-timing]   GFLOP/s strided="
+                << (gns > 0 ? gf / static_cast<double>(gns) : 0.0)
+                << "  fallback="
+                << (fns > 0 ? ff / static_cast<double>(fns) : 0.0) << "\n";
+      std::cerr << "[scale-timing]   fallback runs by reason: absent="
+                << L(g_scale[r].fb_absent) << " ragged=" << L(g_scale[r].fb_ragged)
+                << " multipage-stride=" << L(g_scale[r].fb_stride) << "\n";
+      // Phase breakdown of the per-(b,m) loop = where the non-GEMM overhead goes.
+      const auto kn = L(g_scale[r].kernel_ns);
+      const auto cp = L(g_scale[r].check_pres_ns);
+      const auto cs = L(g_scale[r].check_str_ns);
+      const auto resid =
+          (kn > gns + fns + cp + cs) ? kn - gns - fns - cp - cs : 0;
+      auto pc = [kn](std::uint64_t x) {
+        return kn > 0 ? 100.0 * static_cast<double>(x) / static_cast<double>(kn)
+                      : 0.0;
+      };
+      std::cerr << "[scale-phases] kernel total (for-b/for-m): " << kn / 1e9
+                << " s\n";
+      std::cerr << "[scale-phases]   strided GEMM        : " << gns / 1e9
+                << " s  (" << pc(gns) << "%)\n";
+      std::cerr << "[scale-phases]   fallback AXPY       : " << fns / 1e9
+                << " s  (" << pc(fns) << "%)\n";
+      std::cerr << "[scale-phases]   clean-check presence: " << cp / 1e9
+                << " s  (" << pc(cp) << "%)\n";
+      std::cerr << "[scale-phases]   clean-check STRIDE walk: " << cs / 1e9
+                << " s  (" << pc(cs) << "%)\n";
+      std::cerr << "[scale-phases]   loop residual       : " << resid / 1e9
+                << " s  (" << pc(resid) << "%)\n";
+      const auto fw = L(g_scale[r].calls_firstwrite);
+      const auto ac = L(g_scale[r].calls_accum);
+      std::cerr << "[scale-beta] gemm CALLS: first-write (beta=0 ok)=" << fw
+                << "  accumulate (beta=1 needed)=" << ac << "  ("
+                << (fw + ac > 0 ? 100.0 * fw / (fw + ac) : 0.0)
+                << "% beta=0-eligible)\n";
+    }
+    const double allt = static_cast<double>(tg_ns + tf_ns);
+    const double allf = static_cast<double>(tg_fl + tf_fl);
+    std::cerr << "[scale-timing] SCALE TOTAL: strided GEMM " << tg_ns / 1e9
+              << " s, fallback AXPY " << tf_ns / 1e9 << " s, time coverage "
+              << (allt > 0 ? 100.0 * tg_ns / allt : 0.0) << "%, FLOP coverage "
+              << (allf > 0 ? 100.0 * tg_fl / allf : 0.0) << "%\n";
+  }
+};
+inline ScaleGemmTimingDumper g_scale_gemm_timing_dumper;
 
 }  // namespace detail
 
@@ -3054,6 +3218,9 @@ class Tensor {
               gemm_helper.left_right_congruent(left.range().upbound_data(),
                                                right.range().upbound_data()));
 
+    // beta-eligibility probe: a fresh (empty) result tile could use beta=0
+    // (and skip zero-init); an existing one needs beta=1 to accumulate.
+    [[maybe_unused]] const bool _scale_was_empty = this->empty();
     if (this->empty()) {  // initialize, if empty
       *this = Tensor(gemm_helper.make_result_range<range_type>(left.range(),
                                                                right.range()),
@@ -3110,6 +3277,14 @@ class Tensor {
       if constexpr (std::is_same_v<std::remove_cv_t<V>, Real>) {
         if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
             gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
+          // kernel-total timer: destroyed at `return *this;` below, so it
+          // captures the whole for-b/for-m loop. loop-residual is derived from
+          // it minus the sub-phases.
+          detail::ScopedScaleTimer _scale_kt(detail::g_scale[0].kernel_ns);
+          if (detail::scale_gemm_timing_enabled())
+            (_scale_was_empty ? detail::g_scale[0].calls_firstwrite
+                              : detail::g_scale[0].calls_accum)
+                .fetch_add(1, std::memory_order_relaxed);
           for (integer b = 0; b != nbatch(); ++b) {
             auto this_data = this->batch_data(b);
             auto left_data = left.batch_data(b);
@@ -3123,6 +3298,7 @@ class Tensor {
               // AXPY.
               long A = -1;
               bool clean = true;
+              const auto _scale_tcp = detail::scale_phase_start();
               for (integer k = 0; k != K && clean; ++k) {
                 const auto& c = lc0[k];
                 if (c.empty()) {
@@ -3147,6 +3323,8 @@ class Tensor {
                 else if (A != s)
                   clean = false;
               }
+              detail::scale_phase_stop(detail::g_scale[0].check_pres_ns,
+                                       _scale_tcp);
               // Arena cells are SIMD-padded, so the per-row inter-cell stride
               // is the padded inner size (>= A). The strided GEMM requires the
               // row's cells to be ONE contiguous run at constant stride -- only
@@ -3154,6 +3332,7 @@ class Tensor {
               // compacted) ToT tile may span multiple pages, where the stride
               // jumps at a page boundary; verify constant stride across ALL
               // cells (so multi-page tiles fall back to the AXPY loop).
+              const auto _scale_tcs = detail::scale_phase_start();
               integer ldb = static_cast<integer>(A);
               integer ldc = static_cast<integer>(A);
               if (clean && A > 0) {
@@ -3168,6 +3347,8 @@ class Tensor {
                 for (integer n = 0; clean && n != N; ++n)
                   if (rc0[n].data() != rc0[0].data() + n * sc) clean = false;
               }
+              detail::scale_phase_stop(detail::g_scale[0].check_str_ns,
+                                       _scale_tcs);
               if (A <= 0) continue;  // empty row -> nothing to do
               if (clean) {
                 // result[m,n][a] += sum_k left[m,k][a] * right[k,n].
@@ -3175,7 +3356,17 @@ class Tensor {
                 // where L2 = left row-m slab (K x A, ld=ldb), C2 = result row-m
                 // slab (N x A, ld=ldc), right is K x N (ld=N). ldb/ldc carry
                 // padding.
+                if (detail::scale_gemm_timing_enabled()) {
+                  detail::g_scale[0].gemm_runs.fetch_add(
+                      1, std::memory_order_relaxed);
+                  detail::g_scale[0].gemm_flop.fetch_add(
+                      2ull * static_cast<std::uint64_t>(K) *
+                          static_cast<std::uint64_t>(N) *
+                          static_cast<std::uint64_t>(A),
+                      std::memory_order_relaxed);
+                }
                 const integer Ai = static_cast<integer>(A);
+                detail::ScopedScaleTimer _scale_gt(detail::g_scale[0].gemm_ns);
                 TiledArray::math::blas::gemm(
                     TiledArray::math::blas::Transpose,
                     TiledArray::math::blas::NoTranspose,
@@ -3184,6 +3375,38 @@ class Tensor {
                     /*B=*/lc0[0].data(), /*ldb=*/ldb, Real(1),
                     /*C=*/rc0[0].data(), /*ldc=*/ldc);
               } else {  // per-cell AXPY fallback for this row
+                if (detail::scale_gemm_timing_enabled()) {
+                  // classify fallback reason (re-scan; observation only, does
+                  // not affect the decision above) + exact fallback FLOPs.
+                  bool absent = false, ragged = false;
+                  long a0 = -1;
+                  for (integer k = 0; k != K; ++k) {
+                    const auto& c = lc0[k];
+                    if (c.empty()) { absent = true; break; }
+                    long s = static_cast<long>(c.size());
+                    if (a0 < 0) a0 = s; else if (a0 != s) ragged = true;
+                  }
+                  if (!absent)
+                    for (integer n = 0; n != N; ++n) {
+                      const auto& c = rc0[n];
+                      if (c.empty()) { absent = true; break; }
+                      long s = static_cast<long>(c.size());
+                      if (a0 < 0) a0 = s; else if (a0 != s) ragged = true;
+                    }
+                  std::uint64_t fl = 0;
+                  for (integer n = 0; n != N; ++n)
+                    fl += 2ull * static_cast<std::uint64_t>(K) *
+                          static_cast<std::uint64_t>(rc0[n].size());
+                  detail::g_scale[0].fb_runs.fetch_add(
+                      1, std::memory_order_relaxed);
+                  detail::g_scale[0].fb_flop.fetch_add(
+                      fl, std::memory_order_relaxed);
+                  (absent ? detail::g_scale[0].fb_absent
+                          : ragged ? detail::g_scale[0].fb_ragged
+                                   : detail::g_scale[0].fb_stride)
+                      .fetch_add(1, std::memory_order_relaxed);
+                }
+                detail::ScopedScaleTimer _scale_fb(detail::g_scale[0].fb_ns);
                 for (integer n = 0; n != N; ++n) {
                   auto c_offset = m * N + n;
                   for (integer k = 0; k != K; ++k)
@@ -3210,6 +3433,12 @@ class Tensor {
       if constexpr (std::is_same_v<std::remove_cv_t<U>, Real>) {
         if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
             gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
+          // kernel-total timer (see tot_x_t block); destroyed at `return`.
+          detail::ScopedScaleTimer _scale_kt(detail::g_scale[1].kernel_ns);
+          if (detail::scale_gemm_timing_enabled())
+            (_scale_was_empty ? detail::g_scale[1].calls_firstwrite
+                              : detail::g_scale[1].calls_accum)
+                .fetch_add(1, std::memory_order_relaxed);
           for (integer b = 0; b != nbatch(); ++b) {
             auto this_data = this->batch_data(b);
             auto left_data = left.batch_data(b);    // M x K row-major scalars
@@ -3217,6 +3446,7 @@ class Tensor {
             for (integer n = 0; n != N; ++n) {
               long A = -1;
               bool clean = true;
+              const auto _scale_tcp = detail::scale_phase_start();
               for (integer k = 0; k != K && clean; ++k) {
                 const auto& c = right_data[k * N + n];
                 if (c.empty()) {
@@ -3241,6 +3471,9 @@ class Tensor {
                 else if (A != s)
                   clean = false;
               }
+              detail::scale_phase_stop(detail::g_scale[1].check_pres_ns,
+                                       _scale_tcp);
+              const auto _scale_tcs = detail::scale_phase_start();
               integer ldb = static_cast<integer>(A);  // k-stride, right col n
               integer ldc = static_cast<integer>(A);  // m-stride, result col n
               if (clean && A > 0) {
@@ -3261,10 +3494,22 @@ class Tensor {
                       this_data[n].data() + m * sc)
                     clean = false;
               }
+              detail::scale_phase_stop(detail::g_scale[1].check_str_ns,
+                                       _scale_tcs);
               if (A <= 0) continue;
               if (clean) {
                 // C_n(M x A) += left(M x K) * B_n(K x A). Row-major gemm.
+                if (detail::scale_gemm_timing_enabled()) {
+                  detail::g_scale[1].gemm_runs.fetch_add(
+                      1, std::memory_order_relaxed);
+                  detail::g_scale[1].gemm_flop.fetch_add(
+                      2ull * static_cast<std::uint64_t>(M) *
+                          static_cast<std::uint64_t>(K) *
+                          static_cast<std::uint64_t>(A),
+                      std::memory_order_relaxed);
+                }
                 const integer Ai = static_cast<integer>(A);
+                detail::ScopedScaleTimer _scale_gt(detail::g_scale[1].gemm_ns);
                 TiledArray::math::blas::gemm(
                     TiledArray::math::blas::NoTranspose,
                     TiledArray::math::blas::NoTranspose,
@@ -3273,6 +3518,38 @@ class Tensor {
                     /*B=*/right_data[n].data(), /*ldb=*/ldb, Real(1),
                     /*C=*/this_data[n].data(), /*ldc=*/ldc);
               } else {  // per-cell AXPY fallback for this column
+                if (detail::scale_gemm_timing_enabled()) {
+                  // classify fallback reason (re-scan; observation only) +
+                  // exact fallback FLOPs.
+                  bool absent = false, ragged = false;
+                  long a0 = -1;
+                  for (integer k = 0; k != K; ++k) {
+                    const auto& c = right_data[k * N + n];
+                    if (c.empty()) { absent = true; break; }
+                    long s = static_cast<long>(c.size());
+                    if (a0 < 0) a0 = s; else if (a0 != s) ragged = true;
+                  }
+                  if (!absent)
+                    for (integer m = 0; m != M; ++m) {
+                      const auto& c = this_data[m * N + n];
+                      if (c.empty()) { absent = true; break; }
+                      long s = static_cast<long>(c.size());
+                      if (a0 < 0) a0 = s; else if (a0 != s) ragged = true;
+                    }
+                  std::uint64_t fl = 0;
+                  for (integer m = 0; m != M; ++m)
+                    fl += 2ull * static_cast<std::uint64_t>(K) *
+                          static_cast<std::uint64_t>(this_data[m * N + n].size());
+                  detail::g_scale[1].fb_runs.fetch_add(
+                      1, std::memory_order_relaxed);
+                  detail::g_scale[1].fb_flop.fetch_add(
+                      fl, std::memory_order_relaxed);
+                  (absent ? detail::g_scale[1].fb_absent
+                          : ragged ? detail::g_scale[1].fb_ragged
+                                   : detail::g_scale[1].fb_stride)
+                      .fetch_add(1, std::memory_order_relaxed);
+                }
+                detail::ScopedScaleTimer _scale_fb(detail::g_scale[1].fb_ns);
                 for (integer m = 0; m != M; ++m) {
                   auto c_offset = m * N + n;
                   for (integer k = 0; k != K; ++k)

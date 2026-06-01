@@ -1306,6 +1306,16 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
 inline std::atomic<std::size_t> g_strided_dgemm_ce_ce_right_calls{0};
 #endif
 
+/// Kill switch for the ce+ce (hce+ce) per-k segmented strided-DGEMM path: when
+/// true, arena_strided_dgemm_ce_ce_right/_left route EVERY present cell through
+/// the per-cell scalar GEMV loop (the legacy "revert to per-cell" behavior)
+/// instead of the segment walker. Test/bench hook only -- production default is
+/// false (segmented on). Mirrors regime_a_strided_disabled().
+inline bool& ce_ce_strided_disabled() {
+  static bool flag = false;
+  return flag;
+}
+
 /// ce+ce strided-DGEMM core (inner CONTRACTION; ride right-external μ̃ into BLAS
 /// M). ORIENTATION-AWARE (offsets derived from left_op/right_op of the OUTER
 /// GemmHelper, exactly as arena_strided_dgemm_ce_e) and Hadamard-agnostic:
@@ -1425,6 +1435,41 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
         measure_segments(getC, getR, getL, Mmu, nK, P);
       }
 
+      // Per-cell scalar evaluation of one k-slab: each present (μ̃) result cell
+      // gets C[μ̃] += factor * op(L) · R[k,μ̃] as one length-Q GEMV. This is the
+      // legacy per-cell path -- the route for a genuine size mismatch AND the
+      // body the ce_ce_strided_disabled() bench switch forces, to isolate the
+      // segmented-vs-per-cell speedup. Identical math to the segment walker.
+      auto percell_k = [&](std::size_t k,
+                           const typename LeftOuter::value_type& lk) {
+        ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_ce);
+        std::uint64_t _fl = 0;
+        const double* l = lk.data();
+        for (std::size_t mu = 0; mu < Mmu; ++mu) {
+          auto& Cc = cc[cbase + c_off(m, mu)];
+          const auto& rk = rc[rbase + r_off(k, mu)];
+          if (!Cc || !rk) continue;
+          const long Pl = static_cast<long>(Cc.size());
+          const long Ql = static_cast<long>(rk.size());
+          if (Ql == 0 || static_cast<long>(lk.size()) != Pl * Ql) continue;
+          _fl += 2ull * static_cast<std::uint64_t>(Pl) * Ql;
+          double* c = Cc.data();
+          const double* rr = rk.data();
+          for (long a1 = 0; a1 < Pl; ++a1) {
+            double acc = 0;
+            if (left_inner_transposed) {
+              for (long a4 = 0; a4 < Ql; ++a4) acc += l[a4 * Pl + a1] * rr[a4];
+            } else {
+              const double* lr = l + a1 * Ql;
+              for (long a4 = 0; a4 < Ql; ++a4) acc += lr[a4] * rr[a4];
+            }
+            c[a1] += factor * acc;
+          }
+        }
+        if (gemm_timing_enabled())
+          g_fall_flops_ce_ce.fetch_add(_fl, std::memory_order_relaxed);
+      };
+
       for (std::size_t k = 0; k < nK; ++k) {
         const auto& lk = lc[lbase + l_off(m, k)];
         if (!lk) continue;  // absent left single-cell operand: skip k (β=1)
@@ -1439,36 +1484,11 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
         }
         if (Q <= 0) continue;  // no present operand cell for this k
 
-        // Defensive: genuine size mismatch L[m,k] != P*Q -> scalar this k only
-        // (a strided segment GEMM would be ill-shaped). Each present (μ̃) cell
-        // once; β=1. Mirrors the old inline GEMV exactly.
-        if (static_cast<long>(lk.size()) != P * Q) {
-          ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_ce);
-          std::uint64_t _fl = 0;
-          const double* l = lk.data();
-          for (std::size_t mu = 0; mu < Mmu; ++mu) {
-            auto& Cc = cc[cbase + c_off(m, mu)];
-            const auto& rk = rc[rbase + r_off(k, mu)];
-            if (!Cc || !rk) continue;
-            const long Pl = static_cast<long>(Cc.size());
-            const long Ql = static_cast<long>(rk.size());
-            if (Ql == 0 || static_cast<long>(lk.size()) != Pl * Ql) continue;
-            _fl += 2ull * static_cast<std::uint64_t>(Pl) * Ql;
-            double* c = Cc.data();
-            const double* rr = rk.data();
-            for (long a1 = 0; a1 < Pl; ++a1) {
-              double acc = 0;
-              if (left_inner_transposed) {
-                for (long a4 = 0; a4 < Ql; ++a4) acc += l[a4 * Pl + a1] * rr[a4];
-              } else {
-                const double* lr = l + a1 * Ql;
-                for (long a4 = 0; a4 < Ql; ++a4) acc += lr[a4] * rr[a4];
-              }
-              c[a1] += factor * acc;
-            }
-          }
-          if (gemm_timing_enabled())
-            g_fall_flops_ce_ce.fetch_add(_fl, std::memory_order_relaxed);
+        // Bench/forced per-cell, OR genuine size mismatch L[m,k] != P*Q (a
+        // strided segment GEMM would be ill-shaped): take the per-cell path.
+        if (ce_ce_strided_disabled() ||
+            static_cast<long>(lk.size()) != P * Q) {
+          percell_k(k, lk);
           continue;
         }
 
@@ -1654,6 +1674,38 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
         measure_segments(getC, getL, getR, Mo, nK, P);
       }
 
+      // Per-cell scalar evaluation of one k-slab (left orientation): each
+      // present (m) result cell gets C[m,n] += factor * L[m,k] · op(R[k,n]).
+      // Legacy per-cell path; forced by ce_ce_strided_disabled() for the bench.
+      auto percell_k = [&](std::size_t k,
+                           const typename RightOuter::value_type& rk) {
+        ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_ce);
+        std::uint64_t _fl = 0;
+        const double* bd = rk.data();  // canonical Q x P row-major
+        for (std::size_t m = 0; m < Mo; ++m) {
+          auto& Cc = cc[cbase + c_off(m, n)];
+          const auto& lk = lc[lbase + l_off(m, k)];
+          if (!Cc || !lk) continue;
+          const long Pl = static_cast<long>(Cc.size());
+          const long Ql = static_cast<long>(lk.size());
+          if (Ql == 0 || static_cast<long>(rk.size()) != Ql * Pl) continue;
+          _fl += 2ull * static_cast<std::uint64_t>(Pl) * Ql;
+          double* c = Cc.data();
+          const double* a = lk.data();  // Ql vector
+          for (long a4 = 0; a4 < Ql; ++a4) {
+            const double av = a[a4];
+            if (right_inner_transposed) {
+              for (long p = 0; p < Pl; ++p) c[p] += factor * av * bd[p * Ql + a4];
+            } else {
+              const double* br = bd + a4 * Pl;
+              for (long p = 0; p < Pl; ++p) c[p] += factor * av * br[p];
+            }
+          }
+        }
+        if (gemm_timing_enabled())
+          g_fall_flops_ce_ce.fetch_add(_fl, std::memory_order_relaxed);
+      };
+
       for (std::size_t k = 0; k < nK; ++k) {
         const auto& rk = rc[rbase + r_off(k, n)];
         if (!rk) continue;  // absent right single-cell operand: skip k (beta=1)
@@ -1668,37 +1720,11 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
         }
         if (Q <= 0) continue;  // no present operand cell for this k
 
-        // Defensive: genuine size mismatch R[k,n] != P*Q -> scalar this k only.
-        // Each present (m) cell once; beta=1. Mirrors the old inline GEMV.
-        if (static_cast<long>(rk.size()) != P * Q) {
-          ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_ce);
-          std::uint64_t _fl = 0;
-          const double* bd = rk.data();  // canonical Q x P row-major
-          for (std::size_t m = 0; m < Mo; ++m) {
-            auto& Cc = cc[cbase + c_off(m, n)];
-            const auto& lk = lc[lbase + l_off(m, k)];
-            if (!Cc || !lk) continue;
-            const long Pl = static_cast<long>(Cc.size());
-            const long Ql = static_cast<long>(lk.size());
-            if (Ql == 0 || static_cast<long>(rk.size()) != Ql * Pl) continue;
-            _fl += 2ull * static_cast<std::uint64_t>(Pl) * Ql;
-            double* c = Cc.data();
-            const double* a = lk.data();  // Ql vector
-            // canonical B(a4,p) = bd[a4*Pl + p]; transposed (b1,a4)=Pl x Ql
-            // row-major B(a4,p) = bd[p*Ql + a4].
-            for (long a4 = 0; a4 < Ql; ++a4) {
-              const double av = a[a4];
-              if (right_inner_transposed) {
-                for (long p = 0; p < Pl; ++p)
-                  c[p] += factor * av * bd[p * Ql + a4];
-              } else {
-                const double* br = bd + a4 * Pl;
-                for (long p = 0; p < Pl; ++p) c[p] += factor * av * br[p];
-              }
-            }
-          }
-          if (gemm_timing_enabled())
-            g_fall_flops_ce_ce.fetch_add(_fl, std::memory_order_relaxed);
+        // Bench/forced per-cell, OR genuine size mismatch R[k,n] != P*Q (a
+        // strided segment GEMM would be ill-shaped): take the per-cell path.
+        if (ce_ce_strided_disabled() ||
+            static_cast<long>(rk.size()) != P * Q) {
+          percell_k(k, rk);
           continue;
         }
 
