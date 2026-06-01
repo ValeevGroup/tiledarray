@@ -1627,4 +1627,39 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_count_alternating) {
 #endif
 }
 
+
+// T16: _left mirror of T14 -- per-k misaligned along m yields 3 segment-GEMMs
+// (k=0: m in {0},{2} = 2 segs; k=1: m in {1,2} = 1 seg). Proves the LEFT kernel
+// segments rather than dropping the whole run to the scalar fallback.
+BOOST_AUTO_TEST_CASE(ce_ce_left_seg_count_per_k_misaligned) {
+#ifdef TA_STRIDED_DGEMM_COUNT
+  namespace blas = TA::math::blas;
+  const std::size_t Mo = 3, No = 1, nK = 2, P = 3, Q = 4;
+  // L outer (Mo,nK) ordinal = m*nK + k. Present set: k=0 -> m{0,2}; k=1 -> m{1,2}.
+  // Holes: (m=1,k=0)=ord2, (m=0,k=1)=ord1.
+  auto lhole = [&](std::size_t o) { return o == 2 || o == 1; };
+  Outer L = make_sparse(TA::Range{Mo, nK}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, lhole, 1.0);
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{nK, No}, 1, [&](std::size_t){ return TA::Range{Q, P}; });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{Mo, No}, 1, [&](std::size_t){ return TA::Range{P}; });
+  zero_result(C, Mo * No);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
+      blas::NoTranspose, blas::NoTranspose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_left_calls.load(),
+                    std::size_t{3});
+  // also correctness against the sparsity-aware reference.
+  auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
+  check_ce_ce(C, ref, 1, Mo, No, P);
+#else
+  BOOST_TEST_MESSAGE(
+      "ce_ce_left_seg_count_per_k_misaligned skipped (no TA_STRIDED_DGEMM_COUNT)");
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()

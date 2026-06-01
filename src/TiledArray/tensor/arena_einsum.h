@@ -1613,191 +1613,77 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
     const std::size_t lbase = b * Mo * nK;
     const std::size_t rbase = b * No * nK;
     for (std::size_t n = 0; n < No; ++n) {  // right-external outer loop
+      // Per-k segment walker (mirror of arena_strided_dgemm_ce_ce_right; strided
+      // axis is m, single-cell operand is R[k,n], strided operands are L[m,k]
+      // (the BLAS-M rows) and C[m,n]). For each present R[k,n], walk the m axis
+      // and emit one strided GEMM per maximal contiguous segment of present,
+      // size-matched (C.size==P, L.size==Q), uniformly-strided cells; skip holes.
+      // beta=1 accumulates across k AND segments. A fully-dense run yields one
+      // full-run segment == the old clean GEMM. A genuine size mismatch
+      // R[k,n] != P*Q drops to a tiny scalar path for that k only.
       const auto _check_t0 = phase_start();
-      const auto& c0 = cc[cbase + c_off(0, n)];
-      long P = c0 ? static_cast<long>(c0.size()) : -1;  // result inner b1
-      bool clean = (P > 0);
-      // C m-run (fixed n): uniform size P, constant stride sC>=P (page-jump
-      // guard). Presence-first before any cell-0->1 pointer subtraction.
-      long sC = P;
-      if (clean && Mo > 1) {
-        for (std::size_t m = 0; clean && m < Mo; ++m) {
-          const auto& cm = cc[cbase + c_off(m, n)];
-          if (!cm || static_cast<long>(cm.size()) != P) clean = false;
-        }
-        if (clean) {
-          sC = static_cast<long>(cc[cbase + c_off(1, n)].data() - c0.data());
-          if (sC < P) clean = false;
-          for (std::size_t m = 0; clean && m < Mo; ++m) {
-            if (cc[cbase + c_off(m, n)].data() !=
-                c0.data() + static_cast<std::ptrdiff_t>(m) * sC)
-              clean = false;
-          }
-        }
-      }
-      // Q from L[m=0,k=0]; R[k,n] size Q*P; L m-run per k uniform Q at constant
-      // stride sA>=Q (uniform across k) -- page-jump guard on L too.
-      const auto* l00 = clean ? &lc[lbase + l_off(0, 0)] : nullptr;
-      long Q = (l00 && *l00) ? static_cast<long>(l00->size()) : -1;
-      if (Q <= 0) clean = false;
-      long sA = Q;
-      for (std::size_t k = 0; clean && k < nK; ++k) {
-        const auto& rk = rc[rbase + r_off(k, n)];
-        if (!rk || static_cast<long>(rk.size()) != P * Q) {
-          clean = false;
+      // Result inner free index P(=b1) from the FIRST PRESENT C[m,n].
+      long P = -1;
+      for (std::size_t m = 0; m < Mo; ++m) {
+        const auto& cm = cc[cbase + c_off(m, n)];
+        if (cm) {
+          P = static_cast<long>(cm.size());
           break;
-        }
-        const auto& lk0 = lc[lbase + l_off(0, k)];
-        if (!lk0 || static_cast<long>(lk0.size()) != Q) {
-          clean = false;
-          break;
-        }
-        if (Mo > 1) {
-          for (std::size_t m = 0; clean && m < Mo; ++m) {
-            const auto& lm = lc[lbase + l_off(m, k)];
-            if (!lm || static_cast<long>(lm.size()) != Q) clean = false;
-          }
-          if (!clean) break;
-          const long sAk =
-              static_cast<long>(lc[lbase + l_off(1, k)].data() - lk0.data());
-          if (sAk < Q) {
-            clean = false;
-            break;
-          }
-          if (k == 0) sA = sAk;
-          else if (sAk != sA) {
-            clean = false;
-            break;
-          }
-          for (std::size_t m = 0; clean && m < Mo; ++m) {
-            if (lc[lbase + l_off(m, k)].data() !=
-                lk0.data() + static_cast<std::ptrdiff_t>(m) * sA)
-              clean = false;
-          }
         }
       }
       phase_stop(g_check_ns_ce_ce, _check_t0);
-      if (clean) {
-        if (gemm_timing_enabled())
-          g_clean_runs_ce_ce.fetch_add(1, std::memory_order_relaxed);
-        double* Cd = cc[cbase + c_off(0, n)].data();  // m-run base, stride sC
-        for (std::size_t k = 0; k < nK; ++k) {
-          const double* Ak =
-              lc[lbase + l_off(0, k)].data();  // m-run base for k, stride sA
-          const double* Bk = rc[rbase + r_off(k, n)].data();
-          // C(Mo x P) += factor * A(Mo x Q) . B(Q x P) ; contract a4(=Q).
-          // Canonical B is (a4,b1)=Q x P row-major (transb=N, ldb=P). When the
-          // right inner cell is matrix_transpose it is stored (b1,a4)=P x Q
-          // row-major, so feed transb=T with ldb=Q (op(B)=(a4,b1)); zero-copy.
-          {
-            ScopedShapedGemmTimer _gt(g_gemm_ns_ce_ce, g_gemm_calls_ce_ce,
-                                      g_ce_ce_shapes, Mo, P, Q);
-            blas::gemm(
-                blas::NoTranspose,
-                right_inner_transposed ? blas::Transpose : blas::NoTranspose,
-                /*M=*/static_cast<integer>(Mo),
-                /*N=*/static_cast<integer>(P),
-                /*K=*/static_cast<integer>(Q), factor,
-                /*A=*/Ak, /*lda=*/static_cast<integer>(sA),
-                /*B=*/Bk,
-                /*ldb=*/static_cast<integer>(right_inner_transposed ? Q : P),
-                /*beta=*/1.0,
-                /*C=*/Cd, /*ldc=*/static_cast<integer>(sC));
-          }
-#ifdef TA_STRIDED_DGEMM_COUNT
-          g_strided_dgemm_ce_ce_left_calls.fetch_add(1,
-                                                     std::memory_order_relaxed);
-#endif
-        }
-      } else {
-        ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_ce);
-        if (gemm_timing_enabled()) {
-          int why = classify_run(
-              [&](std::size_t m) -> const typename ResultOuter::value_type& {
-                return cc[cbase + c_off(m, n)];
-              },
-              Mo);
-          if (why == 0) {
-            const auto& c0d = cc[cbase + c_off(0, n)];
-            const long Pr = c0d ? static_cast<long>(c0d.size()) : -1;
-            // strided operand here is L (m-run); single-cell operand is R[k,n].
-            why = classify_operand(
-                [&](std::size_t k, std::size_t m)
-                    -> const typename LeftOuter::value_type& {
-                  return lc[lbase + l_off(m, k)];
-                },
-                [&](std::size_t k) -> const typename RightOuter::value_type& {
-                  return rc[rbase + r_off(k, n)];
-                },
-                Mo, nK, Pr);
-          }
-          record_ce_ce_fallback(why);
-          std::size_t pk = 0;
-          const auto& c0k = cc[cbase + c_off(0, n)];
-          const long Pk = c0k ? static_cast<long>(c0k.size()) : -1;
-          if (Pk > 0 &&
-              kskip_rescuable(
-                  [&](std::size_t m)
-                      -> const typename ResultOuter::value_type& {
-                    return cc[cbase + c_off(m, n)];
-                  },
-                  [&](std::size_t k, std::size_t m)
-                      -> const typename LeftOuter::value_type& {
-                    return lc[lbase + l_off(m, k)];
-                  },
-                  [&](std::size_t k) -> const typename RightOuter::value_type& {
-                    return rc[rbase + r_off(k, n)];
-                  },
-                  Mo, nK, Pk, pk)) {
-            g_fall_kskip_ce_ce.fetch_add(1, std::memory_order_relaxed);
-            g_fall_kskip_present_ce_ce.fetch_add(pk, std::memory_order_relaxed);
-          }
-          if (Pk > 0 &&
-              gather_rescuable(
-                  [&](std::size_t m)
-                      -> const typename ResultOuter::value_type& {
-                    return cc[cbase + c_off(m, n)];
-                  },
-                  [&](std::size_t k, std::size_t m)
-                      -> const typename LeftOuter::value_type& {
-                    return lc[lbase + l_off(m, k)];
-                  },
-                  [&](std::size_t k) -> const typename RightOuter::value_type& {
-                    return rc[rbase + r_off(k, n)];
-                  },
-                  Mo, nK, Pk))
-            g_fall_gather_ce_ce.fetch_add(1, std::memory_order_relaxed);
-          if (Pk > 0)
-            measure_segments(
-                [&](std::size_t m)
-                    -> const typename ResultOuter::value_type& {
-                  return cc[cbase + c_off(m, n)];
-                },
-                [&](std::size_t k, std::size_t m)
-                    -> const typename LeftOuter::value_type& {
-                  return lc[lbase + l_off(m, k)];
-                },
-                [&](std::size_t k) -> const typename RightOuter::value_type& {
-                  return rc[rbase + r_off(k, n)];
-                },
-                Mo, nK, Pk);
-        }
-        std::uint64_t _fl = 0;
-        // inline per-cell fallback for THIS (b,n) (each cell once)
+      if (P <= 0) continue;  // result run entirely absent: nothing to write
+
+      // Gated diagnosis: strided operand is L (m-run); single-cell is R[k,n].
+      if (gemm_timing_enabled()) {
+        auto getC =
+            [&](std::size_t m) -> const typename ResultOuter::value_type& {
+          return cc[cbase + c_off(m, n)];
+        };
+        auto getL = [&](std::size_t k, std::size_t m)
+            -> const typename LeftOuter::value_type& {
+          return lc[lbase + l_off(m, k)];
+        };
+        auto getR =
+            [&](std::size_t k) -> const typename RightOuter::value_type& {
+          return rc[rbase + r_off(k, n)];
+        };
+        int why = classify_run(getC, Mo);
+        if (why == 0) why = classify_operand(getL, getR, Mo, nK, P);
+        if (why != 0) record_ce_ce_fallback(why);
+        measure_segments(getC, getL, getR, Mo, nK, P);
+      }
+
+      for (std::size_t k = 0; k < nK; ++k) {
+        const auto& rk = rc[rbase + r_off(k, n)];
+        if (!rk) continue;  // absent right single-cell operand: skip k (beta=1)
+        // Discover Q from the first present L[m,k] for this k.
+        long Q = -1;
         for (std::size_t m = 0; m < Mo; ++m) {
-          auto& Cc = cc[cbase + c_off(m, n)];
-          if (!Cc) continue;
-          const long Pl = static_cast<long>(Cc.size());
-          double* c = Cc.data();
-          for (std::size_t k = 0; k < nK; ++k) {
+          const auto& lm = lc[lbase + l_off(m, k)];
+          if (lm) {
+            Q = static_cast<long>(lm.size());
+            break;
+          }
+        }
+        if (Q <= 0) continue;  // no present operand cell for this k
+
+        // Defensive: genuine size mismatch R[k,n] != P*Q -> scalar this k only.
+        // Each present (m) cell once; beta=1. Mirrors the old inline GEMV.
+        if (static_cast<long>(rk.size()) != P * Q) {
+          ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_ce);
+          std::uint64_t _fl = 0;
+          const double* bd = rk.data();  // canonical Q x P row-major
+          for (std::size_t m = 0; m < Mo; ++m) {
+            auto& Cc = cc[cbase + c_off(m, n)];
             const auto& lk = lc[lbase + l_off(m, k)];
-            const auto& rk = rc[rbase + r_off(k, n)];
-            if (!lk || !rk) continue;
+            if (!Cc || !lk) continue;
+            const long Pl = static_cast<long>(Cc.size());
             const long Ql = static_cast<long>(lk.size());
             if (Ql == 0 || static_cast<long>(rk.size()) != Ql * Pl) continue;
             _fl += 2ull * static_cast<std::uint64_t>(Pl) * Ql;
-            const double* a = lk.data();   // Ql vector
-            const double* bd = rk.data();  // canonical Ql x Pl row-major
+            double* c = Cc.data();
+            const double* a = lk.data();  // Ql vector
             // canonical B(a4,p) = bd[a4*Pl + p]; transposed (b1,a4)=Pl x Ql
             // row-major B(a4,p) = bd[p*Ql + a4].
             for (long a4 = 0; a4 < Ql; ++a4) {
@@ -1811,9 +1697,76 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
               }
             }
           }
+          if (gemm_timing_enabled())
+            g_fall_flops_ce_ce.fetch_add(_fl, std::memory_order_relaxed);
+          continue;
         }
-        if (gemm_timing_enabled())
-          g_fall_flops_ce_ce.fetch_add(_fl, std::memory_order_relaxed);
+
+        const double* Rk = rk.data();  // Q x P (or P x Q if transposed)
+        std::size_t m = 0;
+        while (m < Mo) {
+          const auto& lc0 = lc[lbase + l_off(m, k)];
+          auto& cc0 = cc[cbase + c_off(m, n)];
+          // skip holes / size-mismatched cells (cannot join a P/Q segment).
+          if (!lc0 || !cc0 || static_cast<long>(cc0.size()) != P ||
+              static_cast<long>(lc0.size()) != Q) {
+            ++m;
+            continue;
+          }
+          const double* lstart = lc0.data();  // segment m-run base on L, stride sA
+          double* cstart = cc0.data();        // segment m-run base on C, stride sC
+          // Grow the maximal segment, recomputing the strides locally (never
+          // reuse a run-wide stale stride).
+          std::size_t end = m + 1;
+          long sA = -1, sC = -1;
+          while (end < Mo) {
+            const auto& lce = lc[lbase + l_off(end, k)];
+            const auto& cce = cc[cbase + c_off(end, n)];
+            if (!lce || !cce) break;
+            if (static_cast<long>(cce.size()) != P ||
+                static_cast<long>(lce.size()) != Q)
+              break;
+            const long dA = static_cast<long>(lce.data() - lstart);
+            const long dC = static_cast<long>(cce.data() - cstart);
+            const long off = static_cast<long>(end - m);
+            if (off == 1) {
+              sA = dA;
+              sC = dC;
+              if (sA < Q || sC < P) break;  // page-jump / overlap
+            } else if (dA != off * sA || dC != off * sC) {
+              break;
+            }
+            ++end;
+          }
+          const std::size_t Mseg = end - m;
+          const long ldA = (Mseg > 1) ? sA : Q;
+          const long ldC = (Mseg > 1) ? sC : P;
+          // C(Mseg x P) += factor * L_tilde(Mseg x Q) . op(R) ; contract a4(=Q).
+          // op(R) is (a4,b1)=Q x P: canonical R is Q x P used directly
+          // (transb=N, ldb=P); a matrix_transpose right inner is stored
+          // (b1,a4)=P x Q, fed transb=T with ldb=Q (zero-copy). Threaded
+          // identically per segment to the old clean GEMM.
+          {
+            ScopedShapedGemmTimer _gt(g_gemm_ns_ce_ce, g_gemm_calls_ce_ce,
+                                      g_ce_ce_shapes, Mseg, P, Q);
+            blas::gemm(
+                blas::NoTranspose,
+                right_inner_transposed ? blas::Transpose : blas::NoTranspose,
+                /*M=*/static_cast<integer>(Mseg),
+                /*N=*/static_cast<integer>(P),
+                /*K=*/static_cast<integer>(Q), factor,
+                /*A=*/lstart, /*lda=*/static_cast<integer>(ldA),
+                /*B=*/Rk,
+                /*ldb=*/static_cast<integer>(right_inner_transposed ? Q : P),
+                /*beta=*/1.0,
+                /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
+          }
+#ifdef TA_STRIDED_DGEMM_COUNT
+          g_strided_dgemm_ce_ce_left_calls.fetch_add(1,
+                                                     std::memory_order_relaxed);
+#endif
+          m = end;
+        }
       }
     }
   }
