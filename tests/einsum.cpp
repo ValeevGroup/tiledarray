@@ -1493,6 +1493,9 @@ BOOST_AUTO_TEST_CASE(hce_e_contraction_arena_matches_owning) {
   }
   constexpr std::size_t expected_cells = static_cast<std::size_t>(I * K);
   constexpr std::size_t expected_elements = expected_cells * P * Q;
+  world.gop.sum(result_outer_cells_seen);
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_EQUAL(result_outer_cells_seen, expected_cells);
   BOOST_CHECK_EQUAL(elements_compared, expected_elements);
@@ -1632,6 +1635,9 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_arena_matches_owning) {
   }
   constexpr std::size_t expected_cells = static_cast<std::size_t>(H * I);
   constexpr std::size_t expected_elements = expected_cells * P * Q;
+  world.gop.sum(result_outer_cells_seen);
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_EQUAL(result_outer_cells_seen, expected_cells);
   BOOST_CHECK_EQUAL(elements_compared, expected_elements);
@@ -1743,6 +1749,8 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_strided_equals_percell) {
       }
     }
   }
+  world.gop.sum(result_outer_cells_seen);
+  world.gop.sum(elements_compared);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(H * I));
   BOOST_CHECK_EQUAL(elements_compared,
@@ -1877,6 +1885,9 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_noncanonical_inner_matches_owning) {
       }
     }
   }
+  world.gop.sum(result_outer_cells_seen);
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(H * I));
   BOOST_CHECK_EQUAL(elements_compared,
@@ -2171,6 +2182,8 @@ BOOST_AUTO_TEST_CASE(ce_e_multi_external_arena_matches_owning) {
       }
     }
   }
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 #ifdef TA_STRIDED_DGEMM_COUNT
@@ -2289,6 +2302,8 @@ BOOST_AUTO_TEST_CASE(hce_e_multi_external_arena_matches_owning) {
       }
     }
   }
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 #ifdef TA_STRIDED_DGEMM_COUNT
@@ -2413,6 +2428,9 @@ BOOST_AUTO_TEST_CASE(hce_ce_contraction_arena_matches_owning) {
       }
     }
   }
+  world.gop.sum(result_outer_cells_seen);
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(I * M));
   BOOST_CHECK_EQUAL(elements_compared, static_cast<std::size_t>(I * M * P));
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
@@ -2582,6 +2600,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_no_hadamard_arena_matches_owning) {
       }
     }
   }
+  world.gop.sum(result_outer_cells_seen);
+  world.gop.max(max_abs_diff);
   BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(M));
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
@@ -2696,6 +2716,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_clean_arena_matches_owning) {
             std::max(max_abs_diff, std::abs(ac.data()[e] - oc.data()[e]));
     }
   }
+  world.gop.sum(result_outer_cells_seen);
+  world.gop.max(max_abs_diff);
   BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(M * N));
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
@@ -2820,6 +2842,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_general_matrix_matrix_not_strided) {
             std::max(max_abs_diff, std::abs(ac.data()[e] - oc.data()[e]));
     }
   }
+  world.gop.sum(result_outer_cells_seen);
+  world.gop.max(max_abs_diff);
   BOOST_CHECK_EQUAL(result_outer_cells_seen, static_cast<std::size_t>(M * N));
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
@@ -2937,6 +2961,8 @@ BOOST_AUTO_TEST_CASE(hce_ce_left_external_arena_matches_owning) {
       }
     }
   }
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
@@ -3058,6 +3084,8 @@ BOOST_AUTO_TEST_CASE(hce_e_combined_equivalence_strided) {
       }
     }
   }
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
   (void)J;
@@ -3176,6 +3204,8 @@ BOOST_AUTO_TEST_CASE(hce_ce_combined_equivalence_strided) {
       }
     }
   }
+  world.gop.sum(elements_compared);
+  world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
