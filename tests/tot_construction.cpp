@@ -10,6 +10,7 @@
 #include "global_fixture.h"
 #include "unit_test_config.h"
 
+#include <complex>
 #include <cstddef>
 #include <vector>
 
@@ -574,6 +575,59 @@ void test_arena_tile_permute() {
     }
 }
 
+/// conj()/conj(perm)/conj_to() on a tensor-of-tensors with complex inner cells.
+/// Exercises the arena-aware scale(factor) and scale(factor, perm) paths (the
+/// latter previously threw for view/arena inner) and in-place conj_to. Real
+/// conj would be a no-op, so inner cells carry a nonzero imaginary part.
+template <typename InnerTile>
+void test_conj_tot() {
+  using OuterTile = TA::Tensor<InnerTile>;
+  using cd = typename InnerTile::value_type;  // std::complex<double>
+
+  // rank-2 outer so a non-identity outer permutation is meaningful
+  const TA::Range outer{2, 2};
+  auto rng = [](const auto&) { return typename InnerTile::range_type{3}; };
+  auto fill = [](auto& cell, const auto& idx) {
+    const long e = static_cast<long>(idx[0]) * 10 + static_cast<long>(idx[1]);
+    for (std::size_t i = 0; i < cell.size(); ++i)
+      cell.data()[i] = cd(100.0 * e + i, 1.0 + e - static_cast<double>(i));
+  };
+  OuterTile src = TA::detail::make_nested_tile<OuterTile>(outer, rng, fill);
+
+  auto inner_is_conj = [](const InnerTile& got, const InnerTile& s) {
+    BOOST_REQUIRE_EQUAL(got.size(), s.size());
+    for (std::size_t i = 0; i < got.size(); ++i) {
+      BOOST_CHECK_EQUAL(got.data()[i].real(), s.data()[i].real());
+      BOOST_CHECK_EQUAL(got.data()[i].imag(), -s.data()[i].imag());
+    }
+  };
+
+  // out-of-place conj() (scale(conj_op) -> arena_trivial_unary)
+  OuterTile c = src.conj();
+  for (std::size_t o = 0; o < src.range().volume(); ++o)
+    inner_is_conj(c.data()[o], src.data()[o]);
+
+  // permuted conj() (scale(conj_op, perm) -- the arena branch under test);
+  // must agree with conj-then-permute.
+  TA::Permutation perm({1, 0});  // swap the two outer modes
+  OuterTile cp = src.conj(perm);
+  OuterTile cp_ref = src.conj().permute(perm);
+  BOOST_REQUIRE_EQUAL(cp.range(), cp_ref.range());
+  for (std::size_t o = 0; o < cp.range().volume(); ++o) {
+    const InnerTile& a = cp.data()[o];
+    const InnerTile& b = cp_ref.data()[o];
+    BOOST_REQUIRE_EQUAL(a.size(), b.size());
+    for (std::size_t i = 0; i < a.size(); ++i)
+      BOOST_CHECK_EQUAL(a.data()[i], b.data()[i]);
+  }
+
+  // in-place conj_to() (scale_to(conj_op) -> free arena operator*=)
+  OuterTile t2 = TA::detail::make_nested_tile<OuterTile>(outer, rng, fill);
+  t2.conj_to();
+  for (std::size_t o = 0; o < src.range().volume(); ++o)
+    inner_is_conj(t2.data()[o], src.data()[o]);
+}
+
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(tot_construction_suite, TA_UT_LABEL_SERIAL)
@@ -671,6 +725,13 @@ BOOST_AUTO_TEST_CASE(neg_tensor_inner) {
 }
 BOOST_AUTO_TEST_CASE(neg_arena_inner) {
   test_tot_neg<TA::ArenaTensor<double>, TA::DensePolicy>();
+}
+
+BOOST_AUTO_TEST_CASE(conj_tot_tensor_inner) {
+  test_conj_tot<TA::Tensor<std::complex<double>>>();
+}
+BOOST_AUTO_TEST_CASE(conj_tot_arena_inner) {
+  test_conj_tot<TA::ArenaTensor<std::complex<double>>>();
 }
 
 // canonical inner contraction: c(ij;mn) = sum_k sum_o a(ijk;mo) b(ijk;on)

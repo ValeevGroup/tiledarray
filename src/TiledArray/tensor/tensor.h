@@ -111,19 +111,22 @@ inline bool scale_gemm_timing_enabled() {
 
 /// Counters for one scale regime. `{0}` member-init gives well-defined zero.
 struct ScaleRegimeCounters {
-  std::atomic<std::uint64_t> gemm_ns{0};   // wall ns inside the strided gemm
-  std::atomic<std::uint64_t> fb_ns{0};     // wall ns inside the AXPY fallback
-  std::atomic<std::uint64_t> gemm_runs{0}; // clean rows/cols (one strided GEMM)
-  std::atomic<std::uint64_t> fb_runs{0};   // rows/cols that fell back to AXPY
-  std::atomic<std::uint64_t> gemm_flop{0}; // 2*K*N*A (clean), summed
-  std::atomic<std::uint64_t> fb_flop{0};   // exact 2*K*Sum(cellsize) (fallback)
-  std::atomic<std::uint64_t> fb_absent{0}; // fallback reason: an empty cell
-  std::atomic<std::uint64_t> fb_ragged{0}; // fallback reason: ragged inner size
-  std::atomic<std::uint64_t> fb_stride{0}; // fallback reason: multi-page stride
+  std::atomic<std::uint64_t> gemm_ns{0};  // wall ns inside the strided gemm
+  std::atomic<std::uint64_t> fb_ns{0};    // wall ns inside the AXPY fallback
+  std::atomic<std::uint64_t> gemm_runs{
+      0};                                 // clean rows/cols (one strided GEMM)
+  std::atomic<std::uint64_t> fb_runs{0};  // rows/cols that fell back to AXPY
+  std::atomic<std::uint64_t> gemm_flop{0};  // 2*K*N*A (clean), summed
+  std::atomic<std::uint64_t> fb_flop{0};  // exact 2*K*Sum(cellsize) (fallback)
+  std::atomic<std::uint64_t> fb_absent{0};  // fallback reason: an empty cell
+  std::atomic<std::uint64_t> fb_ragged{
+      0};  // fallback reason: ragged inner size
+  std::atomic<std::uint64_t> fb_stride{
+      0};  // fallback reason: multi-page stride
   // --- phase breakdown of the per-(b,m) loop (Amdahl of the 75% overhead) ---
-  std::atomic<std::uint64_t> kernel_ns{0};    // whole for-b/for-m loop body
-  std::atomic<std::uint64_t> check_pres_ns{0};// per-row presence + size scan
-  std::atomic<std::uint64_t> check_str_ns{0}; // per-row constant-stride walk
+  std::atomic<std::uint64_t> kernel_ns{0};      // whole for-b/for-m loop body
+  std::atomic<std::uint64_t> check_pres_ns{0};  // per-row presence + size scan
+  std::atomic<std::uint64_t> check_str_ns{0};   // per-row constant-stride walk
   // beta-eligibility: how many Tensor::gemm CALLS land on a freshly-allocated
   // (this->empty()) output tile -- where beta=0 would be valid -- vs an
   // accumulation into an existing tile (beta=1 required for correctness).
@@ -189,7 +192,10 @@ struct ScaleGemmTimingDumper {
       const auto gns = L(g_scale[r].gemm_ns), fns = L(g_scale[r].fb_ns);
       const auto gr = L(g_scale[r].gemm_runs), fr = L(g_scale[r].fb_runs);
       const auto gf = L(g_scale[r].gemm_flop), ff = L(g_scale[r].fb_flop);
-      tg_ns += gns; tf_ns += fns; tg_fl += gf; tf_fl += ff;
+      tg_ns += gns;
+      tf_ns += fns;
+      tg_fl += gf;
+      tf_fl += ff;
       const double tt = static_cast<double>(gns + fns);
       const double ftot = static_cast<double>(gf + ff);
       std::cerr << "[scale-timing] " << names[r] << ":\n";
@@ -200,16 +206,18 @@ struct ScaleGemmTimingDumper {
       std::cerr << "[scale-timing]   time coverage (GEMM / total) : "
                 << (tt > 0 ? 100.0 * gns / tt : 0.0) << "%\n";
       std::cerr << "[scale-timing]   FLOP coverage (GEMM / total) : "
-                << (ftot > 0 ? 100.0 * gf / ftot : 0.0) << "%  ("
-                << gf / 1e9 << " GFLOP gemm / " << ftot / 1e9 << " GFLOP)\n";
+                << (ftot > 0 ? 100.0 * gf / ftot : 0.0) << "%  (" << gf / 1e9
+                << " GFLOP gemm / " << ftot / 1e9 << " GFLOP)\n";
       std::cerr << "[scale-timing]   GFLOP/s strided="
                 << (gns > 0 ? gf / static_cast<double>(gns) : 0.0)
                 << "  fallback="
                 << (fns > 0 ? ff / static_cast<double>(fns) : 0.0) << "\n";
       std::cerr << "[scale-timing]   fallback runs by reason: absent="
-                << L(g_scale[r].fb_absent) << " ragged=" << L(g_scale[r].fb_ragged)
+                << L(g_scale[r].fb_absent)
+                << " ragged=" << L(g_scale[r].fb_ragged)
                 << " multipage-stride=" << L(g_scale[r].fb_stride) << "\n";
-      // Phase breakdown of the per-(b,m) loop = where the non-GEMM overhead goes.
+      // Phase breakdown of the per-(b,m) loop = where the non-GEMM overhead
+      // goes.
       const auto kn = L(g_scale[r].kernel_ns);
       const auto cp = L(g_scale[r].check_pres_ns);
       const auto cs = L(g_scale[r].check_str_ns);
@@ -2009,7 +2017,14 @@ class Tensor {
     // early exit for empty this
     if (empty()) return {};
 
-    if constexpr (is_tensor_view_v<value_type>) {
+    if constexpr (is_arena_tensor_v<value_type>) {
+      // Arena inner cells: scale via the arena kernel (which manages the slab),
+      // then apply the result permutation if non-trivial. Mirrors the arena
+      // add(right, perm) overload above. ArenaTensor is also a view, so this
+      // branch must precede the view branch below.
+      auto result = scale(factor);
+      return arena_perm_is_trivial(perm) ? result : result.permute(perm);
+    } else if constexpr (is_tensor_view_v<value_type>) {
       TA_EXCEPTION(
           "Tensor<View>::scale(factor, perm): permutation is not "
           "supported for view inner cells");
@@ -2035,8 +2050,18 @@ class Tensor {
     // early exit for empty this
     if (empty()) return *this;
 
-    return inplace_unary(
-        [factor](value_type& MADNESS_RESTRICT res) { res *= factor; });
+    if constexpr (is_arena_tensor_v<value_type>) {
+      // Arena inner cells: route through each cell's own in-place scale_to (the
+      // free arena kernel), which handles a ComplexConjugate factor by
+      // conjugating each arena scalar in place. Going through `cell *= factor`
+      // would instead select the generic operator*=(.., ComplexConjugate) ->
+      // detail::conj(cell), which has no value-returning conj for ArenaTensor.
+      return inplace_unary(
+          [factor](value_type& MADNESS_RESTRICT c) { c.scale_to(factor); });
+    } else {
+      return inplace_unary(
+          [factor](value_type& MADNESS_RESTRICT res) { res *= factor; });
+    }
   }
 
   // Addition operations
@@ -3382,16 +3407,28 @@ class Tensor {
                   long a0 = -1;
                   for (integer k = 0; k != K; ++k) {
                     const auto& c = lc0[k];
-                    if (c.empty()) { absent = true; break; }
+                    if (c.empty()) {
+                      absent = true;
+                      break;
+                    }
                     long s = static_cast<long>(c.size());
-                    if (a0 < 0) a0 = s; else if (a0 != s) ragged = true;
+                    if (a0 < 0)
+                      a0 = s;
+                    else if (a0 != s)
+                      ragged = true;
                   }
                   if (!absent)
                     for (integer n = 0; n != N; ++n) {
                       const auto& c = rc0[n];
-                      if (c.empty()) { absent = true; break; }
+                      if (c.empty()) {
+                        absent = true;
+                        break;
+                      }
                       long s = static_cast<long>(c.size());
-                      if (a0 < 0) a0 = s; else if (a0 != s) ragged = true;
+                      if (a0 < 0)
+                        a0 = s;
+                      else if (a0 != s)
+                        ragged = true;
                     }
                   std::uint64_t fl = 0;
                   for (integer n = 0; n != N; ++n)
@@ -3401,9 +3438,9 @@ class Tensor {
                       1, std::memory_order_relaxed);
                   detail::g_scale[0].fb_flop.fetch_add(
                       fl, std::memory_order_relaxed);
-                  (absent ? detail::g_scale[0].fb_absent
-                          : ragged ? detail::g_scale[0].fb_ragged
-                                   : detail::g_scale[0].fb_stride)
+                  (absent   ? detail::g_scale[0].fb_absent
+                   : ragged ? detail::g_scale[0].fb_ragged
+                            : detail::g_scale[0].fb_stride)
                       .fetch_add(1, std::memory_order_relaxed);
                 }
                 detail::ScopedScaleTimer _scale_fb(detail::g_scale[0].fb_ns);
@@ -3525,28 +3562,41 @@ class Tensor {
                   long a0 = -1;
                   for (integer k = 0; k != K; ++k) {
                     const auto& c = right_data[k * N + n];
-                    if (c.empty()) { absent = true; break; }
+                    if (c.empty()) {
+                      absent = true;
+                      break;
+                    }
                     long s = static_cast<long>(c.size());
-                    if (a0 < 0) a0 = s; else if (a0 != s) ragged = true;
+                    if (a0 < 0)
+                      a0 = s;
+                    else if (a0 != s)
+                      ragged = true;
                   }
                   if (!absent)
                     for (integer m = 0; m != M; ++m) {
                       const auto& c = this_data[m * N + n];
-                      if (c.empty()) { absent = true; break; }
+                      if (c.empty()) {
+                        absent = true;
+                        break;
+                      }
                       long s = static_cast<long>(c.size());
-                      if (a0 < 0) a0 = s; else if (a0 != s) ragged = true;
+                      if (a0 < 0)
+                        a0 = s;
+                      else if (a0 != s)
+                        ragged = true;
                     }
                   std::uint64_t fl = 0;
                   for (integer m = 0; m != M; ++m)
-                    fl += 2ull * static_cast<std::uint64_t>(K) *
-                          static_cast<std::uint64_t>(this_data[m * N + n].size());
+                    fl +=
+                        2ull * static_cast<std::uint64_t>(K) *
+                        static_cast<std::uint64_t>(this_data[m * N + n].size());
                   detail::g_scale[1].fb_runs.fetch_add(
                       1, std::memory_order_relaxed);
                   detail::g_scale[1].fb_flop.fetch_add(
                       fl, std::memory_order_relaxed);
-                  (absent ? detail::g_scale[1].fb_absent
-                          : ragged ? detail::g_scale[1].fb_ragged
-                                   : detail::g_scale[1].fb_stride)
+                  (absent   ? detail::g_scale[1].fb_absent
+                   : ragged ? detail::g_scale[1].fb_ragged
+                            : detail::g_scale[1].fb_stride)
                       .fetch_add(1, std::memory_order_relaxed);
                 }
                 detail::ScopedScaleTimer _scale_fb(detail::g_scale[1].fb_ns);
