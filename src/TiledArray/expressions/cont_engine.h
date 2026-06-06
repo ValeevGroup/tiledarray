@@ -305,9 +305,18 @@ class ContEngine : public BinaryEngine<Derived> {
           // this->product_type() is Tensor::Contraction, and,
           // this->implicit_permute_inner_ is false
 
-          return this->inner_product_type() == TensorProduct::Scale
-                     ? BipartitePermutation(outer(this->perm_))
-                     : this->perm_;
+          if (this->inner_product_type() == TensorProduct::Scale) {
+            // Owning inner cells apply the inner result permutation in the
+            // per-cell scale op, so they carry only the outer perm here. View
+            // (arena) cells instead use a perm-free per-cell op + an unpermuted
+            // arena plan and rely on op_'s post-processing permute for the
+            // inner perm -- so they carry the full perm, like inner
+            // Contraction.
+            if constexpr (!TiledArray::is_tensor_view_v<
+                              result_tile_element_type>)
+              return BipartitePermutation(outer(this->perm_));
+          }
+          return this->perm_;
         };
 
         auto total_perm = make_total_perm();
@@ -341,9 +350,18 @@ class ContEngine : public BinaryEngine<Derived> {
           // this->product_type() is Tensor::Contraction, and,
           // this->implicit_permute_inner_ is false
 
-          return this->inner_product_type() == TensorProduct::Scale
-                     ? BipartitePermutation(outer(this->perm_))
-                     : this->perm_;
+          if (this->inner_product_type() == TensorProduct::Scale) {
+            // Owning inner cells apply the inner result permutation in the
+            // per-cell scale op, so they carry only the outer perm here. View
+            // (arena) cells instead use a perm-free per-cell op + an unpermuted
+            // arena plan and rely on op_'s post-processing permute for the
+            // inner perm -- so they carry the full perm, like inner
+            // Contraction.
+            if constexpr (!TiledArray::is_tensor_view_v<
+                              result_tile_element_type>)
+              return BipartitePermutation(outer(this->perm_));
+          }
+          return this->perm_;
         };
 
         auto total_perm = make_total_perm();
@@ -611,22 +629,6 @@ class ContEngine : public BinaryEngine<Derived> {
           // element_return_op_ left null: a view cell cannot be
           // value-returned (see the init_struct precondition check).
         } else if (inner_prod == TensorProduct::Contraction) {
-          using op_type = TiledArray::detail::ContractReduce<
-              result_tile_element_type, left_tile_element_type,
-              right_tile_element_type, scalar_type>;
-          // The inner op is built *perm-free* on purpose. factor_ is absorbed
-          // into element_nonreturn_op_; operand inner transposes are folded
-          // into the inner GEMM via left_/right_inner_permtype_. A non-identity
-          // inner *result* permutation is NOT placed on this op
-          // (make_fused_contraction_lambda asserts a perm-free op); it is
-          // applied downstream instead -- by op_'s post-processing permute for
-          // a contraction outer product, or by arena_hadamard_inner_contract's
-          // slab-level post-pass for a Hadamard outer product.
-          auto contrreduce_op = op_type(
-              to_cblas_op(this->left_inner_permtype_),
-              to_cblas_op(this->right_inner_permtype_), this->factor_,
-              inner_size(this->indices_), inner_size(this->left_indices_),
-              inner_size(this->right_indices_));
           constexpr bool arena_eligible =
               TiledArray::detail::is_contraction_arena_tot_v<
                   result_tile_type, left_tile_type, right_tile_type>;
@@ -635,42 +637,115 @@ class ContEngine : public BinaryEngine<Derived> {
                 "nested contraction on view inner tiles is supported only "
                 "for arena-backed tensors-of-tensors");
           } else {
-            // perm-free per-cell in-place contraction; used by both outer
-            // regimes below
-            this->element_nonreturn_op_ =
-                TiledArray::detail::make_fused_contraction_lambda<
-                    result_tile_element_type, left_tile_element_type,
-                    right_tile_element_type>(contrreduce_op);
-            if (this->product_type() == TensorProduct::Contraction) {
-              // outer contraction: the SUMMA result is shaped from operand
-              // inner cells by arena_plan_; op_'s post-processing permute
-              // applies the (outer + inner) result permutation.
-              this->arena_plan_ =
-                  TiledArray::detail::make_contraction_arena_plan<
-                      result_tile_type, left_tile_type, right_tile_type>(
-                      TiledArray::detail::ArenaInnerShapeKind::
-                          gemm_result_range,
-                      std::make_optional(contrreduce_op.gemm_helper()),
-                      Permutation{});
-              if (!bool(this->arena_plan_))
-                TA_EXCEPTION(
-                    "nested contraction on view inner tiles: the arena fast "
-                    "path was inactive (arena disabled)");
+            // Phantom-unit denest: result inner indices all phantom (⊗ₙ) -- the
+            // real inner modes are fully contracted, so the inner product is a
+            // flat dot into a unit-extent [1]^phantom_rank cell. The arena plan
+            // shapes the [1] result cells (unit_range); the per-cell op fills
+            // the lone element via the dot. Operands are read flat, so no view
+            // cell carries the phantom mode and no GEMM rank match is required.
+            const auto result_inner = inner(this->indices_);
+            bool result_inner_all_phantom = result_inner.size() > 0;
+            for (std::size_t m = 0; m < result_inner.size(); ++m)
+              if (!TiledArray::detail::is_phantom_unit_label(result_inner[m])) {
+                result_inner_all_phantom = false;
+                break;
+              }
+            if (result_inner_all_phantom) {
+              const scalar_type factor = this->factor_;
+              this->element_nonreturn_op_ =
+                  [factor](result_tile_element_type& result,
+                           const left_tile_element_type& left,
+                           const right_tile_element_type& right) {
+                    if (left.empty() || right.empty()) return;
+                    using Numeric =
+                        typename result_tile_element_type::numeric_type;
+                    const std::size_t n = left.range().volume();
+                    TA_ASSERT(n == right.range().volume());
+                    const auto* lp = left.data();
+                    const auto* rp = right.data();
+                    Numeric acc{0};
+                    for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
+                    // result cell is pre-shaped [1] by the unit_range plan.
+                    result.data()[0] += static_cast<Numeric>(factor) * acc;
+                  };
+              if (this->product_type() == TensorProduct::Contraction) {
+                this->arena_plan_ =
+                    TiledArray::detail::make_contraction_arena_plan<
+                        result_tile_type, left_tile_type, right_tile_type>(
+                        TiledArray::detail::ArenaInnerShapeKind::unit_range,
+                        std::nullopt, Permutation{}, result_inner.size());
+                if (!bool(this->arena_plan_))
+                  TA_EXCEPTION(
+                      "phantom-unit denest on view inner tiles: the arena fast "
+                      "path was inactive (arena disabled)");
+              } else {
+                // outer Hadamard: a whole-tile arena op that shapes each
+                // result outer cell as a unit-extent [1] cell and fills it via
+                // the phantom-dot per-cell op.
+                this->arena_hadamard_tile_op_ =
+                    [cell_op = this->element_nonreturn_op_,
+                     phantom_rank = result_inner.size()](
+                        const left_tile_type& l,
+                        const right_tile_type& r) -> result_tile_type {
+                  return TiledArray::detail::arena_hadamard_phantom_dot<
+                      result_tile_type>(l, r, phantom_rank, cell_op);
+                };
+              }
             } else {
-              // outer Hadamard: MultEngine builds a binary tile op, which
-              // cannot use a value-returning per-cell op. Supply a whole-tile
-              // arena op that shapes the result from per-cell inner GEMMs and
-              // fills it in place; the inner result permutation is a
-              // slab-level post-pass inside the kernel.
-              this->arena_hadamard_tile_op_ =
-                  [cell_op = this->element_nonreturn_op_,
-                   inner_gh = contrreduce_op.gemm_helper(),
-                   inner_perm = inner(this->perm_)](
-                      const left_tile_type& l,
-                      const right_tile_type& r) -> result_tile_type {
-                return TiledArray::detail::arena_hadamard_inner_contract<
-                    result_tile_type>(l, r, inner_gh, cell_op, inner_perm);
-              };
+              using op_type = TiledArray::detail::ContractReduce<
+                  result_tile_element_type, left_tile_element_type,
+                  right_tile_element_type, scalar_type>;
+              // The inner op is built *perm-free* on purpose. factor_ is
+              // absorbed into element_nonreturn_op_; operand inner transposes
+              // are folded into the inner GEMM via left_/right_inner_permtype_.
+              // A non-identity inner *result* permutation is NOT placed on this
+              // op (make_fused_contraction_lambda asserts a perm-free op); it
+              // is applied downstream instead -- by op_'s post-processing
+              // permute for a contraction outer product, or by
+              // arena_hadamard_inner_contract's slab-level post-pass for a
+              // Hadamard outer product.
+              auto contrreduce_op = op_type(
+                  to_cblas_op(this->left_inner_permtype_),
+                  to_cblas_op(this->right_inner_permtype_), this->factor_,
+                  inner_size(this->indices_), inner_size(this->left_indices_),
+                  inner_size(this->right_indices_));
+              // perm-free per-cell in-place contraction; used by both outer
+              // regimes below
+              this->element_nonreturn_op_ =
+                  TiledArray::detail::make_fused_contraction_lambda<
+                      result_tile_element_type, left_tile_element_type,
+                      right_tile_element_type>(contrreduce_op);
+              if (this->product_type() == TensorProduct::Contraction) {
+                // outer contraction: the SUMMA result is shaped from operand
+                // inner cells by arena_plan_; op_'s post-processing permute
+                // applies the (outer + inner) result permutation.
+                this->arena_plan_ =
+                    TiledArray::detail::make_contraction_arena_plan<
+                        result_tile_type, left_tile_type, right_tile_type>(
+                        TiledArray::detail::ArenaInnerShapeKind::
+                            gemm_result_range,
+                        std::make_optional(contrreduce_op.gemm_helper()),
+                        Permutation{});
+                if (!bool(this->arena_plan_))
+                  TA_EXCEPTION(
+                      "nested contraction on view inner tiles: the arena fast "
+                      "path was inactive (arena disabled)");
+              } else {
+                // outer Hadamard: MultEngine builds a binary tile op, which
+                // cannot use a value-returning per-cell op. Supply a whole-tile
+                // arena op that shapes the result from per-cell inner GEMMs and
+                // fills it in place; the inner result permutation is a
+                // slab-level post-pass inside the kernel.
+                this->arena_hadamard_tile_op_ =
+                    [cell_op = this->element_nonreturn_op_,
+                     inner_gh = contrreduce_op.gemm_helper(),
+                     inner_perm = inner(this->perm_)](
+                        const left_tile_type& l,
+                        const right_tile_type& r) -> result_tile_type {
+                  return TiledArray::detail::arena_hadamard_inner_contract<
+                      result_tile_type>(l, r, inner_gh, cell_op, inner_perm);
+                };
+              }
             }
           }
           // element_return_op_ left null: a view cell cannot be
@@ -703,44 +778,99 @@ class ContEngine : public BinaryEngine<Derived> {
       if (inner_prod == TensorProduct::Contraction) {
         TA_ASSERT(tot_x_tot);
         if constexpr (tot_x_tot) {
-          using op_type = TiledArray::detail::ContractReduce<
-              result_tile_element_type, left_tile_element_type,
-              right_tile_element_type, scalar_type>;
-          // factor_ is absorbed into inner_tile_nonreturn_op_
-          auto contrreduce_op =
-              (inner_target_indices != inner(this->indices_))
-                  ? op_type(to_cblas_op(this->left_inner_permtype_),
-                            to_cblas_op(this->right_inner_permtype_),
-                            this->factor_, inner_size(this->indices_),
-                            inner_size(this->left_indices_),
-                            inner_size(this->right_indices_),
-                            (!this->implicit_permute_inner_ ? inner(this->perm_)
-                                                            : Permutation{}))
-                  : op_type(to_cblas_op(this->left_inner_permtype_),
-                            to_cblas_op(this->right_inner_permtype_),
-                            this->factor_, inner_size(this->indices_),
-                            inner_size(this->left_indices_),
-                            inner_size(this->right_indices_));
-          constexpr bool arena_eligible =
-              TiledArray::detail::is_contraction_arena_tot_v<
-                  result_tile_type, left_tile_type, right_tile_type>;
-          if constexpr (arena_eligible) {
-            if (this->product_type() == TensorProduct::Contraction) {
-              this->arena_plan_ =
-                  TiledArray::detail::make_contraction_arena_plan<
-                      result_tile_type, left_tile_type, right_tile_type>(
-                      TiledArray::detail::ArenaInnerShapeKind::
-                          gemm_result_range,
-                      std::make_optional(contrreduce_op.gemm_helper()),
-                      inner(this->perm_));
+          // Phantom-unit denest: every result inner index is a phantom unit
+          // (⊗ₙ), i.e. the real inner modes are fully contracted. The inner
+          // product is a flat (non-conjugating) dot of the operand cells
+          // accumulated into the lone element of a unit-extent [1]^phantom_rank
+          // result cell. Operands are read flat, so neither carries the phantom
+          // mode -- no GEMM, no ContractReduce rank match. element_return_op_
+          // (built below) wraps this for the outer-Hadamard regime.
+          const auto result_inner = inner(this->indices_);
+          bool result_inner_all_phantom = result_inner.size() > 0;
+          for (std::size_t m = 0; m < result_inner.size(); ++m)
+            if (!TiledArray::detail::is_phantom_unit_label(result_inner[m])) {
+              result_inner_all_phantom = false;
+              break;
             }
-          }
-          if constexpr (arena_eligible) {
-            if (this->arena_plan_) {
-              this->element_nonreturn_op_ =
-                  TiledArray::detail::make_fused_contraction_lambda<
-                      result_tile_element_type, left_tile_element_type,
-                      right_tile_element_type>(contrreduce_op);
+          if (result_inner_all_phantom) {
+            const std::size_t phantom_rank = result_inner.size();
+            const scalar_type factor = this->factor_;
+            this->element_nonreturn_op_ =
+                [phantom_rank, factor](result_tile_element_type& result,
+                                       const left_tile_element_type& left,
+                                       const right_tile_element_type& right) {
+                  if (left.empty() || right.empty()) return;
+                  using Numeric =
+                      typename result_tile_element_type::numeric_type;
+                  const std::size_t n = left.range().volume();
+                  TA_ASSERT(n == right.range().volume());
+                  const auto* lp = left.data();
+                  const auto* rp = right.data();
+                  Numeric acc{0};
+                  for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
+                  acc *= static_cast<Numeric>(factor);
+                  if (TA::empty(result)) {
+                    using R = typename result_tile_element_type::range_type;
+                    TiledArray::container::svector<std::size_t> ext(
+                        phantom_rank, 1);
+                    result = result_tile_element_type(R(ext), Numeric{0});
+                  }
+                  result.data()[0] += acc;
+                };
+          } else {
+            using op_type = TiledArray::detail::ContractReduce<
+                result_tile_element_type, left_tile_element_type,
+                right_tile_element_type, scalar_type>;
+            // factor_ is absorbed into inner_tile_nonreturn_op_
+            auto contrreduce_op =
+                (inner_target_indices != inner(this->indices_))
+                    ? op_type(
+                          to_cblas_op(this->left_inner_permtype_),
+                          to_cblas_op(this->right_inner_permtype_),
+                          this->factor_, inner_size(this->indices_),
+                          inner_size(this->left_indices_),
+                          inner_size(this->right_indices_),
+                          (!this->implicit_permute_inner_ ? inner(this->perm_)
+                                                          : Permutation{}))
+                    : op_type(to_cblas_op(this->left_inner_permtype_),
+                              to_cblas_op(this->right_inner_permtype_),
+                              this->factor_, inner_size(this->indices_),
+                              inner_size(this->left_indices_),
+                              inner_size(this->right_indices_));
+            constexpr bool arena_eligible =
+                TiledArray::detail::is_contraction_arena_tot_v<
+                    result_tile_type, left_tile_type, right_tile_type>;
+            if constexpr (arena_eligible) {
+              if (this->product_type() == TensorProduct::Contraction) {
+                this->arena_plan_ =
+                    TiledArray::detail::make_contraction_arena_plan<
+                        result_tile_type, left_tile_type, right_tile_type>(
+                        TiledArray::detail::ArenaInnerShapeKind::
+                            gemm_result_range,
+                        std::make_optional(contrreduce_op.gemm_helper()),
+                        inner(this->perm_));
+              }
+            }
+            if constexpr (arena_eligible) {
+              if (this->arena_plan_) {
+                this->element_nonreturn_op_ =
+                    TiledArray::detail::make_fused_contraction_lambda<
+                        result_tile_element_type, left_tile_element_type,
+                        right_tile_element_type>(contrreduce_op);
+              } else {
+                this->element_nonreturn_op_ =
+                    [contrreduce_op,
+                     permute_inner =
+                         this->product_type() != TensorProduct::Contraction](
+                        result_tile_element_type& result,
+                        const left_tile_element_type& left,
+                        const right_tile_element_type& right) {
+                      contrreduce_op(result, left, right);
+                      // permutations of result are applied as "postprocessing"
+                      if (permute_inner && !TA::empty(result))
+                        result = contrreduce_op(result);
+                    };
+              }
             } else {
               this->element_nonreturn_op_ =
                   [contrreduce_op, permute_inner = this->product_type() !=
@@ -754,18 +884,6 @@ class ContEngine : public BinaryEngine<Derived> {
                       result = contrreduce_op(result);
                   };
             }
-          } else {
-            this->element_nonreturn_op_ =
-                [contrreduce_op, permute_inner = this->product_type() !=
-                                                 TensorProduct::Contraction](
-                    result_tile_element_type& result,
-                    const left_tile_element_type& left,
-                    const right_tile_element_type& right) {
-                  contrreduce_op(result, left, right);
-                  // permutations of result are applied as "postprocessing"
-                  if (permute_inner && !TA::empty(result))
-                    result = contrreduce_op(result);
-                };
           }
         }  // ToT x ToT
       } else if (inner_prod == TensorProduct::Hadamard) {
@@ -949,10 +1067,30 @@ class ContEngine : public BinaryEngine<Derived> {
                   result_tile_type, left_tile_type, right_tile_type>;
           if constexpr (arena_eligible_scale) {
             if (this->product_type() == TensorProduct::Contraction) {
+              // The inner perm handed to the plan must match how the inner
+              // *result* permutation is applied for this result cell type --
+              // and the two cell types apply it in different places:
+              //
+              //   * View (arena) cells: pass an identity inner perm so the
+              //     plan is always built (pre-shaping result cells in the
+              //     unpermuted operand inner layout) and the perm-free fused
+              //     scale op is selected; the inner result perm is applied
+              //     downstream by op_'s post-processing permute (carried in
+              //     make_total_perm for view cells).
+              //
+              //   * Owning cells: pass the inner result perm so the plan bails
+              //     (nullopt) on a non-identity inner perm, falling back to the
+              //     per-cell op that applies the inner perm itself -- matching
+              //     the outer-only total_perm make_total_perm carries here.
+              //     (A trivial inner perm still lets the plan + fused op run.)
+              Permutation plan_inner_perm;
+              if constexpr (!TiledArray::is_tensor_view_v<
+                                result_tile_element_type>)
+                plan_inner_perm = inner(this->perm_);
               this->arena_plan_ =
                   TiledArray::detail::make_contraction_arena_plan<
                       result_tile_type, left_tile_type, right_tile_type>(
-                      kind, std::nullopt, inner(this->perm_));
+                      kind, std::nullopt, plan_inner_perm);
             }
           }
           // Fallback per-element op for the scale inner-product when no

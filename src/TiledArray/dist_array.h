@@ -35,8 +35,10 @@
 #include "TiledArray/util/random.h"
 
 #include <madness/world/parallel_archive.h>
+#include <array>
 #include <cstdlib>
 #include <tuple>
+#include <vector>
 
 namespace TiledArray {
 
@@ -2011,6 +2013,95 @@ std::size_t size_of(const DistArray<Tile, Policy>& da) {
   // add up local tile's contributions
   for (const auto& tile_ref : da) {
     result += size_of<S>(tile_ref.get());
+  }
+  return result;
+}
+
+/// \return the number of bytes the locally-owned tiles of \p storage occupy
+/// in memory space `S`.
+///
+/// This is the *tile-data* footprint of a `DistArray`'s storage object only.
+/// It deliberately does **not** include the `DistArray`-level metadata --
+/// `TiledRange`, `Shape`, and `Pmap` -- because those live in the owning
+/// `ArrayImpl`/`TensorImpl`, not in the `DistributedStorage`. For
+/// `SparsePolicy` the `Shape` (a per-tile Frobenius-norm table) can be
+/// sizeable, so this undercounts the full per-array footprint that
+/// `size_of(const DistArray&)` reports. Counts only tiles whose futures are
+/// set; pending and remote-cached tiles are skipped.
+/// \tparam S the memory space to report
+template <MemorySpace S, typename T>
+std::size_t size_of(const detail::DistributedStorage<T>& storage) {
+  std::size_t result = 0;
+  storage.for_each_local_tile(
+      [&result](const auto& tile) { result += size_of<S>(tile); });
+  return result;
+}
+
+/// \return the per-rank tile-data bytes (in memory space `S`) of the
+/// `DistributedStorage` of *all* live `DistArray<Tile,Policy>` of the
+/// requested type currently registered in \p world, discovered by walking
+/// the World's `WorldObject` registry.
+///
+/// Each array's tile storage is a single `detail::DistributedStorage`
+/// `WorldObject`, so an array referenced by N shallow-copy handles is counted
+/// exactly once — unlike summing `size_of` over a set of handles, which
+/// double-counts shared storage. This makes the result suitable as ground
+/// truth for validating handle-based tile-data accounting.
+///
+/// Discovery is type-safe: each registered pointer is recovered as the common
+/// polymorphic base `madness::WorldObjectBase` and `dynamic_cast` to the
+/// `DistributedStorage` matching `DistArrayT`'s tile type; non-matching
+/// objects (other tile types, MADNESS containers) are skipped. Assumes the
+/// registered `WorldObject`s place `WorldObjectBase` at offset 0 (true for
+/// the single-inheritance `class X : public WorldObject<X>` idiom TA uses).
+///
+/// \warning This reports the `DistributedStorage` (tile-data) footprint only.
+/// It excludes the `DistArray`-level `TiledRange`, `Shape`, and `Pmap`; the
+/// `Shape` can be large under `SparsePolicy`. It is therefore **not**
+/// comparable term-for-term with a sum of `size_of(const DistArray&)` over
+/// handles (which includes the shape). Use it for tile-data accounting, not
+/// total-DistArray-footprint accounting.
+/// \note Counts only locally-owned tiles whose futures are set. Excludes
+/// remote-tile caches. Call at a quiescent point (after a fence).
+/// \tparam DistArrayT the `DistArray` specialization to look for
+/// \tparam S the memory space to report (default `Host`)
+template <typename DistArrayT, MemorySpace S = MemorySpace::Host>
+std::size_t size_of_live_distarray_storage(World& world) {
+  using tile_type = typename DistArrayT::value_type;
+  using storage_type = detail::DistributedStorage<tile_type>;
+  std::size_t result = 0;
+  for (const auto& id : world.get_object_ids()) {
+    auto base_opt = world.template ptr_from_id<madness::WorldObjectBase>(id);
+    if (!base_opt || !*base_opt) continue;
+    if (auto* storage = dynamic_cast<storage_type*>(*base_opt)) {
+      result += size_of<S>(*storage);
+    }
+  }
+  return result;
+}
+
+/// \return a matrix of per-rank live-storage tile-data byte totals indexed
+/// `[world_index][type_index]`: for each `World` in \p worlds (rows) and each
+/// `DistArray` type in the pack `DistArrayTs` (columns), the value of
+/// `size_of_live_distarray_storage<DistArrayT, S>(world)`. Lets a caller
+/// inventory which array types hold how much tile data in which world at a
+/// checkpoint, deduplicated across shallow-copy handles.
+///
+/// \warning Tile-data only; see `size_of_live_distarray_storage` for the
+/// excluded-metadata caveat (no `TiledRange`/`Shape`/`Pmap`).
+/// \note `S` is the leading template argument (it has a default but precedes
+/// the type pack), so callers must spell it out:
+/// `size_of_live_distarrays_storage<MemorySpace::Host, ArrayA,
+/// ArrayB>(worlds)`.
+/// \pre every pointer in \p worlds is non-null
+template <MemorySpace S = MemorySpace::Host, typename... DistArrayTs>
+std::vector<std::array<std::size_t, sizeof...(DistArrayTs)>>
+size_of_live_distarrays_storage(const std::vector<World*>& worlds) {
+  std::vector<std::array<std::size_t, sizeof...(DistArrayTs)>> result;
+  result.reserve(worlds.size());
+  for (World* w : worlds) {
+    TA_ASSERT(w != nullptr);
+    result.push_back({size_of_live_distarray_storage<DistArrayTs, S>(*w)...});
   }
   return result;
 }

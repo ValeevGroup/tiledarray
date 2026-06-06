@@ -1953,33 +1953,28 @@ class Tensor {
       return !static_cast<bool>(perm) || perm.is_identity();
   }
 
-  /// Permuted add for `Tensor<ArenaTensor>` ToT operands. A non-trivial
-  /// permutation of arena ToT tiles is not yet supported; an identity (or
-  /// null) permutation falls through to the plain element-wise add.
+  /// Permuted add for `Tensor<ArenaTensor>` ToT operands. The operands are
+  /// congruent by the time a permuted product reaches a tile op, so the
+  /// elementwise `add(right)` is valid and `perm` is the result permutation;
+  /// `permute` applies it (shallow outer reindex + inner-slab rewrite).
   template <typename Right, typename Perm>
     requires(is_arena_tensor_v<value_type> &&
              is_arena_tensor_v<typename Right::value_type> &&
              detail::is_permutation_v<Perm>)
   Tensor add(const Right& right, const Perm& perm) const {
-    if (!arena_perm_is_trivial(perm))
-      TA_EXCEPTION(
-          "TA::Tensor<ArenaTensor>::add: permuted add of a tensor-of-tensors "
-          "is not yet supported");
-    return add(right);
+    auto result = add(right);
+    return arena_perm_is_trivial(perm) ? result : result.permute(perm);
   }
 
   /// Permuted scaled add for `Tensor<ArenaTensor>` ToT operands; see the
-  /// permuted-add overload above for the permutation restriction.
+  /// permuted-add overload above for the congruent-operand rationale.
   template <typename Right, typename Scalar, typename Perm>
     requires(is_arena_tensor_v<value_type> &&
              is_arena_tensor_v<typename Right::value_type> &&
              detail::is_numeric_v<Scalar> && detail::is_permutation_v<Perm>)
   Tensor add(const Right& right, const Scalar factor, const Perm& perm) const {
-    if (!arena_perm_is_trivial(perm))
-      TA_EXCEPTION(
-          "TA::Tensor<ArenaTensor>::add: permuted scaled add of a "
-          "tensor-of-tensors is not yet supported");
-    return add(right, factor);
+    auto result = add(right, factor);
+    return arena_perm_is_trivial(perm) ? result : result.permute(perm);
   }
 
   /// Add this and \c other to construct a new tensor
@@ -2382,8 +2377,15 @@ class Tensor {
       typename std::enable_if<is_tensor<Right>::value &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor subt(const Right& right, const Perm& perm) const {
-    if constexpr (is_tensor_view_v<value_type>) {
-      // Permutation isn't supported for view inner cells (fixed storage
+    if constexpr (is_arena_tensor_v<value_type> &&
+                  is_arena_tensor_v<typename Right::value_type>) {
+      // arena ToT x arena ToT: operands are congruent at tile-op time, so the
+      // elementwise `subt(right)` is valid; apply the result permutation as a
+      // post-pass (shallow outer reindex + inner-slab rewrite).
+      auto result = subt(right);
+      return arena_perm_is_trivial(perm) ? result : result.permute(perm);
+    } else if constexpr (is_tensor_view_v<value_type>) {
+      // Permutation isn't supported for other view inner cells (fixed storage
       // layout). Subt+permute would require materialization.
       TA_EXCEPTION(
           "Tensor<View>::subt(right, perm): permutation is not "
@@ -2443,11 +2445,10 @@ class Tensor {
   Tensor subt(const Right& right, const Scalar factor, const Perm& perm) const {
     if constexpr (is_arena_tensor_v<value_type> &&
                   is_arena_tensor_v<typename Right::value_type>) {
-      if (!arena_perm_is_trivial(perm))
-        TA_EXCEPTION(
-            "TA::Tensor<ArenaTensor>::subt: permuted scaled subt of a "
-            "tensor-of-tensors is not yet supported");
-      return subt(right, factor);
+      // arena ToT x arena ToT scaled subtraction; see the unscaled permuted
+      // subt overload above for the congruent-operand rationale.
+      auto result = subt(right, factor);
+      return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
       return binary(
           right,
@@ -2622,11 +2623,15 @@ class Tensor {
   decltype(auto) mult(const Right& right, const Perm& perm) const {
     if constexpr (is_arena_tensor_v<value_type> &&
                   is_arena_tensor_v<typename Right::value_type>) {
-      if (!arena_perm_is_trivial(perm))
-        TA_EXCEPTION(
-            "TA::Tensor<ArenaTensor>::mult: permuted mult of a "
-            "tensor-of-tensors is not yet supported");
-      return mult(right);
+      // arena ToT x arena ToT Hadamard product. By the time a permuted product
+      // reaches a tile op, the engine has already brought both operands to a
+      // common (congruent) layout, so the elementwise `mult(right)` is valid;
+      // `perm` is the result permutation (common layout -> target). Apply it
+      // as a post-pass: `permute` reindexes the outer cells shallowly
+      // (arena_permute_shallow) and rewrites the inner slab if the inner part
+      // of the permutation is non-trivial (arena_inner_permute).
+      auto result = mult(right);
+      return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else if constexpr (detail::is_numeric_v<value_type> &&
                          is_arena_tensor_v<typename Right::value_type>) {
       // t x tot: a plain scalar tile times an arena ToT tile. The 2-arg
@@ -2697,11 +2702,11 @@ class Tensor {
                       const Perm& perm) const {
     if constexpr (is_arena_tensor_v<value_type> &&
                   is_arena_tensor_v<typename Right::value_type>) {
-      if (!arena_perm_is_trivial(perm))
-        TA_EXCEPTION(
-            "TA::Tensor<ArenaTensor>::mult: permuted scaled mult of a "
-            "tensor-of-tensors is not yet supported");
-      return mult(right, factor);
+      // arena ToT x arena ToT scaled Hadamard product; see the unscaled
+      // permuted mult overload above for the congruent-operand rationale.
+      // Scale during the elementwise product, then permute the result.
+      auto result = mult(right, factor);
+      return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
       return binary(
           right,
@@ -3090,6 +3095,198 @@ class Tensor {
         (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose ? K : M);
     const integer ldb =
         (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? N : K);
+
+    // GEMM-based ToT scale path: for the scale contraction
+    // "m,k;a" * "k,n" -> "m,n;a" (left ToT, right plain scalar), recast each
+    // row m as one strided GEMM result_m(A_m x N) += left_m(A_m x K) *
+    // right(K x N), directly on the arena slab -- amortizing the per-cell AXPY
+    // setup over a single BLAS call. Applies for NoTranspose, matching scalar
+    // type, and "clean" rows (all cells present, uniform inner size A_m, laid
+    // out as one contiguous single-page stride-A_m block); other rows fall back
+    // to the per-cell AXPY loop.
+    if constexpr (detail::is_numeric_v<V> && is_tensor_view_v<U> &&
+                  is_tensor_view_v<value_type>) {
+      using Real = std::remove_cv_t<typename value_type::value_type>;
+      if constexpr (std::is_same_v<std::remove_cv_t<V>, Real>) {
+        if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
+            gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
+          for (integer b = 0; b != nbatch(); ++b) {
+            auto this_data = this->batch_data(b);
+            auto left_data = left.batch_data(b);
+            auto right_data = right.batch_data(b);  // K x N row-major scalars
+            for (integer m = 0; m != M; ++m) {
+              auto* lc0 = left_data + (m * K);  // left cells (m,0..K-1)
+              auto* rc0 = this_data + (m * N);  // result cells (m,0..N-1)
+              // A "clean" row has all cells present, uniform inner size A, and
+              // laid out as one contiguous stride-A block (so the GEMM can run
+              // zero-copy directly on the slab). Else fall back to per-cell
+              // AXPY.
+              long A = -1;
+              bool clean = true;
+              for (integer k = 0; k != K && clean; ++k) {
+                const auto& c = lc0[k];
+                if (c.empty()) {
+                  clean = false;
+                  break;
+                }
+                long s = static_cast<long>(c.size());
+                if (A < 0)
+                  A = s;
+                else if (A != s)
+                  clean = false;
+              }
+              for (integer n = 0; n != N && clean; ++n) {
+                const auto& c = rc0[n];
+                if (c.empty()) {
+                  clean = false;
+                  break;
+                }
+                long s = static_cast<long>(c.size());
+                if (A < 0)
+                  A = s;
+                else if (A != s)
+                  clean = false;
+              }
+              // Arena cells are SIMD-padded, so the per-row inter-cell stride
+              // is the padded inner size (>= A). The strided GEMM requires the
+              // row's cells to be ONE contiguous run at constant stride -- only
+              // true for a single-page arena. An incrementally-built (un-
+              // compacted) ToT tile may span multiple pages, where the stride
+              // jumps at a page boundary; verify constant stride across ALL
+              // cells (so multi-page tiles fall back to the AXPY loop).
+              integer ldb = static_cast<integer>(A);
+              integer ldc = static_cast<integer>(A);
+              if (clean && A > 0) {
+                if (K > 1)
+                  ldb = static_cast<integer>(lc0[1].data() - lc0[0].data());
+                if (N > 1)
+                  ldc = static_cast<integer>(rc0[1].data() - rc0[0].data());
+                if (ldb < A || ldc < A) clean = false;  // sanity
+                const std::ptrdiff_t sb = ldb, sc = ldc;
+                for (integer k = 0; clean && k != K; ++k)
+                  if (lc0[k].data() != lc0[0].data() + k * sb) clean = false;
+                for (integer n = 0; clean && n != N; ++n)
+                  if (rc0[n].data() != rc0[0].data() + n * sc) clean = false;
+              }
+              if (A <= 0) continue;  // empty row -> nothing to do
+              if (clean) {
+                // result[m,n][a] += sum_k left[m,k][a] * right[k,n].
+                // Row-major gemm: C2(N x A) += right^T(N x K) * L2(K x A),
+                // where L2 = left row-m slab (K x A, ld=ldb), C2 = result row-m
+                // slab (N x A, ld=ldc), right is K x N (ld=N). ldb/ldc carry
+                // padding.
+                const integer Ai = static_cast<integer>(A);
+                TiledArray::math::blas::gemm(
+                    TiledArray::math::blas::Transpose,
+                    TiledArray::math::blas::NoTranspose,
+                    /*M=*/N, /*N=*/Ai, /*K=*/K, Real(1),
+                    /*A=*/right_data, /*lda=*/N,
+                    /*B=*/lc0[0].data(), /*ldb=*/ldb, Real(1),
+                    /*C=*/rc0[0].data(), /*ldc=*/ldc);
+              } else {  // per-cell AXPY fallback for this row
+                for (integer n = 0; n != N; ++n) {
+                  auto c_offset = m * N + n;
+                  for (integer k = 0; k != K; ++k)
+                    elem_muladd_op(*(this_data + c_offset),
+                                   *(left_data + (m * K + k)),
+                                   *(right_data + (k * N + n)));
+                }
+              }
+            }
+          }
+          return *this;
+        }
+      }
+    }
+
+    // GEMM-based scale path, mirror for T * ToT ("m,k" * "k,n;a" -> "m,n;a",
+    // left plain scalar, right ToT). Per column n: one GEMM
+    // result_n(M x A_n) += left(M x K) * right_n(K x A_n). The right/result
+    // column-n cells are strided over the slab (constant k-/m-stride within a
+    // single arena page); verify that, else fall back to per-cell AXPY.
+    if constexpr (detail::is_numeric_v<U> && is_tensor_view_v<V> &&
+                  is_tensor_view_v<value_type>) {
+      using Real = std::remove_cv_t<typename value_type::value_type>;
+      if constexpr (std::is_same_v<std::remove_cv_t<U>, Real>) {
+        if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
+            gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
+          for (integer b = 0; b != nbatch(); ++b) {
+            auto this_data = this->batch_data(b);
+            auto left_data = left.batch_data(b);    // M x K row-major scalars
+            auto right_data = right.batch_data(b);  // K x N ToT
+            for (integer n = 0; n != N; ++n) {
+              long A = -1;
+              bool clean = true;
+              for (integer k = 0; k != K && clean; ++k) {
+                const auto& c = right_data[k * N + n];
+                if (c.empty()) {
+                  clean = false;
+                  break;
+                }
+                long s = static_cast<long>(c.size());
+                if (A < 0)
+                  A = s;
+                else if (A != s)
+                  clean = false;
+              }
+              for (integer m = 0; m != M && clean; ++m) {
+                const auto& c = this_data[m * N + n];
+                if (c.empty()) {
+                  clean = false;
+                  break;
+                }
+                long s = static_cast<long>(c.size());
+                if (A < 0)
+                  A = s;
+                else if (A != s)
+                  clean = false;
+              }
+              integer ldb = static_cast<integer>(A);  // k-stride, right col n
+              integer ldc = static_cast<integer>(A);  // m-stride, result col n
+              if (clean && A > 0) {
+                if (K > 1)
+                  ldb = static_cast<integer>(right_data[N + n].data() -
+                                             right_data[n].data());
+                if (M > 1)
+                  ldc = static_cast<integer>(this_data[N + n].data() -
+                                             this_data[n].data());
+                if (ldb < A || ldc < A) clean = false;
+                const std::ptrdiff_t sb = ldb, sc = ldc;
+                for (integer k = 0; clean && k != K; ++k)
+                  if (right_data[k * N + n].data() !=
+                      right_data[n].data() + k * sb)
+                    clean = false;
+                for (integer m = 0; clean && m != M; ++m)
+                  if (this_data[m * N + n].data() !=
+                      this_data[n].data() + m * sc)
+                    clean = false;
+              }
+              if (A <= 0) continue;
+              if (clean) {
+                // C_n(M x A) += left(M x K) * B_n(K x A). Row-major gemm.
+                const integer Ai = static_cast<integer>(A);
+                TiledArray::math::blas::gemm(
+                    TiledArray::math::blas::NoTranspose,
+                    TiledArray::math::blas::NoTranspose,
+                    /*M=*/M, /*N=*/Ai, /*K=*/K, Real(1),
+                    /*A=*/left_data, /*lda=*/K,
+                    /*B=*/right_data[n].data(), /*ldb=*/ldb, Real(1),
+                    /*C=*/this_data[n].data(), /*ldc=*/ldc);
+              } else {  // per-cell AXPY fallback for this column
+                for (integer m = 0; m != M; ++m) {
+                  auto c_offset = m * N + n;
+                  for (integer k = 0; k != K; ++k)
+                    elem_muladd_op(*(this_data + c_offset),
+                                   *(left_data + (m * K + k)),
+                                   *(right_data + (k * N + n)));
+                }
+              }
+            }
+          }
+          return *this;
+        }
+      }
+    }
 
     for (integer b = 0; b != nbatch(); ++b) {
       auto this_data = this->batch_data(b);
