@@ -57,6 +57,24 @@ TILEDARRAY_FORCE_INLINE std::complex<R> conj(const std::complex<R> z) {
   return std::conj(z);
 }
 
+/// Conjugate a (possibly nested) tensor element
+
+/// Enables `conj` of a tensor whose elements are themselves tensors
+/// (tensor-of-tensors): `Tensor::conj()` is `scale(conj_op())`, which
+/// multiplies each element by a ComplexConjugate operator and thus dispatches
+/// back here for each inner tensor. This overload forwards to the element's own
+/// `conj()`, recursing until the leaf scalar overloads above terminate it.
+/// SFINAE'd on a non-numeric type that provides a `conj()` member so it never
+/// competes with the scalar overloads.
+/// \tparam T A (nested) tensor type
+/// \param t The tensor to conjugate
+/// \return The elementwise complex conjugate of `t`
+template <typename T,
+          typename std::enable_if<!is_numeric_v<T>>::type* = nullptr>
+TILEDARRAY_FORCE_INLINE auto conj(const T& t) -> decltype(t.conj()) {
+  return t.conj();
+}
+
 /// Inner product of a real value and a numeric value
 
 /// \tparam L A real scalar type

@@ -128,6 +128,16 @@ class ContractReduceBase {
     /// \note the lifetime is managed by the callee!
     TiledArray::function_ref<elem_muladd_op_type> elem_muladd_op_;
 
+    /// whole-tile strided-DGEMM outer-contraction op for arena ToT. When set,
+    /// ContractReduce::operator() delegates the (pre-shaped) result fill to it
+    /// instead of the generic gemm. Carries factor itself (alpha_ is forced to
+    /// 1 for ToT).
+    /// \note lifetime managed by the callee (a ContEngine std::function member).
+    using strided_oprod_op_type = void(result_type&, const left_tile_type&,
+                                       const right_tile_type&,
+                                       const math::GemmHelper&);
+    TiledArray::function_ref<strided_oprod_op_type> strided_oprod_op_{};
+
     TA_NO_UNIQUE_ADDRESS arena_plan_storage_t arena_plan_;
   };
 
@@ -220,6 +230,18 @@ class ContractReduceBase {
   const auto& arena_plan() const {
     TA_ASSERT(pimpl_);
     return pimpl_->arena_plan_;
+  }
+
+  /// Strided-DGEMM op accessor/mutator
+
+  /// \return A const reference to the strided-DGEMM op function_ref
+  const TiledArray::function_ref<typename Impl::strided_oprod_op_type>&
+  strided_oprod_op() const {
+    return pimpl_->strided_oprod_op_;
+  }
+  void set_strided_oprod_op(
+      TiledArray::function_ref<typename Impl::strided_oprod_op_type> op) {
+    pimpl_->strided_oprod_op_ = op;
   }
 
   //-------------- these are only used for unit tests -----------------
@@ -399,6 +421,11 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
           else
             this->arena_plan()->grow_to_cover(result, left, right,
                                               this->gemm_helper());
+        }
+        if (this->strided_oprod_op()) {
+          this->strided_oprod_op()(result, left, right,
+                                   ContractReduceBase_::gemm_helper());
+          return;
         }
       }
       gemm(result, left, right, ContractReduceBase_::gemm_helper(),

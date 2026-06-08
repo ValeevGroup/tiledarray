@@ -15,26 +15,12 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#  Justus Calvin
-#  Department of Chemistry, Virginia Tech
-#
 #  CMakeLists.txt
-#  Sep 4, 2013
 #
- 
-# if target examples-tiledarray does not exist yet, create it
-if (NOT TARGET examples-tiledarray)
-  add_custom_target_subproject(tiledarray examples)
-endif()
 
-# Add Subdirectories
-add_subdirectory (cc)
-add_subdirectory (device)
-add_subdirectory (gemm)
-add_subdirectory (demo)
-add_subdirectory (scalapack)
-add_subdirectory (fock)
-add_subdirectory (mpi_tests)
-add_subdirectory (pmap_test)
-add_subdirectory (vector_tests)
-add_subdirectory (tot_bench)
+# Strided-DGEMM ToT throughput benches (strided-vs-current arena DGEMM).
+
+foreach(_exec opa_strided_arena_dgemm opb_strided_arena_dgemm regime_a_hce_e_strided_bench ce_ce_segmented_strided_bench)
+  add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
+  add_dependencies(examples-tiledarray ${_exec})
+endforeach()

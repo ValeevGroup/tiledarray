@@ -714,6 +714,31 @@ BOOST_AUTO_TEST_CASE(inplace_conj_scal_op) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(conj_op_tensor_of_tensor) {
+  // conj() of a tensor-of-tensors must conjugate every inner element.
+  // Regression: detail::conj had no overload for a tensor-valued element, so
+  // Tensor<Tensor<complex>>::conj() (== scale(conj_op())) failed to compile.
+  using TensorOfTensorZ = Tensor<TensorZ>;
+  TensorOfTensorZ s(r);
+  for (std::size_t i = 0ul; i < s.size(); ++i) {
+    TensorZ inner(r);
+    rand_fill(static_cast<int>(431 + i), inner.size(), inner.data());
+    s[i] = inner;
+  }
+
+  TensorOfTensorZ t;
+  BOOST_REQUIRE_NO_THROW(t = s.conj());
+
+  BOOST_CHECK_EQUAL(t.range(), s.range());
+  for (std::size_t i = 0ul; i < t.size(); ++i) {
+    BOOST_CHECK_EQUAL(t[i].range(), s[i].range());
+    for (std::size_t j = 0ul; j < t[i].size(); ++j) {
+      BOOST_CHECK_EQUAL(t[i][j].real(), s[i][j].real());
+      BOOST_CHECK_EQUAL(t[i][j].imag(), -s[i][j].imag());
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE(block) {
   TensorZ s(r);
   auto lobound = r.lobound();

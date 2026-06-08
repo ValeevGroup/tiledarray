@@ -12,6 +12,7 @@
 #include "TiledArray/error.h"
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
+#include "TiledArray/tensor/complex.h"
 #include "TiledArray/tensor/type_traits.h"
 
 #include <btas/zb/range.h>
@@ -248,6 +249,13 @@ class ArenaTensor {
   }
   ArenaTensor& neg_to() {
     ::TiledArray::scale_to(*this, -T(1));
+    return *this;
+  }
+  /// In-place complex conjugation. Routes through the free `scale_to` kernel
+  /// with a ComplexConjugate factor, which conjugates each arena-backed scalar
+  /// in place (a no-op for real `T`). Mirrors `neg_to()`.
+  ArenaTensor& conj_to() {
+    ::TiledArray::scale_to(*this, ::TiledArray::detail::conj_op());
     return *this;
   }
 
