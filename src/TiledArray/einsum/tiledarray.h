@@ -3,6 +3,7 @@
 
 #include "TiledArray/conversions/make_array.h"
 #include "TiledArray/dist_array.h"
+#include "TiledArray/einsum/einsum_instrument.h"
 #include "TiledArray/einsum/index.h"
 #include "TiledArray/einsum/range.h"
 #include "TiledArray/expressions/fwd.h"
@@ -468,7 +469,12 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
   // blocking calls
   // TODO figure out why having free threads left after blocking MPI split
   //  still not enough to ensure progress
+  const auto _ein_entry_t0 =
+      detail::einsum_instrument_enabled() ? now() : time_point{};
   world.gop.fence();
+  const std::int64_t _ein_entry_fence_ns =
+      detail::einsum_instrument_enabled() ? duration_in_ns(_ein_entry_t0, now())
+                                          : 0;
 
   using ArrayA = std::remove_cv_t<ArrayA_>;
   using ArrayB = std::remove_cv_t<ArrayB_>;
@@ -517,6 +523,12 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       TA_ASSERT(!(inner.h && (inner.i || inner.e)) &&
                 "General product between inner tensors not supported");
   }
+
+  // einsum attribution profiler (TA_EINSUM_INSTRUMENT); no-op when disabled
+  detail::EinsumCall _ein_call{(std::string)a + inner.a + " * " +
+                               (std::string)b + inner.b + " -> " +
+                               (std::string)c + inner.c};
+  _ein_call.add(detail::EinsumBucket::EntryFence, _ein_entry_fence_ns);
 
   if constexpr (DeNestFlag == DeNest::True) {
     static_assert(detail::nested_rank<ArrayA> == detail::nested_rank<ArrayB> &&
@@ -730,6 +742,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
     if (!e) {  // hadamard reduction
 
+      _ein_call.branch = "hadamard-reduction-local";
+      const auto _ein_he_t0 = _ein_call.active ? now() : time_point{};
+
       auto &[A, B] = AB;
       TiledRange trange(range_map[i]);
       RangeProduct tiles;
@@ -866,6 +881,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         C_local_tiles.emplace_back(std::move(c), std::move(tile));
       }
 
+      _ein_call.add(detail::EinsumBucket::LocalKernel,
+                    _ein_call.active ? duration_in_ns(_ein_he_t0, now()) : 0);
+
       build_C_array();
 
       return C.array;
@@ -873,11 +891,15 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
     // generalized contraction
 
+    _ein_call.branch = "generalized-subworld";
+    const auto _ein_gen_t0 = _ein_call.active ? now() : time_point{};
+
     if constexpr (IsArrayToT<ArrayC>) {
       if (inner.C != inner.h + inner.e) {
         // when inner tensor permutation is non-trivial (could be potentially
         // elided by extending this function (@c einsum) to take into account
         // of inner tensor's permutations)
+        _ein_call.branch = "generalized-inner-perm-recurse";
         auto temp_annot = std::string(c) + ";" + std::string(inner.h + inner.e);
         ArrayC temp = einsum(tnsrExprA, tnsrExprB,
                              Einsum::idx<ArrayC>(temp_annot), world);
@@ -899,13 +921,21 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     std::invoke(update_tr, std::get<0>(AB));
     std::invoke(update_tr, std::get<1>(AB));
 
+    _ein_call.add(detail::EinsumBucket::Setup,
+                  _ein_call.active ? duration_in_ns(_ein_gen_t0, now()) : 0);
+
     // iterates over tiles of hadamard indices
     for (Index h : H.tiles) {
       auto &[A, B] = AB;
+      _ein_call.add_slices(1);
+      const auto _ein_cs0 = _ein_call.active ? now() : time_point{};
       auto own = A.own(h) || B.own(h);
       auto comm = madness::blocking_invoke(&SafeMPI::Intracomm::Split,
                                            world.mpi.comm(), own, world.rank());
       worlds.push_back(std::make_unique<World>(comm));
+      _ein_call.add_subworld();
+      _ein_call.add(detail::EinsumBucket::CommSplitWorld,
+                    _ein_call.active ? duration_in_ns(_ein_cs0, now()) : 0);
       auto &owners = worlds.back();
       if (!own) continue;
       size_t batch = 1;
@@ -933,38 +963,50 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             *owners, term.ei_tiled_range, term.local_tiles.begin(),
             term.local_tiles.end(), replicated);
       };
-      std::invoke(retile, std::get<0>(AB));
-      std::invoke(retile, std::get<1>(AB));
+      {
+        detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::Retile);
+        std::invoke(retile, std::get<0>(AB));
+        std::invoke(retile, std::get<1>(AB));
+      }
 
-      C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
-      A.ei.defer_deleter_to_next_fence();
-      B.ei.defer_deleter_to_next_fence();
-      A.ei = ArrayA();
-      B.ei = ArrayB();
-      // why omitting this fence leads to deadlock?
-      owners->gop.fence();
-      for (Index e : C.tiles) {
-        if (!C.ei.is_local(e)) continue;
-        if (C.ei.is_zero(e)) continue;
-        // TODO no need for immediate evaluation
-        auto tile = C.ei.find_local(e).get();
-        assert(tile.nbatch() == batch);
-        const Permutation &P = C.permutation;
-        auto c = apply(P, h + e);
-        auto shape = C.array.trange().tile(c);
-        shape = apply_inverse(P, shape);
-        tile = tile.reshape(shape);
-        if (P) tile = tile.permute(P);
-        C_local_tiles.emplace_back(std::move(c), std::move(tile));
+      {
+        detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::ContractFence);
+        C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
+        A.ei.defer_deleter_to_next_fence();
+        B.ei.defer_deleter_to_next_fence();
+        A.ei = ArrayA();
+        B.ei = ArrayB();
+        // why omitting this fence leads to deadlock?
+        owners->gop.fence();
+      }
+      {
+        detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::Harvest);
+        for (Index e : C.tiles) {
+          if (!C.ei.is_local(e)) continue;
+          if (C.ei.is_zero(e)) continue;
+          // TODO no need for immediate evaluation
+          auto tile = C.ei.find_local(e).get();
+          assert(tile.nbatch() == batch);
+          const Permutation &P = C.permutation;
+          auto c = apply(P, h + e);
+          auto shape = C.array.trange().tile(c);
+          shape = apply_inverse(P, shape);
+          tile = tile.reshape(shape);
+          if (P) tile = tile.permute(P);
+          C_local_tiles.emplace_back(std::move(c), std::move(tile));
+        }
       }
       // mark for lazy deletion
       C.ei = ArrayC();
     }
 
-    build_C_array();
+    {
+      detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::Teardown);
+      build_C_array();
 
-    for (auto &w : worlds) {
-      w->gop.fence();
+      for (auto &w : worlds) {
+        w->gop.fence();
+      }
     }
 
     return C.array;
