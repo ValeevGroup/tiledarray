@@ -705,17 +705,14 @@ class ContEngine : public BinaryEngine<Derived> {
 
   /// Shape factory function for a general product
 
-  /// \return The result shape
+  /// \return The result shape: the fused modes lead; each fused-index slab
+  /// is the shape-level contraction of the corresponding argument slabs
   shape_type make_shape_general() const {
     if constexpr (std::is_same_v<shape_type, DenseShape>)
       return shape_type();
     else
-      // TODO support block-sparse general products: evaluate the shape
-      // slab-by-slab (per-slab SparseShape::gemm over the folded modes)
-      TA_EXCEPTION(
-          "block-sparse general products (fused + contracted + free indices) "
-          "via the expression layer are not yet implemented; use "
-          "TiledArray::einsum() instead");
+      return left_.shape().gemm_batched(right_.shape(), factor_,
+                                        op_.gemm_helper(), n_fused_modes_);
   }
 
   /// Initialize the result distribution of a general product

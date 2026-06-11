@@ -263,18 +263,79 @@ BOOST_AUTO_TEST_CASE(expression_general_product_thc_intermediates) {
   BOOST_CHECK_SMALL(diff_norm(g, g_ref, "p,q,r,s"), 1e-10);
 }
 
-BOOST_AUTO_TEST_CASE(expression_general_product_sparse_gated) {
-  // block-sparse general products are not implemented yet: must report
-  // clearly rather than compute garbage
+namespace {
+
+/// makes a block-sparse array over \p tr with an index-dependent fill and a
+/// deterministic block-sparsity pattern (every \p zero_stride -th tile zero)
+TA::TSpArrayD make_patterned_sparse_array(TA::World& world,
+                                          const TA::TiledRange& tr,
+                                          const double seed,
+                                          const std::size_t zero_stride) {
+  // shape: unit norm except every zero_stride-th tile
+  TA::Tensor<float> norms(tr.tiles_range(), 1.0f);
+  for (std::size_t ord = 0; ord < norms.size(); ord += zero_stride)
+    norms.data()[ord] = 0.0f;
+  TA::SparseShape<float> shape(norms, tr);
+
+  TA::TSpArrayD result(world, tr, shape);
+  // iteration visits only local non-zero tiles
+  for (auto it = result.begin(); it != result.end(); ++it) {
+    auto tile =
+        TA::TSpArrayD::value_type(result.trange().make_tile_range(it.index()));
+    for (auto&& ix : tile.range()) {
+      double v = seed;
+      double scale = 1.0;
+      for (auto x : ix) {
+        v += scale * static_cast<double>(x + 1);
+        scale *= 0.1;
+      }
+      tile[ix] = v;
+    }
+    *it = tile;
+  }
+  return result;
+}
+
+/// \return the Frobenius norm of `lhs - rhs` (block-sparse)
+double diff_norm_sp(TA::TSpArrayD& lhs, TA::TSpArrayD& rhs,
+                    const std::string& annot) {
+  TA::TSpArrayD diff;
+  diff(annot) = lhs(annot) - rhs(annot);
+  return diff(annot).norm().get();
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse) {
+  // block-sparse general products: the result shape is computed slab-by-slab
+  // (SparseShape::gemm_batched) and the batched Summa runs its sparse path
+  // ((h,k)-keyed masks/groups); differential-test against einsum
   auto& world = TA::get_default_world();
-  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}, {0, 2, 4}};
-  TA::TSpArrayD a(world, tr);
-  TA::TSpArrayD b(world, tr);
-  a.fill(1.0);
-  b.fill(1.0);
+
+  TA::TiledRange tr_a{{0, 2, 5}, {0, 3, 4}, {0, 2, 6, 7}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 5}, {0, 2, 6, 7}, {0, 4, 5}};  // b, j, k
+  auto a = make_patterned_sparse_array(world, tr_a, 1.0, 3);
+  auto b = make_patterned_sparse_array(world, tr_b, 2.0, 4);
+
   TA::TSpArrayD c;
-  BOOST_CHECK_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"),
-                    TiledArray::Exception);
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+  auto c_ref = TA::einsum(a("b,i,j"), b("b,j,k"), "b,i,k");
+  BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i,k"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_batched_outer) {
+  // block-sparse batched outer product (no contracted indices)
+  auto& world = TA::get_default_world();
+
+  TA::TiledRange tr_a{{0, 2, 5}, {0, 3, 4}};  // b, i
+  TA::TiledRange tr_b{{0, 2, 5}, {0, 4, 5}};  // b, k
+  auto a = make_patterned_sparse_array(world, tr_a, 1.0, 3);
+  auto b = make_patterned_sparse_array(world, tr_b, 2.0, 2);
+
+  TA::TSpArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i") * b("b,k"));
+  auto c_ref = TA::einsum(a("b,i"), b("b,k"), "b,i,k");
+  BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i,k"), 1e-10);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
