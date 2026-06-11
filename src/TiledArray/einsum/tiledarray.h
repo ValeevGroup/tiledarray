@@ -14,9 +14,52 @@
 
 #include <madness/world/thread.h>
 
+#include <optional>
+
 namespace TiledArray {
 enum struct DeNest { True, False };
 }
+
+namespace TiledArray::detail {
+
+/// Runtime toggle for the legacy per-Hadamard-slab sub-World evaluation of
+/// general products in einsum.
+///
+/// einsum can route a general product (fused + contracted + free indices)
+/// through the expression layer's native support (TensorProduct::General,
+/// evaluated by the batched Summa: one task graph in one World, no per-slab
+/// sub-Worlds) or through the legacy path (one MPI_Comm_split + sub-World +
+/// fence per Hadamard slab). The legacy path is currently the DEFAULT:
+/// the expression route has known mismatches on PNO-CC (CSV) workloads
+/// (see TA_EINSUM_DIFFERENTIAL) that are under investigation. Set
+/// TA_EINSUM_LEGACY_SUBWORLD=0 in the environment (or assign \c false to
+/// the reference returned by this function) to opt into the expression
+/// route. The legacy implementation is retained indefinitely as a reference
+/// for differential testing.
+inline bool &einsum_legacy_subworld() {
+  static bool flag = [] {
+    const char *e = std::getenv("TA_EINSUM_LEGACY_SUBWORLD");
+    // default: legacy; any value other than "0" (incl. unset) keeps legacy
+    return e == nullptr || std::string_view(e) != "0";
+  }();
+  return flag;
+}
+
+/// Differential-testing mode for einsum's general products: when enabled
+/// (TA_EINSUM_DIFFERENTIAL set to a non-empty value other than "0"), every
+/// general product is evaluated by BOTH the expression route and the legacy
+/// sub-World route; the two results are compared (squared norm of the
+/// difference) and mismatches are reported to stderr with the contraction
+/// annotation. The legacy result is returned.
+inline bool &einsum_differential() {
+  static bool flag = [] {
+    const char *e = std::getenv("TA_EINSUM_DIFFERENTIAL");
+    return e != nullptr && e[0] != '\0' && std::string_view(e) != "0";
+  }();
+  return flag;
+}
+
+}  // namespace TiledArray::detail
 
 namespace TiledArray::Einsum {
 
@@ -909,6 +952,35 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       }
     }
 
+    // Route the general product through the expression layer's native
+    // support (TensorProduct::General -> batched Summa: one task graph in
+    // one World, no per-slab sub-Worlds) unless the legacy path is forced
+    // (see detail::einsum_legacy_subworld). The engine requires the
+    // canonical (fused..., left-free..., right-free...) result layout; an
+    // arbitrary einsum target is reached by a final permutation assignment.
+    // N.B. the inner annotation is already canonical here (the non-trivial
+    // inner permutation case recursed above).
+    std::optional<ArrayC> expr_route_result;
+    if (!detail::einsum_legacy_subworld() || detail::einsum_differential()) {
+      _ein_call.branch = "generalized-expression";
+      detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::LocalKernel);
+
+      TensorOpIndices<std::string> top(a, b, c);
+      const auto c_canon = top.ix_C_canon();
+      ArrayC result;
+      result(std::string(c_canon) + inner.c) = tnsrExprA * tnsrExprB;
+      if (c_canon == c) {
+        expr_route_result = std::move(result);
+      } else {
+        ArrayC result_perm;
+        result_perm(std::string(c) + inner.c) =
+            result(std::string(c_canon) + inner.c);
+        expr_route_result = std::move(result_perm);
+      }
+      if (!detail::einsum_differential()) return std::move(*expr_route_result);
+      _ein_call.branch = "generalized-subworld";
+    }
+
     auto update_tr = [&e = std::as_const(e), &i = std::as_const(i),
                       &range_map = std::as_const(range_map)](auto &term) {
       auto ei = (e + i & term.idx);
@@ -1006,6 +1078,24 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
       for (auto &w : worlds) {
         w->gop.fence();
+      }
+    }
+
+    if (expr_route_result) {
+      // differential mode: compare the expression route against the legacy
+      // result
+      const std::string c_annot = std::string(c) + inner.c;
+      ArrayC diff;
+      diff(c_annot) = (*expr_route_result)(c_annot)-C.array(c_annot);
+      const double d2 = diff(c_annot).squared_norm().get();
+      const double ref2 = C.array(c_annot).squared_norm().get();
+      if (!(d2 <= 1e-20 * std::max(ref2, 1.0))) {
+        if (world.rank() == 0)
+          std::cerr << "!! einsum DIFFERENTIAL MISMATCH: "
+                    << (std::string)a + inner.a << " * "
+                    << (std::string)b + inner.b << " -> " << c_annot
+                    << " : diff2 = " << d2 << ", legacy2 = " << ref2
+                    << std::endl;
       }
     }
 
