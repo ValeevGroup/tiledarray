@@ -7,15 +7,48 @@
 #include "TiledArray/einsum/range.h"
 #include "TiledArray/expressions/fwd.h"
 #include "TiledArray/fwd.h"
+#include "TiledArray/math/blas.h"
+#include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/arena_einsum.h"
 #include "TiledArray/tiled_range.h"
 #include "TiledArray/tiled_range1.h"
 
 #include <madness/world/thread.h>
 
+#include <cstdlib>
+#include <string_view>
+#include <vector>
+
 namespace TiledArray {
 enum struct DeNest { True, False };
 }
+
+namespace TiledArray::detail {
+
+/// Kill switch for the local-slice fast path of the *generalized*
+/// batched-contraction einsum (Hadamard indices coexisting with
+/// external/contracted indices).
+///
+/// - false (default): a Hadamard slice whose input tiles are all owned by a
+///   single rank is contracted locally on that rank with a direct
+///   `Tensor::gemm` -- no `MPI_Comm_split`, no sub-World, no per-tile fence.
+///   Slices that span ranks fall back to the sub-World path.
+/// - true: forces the legacy path -- one `MPI_Comm_split` + a fresh sub-World
+///   + a sub-World fence *per Hadamard tile* (O(#Hadamard-tiles) collectives).
+///   Retained as a safety valve / differential-correctness hook.
+///
+/// Toggleable at runtime (test/bench hook) and from the environment via
+/// `TA_EINSUM_HADAMARD_LOCAL_FASTPATH_DISABLED` (any non-empty value other than
+/// "0" forces the legacy path). Mirrors `regime_a_strided_disabled()`.
+inline bool &einsum_hadamard_local_fastpath_disabled() {
+  static bool flag = [] {
+    const char *e = std::getenv("TA_EINSUM_HADAMARD_LOCAL_FASTPATH_DISABLED");
+    return e != nullptr && e[0] != '\0' && std::string_view(e) != "0";
+  }();
+  return flag;
+}
+
+}  // namespace TiledArray::detail
 
 namespace TiledArray::Einsum {
 
@@ -899,65 +932,193 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     std::invoke(update_tr, std::get<0>(AB));
     std::invoke(update_tr, std::get<1>(AB));
 
-    // iterates over tiles of hadamard indices
+    // Per-Hadamard-tile retile: gather this rank's local input tiles for slice
+    // `h`, (eagerly) permute them to canonical layout, fold the within-tile
+    // Hadamard extent into nbatch, and assemble the slice sub-array `term.ei`
+    // on `slice_world`.
+    auto retile = [](auto &term, World &slice_world, const Index &h,
+                     size_t batch) {
+      term.local_tiles.clear();
+      const Permutation &P = term.permutation;
+
+      for (Index ei : term.tiles) {
+        auto idx = apply_inverse(P, h + ei);
+        if (!term.array.is_local(idx)) continue;
+        if (term.array.is_zero(idx)) continue;
+        // TODO no need for immediate evaluation
+        auto tile = term.array.find_local(idx).get();
+        if (P) tile = tile.permute(P);
+        auto shape = term.ei_tiled_range.tile(ei);
+        tile = tile.reshape(shape, batch);
+        term.local_tiles.push_back({ei, tile});
+      }
+      bool replicated = term.array.pmap()->is_replicated();
+      term.ei = TiledArray::make_array<decltype(term.array)>(
+          slice_world, term.ei_tiled_range, term.local_tiles.begin(),
+          term.local_tiles.end(), replicated);
+    };
+
+    // Stores one completed slice result tile (external indices `e`, with the
+    // within-tile Hadamard extent folded into nbatch) into C_local_tiles:
+    // unfold nbatch back into the Hadamard modes and permute to target C
+    // layout.
+    auto store_C_tile = [&](const Index &h, const Index &e, ResultTensor tile) {
+      const Permutation &P = C.permutation;
+      auto c = apply(P, h + e);
+      auto shape = C.array.trange().tile(c);
+      shape = apply_inverse(P, shape);
+      tile = tile.reshape(shape);
+      if (P) tile = tile.permute(P);
+      C_local_tiles.emplace_back(std::move(c), std::move(tile));
+    };
+
+    // Extracts the (completed) result sub-array `c_ei` of Hadamard slice `h`
+    // into C_local_tiles.
+    auto harvest = [&](const Index &h, ArrayC &c_ei) {
+      for (Index e : C.tiles) {
+        if (!c_ei.is_local(e)) continue;
+        if (c_ei.is_zero(e)) continue;
+        store_C_tile(h, e, c_ei.find_local(e).get());
+      }
+    };
+
+    if (detail::einsum_hadamard_local_fastpath_disabled()) {
+      // ===== Legacy path: one MPI_Comm_split + sub-World + fence per
+      // Hadamard tile. O(#Hadamard-tiles) collectives. =====
+      for (Index h : H.tiles) {
+        auto &[A, B] = AB;
+        auto own = A.own(h) || B.own(h);
+        auto comm = madness::blocking_invoke(
+            &SafeMPI::Intracomm::Split, world.mpi.comm(), own, world.rank());
+        worlds.push_back(std::make_unique<World>(comm));
+        auto &owners = worlds.back();
+        if (!own) continue;
+        size_t batch = 1;
+        for (size_t i = 0; i < h.size(); ++i) {
+          batch *= H.batch[i].at(h[i]);
+        }
+
+        std::invoke(retile, std::get<0>(AB), *owners, h, batch);
+        std::invoke(retile, std::get<1>(AB), *owners, h, batch);
+
+        C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
+        A.ei.defer_deleter_to_next_fence();
+        B.ei.defer_deleter_to_next_fence();
+        A.ei = ArrayA();
+        B.ei = ArrayB();
+        // why omitting this fence leads to deadlock?
+        owners->gop.fence();
+        std::invoke(harvest, h, C.ei);
+        // mark for lazy deletion
+        C.ei = ArrayC();
+      }
+
+      build_C_array();
+
+      for (auto &w : worlds) {
+        w->gop.fence();
+      }
+
+      return C.array;
+    }
+
+    // ===== Local-slice fast path: a Hadamard slice whose (single) input tiles
+    // are all owned by one rank is contracted *locally* on that rank with a
+    // direct Tensor::gemm -- no comm-split, no sub-World, no make_array/
+    // DistEval, no fence. Slices that span ranks fall back to the sub-World
+    // path below.
+    //
+    // Whether a slice is "local" is decided purely from global pmap/trange
+    // metadata, so every rank reaches the same verdict and the comm-splits for
+    // the (remaining) distributed slices stay in lockstep across ranks. For
+    // batch-blocked data every slice is single-owner, so the whole batched
+    // contraction runs communication-free. =====
+
+    // The local fast path needs a value-returning per-tile product, so it is
+    // restricted to plain (non-nested) tensor tiles; ToT slices always take the
+    // distributed fallback.
+    constexpr bool plain_tiles =
+        IsArrayT<ArrayA> && IsArrayT<ArrayB> && IsArrayT<ArrayC>;
+
+    // The slice contraction is a single Tensor::gemm only when each operand's
+    // external+contracted modes form exactly one tile (one A tile, one B tile,
+    // one C tile per slice). This is a property of the tiled ranges, identical
+    // for every Hadamard slice.
+    [[maybe_unused]] std::vector<Index> a_eis, b_eis, c_es;
+    for (Index ei : std::get<0>(AB).tiles) a_eis.push_back(ei);
+    for (Index ei : std::get<1>(AB).tiles) b_eis.push_back(ei);
+    for (Index ee : C.tiles) c_es.push_back(ee);
+    [[maybe_unused]] const bool single_tile_slices =
+        a_eis.size() == 1 && b_eis.size() == 1 && c_es.size() == 1;
+
+    // Canonical (NoTranspose,Transpose) GEMM for C(e_A,e_B) =
+    // A(e_A,i)*B(e_B,i): both operands carry the contracted indices `i` as
+    // their trailing modes (a_ei/b_ei = (e+i)&operand, with e ordered
+    // A-externals-then-B-externals), and the result lands in `e` order,
+    // matching C.expr.
+    const auto a_ei_idx = (e + i) & a;
+    const auto b_ei_idx = (e + i) & b;
+    [[maybe_unused]] const math::GemmHelper gemm_helper(
+        math::blas::NoTranspose, math::blas::Transpose,
+        static_cast<unsigned int>(e.size()),
+        static_cast<unsigned int>(a_ei_idx.size()),
+        static_cast<unsigned int>(b_ei_idx.size()));
+
     for (Index h : H.tiles) {
       auto &[A, B] = AB;
+      size_t batch = 1;
+      for (size_t i = 0; i < h.size(); ++i) {
+        batch *= H.batch[i].at(h[i]);
+      }
+
+      // ---- local fast path ----
+      if constexpr (plain_tiles) {
+        if (single_tile_slices) {
+          const Index &a_ei = a_eis[0];
+          const Index &b_ei = b_eis[0];
+          const Index &c_e = c_es[0];
+          const auto a_idx = apply_inverse(A.permutation, h + a_ei);
+          const auto b_idx = apply_inverse(B.permutation, h + b_ei);
+          // global, rank-consistent verdict: both inputs on the same owner.
+          if (A.array.owner(a_idx) == B.array.owner(b_idx)) {
+            if (A.array.is_local(a_idx)) {  // this rank is that sole owner
+              if (!(A.array.is_zero(a_idx) || B.array.is_zero(b_idx))) {
+                auto a_tile = A.array.find_local(a_idx).get();
+                auto b_tile = B.array.find_local(b_idx).get();
+                if (A.permutation) a_tile = a_tile.permute(A.permutation);
+                if (B.permutation) b_tile = b_tile.permute(B.permutation);
+                a_tile = a_tile.reshape(A.ei_tiled_range.tile(a_ei), batch);
+                b_tile = b_tile.reshape(B.ei_tiled_range.tile(b_ei), batch);
+                ResultTensor c_tile;
+                c_tile.gemm(a_tile, b_tile,
+                            typename ResultTensor::numeric_type{1},
+                            gemm_helper);
+                store_C_tile(h, c_e, std::move(c_tile));
+              }
+            }
+            continue;  // all ranks skip the distributed handling for this slice
+          }
+        }
+      }
+
+      // ---- distributed fallback: legacy sub-World contraction ----
       auto own = A.own(h) || B.own(h);
       auto comm = madness::blocking_invoke(&SafeMPI::Intracomm::Split,
                                            world.mpi.comm(), own, world.rank());
       worlds.push_back(std::make_unique<World>(comm));
       auto &owners = worlds.back();
       if (!own) continue;
-      size_t batch = 1;
-      for (size_t i = 0; i < h.size(); ++i) {
-        batch *= H.batch[i].at(h[i]);
-      }
 
-      auto retile = [&owners, &h = std::as_const(h), batch](auto &term) {
-        term.local_tiles.clear();
-        const Permutation &P = term.permutation;
-
-        for (Index ei : term.tiles) {
-          auto idx = apply_inverse(P, h + ei);
-          if (!term.array.is_local(idx)) continue;
-          if (term.array.is_zero(idx)) continue;
-          // TODO no need for immediate evaluation
-          auto tile = term.array.find_local(idx).get();
-          if (P) tile = tile.permute(P);
-          auto shape = term.ei_tiled_range.tile(ei);
-          tile = tile.reshape(shape, batch);
-          term.local_tiles.push_back({ei, tile});
-        }
-        bool replicated = term.array.pmap()->is_replicated();
-        term.ei = TiledArray::make_array<decltype(term.array)>(
-            *owners, term.ei_tiled_range, term.local_tiles.begin(),
-            term.local_tiles.end(), replicated);
-      };
-      std::invoke(retile, std::get<0>(AB));
-      std::invoke(retile, std::get<1>(AB));
+      std::invoke(retile, std::get<0>(AB), *owners, h, batch);
+      std::invoke(retile, std::get<1>(AB), *owners, h, batch);
 
       C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
       A.ei.defer_deleter_to_next_fence();
       B.ei.defer_deleter_to_next_fence();
       A.ei = ArrayA();
       B.ei = ArrayB();
-      // why omitting this fence leads to deadlock?
       owners->gop.fence();
-      for (Index e : C.tiles) {
-        if (!C.ei.is_local(e)) continue;
-        if (C.ei.is_zero(e)) continue;
-        // TODO no need for immediate evaluation
-        auto tile = C.ei.find_local(e).get();
-        assert(tile.nbatch() == batch);
-        const Permutation &P = C.permutation;
-        auto c = apply(P, h + e);
-        auto shape = C.array.trange().tile(c);
-        shape = apply_inverse(P, shape);
-        tile = tile.reshape(shape);
-        if (P) tile = tile.permute(P);
-        C_local_tiles.emplace_back(std::move(c), std::move(tile));
-      }
-      // mark for lazy deletion
+      std::invoke(harvest, h, C.ei);
       C.ei = ArrayC();
     }
 
