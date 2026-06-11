@@ -204,6 +204,30 @@ class ContEngine : public BinaryEngine<Derived> {
     return product_type_;
   }
 
+  /// \return true if the outer product is evaluated by a (batched) SUMMA,
+  /// i.e. the tile op is a ContractReduce (a pure contraction or a general
+  /// product); false for the elementwise (Hadamard) binary tile op
+  bool outer_product_uses_summa() const {
+    return product_type_ == TensorProduct::Contraction ||
+           product_type_ == TensorProduct::General;
+  }
+
+  /// \return for a general product, the number of leading fused (outer)
+  /// modes common to the canonical left, right, and result layouts
+  /// (GeneralPermutationOptimizer places them first); 0 for the other
+  /// product types
+  unsigned int n_fused_outer_modes() const {
+    if (product_type_ != TensorProduct::General) return 0u;
+    auto const& l = outer(left_indices_);
+    auto const& r = outer(right_indices_);
+    auto const& res = outer(indices_);
+    unsigned int nh = 0u;
+    while (nh < res.size() && nh < l.size() && nh < r.size() &&
+           l[nh] == res[nh] && r[nh] == res[nh])
+      ++nh;
+    return nh;
+  }
+
   /// \return the inner product type
   TensorProduct inner_product_type() const {
     TA_ASSERT(inner_product_type_ !=
@@ -617,53 +641,80 @@ class ContEngine : public BinaryEngine<Derived> {
   /// shape.
   /// \param target_indices The target index list for the result tensor
   void init_struct_general(const BipartiteIndexList& target_indices) {
-    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>)
+    // precondition checks (mirror init_struct)
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      TA_ASSERT(element_nonreturn_op_);
+      // a view inner cell (e.g. ArenaTensor) cannot host a value-returning
+      // inner op, so element_return_op_ is intentionally left null for it
+      if constexpr (!TiledArray::is_tensor_view_v<result_tile_element_type>)
+        TA_ASSERT(element_return_op_);
+    }
+
+    // Initialize children
+    left_.init_struct(left_indices_);
+    right_.init_struct(right_indices_);
+
+    // count the fused modes: the leading indices common to the canonical
+    // left, right, and result layouts
+    const unsigned int nh = n_fused_outer_modes();
+    TA_ASSERT(nh > 0u);  // else this is a pure contraction
+    n_fused_modes_ = nh;
+
+    // initialize perm_; an interleaved target (a result permutation that
+    // mixes fused and free modes) is not yet supported -- the canonical
+    // result layout must equal the target
+    this->init_perm(target_indices);
+    if (outer(target_indices) != outer(indices_))
       TA_EXCEPTION(
-          "general products (fused + contracted + free indices) of "
-          "tensors-of-tensors via the expression layer are not yet "
-          "implemented; use TiledArray::einsum() instead");
-    else {
-      // Initialize children
-      left_.init_struct(left_indices_);
-      right_.init_struct(right_indices_);
+          "general products (fused + contracted + free indices): targets "
+          "that interleave fused and free indices are not yet supported; "
+          "reorder the result annotation to (fused..., left-free..., "
+          "right-free...)");
 
-      // count the fused modes: the leading indices common to the canonical
-      // left, right, and result layouts
-      const auto& left_outer = outer(left_indices_);
-      const auto& right_outer = outer(right_indices_);
-      const auto& result_outer = outer(indices_);
-      unsigned int nh = 0u;
-      while (nh < result_outer.size() && nh < left_outer.size() &&
-             nh < right_outer.size() && left_outer[nh] == result_outer[nh] &&
-             right_outer[nh] == result_outer[nh])
-        ++nh;
-      TA_ASSERT(nh > 0u);  // else this is a pure contraction
-      n_fused_modes_ = nh;
-
-      // initialize perm_; an interleaved target (a result permutation that
-      // mixes fused and free modes) is not yet supported -- the canonical
-      // result layout must equal the target
-      this->init_perm(target_indices);
-      if (outer(target_indices) != outer(indices_))
-        TA_EXCEPTION(
-            "general products (fused + contracted + free indices): targets "
-            "that interleave fused and free indices are not yet supported; "
-            "reorder the result annotation to (fused..., left-free..., "
-            "right-free...)");
-
-      // the tile op operates on the folded (fused-mode-free) shapes
-      const auto left_op = to_cblas_op(left_outer_permtype_);
-      const auto right_op = to_cblas_op(right_outer_permtype_);
+    // the tile op operates on the folded (fused-mode-free) shapes
+    const auto left_op = to_cblas_op(left_outer_permtype_);
+    const auto right_op = to_cblas_op(right_outer_permtype_);
+    if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
       op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh,
                     outer_size(left_indices_) - nh,
                     outer_size(right_indices_) - nh);
+    } else {
+      // the batched tile op must be perm-free (BatchedContractReduce cannot
+      // host the folded-rank result permutation); the outer perm is empty by
+      // the interleaved-target gate above, so only an explicit inner result
+      // permutation can require one
+      if (!implicit_permute_inner_ && bool(inner(perm_)))
+        TA_EXCEPTION(
+            "general products of tensors-of-tensors: a non-identity inner "
+            "result permutation is not yet supported; reorder the inner "
+            "annotation of the result");
 
-      trange_ = make_trange_general();
-      shape_ = make_shape_general();
-
-      if (ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape) {
-        shape_ = shape_.mask(*ExprEngine_::override_ptr_->shape);
+      // factor_ is absorbed into element_nonreturn_op_
+      op_ = op_type(left_op, right_op, scalar_type(1),
+                    outer_size(indices_) - nh, outer_size(left_indices_) - nh,
+                    outer_size(right_indices_) - nh, BipartitePermutation{},
+                    this->element_nonreturn_op_, std::move(this->arena_plan_));
+      // ce+e, ce+ce_right and ce+ce_left are mutually exclusive; at most one
+      // is non-null and only one install fires (see init_struct)
+      if (this->arena_strided_dgemm_ce_e_tile_op_)
+        op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
+      if (this->arena_strided_dgemm_ce_ce_right_tile_op_)
+        op_.set_strided_oprod_op(
+            this->arena_strided_dgemm_ce_ce_right_tile_op_);
+      if (this->arena_strided_dgemm_ce_ce_left_tile_op_)
+        op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_left_tile_op_);
+      // Plan ownership transferred to op_; mark carrier slot empty so any
+      // later use of arena_plan_ reads as "no plan" rather than moved-from.
+      if constexpr (!std::is_same_v<arena_plan_storage_t, std::monostate>) {
+        this->arena_plan_.reset();
       }
+    }
+
+    trange_ = make_trange_general();
+    shape_ = make_shape_general();
+
+    if (ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape) {
+      shape_ = shape_.mask(*ExprEngine_::override_ptr_->shape);
     }
   }
 
@@ -786,29 +837,20 @@ class ContEngine : public BinaryEngine<Derived> {
 
   /// \return The batched-Summa distributed evaluator for this expression
   dist_eval_type make_dist_eval_general() const {
-    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      // unreachable: init_struct_general throws for tensors-of-tensors
-      TA_EXCEPTION(
-          "general products of tensors-of-tensors are not yet implemented");
-      abort();  // unreachable
-    } else {
-      typedef TiledArray::detail::BatchedContractReduce<op_type>
-          batched_op_type;
-      typedef TiledArray::detail::Summa<typename left_type::dist_eval_type,
-                                        typename right_type::dist_eval_type,
-                                        batched_op_type,
-                                        typename Derived::policy>
-          impl_type;
+    typedef TiledArray::detail::BatchedContractReduce<op_type> batched_op_type;
+    typedef TiledArray::detail::Summa<typename left_type::dist_eval_type,
+                                      typename right_type::dist_eval_type,
+                                      batched_op_type, typename Derived::policy>
+        impl_type;
 
-      typename left_type::dist_eval_type left = left_.make_dist_eval();
-      typename right_type::dist_eval_type right = right_.make_dist_eval();
+    typename left_type::dist_eval_type left = left_.make_dist_eval();
+    typename right_type::dist_eval_type right = right_.make_dist_eval();
 
-      std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
-          left, right, *world_, trange_, shape_, pmap_, perm_,
-          batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_);
+    std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
+        left, right, *world_, trange_, shape_, pmap_, perm_,
+        batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_);
 
-      return dist_eval_type(pimpl);
-    }
+    return dist_eval_type(pimpl);
   }
 
   /// Expression identification tag
@@ -863,7 +905,7 @@ class ContEngine : public BinaryEngine<Derived> {
             this->product_type() == TensorProduct::Hadamard) {
           // pure Hadamard: element_*_op_ left null
         } else if (inner_prod == TensorProduct::Hadamard &&
-                   this->product_type() == TensorProduct::Contraction) {
+                   this->outer_product_uses_summa()) {
           // outer Contraction + inner Hadamard on view inner tiles.
           // Mirror the owning-tile path (init_inner_tile_op_owning_): the
           // SUMMA shapes each result cell from a non-empty left inner cell
@@ -945,7 +987,7 @@ class ContEngine : public BinaryEngine<Derived> {
                     // result cell is pre-shaped [1] by the unit_range plan.
                     result.data()[0] += static_cast<Numeric>(factor) * acc;
                   };
-              if (this->product_type() == TensorProduct::Contraction) {
+              if (this->outer_product_uses_summa()) {
                 this->arena_plan_ =
                     TiledArray::detail::make_contraction_arena_plan<
                         result_tile_type, left_tile_type, right_tile_type>(
@@ -992,7 +1034,7 @@ class ContEngine : public BinaryEngine<Derived> {
                   TiledArray::detail::make_fused_contraction_lambda<
                       result_tile_element_type, left_tile_element_type,
                       right_tile_element_type>(contrreduce_op);
-              if (this->product_type() == TensorProduct::Contraction) {
+              if (this->outer_product_uses_summa()) {
                 // outer contraction: the SUMMA result is shaped from operand
                 // inner cells by arena_plan_; op_'s post-processing permute
                 // applies the (outer + inner) result permutation.
@@ -1093,15 +1135,20 @@ class ContEngine : public BinaryEngine<Derived> {
                       inner_gh.left_rank() == inner_gh.num_contract_ranks();
                   // Derive the outer-contracted rank `oc` from the outer index
                   // sizes (same helper used by the outer op when building op_).
-                  const auto oc = (outer_size(this->left_indices_) +
-                                   outer_size(this->right_indices_) -
-                                   outer_size(this->indices_)) /
+                  // for a general product the leading fused modes do not
+                  // participate in the outer GEMM (they are folded into the
+                  // tile batch dimension), so exclude them from the rank
+                  // accounting
+                  const auto nh = this->n_fused_outer_modes();
+                  const auto oc = (outer_size(this->left_indices_) - nh +
+                                   outer_size(this->right_indices_) - nh -
+                                   (outer_size(this->indices_) - nh)) /
                                   2;
                   // the ridden operand must carry an outer external to ride.
                   const bool right_has_ext =
-                      outer_size(this->right_indices_) > oc;
+                      outer_size(this->right_indices_) - nh > oc;
                   const bool left_has_ext =
-                      outer_size(this->left_indices_) > oc;
+                      outer_size(this->left_indices_) - nh > oc;
                   // canonical inner orientation: identity == "no inner
                   // transpose". right core assumes L=(a1,a4), R=(a4); left core
                   // assumes L=(a4), R=(a4,b1). Either way BOTH inner permtypes
@@ -1369,7 +1416,7 @@ class ContEngine : public BinaryEngine<Derived> {
                 TiledArray::detail::is_contraction_arena_tot_v<
                     result_tile_type, left_tile_type, right_tile_type>;
             if constexpr (arena_eligible) {
-              if (this->product_type() == TensorProduct::Contraction) {
+              if (this->outer_product_uses_summa()) {
                 this->arena_plan_ =
                     TiledArray::detail::make_contraction_arena_plan<
                         result_tile_type, left_tile_type, right_tile_type>(
@@ -1388,8 +1435,7 @@ class ContEngine : public BinaryEngine<Derived> {
               } else {
                 this->element_nonreturn_op_ =
                     [contrreduce_op,
-                     permute_inner =
-                         this->product_type() != TensorProduct::Contraction](
+                     permute_inner = !this->outer_product_uses_summa()](
                         result_tile_element_type& result,
                         const left_tile_element_type& left,
                         const right_tile_element_type& right) {
@@ -1401,8 +1447,8 @@ class ContEngine : public BinaryEngine<Derived> {
               }
             } else {
               this->element_nonreturn_op_ =
-                  [contrreduce_op, permute_inner = this->product_type() !=
-                                                   TensorProduct::Contraction](
+                  [contrreduce_op,
+                   permute_inner = !this->outer_product_uses_summa()](
                       result_tile_element_type& result,
                       const left_tile_element_type& left,
                       const right_tile_element_type& right) {
@@ -1420,7 +1466,7 @@ class ContEngine : public BinaryEngine<Derived> {
           // inner tile op depends on the outer op ... e.g. if outer op
           // is contract then inner must implement (ternary) multiply-add;
           // if the outer is hadamard then the inner is binary multiply
-          const auto outer_prod = this->product_type();
+          const bool outer_uses_summa = this->outer_product_uses_summa();
           if (this->factor_ == scalar_type{1}) {
             using base_op_type =
                 TiledArray::detail::Mult<result_tile_element_type,
@@ -1439,7 +1485,7 @@ class ContEngine : public BinaryEngine<Derived> {
                 TiledArray::detail::is_contraction_arena_tot_v<
                     result_tile_type, left_tile_type, right_tile_type>;
             if constexpr (arena_eligible_h_unit) {
-              if (this->product_type() == TensorProduct::Contraction) {
+              if (this->outer_product_uses_summa()) {
                 this->arena_plan_ =
                     TiledArray::detail::make_contraction_arena_plan<
                         result_tile_type, left_tile_type, right_tile_type>(
@@ -1455,15 +1501,13 @@ class ContEngine : public BinaryEngine<Derived> {
                         right_tile_element_type>();
               } else {
                 this->element_nonreturn_op_ =
-                    [mult_op, outer_prod](
+                    [mult_op, outer_uses_summa](
                         result_tile_element_type& result,
                         const left_tile_element_type& left,
                         const right_tile_element_type& right) {
-                      TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
-                                outer_prod == TensorProduct::Contraction);
-                      if (outer_prod == TensorProduct::Hadamard)
+                      if (!outer_uses_summa)
                         result = mult_op(left, right);
-                      else {  // outer_prod == TensorProduct::Contraction
+                      else {  // outer product evaluated by (batched) SUMMA
                         // there is currently no fused MultAdd ternary Op, only
                         // Add and Mult thus implement this as 2 separate steps
                         // TODO optimize by implementing (ternary) MultAdd
@@ -1478,14 +1522,13 @@ class ContEngine : public BinaryEngine<Derived> {
               }
             } else {
               this->element_nonreturn_op_ =
-                  [mult_op, outer_prod](result_tile_element_type& result,
-                                        const left_tile_element_type& left,
-                                        const right_tile_element_type& right) {
-                    TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
-                              outer_prod == TensorProduct::Contraction);
-                    if (outer_prod == TensorProduct::Hadamard)
+                  [mult_op, outer_uses_summa](
+                      result_tile_element_type& result,
+                      const left_tile_element_type& left,
+                      const right_tile_element_type& right) {
+                    if (!outer_uses_summa)
                       result = mult_op(left, right);
-                    else {  // outer_prod == TensorProduct::Contraction
+                    else {  // outer product evaluated by (batched) SUMMA
                       // there is currently no fused MultAdd ternary Op, only
                       // Add and Mult thus implement this as 2 separate steps
                       // TODO optimize by implementing (ternary) MultAdd
@@ -1515,7 +1558,7 @@ class ContEngine : public BinaryEngine<Derived> {
                 TiledArray::detail::is_contraction_arena_tot_v<
                     result_tile_type, left_tile_type, right_tile_type>;
             if constexpr (arena_eligible_h_scaled) {
-              if (this->product_type() == TensorProduct::Contraction) {
+              if (this->outer_product_uses_summa()) {
                 this->arena_plan_ =
                     TiledArray::detail::make_contraction_arena_plan<
                         result_tile_type, left_tile_type, right_tile_type>(
@@ -1531,13 +1574,11 @@ class ContEngine : public BinaryEngine<Derived> {
                         right_tile_element_type>(this->factor_);
               } else {
                 this->element_nonreturn_op_ =
-                    [mult_op, outer_prod](
+                    [mult_op, outer_uses_summa](
                         result_tile_element_type& result,
                         const left_tile_element_type& left,
                         const right_tile_element_type& right) {
-                      TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
-                                outer_prod == TensorProduct::Contraction);
-                      if (outer_prod == TensorProduct::Hadamard)
+                      if (!outer_uses_summa)
                         result = mult_op(left, right);
                       else {
                         // there is currently no fused MultAdd ternary Op, only
@@ -1554,12 +1595,11 @@ class ContEngine : public BinaryEngine<Derived> {
               }
             } else {
               this->element_nonreturn_op_ =
-                  [mult_op, outer_prod](result_tile_element_type& result,
-                                        const left_tile_element_type& left,
-                                        const right_tile_element_type& right) {
-                    TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
-                              outer_prod == TensorProduct::Contraction);
-                    if (outer_prod == TensorProduct::Hadamard)
+                  [mult_op, outer_uses_summa](
+                      result_tile_element_type& result,
+                      const left_tile_element_type& left,
+                      const right_tile_element_type& right) {
+                    if (!outer_uses_summa)
                       result = mult_op(left, right);
                     else {
                       // there is currently no fused MultAdd ternary Op, only
@@ -1594,7 +1634,7 @@ class ContEngine : public BinaryEngine<Derived> {
               TiledArray::detail::is_contraction_arena_tot_v<
                   result_tile_type, left_tile_type, right_tile_type>;
           if constexpr (arena_eligible_scale) {
-            if (this->product_type() == TensorProduct::Contraction) {
+            if (this->outer_product_uses_summa()) {
               // The inner perm handed to the plan must match how the inner
               // *result* permutation is applied for this result cell type --
               // and the two cell types apply it in different places:
@@ -1631,11 +1671,12 @@ class ContEngine : public BinaryEngine<Derived> {
           auto fallback_op = [perm = !this->implicit_permute_inner_
                                          ? inner(this->perm_)
                                          : Permutation{},
-                              outer_prod = this->product_type()](
+                              outer_uses_summa =
+                                  this->outer_product_uses_summa()](
                                  result_tile_element_type& result,
                                  const left_tile_element_type& left,
                                  const right_tile_element_type& right) {
-            if (outer_prod == TensorProduct::Contraction) {
+            if (outer_uses_summa) {
               using TiledArray::axpy_to;
               if constexpr (tot_x_t) {
                 if (perm)

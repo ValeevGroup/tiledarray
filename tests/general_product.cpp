@@ -338,4 +338,92 @@ BOOST_AUTO_TEST_CASE(expression_general_product_sparse_batched_outer) {
   BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i,k"), 1e-10);
 }
 
+namespace {
+
+using TArrayToT =
+    TA::DistArray<TA::Tensor<TA::Tensor<double>>, TA::DensePolicy>;
+
+/// makes a dense ToT array over \p tr with cells of extents \p inner_extents
+/// filled with an index-dependent pattern
+TArrayToT make_patterned_tot_array(
+    TA::World& world, const TA::TiledRange& tr,
+    const std::vector<std::size_t>& inner_extents, const double seed) {
+  TArrayToT result(world, tr);
+  for (auto it = result.begin(); it != result.end(); ++it) {
+    auto outer_range = result.trange().make_tile_range(it.index());
+    TA::Tensor<TA::Tensor<double>> tile(outer_range);
+    for (auto&& oix : outer_range) {
+      TA::Tensor<double> cell{TA::Range(inner_extents)};
+      for (auto&& iix : cell.range()) {
+        double v = seed;
+        double scale = 1.0;
+        for (auto x : oix) {
+          v += scale * static_cast<double>(x + 1);
+          scale *= 0.1;
+        }
+        for (auto x : iix) {
+          v += scale * static_cast<double>(x + 1);
+          scale *= 0.1;
+        }
+        cell[iix] = v;
+      }
+      tile[oix] = cell;
+    }
+    *it = tile;
+  }
+  return result;
+}
+
+/// \return the max abs elementwise difference between two congruent dense ToT
+/// arrays (replicated check: every rank fetches every tile)
+double tot_max_abs_diff(const TArrayToT& lhs, const TArrayToT& rhs) {
+  double max_diff = 0.0;
+  const auto n = lhs.trange().tiles_range().volume();
+  for (std::size_t ord = 0; ord < n; ++ord) {
+    auto lt = lhs.find(ord).get();
+    auto rt = rhs.find(ord).get();
+    for (std::size_t c = 0; c < lt.range().volume(); ++c) {
+      const auto& lc = lt.data()[c];
+      const auto& rc = rt.data()[c];
+      for (std::size_t e = 0; e < lc.range().volume(); ++e)
+        max_diff = std::max(max_diff, std::abs(lc.data()[e] - rc.data()[e]));
+    }
+  }
+  return max_diff;
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_hadamard) {
+  // ToT general product, inner Hadamard:
+  //   C("b,i,k;m") = A("b,i,j;m") * B("b,j,k;m")
+  // outer: b fused, j contracted, i/k free; inner: m fused
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 4}, {0, 2, 5}, {0, 3, 4}};  // b, j, k
+  auto a = make_patterned_tot_array(world, tr_a, {3}, 1.0);
+  auto b = make_patterned_tot_array(world, tr_b, {3}, 2.0);
+
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k;m") = a("b,i,j;m") * b("b,j,k;m"));
+  auto c_ref = TA::einsum(a("b,i,j;m"), b("b,j,k;m"), "b,i,k;m");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_contraction) {
+  // ToT general product, inner contraction:
+  //   C("b,i,k;m,n") = A("b,i,j;m,c") * B("b,j,k;c,n")
+  // outer: b fused, j contracted, i/k free; inner: c contracted, m/n free
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 4}, {0, 2, 5}, {0, 3, 4}};  // b, j, k
+  auto a = make_patterned_tot_array(world, tr_a, {3, 2}, 1.0);
+  auto b = make_patterned_tot_array(world, tr_b, {2, 4}, 2.0);
+
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k;m,n") = a("b,i,j;m,c") * b("b,j,k;c,n"));
+  auto c_ref = TA::einsum(a("b,i,j;m,c"), b("b,j,k;c,n"), "b,i,k;m,n");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

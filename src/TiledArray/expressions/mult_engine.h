@@ -384,8 +384,10 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
     if (this->product_type() == TensorProduct::General) {
-      // N.B. no inner tile op: ToT general products are rejected by
-      // init_struct_general
+      // the inner tile op (for tensors-of-tensors) must be initialized
+      // first; init_struct_general consumes element_nonreturn_op_ and the
+      // arena plan it builds
+      this->init_inner_tile_op(inner(target_indices));
       ContEngine_::init_struct_general(target_indices);
       return;
     }

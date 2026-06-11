@@ -55,10 +55,6 @@ class BatchedContractReduce {
   typedef typename Op::first_argument_type first_argument_type;
   typedef typename Op::second_argument_type second_argument_type;
 
-  static_assert(
-      !TiledArray::detail::is_tensor_of_tensor_v<result_type>,
-      "BatchedContractReduce does not (yet) support tensor-of-tensor tiles");
-
  private:
   op_type op_;               ///< The folded-shape contract/reduce op
   unsigned int nfused_ = 0;  ///< The number of leading fused modes
@@ -165,12 +161,22 @@ class BatchedContractReduce {
     const std::size_t batch = fused_volume(left.range());
     TA_ASSERT(batch == fused_volume(right.range()));
 
-    // allocate the result with its full (h, e_A, e_B) range: fused + left
-    // external bounds from the left tile, right external bounds from the
-    // right tile. The data layout of the full-range result coincides with
-    // the folded (range = (e_A, e_B), nbatch = batch) layout because the
-    // fused modes lead.
+    // folded, zero-copy argument views
+    auto left_folded = left.reshape(fold_range(left.range()), batch);
+    auto right_folded = right.reshape(fold_range(right.range()), batch);
+
     if (empty(result)) {
+      // let the wrapped op allocate (and zero- or beta-0-initialize) the
+      // result in *folded* form -- this also engages its tile-type-specific
+      // result construction (e.g. the arena reserve for tensor-of-tensor
+      // tiles) -- then unfold by a zero-copy reshape: the data layout of the
+      // folded (range = (e_A, e_B), nbatch = batch) result coincides with
+      // the full (h, e_A, e_B) row-major layout because the fused modes
+      // lead. The full bounds: fused + left-external from the left tile,
+      // right-external from the right tile.
+      result_type result_folded;
+      op_(result_folded, left_folded, right_folded);
+
       using index1_type = typename result_type::range_type::index1_type;
       container::svector<index1_type> lobounds, upbounds;
       lobounds.reserve(nfused_ + neA + neB);
@@ -183,16 +189,13 @@ class BatchedContractReduce {
         lobounds.push_back(right.range().lobound_data()[d]);
         upbounds.push_back(right.range().upbound_data()[d]);
       }
-      result = result_type(typename result_type::range_type(lobounds, upbounds),
-                           typename result_type::value_type(0));
+      result = result_folded.reshape(
+          typename result_type::range_type(lobounds, upbounds));
+    } else {
+      // accumulate through a folded, zero-copy view of the result
+      auto result_folded = result.reshape(fold_range(result.range()), batch);
+      op_(result_folded, left_folded, right_folded);
     }
-
-    // folded, zero-copy views; the result view shares the result's buffer,
-    // so the batched GEMM accumulates in place
-    auto left_folded = left.reshape(fold_range(left.range()), batch);
-    auto right_folded = right.reshape(fold_range(right.range()), batch);
-    auto result_folded = result.reshape(fold_range(result.range()), batch);
-    op_(result_folded, left_folded, right_folded);
   }
 
 };  // class BatchedContractReduce
