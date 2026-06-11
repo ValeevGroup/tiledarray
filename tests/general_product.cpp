@@ -1,6 +1,7 @@
 /// Unit tests for general-product (fused + contracted + free indices)
 /// classification and layout in the expression layer.
 
+#include "TiledArray/einsum/tiledarray.h"
 #include "TiledArray/expressions/permopt.h"
 #include "TiledArray/expressions/product.h"
 
@@ -127,22 +128,90 @@ BOOST_AUTO_TEST_CASE(optimizer_rejects_implicit_reduction) {
                     TiledArray::Exception);
 }
 
-BOOST_AUTO_TEST_CASE(expression_general_product_gated) {
-  // the expression layer now *classifies* general products correctly and
-  // reports that evaluation is not yet implemented (instead of misrouting
-  // to the contraction or Hadamard machinery)
+namespace {
+
+/// makes a dense array over \p tr filled with an index-dependent pattern
+TA::TArrayD make_patterned_array(TA::World& world, const TA::TiledRange& tr,
+                                 const double seed) {
+  TA::TArrayD result(world, tr);
+  for (auto it = result.begin(); it != result.end(); ++it) {
+    auto tile =
+        TA::TArrayD::value_type(result.trange().make_tile_range(it.index()));
+    for (auto&& ix : tile.range()) {
+      double v = seed;
+      double scale = 1.0;
+      for (auto x : ix) {
+        v += scale * static_cast<double>(x + 1);
+        scale *= 0.1;
+      }
+      tile[ix] = v;
+    }
+    *it = tile;
+  }
+  return result;
+}
+
+/// \return the Frobenius norm of `lhs - rhs`
+double diff_norm(TA::TArrayD& lhs, TA::TArrayD& rhs, const std::string& annot) {
+  TA::TArrayD diff;
+  diff(annot) = lhs(annot) - rhs(annot);
+  return diff(annot).norm().get();
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(expression_general_product_dense) {
+  // dense general products evaluate via the batched Summa; differential-test
+  // against the einsum free function (the established implementation)
   auto& world = TA::get_default_world();
-  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}, {0, 2, 4}};
-  TA::TArrayD a(world, tr);
-  TA::TArrayD b(world, tr);
-  a.fill(1.0);
-  b.fill(1.0);
+
+  // C("b,i,k") = A("b,i,j") * B("b,j,k"), uneven multi-tile dimensions
+  TA::TiledRange tr_a{{0, 2, 5}, {0, 3, 4}, {0, 2, 6, 7}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 5}, {0, 2, 6, 7}, {0, 4, 5}};  // b, j, k
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto b = make_patterned_array(world, tr_b, 2.0);
+
   TA::TArrayD c;
-  BOOST_CHECK_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"),
-                    TiledArray::Exception);
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+  auto c_ref = TA::einsum(a("b,i,j"), b("b,j,k"), "b,i,k");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "b,i,k"), 1e-10);
+
   // pure contraction and pure Hadamard still work
-  BOOST_CHECK_NO_THROW(c("i,k") = a("b,i,j") * b("b,j,k"));
-  BOOST_CHECK_NO_THROW(c("b,i,j") = a("b,i,j") * b("b,i,j"));
+  TA::TArrayD d;
+  BOOST_CHECK_NO_THROW(d("i,k") = a("b,i,j") * b("b,j,k"));
+  TA::TArrayD e;
+  BOOST_CHECK_NO_THROW(e("b,i,j") = a("b,i,j") * a("b,i,j"));
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_dense_permuted_args) {
+  // non-canonical argument layouts: the engine permutes the args into the
+  // canonical (h, e_A, c) / (h, c, e_B) layouts
+  auto& world = TA::get_default_world();
+
+  TA::TiledRange tr_a{{0, 3, 4}, {0, 2, 6, 7}, {0, 2, 5}};  // i, j, b
+  TA::TiledRange tr_b{{0, 4, 5}, {0, 2, 6, 7}, {0, 2, 5}};  // k, j, b
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto b = make_patterned_array(world, tr_b, 2.0);
+
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("i,j,b") * b("k,j,b"));
+  auto c_ref = TA::einsum(a("i,j,b"), b("k,j,b"), "b,i,k");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "b,i,k"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_dense_batched_outer) {
+  // batched outer product: fused + free, no contracted indices
+  auto& world = TA::get_default_world();
+
+  TA::TiledRange tr_a{{0, 2, 5}, {0, 3, 4}};  // b, i
+  TA::TiledRange tr_b{{0, 2, 5}, {0, 4, 5}};  // b, k
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto b = make_patterned_array(world, tr_b, 2.0);
+
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i") * b("b,k"));
+  auto c_ref = TA::einsum(a("b,i"), b("b,k"), "b,i,k");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "b,i,k"), 1e-10);
 }
 
 BOOST_AUTO_TEST_CASE(expression_general_product_inner_node_gated) {
@@ -165,6 +234,47 @@ BOOST_AUTO_TEST_CASE(expression_general_product_inner_node_gated) {
   BOOST_CHECK_THROW(
       g("p,q,r,s") = x("p,r1") * x("q,r1") * z("r1,r2") * x("r,r2") * x("s,r2"),
       TiledArray::Exception);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_thc_intermediates) {
+  // the supported way to evaluate the THC factorization today: materialize
+  // each general product as the root of its own assignment (fused indices
+  // leading in the result annotation), differential-tested against einsum
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_x{{0, 2, 4}, {0, 3, 5}};  // orbital x auxiliary
+  TA::TiledRange tr_z{{0, 3, 5}, {0, 3, 5}};  // auxiliary x auxiliary
+  auto x = make_patterned_array(world, tr_x, 1.0);
+  auto z = make_patterned_array(world, tr_z, 2.0);
+
+  TA::TArrayD i1, i2, i3, g;
+  BOOST_REQUIRE_NO_THROW(i1("r1,p,q") = x("p,r1") * x("q,r1"));  // general
+  BOOST_REQUIRE_NO_THROW(i2("p,q,r2") = i1("r1,p,q") * z("r1,r2"));
+  BOOST_REQUIRE_NO_THROW(i3("r2,p,q,r") = i2("p,q,r2") * x("r,r2"));  // general
+  BOOST_REQUIRE_NO_THROW(g("p,q,r,s") = i3("r2,p,q,r") * x("s,r2"));
+
+  // oracle: the same chain with the general products evaluated by einsum
+  auto i1_ref = TA::einsum(x("p,r1"), x("q,r1"), "r1,p,q");
+  TA::TArrayD i2_ref;
+  i2_ref("p,q,r2") = i1_ref("r1,p,q") * z("r1,r2");
+  auto i3_ref = TA::einsum(i2_ref("p,q,r2"), x("r,r2"), "r2,p,q,r");
+  TA::TArrayD g_ref;
+  g_ref("p,q,r,s") = i3_ref("r2,p,q,r") * x("s,r2");
+
+  BOOST_CHECK_SMALL(diff_norm(g, g_ref, "p,q,r,s"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_gated) {
+  // block-sparse general products are not implemented yet: must report
+  // clearly rather than compute garbage
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}, {0, 2, 4}};
+  TA::TSpArrayD a(world, tr);
+  TA::TSpArrayD b(world, tr);
+  a.fill(1.0);
+  b.fill(1.0);
+  TA::TSpArrayD c;
+  BOOST_CHECK_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"),
+                    TiledArray::Exception);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

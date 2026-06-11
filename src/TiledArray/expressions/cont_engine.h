@@ -29,9 +29,11 @@
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/expressions/permopt.h>
+#include <TiledArray/pmap/slabbed_pmap.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/tensor/arena_einsum.h>
 #include <TiledArray/tensor/utility.h>
+#include <TiledArray/tile_op/batched_contract_reduce.h>
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/tile_op/mult.h>
 
@@ -172,7 +174,11 @@ class ContEngine : public BinaryEngine<Derived> {
   TA_NO_UNIQUE_ADDRESS arena_plan_storage_t arena_plan_;
   TiledArray::detail::ProcGrid
       proc_grid_;    ///< Process grid for the contraction
-  size_type K_ = 1;  ///< Inner dimension size
+  size_type K_ = 1;  ///< Inner dimension size (# of tiles, per slab for
+                     ///< general products)
+  // General (fused + contracted + free indices) products only:
+  unsigned int n_fused_modes_ = 0;  ///< # of leading fused (outer) modes
+  size_type n_slabs_ = 1;           ///< # of fused-index tile slabs
 
   static unsigned int find(const BipartiteIndexList& indices,
                            const std::string& index_label, unsigned int i,
@@ -591,6 +597,221 @@ class ContEngine : public BinaryEngine<Derived> {
                                     pmap_, perm_, op_, K_, proc_grid_);
 
     return dist_eval_type(pimpl);
+  }
+
+  // == General (fused + contracted + free indices) product support ==========
+  //
+  // The canonical layouts produced by GeneralPermutationOptimizer carry the
+  // fused (Hadamard) modes as the leading modes of both arguments and the
+  // result: left = (h, e_A, c), right = (h, c, e_B), result = (h, e_A, e_B).
+  // The product is evaluated by the batched Summa: every fused-index tile
+  // slab is an independent SUMMA distributed over ONE shared 2-d process
+  // grid (the owner of a tile is independent of its slab index), and the
+  // within-tile fused extents are folded into the tile batch dimension by
+  // BatchedContractReduce.
+
+  /// Initialize the result structure of a general product
+
+  /// The general-product analogue of init_struct: builds the *folded*
+  /// (fused-mode-free) tile op and the fused-mode-prefixed result trange and
+  /// shape.
+  /// \param target_indices The target index list for the result tensor
+  void init_struct_general(const BipartiteIndexList& target_indices) {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>)
+      TA_EXCEPTION(
+          "general products (fused + contracted + free indices) of "
+          "tensors-of-tensors via the expression layer are not yet "
+          "implemented; use TiledArray::einsum() instead");
+    else {
+      // Initialize children
+      left_.init_struct(left_indices_);
+      right_.init_struct(right_indices_);
+
+      // count the fused modes: the leading indices common to the canonical
+      // left, right, and result layouts
+      const auto& left_outer = outer(left_indices_);
+      const auto& right_outer = outer(right_indices_);
+      const auto& result_outer = outer(indices_);
+      unsigned int nh = 0u;
+      while (nh < result_outer.size() && nh < left_outer.size() &&
+             nh < right_outer.size() && left_outer[nh] == result_outer[nh] &&
+             right_outer[nh] == result_outer[nh])
+        ++nh;
+      TA_ASSERT(nh > 0u);  // else this is a pure contraction
+      n_fused_modes_ = nh;
+
+      // initialize perm_; an interleaved target (a result permutation that
+      // mixes fused and free modes) is not yet supported -- the canonical
+      // result layout must equal the target
+      this->init_perm(target_indices);
+      if (outer(target_indices) != outer(indices_))
+        TA_EXCEPTION(
+            "general products (fused + contracted + free indices): targets "
+            "that interleave fused and free indices are not yet supported; "
+            "reorder the result annotation to (fused..., left-free..., "
+            "right-free...)");
+
+      // the tile op operates on the folded (fused-mode-free) shapes
+      const auto left_op = to_cblas_op(left_outer_permtype_);
+      const auto right_op = to_cblas_op(right_outer_permtype_);
+      op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh,
+                    outer_size(left_indices_) - nh,
+                    outer_size(right_indices_) - nh);
+
+      trange_ = make_trange_general();
+      shape_ = make_shape_general();
+
+      if (ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape) {
+        shape_ = shape_.mask(*ExprEngine_::override_ptr_->shape);
+      }
+    }
+  }
+
+  /// Tiled range factory function for a general product
+
+  /// \return The result tiled range: the fused mode ranges followed by the
+  /// left- and right-external mode ranges
+  trange_type make_trange_general() const {
+    const unsigned int nh = n_fused_modes_;
+    const unsigned int nc = op_.gemm_helper().num_contract_ranks();
+    const unsigned int neA = op_.gemm_helper().left_rank() - nc;
+    const unsigned int neB = op_.gemm_helper().right_rank() - nc;
+
+    typename trange_type::Ranges ranges(nh + neA + neB);
+    unsigned int i = 0ul;
+    for (unsigned int x = 0ul; x < nh + neA; ++x, ++i)
+      ranges[i] = left_.trange().data()[x];
+    for (unsigned int x = nh + nc; x < nh + nc + neB; ++x, ++i)
+      ranges[i] = right_.trange().data()[x];
+
+#ifndef NDEBUG
+    // the fused and contracted dimensions must have congruent tilings
+    for (unsigned int d = 0ul; d < nh; ++d) {
+      if (!is_congruent(left_.trange().data()[d], right_.trange().data()[d]))
+        TA_EXCEPTION(
+            "the fused dimensions of the left- and right-hand expressions "
+            "are not congruent");
+    }
+    for (unsigned int l = nh + neA, r = nh; l < nh + neA + nc; ++l, ++r) {
+      if (!is_congruent(left_.trange().data()[l], right_.trange().data()[r]))
+        TA_EXCEPTION(
+            "the contracted dimensions of the left- and right-hand "
+            "expressions are not congruent");
+    }
+#endif  // NDEBUG
+
+    return trange_type(ranges.begin(), ranges.end());
+  }
+
+  /// Shape factory function for a general product
+
+  /// \return The result shape
+  shape_type make_shape_general() const {
+    if constexpr (std::is_same_v<shape_type, DenseShape>)
+      return shape_type();
+    else
+      // TODO support block-sparse general products: evaluate the shape
+      // slab-by-slab (per-slab SparseShape::gemm over the folded modes)
+      TA_EXCEPTION(
+          "block-sparse general products (fused + contracted + free indices) "
+          "via the expression layer are not yet implemented; use "
+          "TiledArray::einsum() instead");
+  }
+
+  /// Initialize the result distribution of a general product
+
+  /// The 2-d process grid spans the external (free) modes only; the fused
+  /// modes are replicated over the grid (the owner of a tile is independent
+  /// of its slab index) via SlabbedPmap.
+  /// \param world The world where the result will be distributed
+  /// \param pmap The process map for the result tensor tiles
+  void init_distribution_general(World* world,
+                                 std::shared_ptr<const pmap_interface> pmap) {
+    const unsigned int nh = n_fused_modes_;
+    const unsigned int nc = op_.gemm_helper().num_contract_ranks();
+    const unsigned int neA = op_.gemm_helper().left_rank() - nc;
+    const unsigned int neB = op_.gemm_helper().right_rank() - nc;
+
+    // Get pointers to the argument sizes
+    const auto* MADNESS_RESTRICT const left_tiles_size =
+        left_.trange().tiles_range().extent_data();
+    const auto* MADNESS_RESTRICT const left_element_size =
+        left_.trange().elements_range().extent_data();
+    const auto* MADNESS_RESTRICT const right_tiles_size =
+        right_.trange().tiles_range().extent_data();
+    const auto* MADNESS_RESTRICT const right_element_size =
+        right_.trange().elements_range().extent_data();
+
+    // Compute the slab count and the fused sizes of the per-slab contraction
+    size_type M = 1ul, m = 1ul, N = 1ul, n = 1ul;
+    n_slabs_ = 1ul;
+    for (unsigned int i = 0u; i < nh; ++i) n_slabs_ *= left_tiles_size[i];
+    for (unsigned int i = nh; i < nh + neA; ++i) {
+      M *= left_tiles_size[i];
+      m *= left_element_size[i];
+    }
+    for (unsigned int i = nh + neA; i < nh + neA + nc; ++i)
+      K_ *= left_tiles_size[i];
+    for (unsigned int i = nh + nc; i < nh + nc + neB; ++i) {
+      N *= right_tiles_size[i];
+      n *= right_element_size[i];
+    }
+
+    // corner case: zero-volume result ... easier to skip proc_grid_
+    // construction alltogether
+    if (M == 0 || N == 0 || n_slabs_ == 0) {
+      left_.init_distribution(world, {});
+      right_.init_distribution(world, {});
+      ExprEngine_::init_distribution(
+          world,
+          (pmap ? pmap : policy::default_pmap(*world, n_slabs_ * M * N)));
+    } else {
+      // Construct the per-slab process grid.
+      proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
+
+      // Initialize children with slab-replicated SUMMA phase maps
+      left_.init_distribution(
+          world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                     *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_));
+      right_.init_distribution(
+          world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                     *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_));
+
+      // Initialize the process map if not already defined
+      if (!pmap)
+        pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+            *world, proc_grid_.make_pmap(), n_slabs_);
+      ExprEngine_::init_distribution(world, pmap);
+    }
+  }
+
+  /// Construct the distributed evaluator of a general product
+
+  /// \return The batched-Summa distributed evaluator for this expression
+  dist_eval_type make_dist_eval_general() const {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      // unreachable: init_struct_general throws for tensors-of-tensors
+      TA_EXCEPTION(
+          "general products of tensors-of-tensors are not yet implemented");
+      abort();  // unreachable
+    } else {
+      typedef TiledArray::detail::BatchedContractReduce<op_type>
+          batched_op_type;
+      typedef TiledArray::detail::Summa<typename left_type::dist_eval_type,
+                                        typename right_type::dist_eval_type,
+                                        batched_op_type,
+                                        typename Derived::policy>
+          impl_type;
+
+      typename left_type::dist_eval_type left = left_.make_dist_eval();
+      typename right_type::dist_eval_type right = right_.make_dist_eval();
+
+      std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
+          left, right, *world_, trange_, shape_, pmap_, perm_,
+          batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_);
+
+      return dist_eval_type(pimpl);
+    }
   }
 
   /// Expression identification tag
