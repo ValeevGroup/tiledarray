@@ -1096,6 +1096,51 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
                     << (std::string)b + inner.b << " -> " << c_annot
                     << " : diff2 = " << d2 << ", legacy2 = " << ref2
                     << std::endl;
+        // per-tile forensics: compare tile norms of the two routes
+        auto tile_norm2 = [](auto const &tile) -> double {
+          using TileT =
+              std::remove_cv_t<std::remove_reference_t<decltype(tile)>>;
+          double n2 = 0;
+          if constexpr (TiledArray::detail::is_tensor_of_tensor_v<TileT>) {
+            for (std::size_t o = 0; o < tile.range().volume(); ++o) {
+              auto const &cell = tile.data()[o];
+              if (cell.empty()) continue;
+              for (std::size_t e = 0; e < cell.range().volume(); ++e)
+                n2 += std::abs(cell.data()[e]) * std::abs(cell.data()[e]);
+            }
+          } else {
+            for (std::size_t e = 0; e < tile.range().volume() * tile.nbatch();
+                 ++e)
+              n2 += std::abs(tile.data()[e]) * std::abs(tile.data()[e]);
+          }
+          return n2;
+        };
+        const auto ntiles = C.array.trange().tiles_range().volume();
+        std::size_t n_diff = 0, n_expr_zero = 0, n_legacy_zero = 0,
+                    n_printed = 0;
+        for (std::size_t ord = 0; ord < ntiles; ++ord) {
+          const bool ez = expr_route_result->is_zero(ord);
+          const bool lz = C.array.is_zero(ord);
+          double en2 =
+              ez ? 0.0 : tile_norm2(expr_route_result->find(ord).get());
+          double ln2 = lz ? 0.0 : tile_norm2(C.array.find(ord).get());
+          const double dd = std::abs(en2 - ln2);
+          if (dd <= 1e-14 * std::max(std::max(en2, ln2), 1.0)) continue;
+          ++n_diff;
+          if (en2 == 0.0) ++n_expr_zero;
+          if (ln2 == 0.0) ++n_legacy_zero;
+          if (world.rank() == 0 && n_printed < 8) {
+            ++n_printed;
+            std::cerr << "    tile " << ord << " ("
+                      << C.array.trange().tiles_range().idx(ord)
+                      << "): expr_n2 = " << en2 << ", legacy_n2 = " << ln2
+                      << std::endl;
+          }
+        }
+        if (world.rank() == 0)
+          std::cerr << "    summary: " << n_diff << "/" << ntiles
+                    << " tiles differ by norm; expr-zero " << n_expr_zero
+                    << ", legacy-zero " << n_legacy_zero << std::endl;
       }
     }
 

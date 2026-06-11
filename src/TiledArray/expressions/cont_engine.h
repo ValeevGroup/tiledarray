@@ -1679,11 +1679,13 @@ class ContEngine : public BinaryEngine<Derived> {
             if (outer_uses_summa) {
               using TiledArray::axpy_to;
               if constexpr (tot_x_t) {
+                if (left.empty()) return;  // absent cell: no contribution
                 if (perm)
                   axpy_to(result, left, right, perm);
                 else
                   axpy_to(result, left, right);
               } else {
+                if (right.empty()) return;  // absent cell: no contribution
                 if (perm)
                   axpy_to(result, right, left, perm);
                 else

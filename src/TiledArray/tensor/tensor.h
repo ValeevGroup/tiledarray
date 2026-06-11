@@ -3374,7 +3374,19 @@ class Tensor {
               }
               detail::scale_phase_stop(detail::g_scale[0].check_str_ns,
                                        _scale_tcs);
-              if (A <= 0) continue;  // empty row -> nothing to do
+              if (A <= 0) {
+                // The presence probe stops at the first empty cell, so
+                // A <= 0 only means no non-empty cell was seen BEFORE the
+                // probe stopped -- NOT that the row is empty. The row
+                // contributes nothing only if EVERY left cell is absent;
+                // else it must take the per-cell AXPY fallback (whose
+                // element op skips absent cells).
+                bool row_empty = true;
+                for (integer k = 0; row_empty && k != K; ++k)
+                  if (!lc0[k].empty()) row_empty = false;
+                if (row_empty) continue;
+                clean = false;
+              }
               if (clean) {
                 // result[m,n][a] += sum_k left[m,k][a] * right[k,n].
                 // Row-major gemm: C2(N x A) += right^T(N x K) * L2(K x A),
@@ -3533,7 +3545,16 @@ class Tensor {
               }
               detail::scale_phase_stop(detail::g_scale[1].check_str_ns,
                                        _scale_tcs);
-              if (A <= 0) continue;
+              if (A <= 0) {
+                // see the ToT x scalar mirror above: A <= 0 does not imply
+                // an empty column when the probe stopped at the first
+                // absent cell
+                bool col_empty = true;
+                for (integer k = 0; col_empty && k != K; ++k)
+                  if (!right_data[k * N + n].empty()) col_empty = false;
+                if (col_empty) continue;
+                clean = false;
+              }
               if (clean) {
                 // C_n(M x A) += left(M x K) * B_n(K x A). Row-major gemm.
                 if (detail::scale_gemm_timing_enabled()) {

@@ -193,8 +193,18 @@ class BatchedContractReduce {
           typename result_type::range_type(lobounds, upbounds));
     } else {
       // accumulate through a folded, zero-copy view of the result
-      auto result_folded = result.reshape(fold_range(result.range()), batch);
+      const auto full_range = result.range();
+      auto result_folded = result.reshape(fold_range(full_range), batch);
       op_(result_folded, left_folded, right_folded);
+      // the wrapped op may REBIND the result instead of writing in place:
+      // the arena grow-to-cover path (a later K-panel touching inner cells
+      // that earlier panels left null, for contracted-dimension-sparse
+      // tensor-of-tensor operands) replaces the tile wholesale
+      // (arena_tot_grow_inplace ends with `result = std::move(grown)`).
+      // That rebinding lands on the folded view; propagate it to the
+      // full-range result, else every post-growth contribution is lost.
+      if (result_folded.data() != result.data())
+        result = result_folded.reshape(full_range);
     }
   }
 

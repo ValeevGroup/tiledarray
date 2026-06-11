@@ -622,6 +622,384 @@ BOOST_AUTO_TEST_CASE(expression_general_product_tot_t_nonleading_fused) {
   BOOST_CHECK_SMALL(tot_max_abs_diff(c_new, c_ref), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(arena_outer_permute_assignment) {
+  // hypothesis probe for the CSV mismatches: a pure OUTER permutation
+  // assignment of an arena-backed (ArenaTensor view cell) ToT array
+  using ArenaInner = TA::ArenaTensor<double, TA::Range>;
+  using ArenaOuter = TA::Tensor<ArenaInner>;
+  using ArenaArr = TA::DistArray<ArenaOuter, TA::DensePolicy>;
+
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr{{0, 2, 4}, {0, 2, 3}, {0, 3, 6}};  // b1, b2, k
+  constexpr long X = 3;
+
+  ArenaArr a(world, tr);
+  a.init_tiles([](const TA::Range& outer_range) {
+    ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
+        outer_range, 1, [](std::size_t) { return TA::Range{X}; });
+    std::size_t o = 0;
+    for (auto&& oix : t.range()) {
+      ArenaInner& cell = t.data()[o++];
+      if (!cell) continue;
+      for (long e = 0; e < X; ++e) {
+        double v = 0.01 * static_cast<double>(e + 1);
+        double scale = 1.0;
+        for (auto x : oix) {
+          v += scale * static_cast<double>(x + 1);
+          scale *= 0.1;
+        }
+        cell.data()[e] = v;
+      }
+    }
+    return t;
+  });
+  world.gop.fence();
+
+  ArenaArr b;
+  b("k,b1,b2;x") = a("b1,b2,k;x");
+
+  // verify element-by-element against the source
+  double max_diff = 0.0;
+  const auto& trb = b.trange();
+  for (std::size_t ord = 0; ord < trb.tiles_range().volume(); ++ord) {
+    auto bt = b.find(ord).get();
+    for (auto&& oix : bt.range()) {
+      const auto& bc = bt[oix];
+      // source element index: (b1,b2,k) from (k,b1,b2)
+      std::array<long, 3> six{static_cast<long>(oix[1]),
+                              static_cast<long>(oix[2]),
+                              static_cast<long>(oix[0])};
+      double v0 = 0.0;
+      for (long e = 0; e < X; ++e) {
+        double v = 0.01 * static_cast<double>(e + 1);
+        double scale = 1.0;
+        for (auto x : six) {
+          v += scale * static_cast<double>(x + 1);
+          scale *= 0.1;
+        }
+        max_diff = std::max(max_diff, std::abs(bc.data()[e] - v));
+        v0 = v;
+      }
+      (void)v0;
+    }
+  }
+  BOOST_CHECK_SMALL(max_diff, 1e-12);
+}
+
+namespace {
+
+using TSpArrayToT =
+    TA::DistArray<TA::Tensor<TA::Tensor<double>>, TA::SparsePolicy>;
+
+/// block-sparse ToT array with index-dependent fill, every zero_stride-th
+/// tile zero
+TSpArrayToT make_patterned_sparse_tot_array(
+    TA::World& world, const TA::TiledRange& tr,
+    const std::vector<std::size_t>& inner_extents, const double seed,
+    const std::size_t zero_stride) {
+  TA::Tensor<float> norms(tr.tiles_range(), 1.0f);
+  for (std::size_t ord = 0; ord < norms.size(); ord += zero_stride)
+    norms.data()[ord] = 0.0f;
+  TA::SparseShape<float> shape(norms, tr);
+
+  TSpArrayToT result(world, tr, shape);
+  for (auto it = result.begin(); it != result.end(); ++it) {
+    auto outer_range = result.trange().make_tile_range(it.index());
+    TA::Tensor<TA::Tensor<double>> tile(outer_range);
+    for (auto&& oix : outer_range) {
+      TA::Tensor<double> cell{TA::Range(inner_extents)};
+      for (auto&& iix : cell.range()) {
+        double v = seed;
+        double scale = 1.0;
+        for (auto x : oix) {
+          v += scale * static_cast<double>(x + 1);
+          scale *= 0.1;
+        }
+        for (auto x : iix) {
+          v += scale * static_cast<double>(x + 1);
+          scale *= 0.1;
+        }
+        cell[iix] = v;
+      }
+      tile[oix] = cell;
+    }
+    *it = tile;
+  }
+  return result;
+}
+
+/// max abs elementwise diff of two congruent sparse ToT arrays
+double sparse_tot_max_abs_diff(const TSpArrayToT& lhs, const TSpArrayToT& rhs) {
+  double max_diff = 0.0;
+  const auto n = lhs.trange().tiles_range().volume();
+  for (std::size_t ord = 0; ord < n; ++ord) {
+    const bool lz = lhs.is_zero(ord);
+    const bool rz = rhs.is_zero(ord);
+    if (lz && rz) continue;
+    if (lz != rz) {
+      // one is a zero tile: the other must be numerically zero
+      auto t = (lz ? rhs : lhs).find(ord).get();
+      for (std::size_t c = 0; c < t.range().volume(); ++c) {
+        const auto& cell = t.data()[c];
+        if (cell.empty()) continue;
+        for (std::size_t e = 0; e < cell.range().volume(); ++e)
+          max_diff = std::max(max_diff, std::abs(cell.data()[e]));
+      }
+      continue;
+    }
+    auto lt = lhs.find(ord).get();
+    auto rt = rhs.find(ord).get();
+    for (std::size_t c = 0; c < lt.range().volume(); ++c) {
+      const auto& lc = lt.data()[c];
+      const auto& rc = rt.data()[c];
+      if (lc.empty() && rc.empty()) continue;
+      for (std::size_t e = 0; e < lc.range().volume(); ++e)
+        max_diff = std::max(max_diff, std::abs(lc.data()[e] - rc.data()[e]));
+    }
+  }
+  return max_diff;
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_tot) {
+  // SPARSE-policy ToT general product -- the CSV-CC case (all other ToT
+  // tests are dense): exercises the batched Summa's sparse step iteration
+  // ((h,k) skipping) and sparse reducer gating with ToT tiles
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 4}, {0, 2, 5}, {0, 3, 4}};  // b, j, k
+  auto a = make_patterned_sparse_tot_array(world, tr_a, {3}, 1.0, 3);
+  auto b = make_patterned_sparse_tot_array(world, tr_b, {2}, 2.0, 4);
+
+  TSpArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k;x,y") = a("b,i,j;x") * b("b,j,k;y"));
+  auto c_ref = TA::einsum(a("b,i,j;x"), b("b,j,k;y"), "b,i,k;x,y");
+  BOOST_CHECK_SMALL(sparse_tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_tot_skipped_steps) {
+  // STRUCTURED block-sparsity that zeroes entire (slab, k) panels, forcing
+  // the batched Summa's sparse step iteration to SKIP steps (and discard
+  // the skipped panels' tiles) -- the suspected CSV-CC failure mode
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr_a{{0, 2, 4, 6}, {0, 2, 3}, {0, 2, 5, 7}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 4, 6}, {0, 2, 5, 7}, {0, 3, 4}};  // b, j, k
+
+  // left: zero the whole (b=0, j=1) and (b=2, j=0) panels (all i)
+  TA::Tensor<float> norms_a(tr_a.tiles_range(), 1.0f);
+  for (std::size_t i = 0; i < 2; ++i) {
+    norms_a[std::array<std::size_t, 3>{0, i, 1}] = 0.0f;
+    norms_a[std::array<std::size_t, 3>{2, i, 0}] = 0.0f;
+  }
+  // right: zero the whole (b=1, j=2) panel (all k) and (b=0, j=1)
+  TA::Tensor<float> norms_b(tr_b.tiles_range(), 1.0f);
+  for (std::size_t k = 0; k < 2; ++k) {
+    norms_b[std::array<std::size_t, 3>{1, 2, k}] = 0.0f;
+    norms_b[std::array<std::size_t, 3>{0, 1, k}] = 0.0f;
+  }
+  TA::SparseShape<float> shape_a(norms_a, tr_a);
+  TA::SparseShape<float> shape_b(norms_b, tr_b);
+
+  auto fill = [](TSpArrayToT& arr, const std::size_t n_in, const double seed) {
+    for (auto it = arr.begin(); it != arr.end(); ++it) {
+      auto outer_range = arr.trange().make_tile_range(it.index());
+      TA::Tensor<TA::Tensor<double>> tile(outer_range);
+      for (auto&& oix : outer_range) {
+        TA::Tensor<double> cell{TA::Range(std::vector<std::size_t>{n_in})};
+        for (auto&& iix : cell.range()) {
+          double v = seed;
+          double scale = 1.0;
+          for (auto x : oix) {
+            v += scale * static_cast<double>(x + 1);
+            scale *= 0.1;
+          }
+          for (auto x : iix) v += 0.001 * static_cast<double>(x + 1);
+          cell[iix] = v;
+        }
+        tile[oix] = cell;
+      }
+      *it = tile;
+    }
+  };
+
+  TSpArrayToT a(world, tr_a, shape_a);
+  TSpArrayToT b(world, tr_b, shape_b);
+  fill(a, 3, 1.0);
+  fill(b, 2, 2.0);
+  world.gop.fence();
+
+  // run the expression route TWICE to also detect non-determinism
+  TSpArrayToT c1, c2;
+  BOOST_REQUIRE_NO_THROW(c1("b,i,k;x,y") = a("b,i,j;x") * b("b,j,k;y"));
+  BOOST_REQUIRE_NO_THROW(c2("b,i,k;x,y") = a("b,i,j;x") * b("b,j,k;y"));
+  auto c_ref = TA::einsum(a("b,i,j;x"), b("b,j,k;y"), "b,i,k;x,y");
+  const double d_rep = sparse_tot_max_abs_diff(c1, c2);
+  const double d_ref = sparse_tot_max_abs_diff(c1, c_ref);
+  BOOST_CHECK_SMALL(d_rep, 1e-12);
+  BOOST_CHECK_SMALL(d_ref, 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_csv_like) {
+  // kitchen-sink reproduction of the CSV-CC mismatch shape
+  //   (i2,i1,m;a) * (m,i2,K) -> (i1,i2,K;a):
+  // arena (view) inner cells, SparsePolicy, inner extent VARYING with the
+  // fused+external outer pair, EMPTY (screened) cells, non-leading fused
+  // index, interleaved target
+  using ArenaInner = TA::ArenaTensor<double, TA::Range>;
+  using ArenaOuter = TA::Tensor<ArenaInner>;
+  using ArenaSpArr = TA::DistArray<ArenaOuter, TA::SparsePolicy>;
+  using PlainSpArr = TA::TSpArrayD;
+
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5, 7}};  // i2, i1, m
+  TA::TiledRange tr_b{{0, 2, 5, 7}, {0, 2, 4}, {0, 3, 6}};  // m, i2, K
+
+  // left: arena ToT, sparse (zero the (i2=1, i1=0, m=1) tile); inner extent
+  // depends on (i2 + i1); the (i2+i1+m) % 5 == 0 cells are empty (screened)
+  TA::Tensor<float> norms_a(tr_a.tiles_range(), 1.0f);
+  norms_a[std::array<std::size_t, 3>{1, 0, 1}] = 0.0f;
+  ArenaSpArr a(world, tr_a, TA::SparseShape<float>(norms_a, tr_a));
+  a.init_tiles([](const TA::Range& outer_range) {
+    auto lo = outer_range.lobound_data();
+    auto cell_range = [&outer_range, lo](std::size_t ord) {
+      auto oix = outer_range.idx(ord);
+      const long ext = 2 + (oix[0] + oix[1]) % 3;  // varies with pair
+      if ((oix[0] + oix[1] + oix[2]) % 5 == 0)     // screened cells
+        return TA::Range{};
+      return TA::Range{ext};
+    };
+    ArenaOuter t =
+        TA::detail::arena_outer_init<ArenaOuter>(outer_range, 1, cell_range);
+    std::size_t o = 0;
+    for (auto&& oix : t.range()) {
+      ArenaInner& cell = t.data()[o++];
+      if (!cell) continue;
+      for (std::size_t e = 0; e < cell.range().volume(); ++e) {
+        double v = 1.0 + 0.01 * static_cast<double>(e + 1);
+        double scale = 1.0;
+        for (auto x : oix) {
+          v += scale * static_cast<double>(x + 1);
+          scale *= 0.1;
+        }
+        cell.data()[e] = v;
+      }
+    }
+    (void)lo;
+    return t;
+  });
+
+  // right: plain sparse (zero one m-panel tile)
+  TA::Tensor<float> norms_b(tr_b.tiles_range(), 1.0f);
+  norms_b[std::array<std::size_t, 3>{1, 1, 0}] = 0.0f;
+  PlainSpArr b(world, tr_b, TA::SparseShape<float>(norms_b, tr_b));
+  for (auto it = b.begin(); it != b.end(); ++it) {
+    auto tile = PlainSpArr::value_type(b.trange().make_tile_range(it.index()));
+    for (auto&& ix : tile.range()) {
+      double v = 2.0;
+      double scale = 1.0;
+      for (auto x : ix) {
+        v += scale * static_cast<double>(x + 1);
+        scale *= 0.1;
+      }
+      tile[ix] = v;
+    }
+    *it = tile;
+  }
+  world.gop.fence();
+
+  // expression route twice (determinism) + legacy einsum oracle
+  // mirror the CSV path exactly: through einsum (which canonicalizes the
+  // target and permutes at the end), new route vs the legacy oracle
+  auto c_ref = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
+  TA::detail::einsum_legacy_subworld() = false;
+  ArenaSpArr c1, c2;
+  try {
+    c1 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
+    c2 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
+  } catch (std::exception& ex) {
+    std::cerr << "EXPRESSION ROUTE THREW: " << ex.what() << std::endl;
+    TA::detail::einsum_legacy_subworld() = true;
+    throw;
+  }
+  TA::detail::einsum_legacy_subworld() = true;
+
+  // BISECT: same shape, CANONICAL target, direct expression (no einsum
+  // wrapper, no final permutation) vs the legacy oracle
+  {
+    ArenaSpArr c_canon_expr;
+    c_canon_expr("i2,i1,K;a") = a("i2,i1,m;a") * b("m,i2,K");
+    auto c_canon_ref = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i2,i1,K;a");
+    double md = 0.0;
+    const auto n = c_canon_ref.trange().tiles_range().volume();
+    for (std::size_t ord = 0; ord < n; ++ord) {
+      if (c_canon_expr.is_zero(ord) && c_canon_ref.is_zero(ord)) continue;
+      if (c_canon_expr.is_zero(ord) != c_canon_ref.is_zero(ord)) {
+        md = std::max(md, 1e10);  // zero-pattern mismatch marker
+        continue;
+      }
+      auto lt = c_canon_expr.find(ord).get();
+      auto rt = c_canon_ref.find(ord).get();
+      for (std::size_t cc = 0; cc < lt.range().volume(); ++cc) {
+        const auto& lc = lt.data()[cc];
+        const auto& rc = rt.data()[cc];
+        if (!lc && !rc) continue;
+        const std::size_t ne = lc ? lc.range().volume() : rc.range().volume();
+        for (std::size_t e = 0; e < ne; ++e) {
+          const double lv = lc ? lc.data()[e] : 0.0;
+          const double rv = rc ? rc.data()[e] : 0.0;
+          md = std::max(md, std::abs(lv - rv));
+        }
+      }
+    }
+    std::cerr << "CANONICAL-TARGET DIRECT-EXPR max_diff = " << md << std::endl;
+    BOOST_CHECK_SMALL(md, 1e-10);
+  }
+
+  auto max_diff = [](const ArenaSpArr& lhs, const ArenaSpArr& rhs) {
+    double md = 0.0;
+    const auto n = lhs.trange().tiles_range().volume();
+    for (std::size_t ord = 0; ord < n; ++ord) {
+      const bool lz = lhs.is_zero(ord);
+      const bool rz = rhs.is_zero(ord);
+      if (lz && rz) continue;
+      if (lz != rz) {
+        auto t = (lz ? rhs : lhs).find(ord).get();
+        for (std::size_t c = 0; c < t.range().volume(); ++c) {
+          const auto& cell = t.data()[c];
+          if (!cell) continue;
+          for (std::size_t e = 0; e < cell.range().volume(); ++e)
+            md = std::max(md, std::abs(cell.data()[e]));
+        }
+        continue;
+      }
+      auto lt = lhs.find(ord).get();
+      auto rt = rhs.find(ord).get();
+      for (std::size_t c = 0; c < lt.range().volume(); ++c) {
+        const auto& lc = lt.data()[c];
+        const auto& rc = rt.data()[c];
+        if (!lc && !rc) continue;
+        if (bool(lc) != bool(rc)) {
+          const auto& nz = lc ? lc : rc;
+          for (std::size_t e = 0; e < nz.range().volume(); ++e)
+            md = std::max(md, std::abs(nz.data()[e]));
+          continue;
+        }
+        for (std::size_t e = 0; e < lc.range().volume(); ++e)
+          md = std::max(md, std::abs(lc.data()[e] - rc.data()[e]));
+      }
+    }
+    return md;
+  };
+
+  BOOST_CHECK_SMALL(max_diff(c1, c2), 1e-12);
+  BOOST_CHECK_SMALL(max_diff(c1, c_ref), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(einsum_expression_route_matches_legacy) {
   // einsum routes general products through the expression layer by default;
   // differential-check against the retained legacy sub-World path, with an
