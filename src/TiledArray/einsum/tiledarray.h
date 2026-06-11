@@ -29,18 +29,24 @@ namespace TiledArray::detail {
 /// through the expression layer's native support (TensorProduct::General,
 /// evaluated by the batched Summa: one task graph in one World, no per-slab
 /// sub-Worlds) or through the legacy path (one MPI_Comm_split + sub-World +
-/// fence per Hadamard slab). The legacy path is currently the DEFAULT:
-/// the expression route has known mismatches on PNO-CC (CSV) workloads
-/// (see TA_EINSUM_DIFFERENTIAL) that are under investigation. Set
-/// TA_EINSUM_LEGACY_SUBWORLD=0 in the environment (or assign \c false to
-/// the reference returned by this function) to opt into the expression
-/// route. The legacy implementation is retained indefinitely as a reference
-/// for differential testing.
+/// fence per Hadamard slab). The expression route is the DEFAULT; set
+/// TA_EINSUM_LEGACY_SUBWORLD in the environment (any non-empty value other
+/// than "0"), or assign \c true to the reference returned by this function,
+/// to force the legacy path. The legacy implementation is retained
+/// indefinitely as a reference for differential testing
+/// (TA_EINSUM_DIFFERENTIAL).
+///
+/// \note the two routes may legitimately differ on block-sparse data: the
+/// legacy path derives the result shape from the harvested tile norms and
+/// thus hard-zeroes sub-threshold result tiles, while the expression route
+/// keeps them (its shape is the standard estimate-derived contraction
+/// shape). Per the TA screening philosophy norms are trusted as genuine and
+/// no implicit truncation is performed; call truncate() explicitly if the
+/// tighter shape is desired.
 inline bool &einsum_legacy_subworld() {
   static bool flag = [] {
     const char *e = std::getenv("TA_EINSUM_LEGACY_SUBWORLD");
-    // default: legacy; any value other than "0" (incl. unset) keeps legacy
-    return e == nullptr || std::string_view(e) != "0";
+    return e != nullptr && e[0] != char(0) && std::string_view(e) != "0";
   }();
   return flag;
 }
