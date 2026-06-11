@@ -68,14 +68,40 @@ inline TensorProduct compute_product_type(const IndexList& left_indices,
 }
 
 /// computes the tensor product type corresponding to the left and right
-/// argument indices, and validates against the target indices
+/// argument indices, given the target indices
+///
+/// Unlike the 2-argument overload, this can detect TensorProduct::General:
+/// the target determines the role of each index, so an index shared by both
+/// arguments is *fused* (Hadamard) if it survives into the target and
+/// *contracted* if it does not. The 2-argument overload, lacking a target,
+/// follows the bottom-up convention that every shared index is contracted.
+/// \return
+///   - TensorProduct::Hadamard if left, right, and target are all related by
+///     permutations (fused indices only),
+///   - TensorProduct::General if at least one shared index is fused (appears
+///     in left, right, AND target) alongside contracted and/or free indices,
+///   - TensorProduct::Contraction if no shared index is fused,
+///   - else as the 2-argument overload.
 inline TensorProduct compute_product_type(const IndexList& left_indices,
                                           const IndexList& right_indices,
                                           const IndexList& target_indices) {
   auto result = compute_product_type(left_indices, right_indices);
   if (result == TensorProduct::Hadamard) {
-    TA_ASSERT(left_indices.is_permutation(target_indices));
-    TA_ASSERT(right_indices.is_permutation(target_indices));
+    // left ≅ right; pure Hadamard requires the target to keep every index.
+    // A target that omits some shared indices implies they are contracted
+    // (a Hadamard-reduction, e.g. "i,j" * "i,j" -> "i"): fused + contracted
+    // coexist => General.
+    if (!left_indices.is_permutation(target_indices))
+      result = TensorProduct::General;
+  } else if (result == TensorProduct::Contraction) {
+    // an index of the target that appears in both arguments is fused, not
+    // contracted: fused + (free and/or contracted) => General.
+    for (auto&& idx : target_indices) {
+      if (left_indices.count(idx) && right_indices.count(idx)) {
+        result = TensorProduct::General;
+        break;
+      }
+    }
   }
   return result;
 }

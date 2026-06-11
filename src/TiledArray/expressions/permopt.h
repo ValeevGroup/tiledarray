@@ -588,6 +588,159 @@ class ScalePermutationOptimizer : public BinaryOpPermutationOptimizer {
   static IndexList null_indices_;
 };
 
+// clang-format off
+/// Given target, left, and right index lists of a general product (fused +
+/// free + contracted indices coexisting, TensorProduct::General; e.g.
+/// "b,i,j" * "b,j,k" -> "b,i,k") computes canonical index lists for the
+/// arguments and the result:
+///   - left   = (fused..., left-free...,  contracted...)
+///   - right  = (fused..., contracted..., right-free...)
+///   - result = (fused..., left-free...,  right-free...)
+/// i.e. the GEMM-canonical layout of GEMMPermutationOptimizer with the fused
+/// (Hadamard) indices prepended to every operand, so a consuming batched-GEMM
+/// op can fold the fused modes into the tile batch dimension with a zero-copy
+/// reshape. The relative order of fused and free indices is taken from the
+/// target, minimizing the final result permutation; contracted indices keep
+/// the left argument's relative order.
+///
+/// Unlike the pure-contraction case, the role of a shared index (fused vs
+/// contracted) is determined by the target, so this optimizer cannot be
+/// constructed without target indices.
+///
+/// \note Argument permutations are not fused into GEMM transposes (permtype
+/// is identity or general, never matrix_transpose): the canonical layout
+/// requires the fused modes to lead, which a GEMM transpose flag cannot
+/// express. Layout-fusion optimizations can be added later.
+// clang-format on
+class GeneralPermutationOptimizer : public BinaryOpPermutationOptimizer {
+ public:
+  GeneralPermutationOptimizer(const GeneralPermutationOptimizer&) = default;
+  GeneralPermutationOptimizer& operator=(const GeneralPermutationOptimizer&) =
+      default;
+  ~GeneralPermutationOptimizer() = default;
+
+  /// The role of a shared index (fused vs contracted) is defined by the
+  /// target, so a general product cannot be laid out bottom-up.
+  GeneralPermutationOptimizer(const IndexList& left_indices,
+                              const IndexList& right_indices,
+                              const bool prefer_to_permute_left = true)
+      : BinaryOpPermutationOptimizer(left_indices, right_indices,
+                                     prefer_to_permute_left) {
+    TA_EXCEPTION(
+        "GeneralPermutationOptimizer requires target indices: the role of an "
+        "index shared by both arguments (fused vs contracted) cannot be "
+        "determined bottom-up");
+  }
+
+  GeneralPermutationOptimizer(const IndexList& result_indices,
+                              const IndexList& left_indices,
+                              const IndexList& right_indices,
+                              const bool prefer_to_permute_left = true)
+      : BinaryOpPermutationOptimizer(result_indices, left_indices,
+                                     right_indices, prefer_to_permute_left) {
+    container::svector<std::string> fused, contracted, ext_left, ext_right;
+
+    // classify target indices; relative order within each class follows the
+    // target
+    for (auto&& idx : result_indices) {
+      const bool in_left = left_indices.count(idx);
+      const bool in_right = right_indices.count(idx);
+      if (in_left && in_right)
+        fused.push_back(idx);
+      else if (in_left)
+        ext_left.push_back(idx);
+      else if (in_right)
+        ext_right.push_back(idx);
+      else
+        TA_EXCEPTION(
+            "GeneralPermutationOptimizer: target index does not appear in "
+            "either argument");
+    }
+
+    // contracted = shared indices absent from the target; left's relative
+    // order. Also validate that no argument index is silently dropped (an
+    // implicit trace/reduction is not supported).
+    for (auto&& idx : left_indices) {
+      const bool in_right = right_indices.count(idx);
+      const bool in_target = result_indices.count(idx);
+      if (in_right && !in_target) contracted.push_back(idx);
+      if (!in_right && !in_target)
+        TA_EXCEPTION(
+            "GeneralPermutationOptimizer: left index appears in neither the "
+            "right argument nor the target (implicit reduction not "
+            "supported)");
+    }
+    for (auto&& idx : right_indices) {
+      if (!left_indices.count(idx) && !result_indices.count(idx))
+        TA_EXCEPTION(
+            "GeneralPermutationOptimizer: right index appears in neither the "
+            "left argument nor the target (implicit reduction not supported)");
+    }
+
+    fused_indices_ = IndexList(fused);
+    contracted_indices_ = IndexList(contracted);
+    left_external_indices_ = IndexList(ext_left);
+    right_external_indices_ = IndexList(ext_right);
+
+    auto concat =
+        [](std::initializer_list<const container::svector<std::string>*>
+               parts) {
+          container::svector<std::string> v;
+          for (auto* p : parts) v.insert(v.end(), p->begin(), p->end());
+          return IndexList(v);
+        };
+    target_left_indices_ = concat({&fused, &ext_left, &contracted});
+    target_right_indices_ = concat({&fused, &contracted, &ext_right});
+    target_result_indices_ = concat({&fused, &ext_left, &ext_right});
+
+    left_permtype_ = (target_left_indices_ == left_indices)
+                         ? PermutationType::identity
+                         : PermutationType::general;
+    right_permtype_ = (target_right_indices_ == right_indices)
+                          ? PermutationType::identity
+                          : PermutationType::general;
+  }
+
+  const IndexList& target_left_indices() const override final {
+    return target_left_indices_;
+  }
+  const IndexList& target_right_indices() const override final {
+    return target_right_indices_;
+  }
+  const IndexList& target_result_indices() const override final {
+    return target_result_indices_;
+  }
+  PermutationType left_permtype() const override final {
+    return left_permtype_;
+  }
+  PermutationType right_permtype() const override final {
+    return right_permtype_;
+  }
+  TensorProduct op_type() const override final {
+    return TensorProduct::General;
+  }
+
+  /// \return the fused (Hadamard) indices, in target order
+  const IndexList& fused_indices() const { return fused_indices_; }
+  /// \return the contracted indices, in left-argument order
+  const IndexList& contracted_indices() const { return contracted_indices_; }
+  /// \return the left-argument free indices, in target order
+  const IndexList& left_external_indices() const {
+    return left_external_indices_;
+  }
+  /// \return the right-argument free indices, in target order
+  const IndexList& right_external_indices() const {
+    return right_external_indices_;
+  }
+
+ private:
+  IndexList target_left_indices_, target_right_indices_, target_result_indices_;
+  IndexList fused_indices_, contracted_indices_, left_external_indices_,
+      right_external_indices_;
+  PermutationType left_permtype_ = PermutationType::general,
+                  right_permtype_ = PermutationType::general;
+};
+
 class NullBinaryOpPermutationOptimizer : public BinaryOpPermutationOptimizer {
  public:
   NullBinaryOpPermutationOptimizer(const NullBinaryOpPermutationOptimizer&) =
@@ -646,6 +799,12 @@ inline std::shared_ptr<BinaryOpPermutationOptimizer> make_permutation_optimizer(
     case TensorProduct::Contraction:
       return std::make_shared<GEMMPermutationOptimizer>(
           left_indices, right_indices, prefer_to_permute_left);
+    case TensorProduct::General:
+      // a general product's layout depends on the target indices: the role of
+      // a shared index (fused vs contracted) cannot be determined bottom-up
+      TA_EXCEPTION(
+          "make_permutation_optimizer: a TensorProduct::General product "
+          "requires target indices (use the target-taking overload)");
     case TensorProduct::Invalid:
       return std::make_shared<NullBinaryOpPermutationOptimizer>(
           left_indices, right_indices, prefer_to_permute_left);
@@ -667,6 +826,9 @@ inline std::shared_ptr<BinaryOpPermutationOptimizer> make_permutation_optimizer(
           target_indices, left_indices, right_indices, prefer_to_permute_left);
     case TensorProduct::Contraction:
       return std::make_shared<GEMMPermutationOptimizer>(
+          target_indices, left_indices, right_indices, prefer_to_permute_left);
+    case TensorProduct::General:
+      return std::make_shared<GeneralPermutationOptimizer>(
           target_indices, left_indices, right_indices, prefer_to_permute_left);
     case TensorProduct::Invalid:
       return std::make_shared<NullBinaryOpPermutationOptimizer>(

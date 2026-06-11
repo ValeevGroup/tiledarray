@@ -100,6 +100,7 @@ set(ta_test_src_files  ta_test.cpp
   # t_tot_tot_contract_.cpp
   # tot_tot_tot_contract_.cpp
     einsum.cpp
+    general_product.cpp
     linalg.cpp
     cp.cpp
     btas.cpp

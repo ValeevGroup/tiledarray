@@ -260,7 +260,19 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   void perm_indices(const BipartiteIndexList& target_indices) {
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::perm_indices(target_indices);
-    else {
+    else if (this->product_type() == TensorProduct::General) {
+      // mirror ContEngine_::perm_indices, but lay out via
+      // GeneralPermutationOptimizer (the target determines which shared
+      // indices are fused vs contracted)
+      if (!this->implicit_permute()) {
+        BinaryEngine_::template init_indices_<TensorProduct::General>(
+            target_indices);
+        if (BinaryEngine_::left_indices_ != BinaryEngine_::left_.indices())
+          BinaryEngine_::left_.perm_indices(BinaryEngine_::left_indices_);
+        if (BinaryEngine_::right_indices_ != BinaryEngine_::right_.indices())
+          BinaryEngine_::right_.perm_indices(BinaryEngine_::right_indices_);
+      }
+    } else {
       BinaryEngine_::perm_indices(target_indices);
     }
   }
@@ -275,6 +287,40 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     // for the left and right, hence do target-neutral initialization
     BinaryEngine_::left_.init_indices();
     BinaryEngine_::right_.init_indices();
+
+    // Validate that the (bottom-up resolved) child indices are consistent
+    // with the target: every outer index of each child must appear in the
+    // other child or in the target (as a free, fused, or contracted index).
+    // A violation usually means a *general* product (fused + contracted +
+    // free indices) appears at an INNER node of the expression tree, where
+    // the role of a shared index cannot be deduced bottom-up; e.g. in the
+    // THC-like g("p,q,r,s") = X("p,r1") * X("q,r1") * Z("r1,r2") * ... the
+    // index r1 is fused in X*X but contracted downstream, while the
+    // bottom-up convention contracts it in X*X, orphaning the r1 of Z.
+    // Resolving this requires pushing the needed-index sets down the
+    // expression tree; until then materialize such inner products into
+    // explicit intermediates, so that every general product appears as the
+    // root of its own assignment (where the target determines the index
+    // roles).
+    {
+      auto const& left_outer = outer(BinaryEngine_::left_.indices());
+      auto const& right_outer = outer(BinaryEngine_::right_.indices());
+      auto const& target_outer = outer(target_indices);
+      auto validate = [&](const IndexList& a, const IndexList& b) {
+        for (auto&& idx : a)
+          if (!b.count(idx) && !target_outer.count(idx))
+            TA_EXCEPTION(
+                "MultEngine: an argument index appears in neither the other "
+                "argument nor the target. If a general product (fused + "
+                "contracted + free indices) appears at an inner node of the "
+                "expression tree, its index roles cannot be deduced "
+                "bottom-up; materialize it into an explicit intermediate so "
+                "that it appears as the root of its own assignment");
+      };
+      validate(left_outer, right_outer);
+      validate(right_outer, left_outer);
+    }
+
     this->product_type_ = compute_product_type(
         outer(BinaryEngine_::left_.indices()),
         outer(BinaryEngine_::right_.indices()), outer(target_indices));
@@ -282,24 +328,27 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
         inner(BinaryEngine_::left_.indices()),
         inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
-    // TODO support general products that involve fused, contracted, and free
-    // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
-    // contracted, and index j is fused
-    // N.B. Currently only 2 types of products are supported:
-    // - Hadamard product (in which all indices are fused), and,
-    // - pure contraction (>=1 contracted, 0 fused, >=1 free indices)
-    // For the ToT arguments only the Hadamard product is supported
+    if (this->inner_product_type_ == TensorProduct::General)
+      TA_EXCEPTION(
+          "MultEngine: general products (fused + contracted + free indices) "
+          "between the inner (nested) indices of tensors-of-tensors are not "
+          "supported");
 
     // Check the *outer* indices to determine whether the arguments are
-    // - contracted, or
-    // - Hadamard-multiplied
-    // The latter is indicated by the equality (modulo permutation) of
-    // the outer left and right arg indices to the target indices.
+    // - Hadamard-multiplied (outer left, right, and target indices are all
+    //   related by permutations),
+    // - contracted (no index appears in left, right, AND target), or
+    // - generally multiplied (fused, contracted, and free indices coexist,
+    //   e.g. "b,i,j" * "b,j,k" -> "b,i,k"); the layout then depends on the
+    //   target, which determines the role (fused vs contracted) of every
+    //   shared index.
     // Only the outer indices matter here since the inner indices only encode
     // the tile op; the type of the tile op does not need to match the type of
     // the operation on the outer indices
     if (this->product_type() == TensorProduct::Hadamard) {
       BinaryEngine_::perm_indices(target_indices);
+    } else if (this->product_type() == TensorProduct::General) {
+      this->perm_indices(target_indices);
     } else {
       auto children_initialized = true;
       ContEngine_::init_indices(children_initialized);
@@ -334,6 +383,16 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    // TODO Phase B (batched Summa): evaluate general products natively.
+    // Until then this engine can classify and lay out a general product
+    // (see init_indices) but not evaluate it.
+    if (this->product_type() == TensorProduct::General)
+      TA_EXCEPTION(
+          "MultEngine: evaluation of general products (fused + contracted + "
+          "free indices, e.g. C(\"b,i,k\") = A(\"b,i,j\") * B(\"b,j,k\")) via "
+          "the expression layer is not yet implemented; use "
+          "TiledArray::einsum() instead");
+
     this->init_perm(target_indices);
 
     // for ContEngine_::init_struct need to initialize element op first
@@ -576,7 +635,16 @@ class ScalMultEngine
   void perm_indices(const BipartiteIndexList& target_indices) {
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::perm_indices(target_indices);
-    else {
+    else if (this->product_type() == TensorProduct::General) {
+      if (!this->implicit_permute()) {
+        BinaryEngine_::template init_indices_<TensorProduct::General>(
+            target_indices);
+        if (BinaryEngine_::left_indices_ != BinaryEngine_::left_.indices())
+          BinaryEngine_::left_.perm_indices(BinaryEngine_::left_indices_);
+        if (BinaryEngine_::right_indices_ != BinaryEngine_::right_.indices())
+          BinaryEngine_::right_.perm_indices(BinaryEngine_::right_indices_);
+      }
+    } else {
       BinaryEngine_::perm_indices(target_indices);
     }
   }
@@ -595,6 +663,17 @@ class ScalMultEngine
       // since already initialized left and right arg indices assign the target
       // indices
       BinaryEngine_::perm_indices(target_indices);
+    } else if (this->product_type() == TensorProduct::General) {
+      // layout via GeneralPermutationOptimizer (the target determines which
+      // shared indices are fused vs contracted), then propagate to children
+      if (!this->implicit_permute()) {
+        BinaryEngine_::template init_indices_<TensorProduct::General>(
+            target_indices);
+        if (BinaryEngine_::left_indices_ != BinaryEngine_::left_.indices())
+          BinaryEngine_::left_.perm_indices(BinaryEngine_::left_indices_);
+        if (BinaryEngine_::right_indices_ != BinaryEngine_::right_.indices())
+          BinaryEngine_::right_.perm_indices(BinaryEngine_::right_indices_);
+      }
     } else {
       ContEngine_::init_indices(target_indices);
     }
@@ -628,6 +707,13 @@ class ScalMultEngine
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    // TODO Phase B (batched Summa): evaluate general products natively
+    if (this->product_type() == TensorProduct::General)
+      TA_EXCEPTION(
+          "ScalMultEngine: evaluation of general products (fused + contracted "
+          "+ free indices) via the expression layer is not yet implemented; "
+          "use TiledArray::einsum() instead");
+
     this->init_perm(target_indices);
 
     // for ContEngine_::init_struct need to initialize element op first

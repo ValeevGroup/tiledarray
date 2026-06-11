@@ -100,13 +100,20 @@ class BinaryEngine : public ExprEngine<Derived> {
   template <TensorProduct OuterProductType>
   void init_indices_(const BipartiteIndexList& target_indices = {}) {
     static_assert(OuterProductType == TensorProduct::Contraction ||
-                  OuterProductType == TensorProduct::Hadamard);
+                  OuterProductType == TensorProduct::Hadamard ||
+                  OuterProductType == TensorProduct::General);
+    // N.B. a General product's layout depends on the target (the role of a
+    // shared index -- fused vs contracted -- is defined by which indices the
+    // target keeps), so OuterProductType == General requires nonempty
+    // target_indices (GeneralPermutationOptimizer throws otherwise).
     // prefer to permute the arg with fewest leaves to try to minimize the
     // number of possible permutations
-    using permopt_type =
-        std::conditional_t<OuterProductType == TensorProduct::Contraction,
-                           GEMMPermutationOptimizer,
-                           HadamardPermutationOptimizer>;
+    using permopt_type = std::conditional_t<
+        OuterProductType == TensorProduct::Contraction,
+        GEMMPermutationOptimizer,
+        std::conditional_t<OuterProductType == TensorProduct::General,
+                           GeneralPermutationOptimizer,
+                           HadamardPermutationOptimizer>>;
 
     std::shared_ptr<BinaryOpPermutationOptimizer> outer_opt, inner_opt;
     if (!target_indices) {
