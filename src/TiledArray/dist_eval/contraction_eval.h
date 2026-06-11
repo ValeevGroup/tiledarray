@@ -93,21 +93,44 @@ class Summa
   const ordinal_type k_;      ///< Number of tiles in the inner dimension
   const ProcGrid proc_grid_;  ///< Process grid for this contraction
 
+  // Batched (fused/Hadamard-index) dimension information. A batched
+  // contraction C(h,i,j) = sum_k A(h,i,k) B(h,k,j) is evaluated as nh_
+  // independent SUMMA "slabs" sharing one process grid and one task graph:
+  // the iteration space is steps s = h*k_ + k, and every tile ordinal is
+  // offset by its slab base (h * {left,right,result}_slab_size_). For the
+  // ordinary contraction nh_ == 1 and all of this reduces to the unbatched
+  // arithmetic.
+  const ordinal_type nh_;      ///< Number of fused (Hadamard) slabs
+  const ordinal_type nsteps_;  ///< Total SUMMA steps = nh_ * k_
+  const ordinal_type
+      left_slab_size_;  ///< # of left tiles per slab (= rows*k tiles)
+  const ordinal_type
+      right_slab_size_;  ///< # of right tiles per slab (= k*cols tiles)
+  const ordinal_type
+      result_slab_size_;  ///< # of result tiles per slab (= rows*cols tiles)
+
   // Contraction results
   ReducePairTask<op_type>* reduce_tasks_;  ///< A pointer to the reduction tasks
 
   // Constants used to iterate over columns and rows of left_ and right_,
-  // respectively.
+  // respectively. N.B. all are *slab-local* (slab h adds
+  // h * {left,right}_slab_size_ at the use sites).
   const ordinal_type
       left_start_local_;  ///< The starting point of left column iterator ranges
                           ///< (just add k for specific columns)
   const ordinal_type left_end_;  ///< The end of the left column iterator ranges
+                                 ///< within a slab
   const ordinal_type left_stride_;  ///< Stride for left column iterators
   const ordinal_type
       left_stride_local_;            ///< Stride for local left column iterators
   const ordinal_type right_stride_;  ///< Stride for right row iterators
   const ordinal_type
       right_stride_local_;  ///< stride for local right row iterators
+
+  /// \return the slab index of SUMMA step \p s
+  ordinal_type step_h(const ordinal_type s) const { return s / k_; }
+  /// \return the within-slab inner-dimension index of SUMMA step \p s
+  ordinal_type step_k(const ordinal_type s) const { return s % k_; }
 
   typedef Future<typename right_type::eval_type>
       right_future;  ///< Future to a right-hand argument tile
@@ -253,21 +276,26 @@ class Summa
 
   /// Row process group factory function
 
-  /// \param k The broadcast group index
+  /// \param s The SUMMA step (= slab index * k_ + broadcast group index)
   /// \return A row process group
-  madness::Group make_row_group(const ordinal_type k) const {
+  madness::Group make_row_group(const ordinal_type s) const {
+    const ordinal_type h = step_h(s);
+    const ordinal_type k = step_k(s);
     // Construct the sparse broadcast group
-    const ordinal_type right_begin_k = k * proc_grid_.cols();
+    const ordinal_type right_begin_k =
+        h * right_slab_size_ + k * proc_grid_.cols();
     const ordinal_type right_end_k = right_begin_k + proc_grid_.cols();
     // make the row mask; using the same mask for all tiles avoids having to
     // compute mask for every tile and use of masked broadcasts
-    auto result_row_mask_k = make_row_mask(k);
+    auto result_row_mask_k = make_row_mask(h, k);
 
     // return empty group if I am not in this group, otherwise make a group
+    // N.B. group key = s + nsteps_ (unique across (h,k) and distinct from the
+    // column groups' keys), root flag = k (the within-slab cyclic owner)
     if (result_row_mask_k[proc_grid_.rank_col()])
       return make_group(right_.shape(), result_row_mask_k, right_begin_k,
                         right_end_k, right_stride_, proc_grid_.proc_cols(), k,
-                        k_, [&](const ProcGrid::size_type col) {
+                        s - k + nsteps_, [&](const ProcGrid::size_type col) {
                           return proc_grid_.map_col(col);
                         });
     else
@@ -276,18 +304,22 @@ class Summa
 
   /// Column process group factory function
 
-  /// \param k The broadcast group index
+  /// \param s The SUMMA step (= slab index * k_ + broadcast group index)
   /// \return A column process group
-  madness::Group make_col_group(const ordinal_type k) const {
+  madness::Group make_col_group(const ordinal_type s) const {
+    const ordinal_type h = step_h(s);
+    const ordinal_type k = step_k(s);
     // make the column mask; using the same mask for all tiles avoids having to
     // compute mask for every tile and use of masked broadcasts
-    auto result_col_mask_k = make_col_mask(k);
+    auto result_col_mask_k = make_col_mask(h, k);
 
     // return empty group if I am not in this group, otherwise make a group
+    // N.B. group key = s (unique across (h,k)), root flag = k
     if (result_col_mask_k[proc_grid_.rank_row()])
       return make_group(
-          left_.shape(), result_col_mask_k, k, left_end_, left_stride_,
-          proc_grid_.proc_rows(), k, 0ul,
+          left_.shape(), result_col_mask_k, h * left_slab_size_ + k,
+          h * left_slab_size_ + left_end_, left_stride_, proc_grid_.proc_rows(),
+          k, s - k,
           [&](const ordinal_type row) { return proc_grid_.map_row(row); });
     else
       return madness::Group();
@@ -299,7 +331,8 @@ class Summa
   /// \return a set object, if \code result[p] == true \endcode the process
   ///         in column \c p of this row has at least 1 result tile for this \c
   ///         k
-  std::vector<bool> make_row_mask(const ordinal_type k) const {
+  std::vector<bool> make_row_mask(const ordinal_type h,
+                                  const ordinal_type k) const {
     // "local" A[i][k] (i.e. for all i assigned to my row of processes) will
     // produce C[i][*] for each process in my row of the process grid determine
     // whether there are any nonzero C[i][*] located on that node
@@ -320,13 +353,16 @@ class Summa
     const auto nj = proc_grid_.cols();
     // number of tiles in contraction dim
     const auto nk = k_;
+    // slab bases
+    const auto left_base = h * left_slab_size_;
+    const auto result_base = h * result_slab_size_;
 
     // for each i assigned to my row of processes ...
     ordinal_type i_start, i_fence, i_stride;
     std::tie(i_start, i_fence, i_stride) = result_row_range(my_proc_row);
     const auto ik_stride = i_stride * nk;
-    for (ordinal_type i = i_start, ik = i_start * nk + k; i < i_fence;
-         i += i_stride, ik += ik_stride) {
+    for (ordinal_type i = i_start, ik = left_base + i_start * nk + k;
+         i < i_fence; i += i_stride, ik += ik_stride) {
       // ... such that A[i][k] exists ...
       if (!left_.shape().is_zero(ik)) {
         // ... the owner of А[i][k] is always in the group ...
@@ -340,8 +376,8 @@ class Summa
             ordinal_type j_start, j_fence, j_stride;
             std::tie(j_start, j_fence, j_stride) = result_col_range(proc_col);
             const auto ij_stride = j_stride;
-            for (ordinal_type j = j_start, ij = i * nj + j_start; j < j_fence;
-                 j += j_stride, ij += ij_stride) {
+            for (ordinal_type j = j_start, ij = result_base + i * nj + j_start;
+                 j < j_fence; j += j_stride, ij += ij_stride) {
               // ... if any such C[i][j] exists, update the mask, and move
               // on to next process
               if (!result_shape.is_zero(
@@ -364,7 +400,8 @@ class Summa
   /// \return a set object, if \code result[p] == true \endcode the process
   ///         in row \c p of this column has at least 1 result tile for this
   ///         \c k
-  std::vector<bool> make_col_mask(const ordinal_type k) const {
+  std::vector<bool> make_col_mask(const ordinal_type h,
+                                  const ordinal_type k) const {
     // "local" B[k][j] (i.e. for all j assigned to my column of processes)
     // will produce C[*][j]
     // for each process in my column of the process grid determine whether
@@ -385,13 +422,16 @@ class Summa
 
     // number of tiles in col dim of the result
     const auto nj = proc_grid_.cols();
+    // slab bases
+    const auto right_base = h * right_slab_size_;
+    const auto result_base = h * result_slab_size_;
 
     // for each j assigned to my column of processes ...
     ordinal_type j_start, j_fence, j_stride;
     std::tie(j_start, j_fence, j_stride) = result_col_range(my_proc_col);
     const auto kj_stride = j_stride;
-    for (ordinal_type j = j_start, kj = k * nj + j_start; j < j_fence;
-         j += j_stride, kj += kj_stride) {
+    for (ordinal_type j = j_start, kj = right_base + k * nj + j_start;
+         j < j_fence; j += j_stride, kj += kj_stride) {
       // ... such that B[k][j] exists ...
       if (!right_.shape().is_zero(kj)) {
         // ... the owner of B[k][j] is always in the group ...
@@ -405,8 +445,8 @@ class Summa
             ordinal_type i_start, i_fence, i_stride;
             std::tie(i_start, i_fence, i_stride) = result_row_range(proc_row);
             const auto ij_stride = i_stride * nj;
-            for (ordinal_type i = i_start, ij = i_start * nj + j; i < i_fence;
-                 i += i_stride, ij += ij_stride) {
+            for (ordinal_type i = i_start, ij = result_base + i_start * nj + j;
+                 i < i_fence; i += i_stride, ij += ij_stride) {
               // ... if any such C[i][j] exists, update the mask, and move
               // on to next process
               if (!result_shape.is_zero(
@@ -554,25 +594,27 @@ class Summa
     TA_ASSERT(vec.size() > 0ul);
   }
 
-  /// Collect non-zero tiles from column \c k of \c left_
+  /// Collect non-zero tiles from column \c k of slab \c h of \c left_
 
-  /// \param[in] k The column to be retrieved
+  /// \param[in] s The SUMMA step (slab * k_ + column index)
   /// \param[out] col The column vector that will hold the tiles
-  void get_col(const ordinal_type k, std::vector<col_datum>& col) const {
+  void get_col(const ordinal_type s, std::vector<col_datum>& col) const {
+    const ordinal_type base = step_h(s) * left_slab_size_;
     col.reserve(proc_grid_.local_rows());
-    get_vector(left_, left_start_local_ + k, left_end_, left_stride_local_,
-               col);
+    get_vector(left_, base + left_start_local_ + step_k(s), base + left_end_,
+               left_stride_local_, col);
   }
 
-  /// Collect non-zero tiles from row \c k of \c right_
+  /// Collect non-zero tiles from row \c k of slab \c h of \c right_
 
-  /// \param[in] k The row to be retrieved
+  /// \param[in] s The SUMMA step (slab * k_ + row index)
   /// \param[out] row The row vector that will hold the tiles
-  void get_row(const ordinal_type k, std::vector<row_datum>& row) const {
+  void get_row(const ordinal_type s, std::vector<row_datum>& row) const {
     row.reserve(proc_grid_.local_cols());
 
-    // Compute local iteration limits for row k of right_.
-    ordinal_type begin = k * proc_grid_.cols();
+    // Compute local iteration limits for row k of slab h of right_.
+    ordinal_type begin =
+        step_h(s) * right_slab_size_ + step_k(s) * proc_grid_.cols();
     const ordinal_type end = begin + proc_grid_.cols();
     begin += proc_grid_.rank_col();
 
@@ -654,46 +696,53 @@ class Summa
     return group_root;
   }
 
-  /// Broadcast column \c k of \c left_ with a dense right-hand argument
+  /// Broadcast column \c k of slab \c h of \c left_
 
-  /// \param[in] k The column of \c left_ to be broadcast
+  /// \param[in] s The SUMMA step (slab * k_ + column index)
   /// \param[out] col The vector that will hold the results of the broadcast
-  void bcast_col(const ordinal_type k, std::vector<col_datum>& col,
+  void bcast_col(const ordinal_type s, std::vector<col_datum>& col,
                  const madness::Group& row_group) const {
     // broadcast if I'm part of the broadcast group
     if (!row_group.empty()) {
-      // Broadcast column k of left_.
-      ProcessID group_root = get_row_group_root(k, row_group);
-      bcast(left_start_local_ + k, left_stride_local_, row_group, group_root,
-            0ul, col);
+      // Broadcast column k of slab h of left_.
+      ProcessID group_root = get_row_group_root(step_k(s), row_group);
+      bcast(step_h(s) * left_slab_size_ + left_start_local_ + step_k(s),
+            left_stride_local_, row_group, group_root, 0ul, col);
     }
   }
 
-  /// Broadcast row \c k of \c right_ with a dense left-hand argument
+  /// Broadcast row \c k of slab \c h of \c right_
 
-  /// \param[in] k The row of \c right to be broadcast
+  /// \param[in] s The SUMMA step (slab * k_ + row index)
   /// \param[out] row The vector that will hold the results of the broadcast
-  void bcast_row(const ordinal_type k, std::vector<row_datum>& row,
+  void bcast_row(const ordinal_type s, std::vector<row_datum>& row,
                  const madness::Group& col_group) const {
     // broadcast if I'm part of the broadcast group
     if (!col_group.empty()) {
       // Compute the group root process.
-      ProcessID group_root = get_col_group_root(k, col_group);
+      ProcessID group_root = get_col_group_root(step_k(s), col_group);
 
-      // Broadcast row k of right_.
-      bcast(k * proc_grid_.cols() + proc_grid_.rank_col(), right_stride_local_,
-            col_group, group_root, left_.size(), row);
+      // Broadcast row k of slab h of right_.
+      bcast(step_h(s) * right_slab_size_ + step_k(s) * proc_grid_.cols() +
+                proc_grid_.rank_col(),
+            right_stride_local_, col_group, group_root, left_.size(), row);
     }
   }
 
-  void bcast_col_range_task(ordinal_type k, const ordinal_type end) const {
-    // Compute the first local row of right
+  void bcast_col_range_task(ordinal_type s, const ordinal_type end) const {
+    // Iterate over the skipped steps for which this process column owns the
+    // broadcast root (i.e. within-slab k congruent to rank_col mod Pcols)
     const ordinal_type Pcols = proc_grid_.proc_cols();
-    k += (Pcols - ((k + Pcols - proc_grid_.rank_col()) % Pcols)) % Pcols;
 
-    for (; k < end; k += Pcols) {
-      // Compute local iteration limits for column k of left_.
-      ordinal_type index = left_start_local_ + k;
+    for (; s < end; ++s) {
+      const ordinal_type k = step_k(s);
+      if (k % Pcols != static_cast<ordinal_type>(proc_grid_.rank_col()))
+        continue;
+      const ordinal_type left_base = step_h(s) * left_slab_size_;
+
+      // Compute local iteration limits for column k of slab h of left_.
+      ordinal_type index = left_base + left_start_local_ + k;
+      const ordinal_type col_end = left_base + left_end_;
 
       // will create broadcast group only if needed
       bool have_group = false;
@@ -702,13 +751,13 @@ class Summa
       bool do_broadcast;
 
       // Search column k of left for non-zero tiles
-      for (; index < left_end_; index += left_stride_local_) {
+      for (; index < col_end; index += left_stride_local_) {
         if (left_.shape().is_zero(index)) continue;
 
         // Construct broadcast group, if needed
         if (!have_group) {
           have_group = true;
-          row_group = make_row_group(k);
+          row_group = make_row_group(s);
           // broadcast if I am in this group and this group has others
           do_broadcast = !row_group.empty() && row_group.size() > 1;
           if (do_broadcast) group_root = get_row_group_root(k, row_group);
@@ -733,14 +782,18 @@ class Summa
     }
   }
 
-  void bcast_row_range_task(ordinal_type k, const ordinal_type end) const {
-    // Compute the first local row of right
+  void bcast_row_range_task(ordinal_type s, const ordinal_type end) const {
+    // Iterate over the skipped steps for which this process row owns the
+    // broadcast root (i.e. within-slab k congruent to rank_row mod Prows)
     const ordinal_type Prows = proc_grid_.proc_rows();
-    k += (Prows - ((k + Prows - proc_grid_.rank_row()) % Prows)) % Prows;
 
-    for (; k < end; k += Prows) {
-      // Compute local iteration limits for row k of right_.
-      ordinal_type index = k * proc_grid_.cols();
+    for (; s < end; ++s) {
+      const ordinal_type k = step_k(s);
+      if (k % Prows != static_cast<ordinal_type>(proc_grid_.rank_row()))
+        continue;
+
+      // Compute local iteration limits for row k of slab h of right_.
+      ordinal_type index = step_h(s) * right_slab_size_ + k * proc_grid_.cols();
       const ordinal_type row_end = index + proc_grid_.cols();
       index += proc_grid_.rank_col();
 
@@ -757,7 +810,7 @@ class Summa
         // Construct broadcast group
         if (!have_group) {
           have_group = true;
-          col_group = make_col_group(k);
+          col_group = make_col_group(s);
           // broadcast if I am in this group and this group has others
           do_broadcast = !col_group.empty() && col_group.size() > 1;
           if (do_broadcast) group_root = get_col_group_root(k, col_group);
@@ -787,45 +840,48 @@ class Summa
 
   /// Find next non-zero row of \c right_ for a sparse shape
 
-  /// Starting at the k-th row of the right-hand argument, find the next row
-  /// that contains at least one non-zero tile. This search only checks for
+  /// Starting at SUMMA step \c s, find the next step whose right-hand row
+  /// contains at least one non-zero tile. This search only checks for
   /// non-zero tiles in this processes column.
-  /// \param k The first row to search
-  /// \return The first row, greater than or equal to \c k with non-zero
-  /// tiles, or \c k_ if none is found.
-  ordinal_type iterate_row(ordinal_type k) const {
-    // Iterate over k's until a non-zero tile is found or the end of the
+  /// \param s The first step to search
+  /// \return The first step, greater than or equal to \c s with non-zero
+  /// tiles, or \c nsteps_ if none is found.
+  ordinal_type iterate_row(ordinal_type s) const {
+    // Iterate over steps until a non-zero tile is found or the end of the
     // matrix is reached.
-    ordinal_type end = k * proc_grid_.cols();
-    for (; k < k_; ++k) {
-      // Search for non-zero tiles in row k of right
-      ordinal_type i = end + proc_grid_.rank_col();
-      end += proc_grid_.cols();
+    for (; s < nsteps_; ++s) {
+      // Search for non-zero tiles in row k of slab h of right
+      ordinal_type i =
+          step_h(s) * right_slab_size_ + step_k(s) * proc_grid_.cols();
+      const ordinal_type end = i + proc_grid_.cols();
+      i += proc_grid_.rank_col();
       for (; i < end; i += right_stride_local_)
-        if (!right_.shape().is_zero(i)) return k;
+        if (!right_.shape().is_zero(i)) return s;
     }
 
-    return k;
+    return s;
   }
 
   /// Find the next non-zero column of \c left_ for an arbitrary shape type
 
-  /// Starting at the k-th column of the left-hand argument, find the next
-  /// column that contains at least one non-zero tile. This search only
+  /// Starting at SUMMA step \c s, find the next step whose left-hand column
+  /// contains at least one non-zero tile. This search only
   /// checks for non-zero tiles in this process's row.
-  /// \param k The first column to test for non-zero tiles
-  /// \return The first column, greater than or equal to \c k, that contains
-  /// a non-zero tile. If no non-zero tile is not found, return \c k_.
-  ordinal_type iterate_col(ordinal_type k) const {
-    // Iterate over k's until a non-zero tile is found or the end of the
+  /// \param s The first step to test for non-zero tiles
+  /// \return The first step, greater than or equal to \c s, that contains
+  /// a non-zero tile. If no non-zero tile is not found, return \c nsteps_.
+  ordinal_type iterate_col(ordinal_type s) const {
+    // Iterate over steps until a non-zero tile is found or the end of the
     // matrix is reached.
-    for (; k < k_; ++k)
-      // Search row k for non-zero tiles
-      for (ordinal_type i = left_start_local_ + k; i < left_end_;
-           i += left_stride_local_)
-        if (!left_.shape().is_zero(i)) return k;
+    for (; s < nsteps_; ++s) {
+      // Search column k of slab h for non-zero tiles
+      const ordinal_type base = step_h(s) * left_slab_size_;
+      for (ordinal_type i = base + left_start_local_ + step_k(s);
+           i < base + left_end_; i += left_stride_local_)
+        if (!left_.shape().is_zero(i)) return s;
+    }
 
-    return k;
+    return s;
   }
 
   /// Find the next k where the left- and right-hand argument have non-zero
@@ -839,9 +895,9 @@ class Summa
   /// \param k The first row/column to check
   /// \return The next k-th column and row of the left- and right-hand
   /// arguments, respectively, that both have non-zero tiles
-  ordinal_type iterate_sparse(const ordinal_type k) const {
+  ordinal_type iterate_sparse(const ordinal_type s) const {
     // Initial step for k_col and k_row.
-    ordinal_type k_col = iterate_col(k);
+    ordinal_type k_col = iterate_col(s);
     ordinal_type k_row = iterate_row(k_col);
 
     // Search for a row and column that both have non-zero tiles
@@ -853,15 +909,15 @@ class Summa
       }
     }
 
-    if (k < k_row) {
+    if (s < k_row) {
       // Spawn a task to broadcast any local columns of left that were skipped
       TensorImpl_::world().taskq.add(shared_from_this(),
-                                     &Summa_::bcast_col_range_task, k, k_row,
+                                     &Summa_::bcast_col_range_task, s, k_row,
                                      madness::TaskAttributes::hipri());
 
       // Spawn a task to broadcast any local rows of right that were skipped
       TensorImpl_::world().taskq.add(shared_from_this(),
-                                     &Summa_::bcast_row_range_task, k, k_col,
+                                     &Summa_::bcast_row_range_task, s, k_col,
                                      madness::TaskAttributes::hipri());
     }
 
@@ -907,9 +963,11 @@ class Summa
       return tile_count;
     } else {
       // Construct static broadcast groups for dense arguments
-      const madness::DistributedID col_did(DistEvalImpl_::id(), 0ul);
+      // (key space [0, 2*nsteps_) is reserved for the sparse per-step groups)
+      const madness::DistributedID col_did(DistEvalImpl_::id(), 2ul * nsteps_);
       col_group_ = proc_grid_.make_col_group(col_did);
-      const madness::DistributedID row_did(DistEvalImpl_::id(), k_);
+      const madness::DistributedID row_did(DistEvalImpl_::id(),
+                                           2ul * nsteps_ + 1ul);
       row_group_ = proc_grid_.make_row_group(row_did);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
@@ -926,12 +984,13 @@ class Summa
       printf(ss.str().c_str());
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
-      // Allocate memory for the reduce pair tasks.
+      // Allocate memory for the reduce pair tasks (one per local result tile
+      // per slab).
       std::allocator<ReducePairTask<op_type>> alloc;
-      reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
+      reduce_tasks_ = alloc.allocate(nh_ * proc_grid_.local_size());
 
       // Iterate over all local tiles
-      const ordinal_type n = proc_grid_.local_size();
+      const ordinal_type n = nh_ * proc_grid_.local_size();
       for (ordinal_type t = 0ul; t < n; ++t) {
         // Initialize the reduction task
         ReducePairTask<op_type>* MADNESS_RESTRICT const reduce_task =
@@ -944,7 +1003,7 @@ class Summa
         );
       }
 
-      return proc_grid_.local_size();
+      return n;
     }
   }
 
@@ -959,46 +1018,53 @@ class Summa
     // fast return if there is no work to do
     if (k_ == 0) return 0;
 
-    // Allocate memory for the reduce pair tasks.
+    // Allocate memory for the reduce pair tasks (one per local result tile
+    // per slab).
     std::allocator<ReducePairTask<op_type>> alloc;
-    reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
+    reduce_tasks_ = alloc.allocate(nh_ * proc_grid_.local_size());
 
     // Initialize iteration variables
-    ordinal_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
-    ordinal_type row_end = row_start + proc_grid_.cols();
-    row_start += proc_grid_.rank_col();
     const ordinal_type col_stride =  // The stride to iterate down a column
         proc_grid_.proc_rows() * proc_grid_.cols();
     const ordinal_type row_stride =  // The stride to iterate across a row
         proc_grid_.proc_cols();
-    const ordinal_type end = TensorImpl_::size();
 
-    // Iterate over all local tiles
+    // Iterate over all local tiles, slab by slab (the block-cyclic phase
+    // restarts at every slab: the owner of tile (h,i,j) does not depend on h)
     ordinal_type tile_count = 0ul;
     ReducePairTask<op_type>* MADNESS_RESTRICT reduce_task = reduce_tasks_;
-    // this loops over result tiles arranged in block-cyclic order
-    // index = tile index (row major)
-    for (; row_start < end; row_start += col_stride, row_end += col_stride) {
-      for (ordinal_type index = row_start; index < row_end;
-           index += row_stride, ++reduce_task) {
-        // Initialize the reduction task
+    for (ordinal_type h = 0ul; h < nh_; ++h) {
+      const ordinal_type slab_base = h * result_slab_size_;
+      ordinal_type row_start =
+          slab_base + proc_grid_.rank_row() * proc_grid_.cols();
+      ordinal_type row_end = row_start + proc_grid_.cols();
+      row_start += proc_grid_.rank_col();
+      const ordinal_type end = slab_base + result_slab_size_;
 
-        // Skip zero tiles
-        if (!shape.is_zero(DistEvalImpl_::perm_index_to_target(index))) {
+      // this loops over result tiles arranged in block-cyclic order
+      // index = tile index (row major)
+      for (; row_start < end; row_start += col_stride, row_end += col_stride) {
+        for (ordinal_type index = row_start; index < row_end;
+             index += row_stride, ++reduce_task) {
+          // Initialize the reduction task
+
+          // Skip zero tiles
+          if (!shape.is_zero(DistEvalImpl_::perm_index_to_target(index))) {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
-          ss << index << " ";
+            ss << index << " ";
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
-          new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
+            new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
-                                                    ,
-                                                    nullptr, index
+                                                      ,
+                                                      nullptr, index
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
-          );
-          ++tile_count;
-        } else {
-          // Construct an empty task to represent zero tiles.
-          new (reduce_task) ReducePairTask<op_type>();
+            );
+            ++tile_count;
+          } else {
+            // Construct an empty task to represent zero tiles.
+            new (reduce_task) ReducePairTask<op_type>();
+          }
         }
       }
     }
@@ -1030,32 +1096,37 @@ class Summa
   /// Set the result tiles, destroy reduce tasks, and destroy broadcast groups
   void finalize(const DenseShape&) {
     // Initialize iteration variables
-    ordinal_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
-    ordinal_type row_end = row_start + proc_grid_.cols();
-    row_start += proc_grid_.rank_col();
     const ordinal_type col_stride =  // The stride to iterate down a column
         proc_grid_.proc_rows() * proc_grid_.cols();
     const ordinal_type row_stride =  // The stride to iterate across a row
         proc_grid_.proc_cols();
-    const ordinal_type end = TensorImpl_::size();
 
-    // Iterate over all local tiles
-    for (ReducePairTask<op_type>* reduce_task = reduce_tasks_; row_start < end;
-         row_start += col_stride, row_end += col_stride) {
-      for (ordinal_type index = row_start; index < row_end;
-           index += row_stride, ++reduce_task) {
-        // Set the result tile
-        DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index),
-                                reduce_task->submit());
+    // Iterate over all local tiles, slab by slab
+    ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+    for (ordinal_type h = 0ul; h < nh_; ++h) {
+      const ordinal_type slab_base = h * result_slab_size_;
+      ordinal_type row_start =
+          slab_base + proc_grid_.rank_row() * proc_grid_.cols();
+      ordinal_type row_end = row_start + proc_grid_.cols();
+      row_start += proc_grid_.rank_col();
+      const ordinal_type end = slab_base + result_slab_size_;
 
-        // Destroy the reduce task
-        reduce_task->~ReducePairTask<op_type>();
+      for (; row_start < end; row_start += col_stride, row_end += col_stride) {
+        for (ordinal_type index = row_start; index < row_end;
+             index += row_stride, ++reduce_task) {
+          // Set the result tile
+          DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index),
+                                  reduce_task->submit());
+
+          // Destroy the reduce task
+          reduce_task->~ReducePairTask<op_type>();
+        }
       }
     }
 
     // Deallocate the memory for the reduce pair tasks.
     std::allocator<ReducePairTask<op_type>>().deallocate(
-        reduce_tasks_, proc_grid_.local_size());
+        reduce_tasks_, nh_ * proc_grid_.local_size());
   }
 
   /// Set the result tiles and destroy reduce tasks
@@ -1067,41 +1138,46 @@ class Summa
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
 
     // Initialize iteration variables
-    ordinal_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
-    ordinal_type row_end = row_start + proc_grid_.cols();
-    row_start += proc_grid_.rank_col();
     const ordinal_type col_stride =  // The stride to iterate down a column
         proc_grid_.proc_rows() * proc_grid_.cols();
     const ordinal_type row_stride =  // The stride to iterate across a row
         proc_grid_.proc_cols();
-    const ordinal_type end = TensorImpl_::size();
 
-    // Iterate over all local tiles
-    for (ReducePairTask<op_type>* reduce_task = reduce_tasks_; row_start < end;
-         row_start += col_stride, row_end += col_stride) {
-      for (ordinal_type index = row_start; index < row_end;
-           index += row_stride, ++reduce_task) {
-        // Compute the permuted index
-        const ordinal_type perm_index =
-            DistEvalImpl_::perm_index_to_target(index);
+    // Iterate over all local tiles, slab by slab
+    ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+    for (ordinal_type h = 0ul; h < nh_; ++h) {
+      const ordinal_type slab_base = h * result_slab_size_;
+      ordinal_type row_start =
+          slab_base + proc_grid_.rank_row() * proc_grid_.cols();
+      ordinal_type row_end = row_start + proc_grid_.cols();
+      row_start += proc_grid_.rank_col();
+      const ordinal_type end = slab_base + result_slab_size_;
 
-        // Skip zero tiles
-        if (!shape.is_zero(perm_index)) {
+      for (; row_start < end; row_start += col_stride, row_end += col_stride) {
+        for (ordinal_type index = row_start; index < row_end;
+             index += row_stride, ++reduce_task) {
+          // Compute the permuted index
+          const ordinal_type perm_index =
+              DistEvalImpl_::perm_index_to_target(index);
+
+          // Skip zero tiles
+          if (!shape.is_zero(perm_index)) {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
-          ss << index << " ";
+            ss << index << " ";
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
 
-          // Set the result tile
-          DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
-        }
+            // Set the result tile
+            DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
+          }
 
-        // Destroy the reduce task
-        reduce_task->~ReducePairTask<op_type>();
+          // Destroy the reduce task
+          reduce_task->~ReducePairTask<op_type>();
+        }
       }
     }
     // Deallocate the memory for the reduce pair tasks.
     std::allocator<ReducePairTask<op_type>>().deallocate(
-        reduce_tasks_, proc_grid_.local_size());
+        reduce_tasks_, nh_ * proc_grid_.local_size());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
     ss << "}\n";
@@ -1149,15 +1225,19 @@ class Summa
   /// \param col A column of tiles from the left-hand argument
   /// \param row A row of tiles from the right-hand argument
   /// \param task The task that depends on tile contraction tasks
-  void contract(const DenseShape&, const ordinal_type,
+  void contract(const DenseShape&, const ordinal_type s,
                 const std::vector<col_datum>& col,
                 const std::vector<row_datum>& row,
                 madness::TaskInterface* const task) {
+    // The reduce tasks of slab h occupy
+    // [h * local_size, (h+1) * local_size)
+    const ordinal_type slab_offset = step_h(s) * proc_grid_.local_size();
+
     // Iterate over the row
     for (ordinal_type i = 0ul; i < col.size(); ++i) {
       // Compute the local, result-tile offset
       const ordinal_type reduce_task_offset =
-          col[i].first * proc_grid_.local_cols();
+          slab_offset + col[i].first * proc_grid_.local_cols();
 
       // Iterate over columns
       for (ordinal_type j = 0ul; j < row.size(); ++j) {
@@ -1182,15 +1262,19 @@ class Summa
   /// \param row A row of tiles from the right-hand argument
   /// \param task The task that depends on tile contraction tasks
   template <typename Shape>
-  void contract(const Shape&, const ordinal_type,
+  void contract(const Shape&, const ordinal_type s,
                 const std::vector<col_datum>& col,
                 const std::vector<row_datum>& row,
                 madness::TaskInterface* const task) {
+    // The reduce tasks of slab h occupy
+    // [h * local_size, (h+1) * local_size)
+    const ordinal_type slab_offset = step_h(s) * proc_grid_.local_size();
+
     // Iterate over the row
     for (ordinal_type i = 0ul; i < col.size(); ++i) {
       // Compute the local, result-tile offset
       const ordinal_type reduce_task_offset =
-          col[i].first * proc_grid_.local_cols();
+          slab_offset + col[i].first * proc_grid_.local_cols();
 
       // Iterate over columns
       for (ordinal_type j = 0ul; j < row.size(); ++j) {
@@ -1369,7 +1453,7 @@ class Summa
     template <typename Derived>
     void make_next_step_tasks(Derived* task, ordinal_type depth) {
       // Set the depth to be no greater than the maximum number steps
-      if (depth > owner_->k_) depth = owner_->k_;
+      if (depth > owner_->nsteps_) depth = owner_->nsteps_;
 
       // Spawn n=depth step tasks
       for (; depth > 0ul; --depth) {
@@ -1390,7 +1474,7 @@ class Summa
       printf("step:  start rank=%i k=%lu\n", owner_->world().rank(), k);
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
 
-      if (k < owner_->k_) {
+      if (k < owner_->nsteps_) {
         // Initialize next tail task and submit next task
         TA_ASSERT(next_step_task_);
         next_step_task_->tail_step_task_ = new Derived(
@@ -1456,7 +1540,7 @@ class Summa
    public:
     DenseStepTask(const std::shared_ptr<Summa_>& owner,
                   const ordinal_type depth)
-        : StepTask(owner, owner->k_ + 1ul), k_(0) {
+        : StepTask(owner, owner->nsteps_ + 1ul), k_(0) {
       StepTask::make_next_step_tasks(this, depth);
       StepTask::spawn_get_row_col_tasks(k_);
     }
@@ -1464,7 +1548,7 @@ class Summa
     DenseStepTask(DenseStepTask* const parent, const int ndep)
         : StepTask(parent, ndep), k_(parent->k_ + 1ul) {
       // Spawn tasks to get k-th row and column tiles
-      if (k_ < owner_->k_) StepTask::spawn_get_row_col_tasks(k_);
+      if (k_ < owner_->nsteps_) StepTask::spawn_get_row_col_tasks(k_);
     }
 
     virtual ~DenseStepTask() {}
@@ -1492,7 +1576,7 @@ class Summa
       k = owner_->iterate_sparse(k + offset);
       k_.set(k);
 
-      if (k < owner_->k_) {
+      if (k < owner_->nsteps_) {
         // NOTE: The order of task submissions is dependent on the order in
         // which we want the tasks to complete.
 
@@ -1533,7 +1617,7 @@ class Summa
 
     SparseStepTask(SparseStepTask* const parent, const int ndep)
         : StepTask(parent, ndep) {
-      if (parent->k_.probe() && (parent->k_.get() >= owner_->k_)) {
+      if (parent->k_.probe() && (parent->k_.get() >= owner_->nsteps_)) {
         // Avoid running extra tasks if not needed.
         k_.set(parent->k_.get());
         TA_ASSERT(ndep ==
@@ -1570,6 +1654,14 @@ class Summa
   /// \param k The number of tiles in the inner dimension
   /// \param proc_grid The process grid that defines the layout of the tiles
   ///                  during the contraction evaluation
+  /// \param nh The number of fused (Hadamard/batch) slabs; the default (1)
+  ///           is the ordinary, unbatched contraction. For nh > 1 the
+  ///           arguments and the result carry the fused modes as their
+  ///           leading dimensions (left = (h,i,k), right = (h,k,j),
+  ///           result = (h,i,j)), each slab is distributed over the same
+  ///           2-d process grid (i.e. the owner of a tile is independent of
+  ///           h), and the contraction runs as nh independent SUMMA slabs
+  ///           sharing one task graph with no inter-slab barriers.
   /// \note The trange, shape, and pmap refer to the final,
   ///       permuted, state for the result, NOT to the result during
   ///       the SUMMA evaluation.
@@ -1578,7 +1670,8 @@ class Summa
   Summa(const left_type& left, const right_type& right, World& world,
         const trange_type trange, const shape_type& shape,
         const std::shared_ptr<const pmap_interface>& pmap, const Perm& perm,
-        const op_type& op, const ordinal_type k, const ProcGrid& proc_grid)
+        const op_type& op, const ordinal_type k, const ProcGrid& proc_grid,
+        const ordinal_type nh = 1ul)
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         left_(left),
         right_(right),
@@ -1587,9 +1680,14 @@ class Summa
         col_group_(),
         k_(k),
         proc_grid_(proc_grid),
+        nh_(nh),
+        nsteps_(nh * k),
+        left_slab_size_(left.size() / nh),
+        right_slab_size_(right.size() / nh),
+        result_slab_size_(proc_grid.rows() * proc_grid.cols()),
         reduce_tasks_(NULL),
         left_start_local_(proc_grid_.rank_row() * k),
-        left_end_(left.size()),
+        left_end_(left.size() / nh),
         left_stride_(k),
         left_stride_local_(proc_grid.proc_rows() * k),
         right_stride_(1ul),
@@ -1602,6 +1700,9 @@ class Summa
         right_ntiles_discarded_(0)
 #endif
   {
+    TA_ASSERT(nh_ > 0);
+    TA_ASSERT(left.size() % nh_ == 0);
+    TA_ASSERT(right.size() % nh_ == 0);
   }
 
   virtual ~Summa() {}
@@ -1618,9 +1719,11 @@ class Summa
 
     const ordinal_type source_index = DistEvalImpl_::perm_index_to_source(i);
 
-    // Compute tile coordinate in tile grid
-    const ordinal_type tile_row = source_index / proc_grid_.cols();
-    const ordinal_type tile_col = source_index % proc_grid_.cols();
+    // Compute tile coordinate in tile grid (the owner of a tile is
+    // independent of its slab index)
+    const ordinal_type slab_index = source_index % result_slab_size_;
+    const ordinal_type tile_row = slab_index / proc_grid_.cols();
+    const ordinal_type tile_col = slab_index % proc_grid_.cols();
     // Compute process coordinate of tile in the process grid
     const ordinal_type proc_row = tile_row % proc_grid_.proc_rows();
     const ordinal_type proc_col = tile_col % proc_grid_.proc_cols();
@@ -1729,12 +1832,11 @@ class Summa
       // watch out for the corner case: contraction over zero-volume range
       // producing nonzero-volume result ... in that case there is nothing to do
       // the appropriate initialization was performed in the initialize() method
-      if (k_ != 0) {
+      if (nsteps_ != 0) {
         // Construct the first SUMMA iteration task
         if (TensorImpl_::shape().is_dense()) {
-          // We cannot have more iterations than there are blocks in the k
-          // dimension
-          if (depth > k_) depth = k_;
+          // We cannot have more iterations than there are SUMMA steps
+          if (depth > nsteps_) depth = nsteps_;
 
           // Modify the number of concurrent iterations based on the available
           // memory.
@@ -1761,9 +1863,8 @@ class Summa
           depth = float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) +
                   0.5f;
 
-          // We cannot have more iterations than there are blocks in the k
-          // dimension
-          if (depth > k_) depth = k_;
+          // We cannot have more iterations than there are SUMMA steps
+          if (depth > nsteps_) depth = nsteps_;
 
           // Modify the number of concurrent iterations based on the available
           // memory and sparsity of the argument tensors.
@@ -1775,7 +1876,7 @@ class Summa
           TensorImpl_::world().taskq.add(
               new SparseStepTask(shared_from_this(), depth));
         }
-      }  // k_ != 0
+      }  // nsteps_ != 0
     }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
