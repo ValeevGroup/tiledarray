@@ -130,15 +130,22 @@ BOOST_AUTO_TEST_CASE(optimizer_rejects_implicit_reduction) {
 
 namespace {
 
+/// sets the einsum legacy-subworld toggle within a scope; the previous value
+/// is restored on scope exit (also on exceptions)
+struct ScopedEinsumRoute {
+  bool prev_;
+  explicit ScopedEinsumRoute(const bool legacy)
+      : prev_(TA::detail::einsum_legacy_subworld()) {
+    TA::detail::einsum_legacy_subworld() = legacy;
+  }
+  ~ScopedEinsumRoute() { TA::detail::einsum_legacy_subworld() = prev_; }
+};
+
 /// forces the legacy sub-World einsum within a scope, so einsum-based
 /// reference values remain an *independent* oracle for the expression route
 /// (einsum itself routes general products through the expression layer now)
-struct ForceLegacyEinsum {
-  bool prev_;
-  ForceLegacyEinsum() : prev_(TA::detail::einsum_legacy_subworld()) {
-    TA::detail::einsum_legacy_subworld() = true;
-  }
-  ~ForceLegacyEinsum() { TA::detail::einsum_legacy_subworld() = prev_; }
+struct ForceLegacyEinsum : ScopedEinsumRoute {
+  ForceLegacyEinsum() : ScopedEinsumRoute(true) {}
 };
 
 /// makes a dense array over \p tr filled with an index-dependent pattern
@@ -578,9 +585,11 @@ BOOST_AUTO_TEST_CASE(expression_general_product_tot_batched_outer) {
   auto b = make_patterned_tot_array(world, tr_b, {3, 2}, 2.0);
 
   auto c = TA::einsum(a("b1,b2,i2,i1;x"), b("b1,b2;x,y"), "i2,i1,b1,b2;y");
-  TiledArray::detail::einsum_legacy_subworld() = false;
-  auto c_new = TA::einsum(a("b1,b2,i2,i1;x"), b("b1,b2;x,y"), "i2,i1,b1,b2;y");
-  TiledArray::detail::einsum_legacy_subworld() = true;
+  decltype(c) c_new;
+  {
+    ScopedEinsumRoute expression_route(false);
+    c_new = TA::einsum(a("b1,b2,i2,i1;x"), b("b1,b2;x,y"), "i2,i1,b1,b2;y");
+  }
   BOOST_CHECK_SMALL(tot_max_abs_diff(c_new, c), 1e-10);
 }
 
@@ -597,9 +606,11 @@ BOOST_AUTO_TEST_CASE(expression_general_product_t_tot_batched_outer) {
   auto b = make_patterned_tot_array(world, tr_b, {3}, 2.0);
 
   auto c = TA::einsum(a("i3,i1"), b("i3,i1,i2;x"), "i2,i3,i1;x");
-  TiledArray::detail::einsum_legacy_subworld() = false;
-  auto c_new = TA::einsum(a("i3,i1"), b("i3,i1,i2;x"), "i2,i3,i1;x");
-  TiledArray::detail::einsum_legacy_subworld() = true;
+  decltype(c) c_new;
+  {
+    ScopedEinsumRoute expression_route(false);
+    c_new = TA::einsum(a("i3,i1"), b("i3,i1,i2;x"), "i2,i3,i1;x");
+  }
   BOOST_CHECK_SMALL(tot_max_abs_diff(c_new, c), 1e-10);
 }
 
@@ -616,9 +627,11 @@ BOOST_AUTO_TEST_CASE(expression_general_product_tot_t_nonleading_fused) {
   auto b = make_patterned_array(world, tr_b, 2.0);
 
   auto c_ref = TA::einsum(a("i4,i1,m;x"), b("m,i4,K"), "i1,i4,K;x");
-  TiledArray::detail::einsum_legacy_subworld() = false;
-  auto c_new = TA::einsum(a("i4,i1,m;x"), b("m,i4,K"), "i1,i4,K;x");
-  TiledArray::detail::einsum_legacy_subworld() = true;
+  decltype(c_ref) c_new;
+  {
+    ScopedEinsumRoute expression_route(false);
+    c_new = TA::einsum(a("i4,i1,m;x"), b("m,i4,K"), "i1,i4,K;x");
+  }
   BOOST_CHECK_SMALL(tot_max_abs_diff(c_new, c_ref), 1e-10);
 }
 
@@ -916,17 +929,17 @@ BOOST_AUTO_TEST_CASE(expression_general_product_csv_like) {
   // mirror the CSV path exactly: through einsum (which canonicalizes the
   // target and permutes at the end), new route vs the legacy oracle
   auto c_ref = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
-  TA::detail::einsum_legacy_subworld() = false;
   ArenaSpArr c1, c2;
-  try {
-    c1 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
-    c2 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
-  } catch (std::exception& ex) {
-    std::cerr << "EXPRESSION ROUTE THREW: " << ex.what() << std::endl;
-    TA::detail::einsum_legacy_subworld() = true;
-    throw;
+  {
+    ScopedEinsumRoute expression_route(false);
+    try {
+      c1 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
+      c2 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
+    } catch (std::exception& ex) {
+      std::cerr << "EXPRESSION ROUTE THREW: " << ex.what() << std::endl;
+      throw;
+    }
   }
-  TA::detail::einsum_legacy_subworld() = true;
 
   // BISECT: same shape, CANONICAL target, direct expression (no einsum
   // wrapper, no final permutation) vs the legacy oracle
@@ -1006,15 +1019,18 @@ BOOST_AUTO_TEST_CASE(einsum_expression_route_matches_legacy) {
   // interleaved (non-canonical) target reached by the final permutation
   // assignment
   auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
   TA::TiledRange tr_a{{0, 2, 5}, {0, 3, 4}, {0, 2, 6, 7}};  // b, i, j
   TA::TiledRange tr_b{{0, 2, 5}, {0, 2, 6, 7}, {0, 4, 5}};  // b, j, k
   auto a = make_patterned_array(world, tr_a, 1.0);
   auto b = make_patterned_array(world, tr_b, 2.0);
 
   auto c_legacy = TA::einsum(a("b,i,j"), b("b,j,k"), "i,b,k");
-  TA::detail::einsum_legacy_subworld() = false;
-  auto c_new = TA::einsum(a("b,i,j"), b("b,j,k"), "i,b,k");
-  TA::detail::einsum_legacy_subworld() = true;
+  decltype(c_legacy) c_new;
+  {
+    ScopedEinsumRoute expression_route(false);
+    c_new = TA::einsum(a("b,i,j"), b("b,j,k"), "i,b,k");
+  }
   BOOST_CHECK_SMALL(diff_norm(c_new, c_legacy, "i,b,k"), 1e-10);
 }
 
