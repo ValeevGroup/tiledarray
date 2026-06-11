@@ -14,7 +14,9 @@
 
 #include <madness/world/thread.h>
 
+#include <cstdlib>
 #include <optional>
+#include <string_view>
 
 namespace TiledArray {
 enum struct DeNest { True, False };

@@ -25,6 +25,9 @@
 
 #include <TiledArray/pmap/pmap.h>
 
+#include <memory>
+#include <utility>
+
 namespace TiledArray {
 namespace detail {
 

@@ -24,6 +24,7 @@
 #define TILEDARRAY_TILE_OP_BATCHED_CONTRACT_REDUCE_H__INCLUDED
 
 #include <TiledArray/tile_op/contract_reduce.h>
+#include <TiledArray/util/vector.h>
 
 namespace TiledArray {
 namespace detail {

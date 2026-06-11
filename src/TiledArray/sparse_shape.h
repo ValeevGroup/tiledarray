@@ -1719,6 +1719,20 @@ class SparseShape {
     using integer = TiledArray::math::blas::integer;
     const auto* left_extent = tile_norms_.range().extent_data();
     const auto* right_extent = other.tile_norms_.range().extent_data();
+
+    // check that the ranks match the folded gemm ranks plus the fused modes,
+    // and that the fused and contracted mode extents of the two shapes are
+    // congruent
+    TA_ASSERT(tile_norms_.range().rank() == nfused + gemm_helper.left_rank());
+    TA_ASSERT(other.tile_norms_.range().rank() ==
+              nfused + gemm_helper.right_rank());
+    for (unsigned int d = 0u; d < nfused; ++d)
+      TA_ASSERT(left_extent[d] == right_extent[d]);
+    for (unsigned int i = gemm_helper.left_inner_begin(),
+                      j = gemm_helper.right_inner_begin();
+         i < gemm_helper.left_inner_end(); ++i, ++j)
+      TA_ASSERT(left_extent[nfused + i] == right_extent[nfused + j]);
+
     integer H = 1, M = 1, N = 1, K = 1;
     for (unsigned int d = 0u; d < nfused; ++d) H *= left_extent[d];
     for (unsigned int i = gemm_helper.left_outer_begin();

@@ -793,6 +793,7 @@ class ContEngine : public BinaryEngine<Derived> {
     // Compute the slab count and the fused sizes of the per-slab contraction
     size_type M = 1ul, m = 1ul, N = 1ul, n = 1ul;
     n_slabs_ = 1ul;
+    K_ = 1ul;
     for (unsigned int i = 0u; i < nh; ++i) n_slabs_ *= left_tiles_size[i];
     for (unsigned int i = nh; i < nh + neA; ++i) {
       M *= left_tiles_size[i];
