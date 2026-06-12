@@ -597,6 +597,48 @@ BOOST_AUTO_TEST_CASE(expression_mixed_t_tot_scaled) {
   BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(expression_general_product_block_operands) {
+  // general product of BLOCK views: C("b,i,k") = A.block * B.block with
+  // b fused, j contracted, i/k free; the blocks restrict b and i/k
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}, {0, 2, 4}};  // (b,i,j) / (b,j,k)
+  auto a = make_patterned_array(world, tr, 1.0);
+  auto t = make_patterned_array(world, tr, 2.0);
+
+  // materialized blocks as the reference operands
+  TA::TArrayD ab, tb, w_ref, w;
+  ab("b,i,j") = a("b,i,j").block({0, 0, 0}, {1, 2, 2});
+  tb("b,j,k") = t("b,j,k").block({0, 0, 0}, {1, 2, 1});
+  w_ref("b,i,k") = ab("b,i,j") * tb("b,j,k");
+
+  BOOST_REQUIRE_NO_THROW(w("b,i,k") = a("b,i,j").block({0, 0, 0}, {1, 2, 2}) *
+                                      t("b,j,k").block({0, 0, 0}, {1, 2, 1}));
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "b,i,k"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_into_block) {
+  // general product assigned INTO a block view of the result:
+  //   W.block = A * B (b fused, j contracted)
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_a{{0, 2}, {0, 2}, {0, 2, 4}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2}, {0, 2, 4}, {0, 2}};  // b, j, k
+  TA::TiledRange tr_w{{0, 2, 4}, {0, 2, 4}, {0, 2, 4}};
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto t = make_patterned_array(world, tr_b, 2.0);
+
+  TA::TArrayD prod;
+  prod("b,i,k") = a("b,i,j") * t("b,j,k");
+
+  TA::TArrayD w(world, tr_w), w_ref(world, tr_w);
+  w.fill(0.0);
+  w_ref.fill(0.0);
+  w_ref("b,i,k").block({0, 0, 0}, {1, 1, 1}) = prod("b,i,k");
+
+  BOOST_REQUIRE_NO_THROW(w("b,i,k").block({0, 0, 0}, {1, 1, 1}) =
+                             a("b,i,j") * t("b,j,k"));
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "b,i,k"), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_outer_product) {
   // the PNO-CC PPL building-block shape: ToT x ToT with an EMPTY right
   // outer-external set and an inner OUTER-product:
