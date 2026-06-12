@@ -62,12 +62,16 @@ class BatchedContractReduce {
 
   /// \return the range spanned by modes [nfused_, rank) of \p r, rebased to
   /// zero lobounds (the folded view is a GEMM scratch view; only extents
-  /// matter)
+  /// matter); \p prepend_unit prepends a unit extent (the synthetic
+  /// left-external mode of a no-external product, see
+  /// ContEngine::init_struct_general)
   template <typename Range_>
-  Range_ fold_range(const Range_& r) const {
+  Range_ fold_range(const Range_& r, const bool prepend_unit = false) const {
     const auto* extent = r.extent_data();
-    container::svector<typename Range_::index1_type> extents(extent + nfused_,
-                                                             extent + r.rank());
+    container::svector<typename Range_::index1_type> extents;
+    extents.reserve(r.rank() - nfused_ + (prepend_unit ? 1u : 0u));
+    if (prepend_unit) extents.push_back(1);
+    extents.insert(extents.end(), extent + nfused_, extent + r.rank());
     return Range_(extents);
   }
 
@@ -150,7 +154,13 @@ class BatchedContractReduce {
 
     const auto& gh = op_.gemm_helper();
     const unsigned int nc = gh.num_contract_ranks();
-    const unsigned int neA = gh.left_rank() - nc;
+    // a no-external product carries a SYNTHETIC unit left-external mode in
+    // the GemmHelper only (see ContEngine::init_struct_general); detect it
+    // from the one-rank mismatch with the actual left tile and pad the
+    // folded left/result views with a unit extent
+    const bool unit_external =
+        (left.range().rank() + 1u == nfused_ + gh.left_rank());
+    const unsigned int neA = gh.left_rank() - nc - (unit_external ? 1u : 0u);
     const unsigned int neB = gh.right_rank() - nc;
 
     // both args must carry the fused modes as their leading modes, with
@@ -163,7 +173,8 @@ class BatchedContractReduce {
     TA_ASSERT(batch == fused_volume(right.range()));
 
     // folded, zero-copy argument views
-    auto left_folded = left.reshape(fold_range(left.range()), batch);
+    auto left_folded =
+        left.reshape(fold_range(left.range(), unit_external), batch);
     auto right_folded = right.reshape(fold_range(right.range()), batch);
 
     if (empty(result)) {
@@ -195,7 +206,8 @@ class BatchedContractReduce {
     } else {
       // accumulate through a folded, zero-copy view of the result
       const auto full_range = result.range();
-      auto result_folded = result.reshape(fold_range(full_range), batch);
+      auto result_folded =
+          result.reshape(fold_range(full_range, unit_external), batch);
       op_(result_folded, left_folded, right_folded);
       // the wrapped op may REBIND the result instead of writing in place:
       // the arena grow-to-cover path (a later K-panel touching inner cells

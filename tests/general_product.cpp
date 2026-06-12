@@ -731,20 +731,64 @@ BOOST_AUTO_TEST_CASE(expression_general_kitchen_sink) {
   BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
 }
 
-BOOST_AUTO_TEST_CASE(expression_general_product_tot_no_externals_gated) {
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_no_externals) {
   // a ToT x ToT general product with NO external (free) outer indices --
-  // every outer index fused or contracted -- is not supported by the
-  // batched tile op (and used to segfault in the folded GEMM); the engine
-  // must reject it with an informative error (einsum() handles this shape
-  // natively via its no-external regime)
+  // every outer index fused or contracted. The folded product has no free
+  // modes, so it is evaluated with a synthetic unit left-external mode
+  // carried by the tile op's GemmHelper only (this shape used to segfault).
   auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
   TA::TiledRange tr{{0, 3, 5}, {0, 2, 4}, {0, 2, 3}};  // x, i, j
   auto a = make_patterned_tot_array(world, tr, {2}, 1.0);
   auto b = make_patterned_tot_array(world, tr, {3}, 2.0);
 
   TArrayToT c;
-  BOOST_CHECK_THROW(c("i,j;a,b") = a("x,i,j;a") * b("x,i,j;b"),
-                    TiledArray::Exception);
+  BOOST_REQUIRE_NO_THROW(c("i,j;a,b") = a("x,i,j;a") * b("x,i,j;b"));
+  auto c_ref = TA::einsum(a("x,i,j;a"), b("x,i,j;b"), "i,j;a,b");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+
+  // the same no-external root with the left operand produced by a general
+  // T x ToT product at an INNER node (the original motivating expression)
+  TA::TiledRange tr_g{{0, 3, 5}, {0, 2, 4}};   // x, i
+  TA::TiledRange tr_cv{{0, 3, 5}, {0, 2, 3}};  // x, j
+  auto g = make_patterned_array(world, tr_g, 1.0);
+  auto cv = make_patterned_tot_array(world, tr_cv, {2}, 2.0);
+  TArrayToT i1, w, w_ref;
+  i1("x,i,j;a") = g("x,i") * cv("x,j;a");
+  w_ref("i,j;a,b") = i1("x,i,j;a") * b("x,i,j;b");
+  BOOST_REQUIRE_NO_THROW(w("i,j;a,b") =
+                             (g("x,i") * cv("x,j;a")) * b("x,i,j;b"));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_no_externals) {
+  // the plain-tensor analogue of the no-external general product (the
+  // Hadamard-reduction shape): C("i") = A("i,j") * B("i,j")
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 2, 4}, {0, 3, 5}};  // i, j
+  auto a = make_patterned_array(world, tr, 1.0);
+  auto b = make_patterned_array(world, tr, 2.0);
+
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("i") = a("i,j") * b("i,j"));
+  auto c_ref = TA::einsum(a("i,j"), b("i,j"), "i");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_no_externals) {
+  // block-sparse no-external general product: exercises the synthetic
+  // unit-mode handling in SparseShape::gemm_batched
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 2, 5}, {0, 3, 4}, {0, 2, 6, 7}};  // b, i, j
+  auto a = make_patterned_sparse_array(world, tr, 1.0, 3);
+  auto b = make_patterned_sparse_array(world, tr, 2.0, 4);
+
+  TA::TSpArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,i") = a("b,i,j") * b("b,i,j"));
+  auto c_ref = TA::einsum(a("b,i,j"), b("b,i,j"), "b,i");
+  BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i"), 1e-10);
 }
 
 BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_outer_product) {

@@ -666,19 +666,6 @@ class ContEngine : public BinaryEngine<Derived> {
     TA_ASSERT(nh > 0u);  // else this is a pure contraction
     n_fused_modes_ = nh;
 
-    // a general product of tensors-of-tensors with NO external (free) outer
-    // indices (every outer index fused or contracted, e.g.
-    // C("i,j;a,b") = A("x,i,j;a") * B("x,i,j;b")) is not supported by the
-    // batched tile op yet (its folded GEMM has no free modes);
-    // einsum() evaluates this shape natively
-    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      if (outer_size(indices_) == nh)
-        TA_EXCEPTION(
-            "general products of tensors-of-tensors without external (free) "
-            "outer indices are not yet supported in the expression layer; "
-            "use TiledArray::einsum() for this contraction");
-    }
-
     // initialize perm_; a target that differs from the canonical (fused...,
     // left-free..., right-free...) result layout cannot be folded into the
     // batched tile op (BatchedContractReduce must be perm-free), so the
@@ -687,12 +674,27 @@ class ContEngine : public BinaryEngine<Derived> {
     this->init_perm(target_indices);
     general_repermute_ = (outer(target_indices) != outer(indices_));
 
-    // the tile op operates on the folded (fused-mode-free) shapes
-    const auto left_op = to_cblas_op(left_outer_permtype_);
+    // A product with NO external (free) outer indices (every outer index
+    // fused or contracted, e.g. C("i,j;a,b") = A("x,i,j;a") * B("x,i,j;b"))
+    // folds to a GEMM with no free modes, i.e. rank-0 tensors, which the
+    // tile kernels do not support. Evaluate it with a SYNTHETIC UNIT
+    // left-external mode instead: the folded product becomes
+    // (1,K) x (K) -> (1), the exact shape of the (supported) one-sided
+    // neB == 0 case. The unit mode lives only in the tile op's GemmHelper;
+    // tranges, shapes and tiles carry the true (external-free) ranks, and
+    // BatchedContractReduce / SparseShape::gemm_batched detect the
+    // synthetic mode from the one-rank mismatch and pad their folded views
+    // with a unit extent.
+    const unsigned int u = (outer_size(indices_) == nh) ? 1u : 0u;
+
+    // the tile op operates on the folded (fused-mode-free) shapes; the
+    // synthetic unit mode leads the folded left operand, so it is NoTrans
+    const auto left_op =
+        u ? math::blas::NoTranspose : to_cblas_op(left_outer_permtype_);
     const auto right_op = to_cblas_op(right_outer_permtype_);
     if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh,
-                    outer_size(left_indices_) - nh,
+      op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh + u,
+                    outer_size(left_indices_) - nh + u,
                     outer_size(right_indices_) - nh);
     } else {
       // the batched tile op must be perm-free (BatchedContractReduce cannot
@@ -710,7 +712,8 @@ class ContEngine : public BinaryEngine<Derived> {
 
       // factor_ is absorbed into element_nonreturn_op_
       op_ = op_type(left_op, right_op, scalar_type(1),
-                    outer_size(indices_) - nh, outer_size(left_indices_) - nh,
+                    outer_size(indices_) - nh + u,
+                    outer_size(left_indices_) - nh + u,
                     outer_size(right_indices_) - nh, BipartitePermutation{},
                     this->element_nonreturn_op_, std::move(this->arena_plan_));
       // ce+e, ce+ce_right and ce+ce_left are mutually exclusive; at most one
@@ -750,7 +753,11 @@ class ContEngine : public BinaryEngine<Derived> {
   trange_type make_trange_general() const {
     const unsigned int nh = n_fused_modes_;
     const unsigned int nc = op_.gemm_helper().num_contract_ranks();
-    const unsigned int neA = op_.gemm_helper().left_rank() - nc;
+    // the no-external case carries a synthetic unit left-external mode in
+    // the GemmHelper only (see init_struct_general); the actual tranges do
+    // not have it
+    const unsigned int u = (outer_size(indices_) == n_fused_modes_) ? 1u : 0u;
+    const unsigned int neA = op_.gemm_helper().left_rank() - nc - u;
     const unsigned int neB = op_.gemm_helper().right_rank() - nc;
 
     typename trange_type::Ranges ranges(nh + neA + neB);
@@ -802,7 +809,11 @@ class ContEngine : public BinaryEngine<Derived> {
                                  std::shared_ptr<const pmap_interface> pmap) {
     const unsigned int nh = n_fused_modes_;
     const unsigned int nc = op_.gemm_helper().num_contract_ranks();
-    const unsigned int neA = op_.gemm_helper().left_rank() - nc;
+    // the no-external case carries a synthetic unit left-external mode in
+    // the GemmHelper only (see init_struct_general); the actual tranges do
+    // not have it
+    const unsigned int u = (outer_size(indices_) == nh) ? 1u : 0u;
+    const unsigned int neA = op_.gemm_helper().left_rank() - nc - u;
     const unsigned int neB = op_.gemm_helper().right_rank() - nc;
 
     // Get pointers to the argument sizes
