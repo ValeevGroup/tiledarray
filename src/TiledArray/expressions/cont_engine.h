@@ -851,7 +851,12 @@ class ContEngine : public BinaryEngine<Derived> {
     typedef value_type result_type;
     typedef value_type argument_type;
     static constexpr bool is_consumable = false;
-    BipartitePermutation perm;
+    /// Only the *outer* (result-layout) permutation is applied here; inner
+    /// (within-cell) permutation of tensor-of-tensor results is handled
+    /// separately (see init_struct_general / implicit_permute_inner_), so this
+    /// op stores a plain outer Permutation to avoid accidentally permuting
+    /// inner contents.
+    Permutation perm;
     /// false when the consumer fuses the permutation into its own operation
     /// (implicit permute, e.g. a transposed GEMM): then only the tile
     /// ordinals/trange are remapped (by the host UnaryEvalImpl) and the tile
@@ -917,7 +922,7 @@ class ContEngine : public BinaryEngine<Derived> {
     std::shared_ptr<repermute_impl_type> wrapper =
         std::make_shared<repermute_impl_type>(
             canonical, *world_, trange_, shape_, pmap_, perm_,
-            GeneralRepermuteOp{perm_, !this->implicit_permute_outer_});
+            GeneralRepermuteOp{outer(perm_), !this->implicit_permute_outer_});
     return dist_eval_type(wrapper);
   }
 

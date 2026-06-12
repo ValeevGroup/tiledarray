@@ -328,11 +328,18 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
       // each child dictates the ORDER of its demand (preferred_layout): a
       // product child reorders to its canonical (h, eA, eB) layout -- a
       // general product cannot host a result permutation, and contraction
-      // consumers absorb any child layout via the GEMM transpose forms
-      BinaryEngine_::left_.init_indices(BinaryEngine_::left_.preferred_layout(
-          bipartite_demand(avail_l, avail_r, target_indices)));
-      BinaryEngine_::right_.init_indices(BinaryEngine_::right_.preferred_layout(
-          bipartite_demand(avail_r, avail_l, target_indices)));
+      // consumers absorb any child layout via the GEMM transpose forms.
+      // Materialize the demands as named lvalues: some preferred_layout()
+      // overloads (leaf/binary/unary) return a reference to their argument, so
+      // binding that to a temporary demand would be needlessly fragile.
+      const BipartiteIndexList left_demand =
+          bipartite_demand(avail_l, avail_r, target_indices);
+      const BipartiteIndexList right_demand =
+          bipartite_demand(avail_r, avail_l, target_indices);
+      BinaryEngine_::left_.init_indices(
+          BinaryEngine_::left_.preferred_layout(left_demand));
+      BinaryEngine_::right_.init_indices(
+          BinaryEngine_::right_.preferred_layout(right_demand));
     }
 
     this->product_type_ = compute_product_type(
