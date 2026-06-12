@@ -8,6 +8,8 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+#include <set>
+
 BOOST_AUTO_TEST_SUITE(general_product_suite, TA_UT_LABEL_SERIAL)
 
 namespace TA = TiledArray;
@@ -1339,6 +1341,145 @@ BOOST_AUTO_TEST_CASE(einsum_expression_route_matches_legacy) {
     c_new = TA::einsum(a("b,i,j"), b("b,j,k"), "i,b,k");
   }
   BOOST_CHECK_SMALL(diff_norm(c_new, c_legacy, "i,b,k"), 1e-10);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// Distributed (np > 1) coverage of general products. Unlike
+// general_product_suite (serial-labeled: classification/optimizer unit tests
+// + np=1 evaluation), this suite carries NO label, so the CI harness runs it
+// at BOTH np=1 and np=2 (see tests/CMakeLists.txt: np-1 excludes @distributed,
+// np-2 excludes @serial). It exercises the batched Summa across ranks -- a
+// path the serial suite never covered. Each case differential-tests the
+// expression route against the legacy sub-World einsum oracle.
+//
+// Most cases evaluate via the ordinary 2-d (proc_h == 1) batched Summa;
+// dist_no_externals_3d_grid exercises the 3-d (proc_h > 1) grid, where the
+// heuristic spreads ranks over the slab dimension because M == N == 1.
+BOOST_AUTO_TEST_SUITE(general_product_distributed_suite)
+
+// the fixtures/helpers live in general_product_suite's anonymous namespace
+using general_product_suite::diff_norm;
+using general_product_suite::diff_norm_sp;
+using general_product_suite::ForceLegacyEinsum;
+using general_product_suite::make_patterned_array;
+using general_product_suite::make_patterned_sparse_array;
+using general_product_suite::make_patterned_tot_array;
+using general_product_suite::TArrayToT;
+using general_product_suite::tot_max_abs_diff;
+
+BOOST_AUTO_TEST_CASE(dist_dense) {
+  // batched general product: b fused, j contracted, i/k free
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 4}, {0, 2, 5}, {0, 3, 4}};  // b, j, k
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto b = make_patterned_array(world, tr_b, 2.0);
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+  auto c_ref = TA::einsum(a("b,i,j"), b("b,j,k"), "b,i,k");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "b,i,k"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(dist_sparse) {
+  // block-sparse batched general product (SparseShape::gemm_batched +
+  // the sparse (h,k)-keyed Summa groups, across ranks)
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;
+  TA::TiledRange tr_a{{0, 2, 5}, {0, 3, 4}, {0, 2, 6, 7}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 5}, {0, 2, 6, 7}, {0, 4, 5}};  // b, j, k
+  auto a = make_patterned_sparse_array(world, tr_a, 1.0, 3);
+  auto b = make_patterned_sparse_array(world, tr_b, 2.0, 4);
+  TA::TSpArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+  auto c_ref = TA::einsum(a("b,i,j"), b("b,j,k"), "b,i,k");
+  BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i,k"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(dist_tot_mixed) {
+  // mixed T x ToT general product (inner Scale) across ranks
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2, 4}, {0, 2, 5}, {0, 3, 4}};  // b, j, k
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto b = make_patterned_tot_array(world, tr_b, {3}, 2.0);
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k;m") = a("b,i,j") * b("b,j,k;m"));
+  auto c_ref = TA::einsum(a("b,i,j"), b("b,j,k;m"), "b,i,k;m");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(dist_no_externals_dense) {
+  // no-external general product (Hadamard reduction shape) across ranks;
+  // the synthetic unit left-external mode handling under distribution
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;
+  TA::TiledRange tr{{0, 2, 4}, {0, 3, 5}};  // i, j
+  auto a = make_patterned_array(world, tr, 1.0);
+  auto b = make_patterned_array(world, tr, 2.0);
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("i") = a("i,j") * b("i,j"));
+  auto c_ref = TA::einsum(a("i,j"), b("i,j"), "i");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(dist_no_externals_tot) {
+  // no-external ToT general product across ranks
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;
+  TA::TiledRange tr{{0, 3, 5}, {0, 2, 4}, {0, 2, 3}};  // x, i, j
+  auto a = make_patterned_tot_array(world, tr, {2}, 1.0);
+  auto b = make_patterned_tot_array(world, tr, {3}, 2.0);
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("i,j;a,b") = a("x,i,j;a") * b("x,i,j;b"));
+  auto c_ref = TA::einsum(a("x,i,j;a"), b("x,i,j;b"), "i,j;a,b");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(dist_inner_node_thc) {
+  // THC reconstruction in one expression (general products at inner nodes)
+  // across ranks
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_x{{0, 2, 4}, {0, 3, 5}};  // orbital x auxiliary
+  TA::TiledRange tr_z{{0, 3, 5}, {0, 3, 5}};  // auxiliary x auxiliary
+  auto x = make_patterned_array(world, tr_x, 1.0);
+  auto z = make_patterned_array(world, tr_z, 2.0);
+  TA::TArrayD g;
+  BOOST_REQUIRE_NO_THROW(g("p,q,r,s") = x("p,r1") * x("q,r1") * z("r1,r2") *
+                                        x("r,r2") * x("s,r2"));
+  TA::TArrayD i1, i2, i3, g_ref;
+  i1("r1,p,q") = x("p,r1") * x("q,r1");
+  i2("p,q,r2") = i1("r1,p,q") * z("r1,r2");
+  i3("r2,p,q,r") = i2("p,q,r2") * x("r,r2");
+  g_ref("p,q,r,s") = i3("r2,p,q,r") * x("s,r2");
+  BOOST_CHECK_SMALL(diff_norm(g, g_ref, "p,q,r,s"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(dist_no_externals_3d_grid) {
+  // a no-external product with several slabs: at np>1 the heuristic engages
+  // the 3-d grid (M=N=1 ⇒ proc_h > 1, the ranks spread over the slab axis),
+  // so the result tiles distribute across the h-planes rather than piling on
+  // one rank. Exercises the cross-plane result-tile transfer.
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;
+  TA::TiledRange tr{{0, 2, 4, 6}, {0, 3, 5}};  // i (3 tiles), j
+  auto a = make_patterned_array(world, tr, 1.0);
+  auto b = make_patterned_array(world, tr, 2.0);
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("i") = a("i,j") * b("i,j"));
+  auto c_ref = TA::einsum(a("i,j"), b("i,j"), "i");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
+
+  // at np>1 the no-external result must NOT all live on one rank (the
+  // degeneracy the 3-d grid fixes)
+  if (world.size() > 1) {
+    std::set<std::size_t> owners;
+    for (std::size_t o = 0; o < c.trange().tiles_range().volume(); ++o)
+      owners.insert(c.pmap()->owner(o));
+    BOOST_CHECK_GT(owners.size(), 1u);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
