@@ -185,6 +185,9 @@ class ContEngine : public BinaryEngine<Derived> {
                                     ///< from the canonical result layout, so
                                     ///< the evaluated result is re-permuted
                                     ///< by a streaming unary eval
+  size_type proc_h_ = 1;            ///< process-grid extent along the slab (h)
+                                    ///< axis of the 3-d grid (# of h-planes)
+  size_type proc_h_stride_ = 0;     ///< ranks per h-plane (0 = ungrouped 2-d)
 
   static unsigned int find(const BipartiteIndexList& indices,
                            const std::string& index_label, unsigned int i,
@@ -851,22 +854,81 @@ class ContEngine : public BinaryEngine<Derived> {
           world,
           (pmap ? pmap : policy::default_pmap(*world, n_slabs_ * M * N)));
     } else {
-      // Construct the per-slab process grid.
-      proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
+      // Choose the process-grid extent proc_h_ along the slab (h) axis of
+      // the 3-d grid: ranks beyond one-per-result-tile are useless to a
+      // single slab's 2-d SUMMA, so the surplus is spread over the slab
+      // (communication-free) dimension instead -- slab h goes to plane
+      // h % proc_h_ of proc_h_stride_ = P / proc_h_ contiguous ranks (the
+      // division-remainder ranks idle for this evaluation). For a
+      // no-external product (M == N == 1) this degenerates to an effectively
+      // 1-d grid over the slabs; for an ordinary contraction (n_slabs_ == 1)
+      // it is a pure 2-d grid (proc_h_ == 1).
+      // TODO: co-optimize proc_h_ with the 2-d (proc_r, proc_c) aspect ratio
+      //       using the h-, left-external-, and right-external-mode element
+      //       extents (and a per-rank memory bound), rather than the current
+      //       greedy tile-count heuristic.
+      const size_type P = world->size();
+      proc_h_ = 1ul;
+      if (n_slabs_ > 1ul && P > 1ul) {
+        const size_type p2d_cap = std::min<size_type>(P, M * N);
+        proc_h_ = std::min<size_type>(n_slabs_,
+                                      std::max<size_type>(1ul, P / p2d_cap));
+      }
+      // keep the invariant proc_h_ == 1 => proc_h_stride_ == 0 (the ungrouped
+      // 2-d case) so downstream logic can key off either field; for grouped
+      // grids it is the per-plane world-rank count P / proc_h_.
+      proc_h_stride_ = (proc_h_ == 1ul) ? 0ul : P / proc_h_;
 
-      // Initialize children with slab-replicated SUMMA phase maps
-      left_.init_distribution(
-          world, std::make_shared<TiledArray::detail::SlabbedPmap>(
-                     *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_));
-      right_.init_distribution(
-          world, std::make_shared<TiledArray::detail::SlabbedPmap>(
-                     *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_));
+      if (proc_h_ == 1ul) {
+        // Construct the per-slab process grid over the whole world.
+        proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
 
-      // Initialize the process map if not already defined
-      if (!pmap)
-        pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-            *world, proc_grid_.make_pmap(), n_slabs_);
-      ExprEngine_::init_distribution(world, pmap);
+        // Initialize children with slab-replicated SUMMA phase maps
+        left_.init_distribution(
+            world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                       *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_));
+        right_.init_distribution(
+            world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                       *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_));
+
+        // Initialize the process map if not already defined
+        if (!pmap)
+          pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+              *world, proc_grid_.make_pmap(), n_slabs_);
+        ExprEngine_::init_distribution(world, pmap);
+      } else {
+        // Construct this rank's GROUP-LOCAL per-slab process grid (ranks
+        // outside the grouped prefix of the world construct a valid
+        // not-in-grid instance). The grid shape is a pure function of
+        // (proc_h_stride_, M, N, m, n), so it is congruent across all groups,
+        // and the CyclicPmap factories below emit GROUP-LOCAL owners in
+        // [0, proc_h_stride_) which the h-grouped SlabbedPmap offsets by each
+        // slab's group.
+        const size_type rank = world->rank();
+        const bool in_groups = rank < proc_h_ * proc_h_stride_;
+        const ProcessID grid_offset =
+            in_groups ? ProcessID((rank / proc_h_stride_) * proc_h_stride_)
+                      : ProcessID(0);
+        proc_grid_ = TiledArray::detail::ProcGrid(
+            *world, TiledArray::detail::rank_subset, grid_offset,
+            proc_h_stride_, M, N, m, n);
+
+        left_.init_distribution(
+            world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                       *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_,
+                       proc_h_, proc_h_stride_));
+        right_.init_distribution(
+            world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                       *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_,
+                       proc_h_, proc_h_stride_));
+
+        // Initialize the process map if not already defined
+        if (!pmap)
+          pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+              *world, proc_grid_.make_pmap(), n_slabs_, proc_h_,
+              proc_h_stride_);
+        ExprEngine_::init_distribution(world, pmap);
+      }
     }
   }
 
@@ -914,7 +976,8 @@ class ContEngine : public BinaryEngine<Derived> {
     if (!general_repermute_) {
       std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
           left, right, *world_, trange_, shape_, pmap_, perm_,
-          batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_);
+          batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_,
+          proc_h_, proc_h_stride_);
       return dist_eval_type(pimpl);
     }
 
@@ -935,12 +998,16 @@ class ContEngine : public BinaryEngine<Derived> {
     // the inner Summa's result placement must be slab-replicated (the owner
     // of a tile independent of its slab index), regardless of the
     // (target-layout) pmap the consumer supplied for this node
-    auto canonical_pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-        *world_, proc_grid_.make_pmap(), n_slabs_);
+    auto canonical_pmap =
+        proc_h_ == 1ul ? std::make_shared<TiledArray::detail::SlabbedPmap>(
+                             *world_, proc_grid_.make_pmap(), n_slabs_)
+                       : std::make_shared<TiledArray::detail::SlabbedPmap>(
+                             *world_, proc_grid_.make_pmap(), n_slabs_, proc_h_,
+                             proc_h_stride_);
     std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
         left, right, *world_, canonical_trange, canonical_shape, canonical_pmap,
         BipartitePermutation{}, batched_op_type(op_, n_fused_modes_), K_,
-        proc_grid_, n_slabs_);
+        proc_grid_, n_slabs_, proc_h_, proc_h_stride_);
     dist_eval_type canonical(pimpl);
 
     typedef TiledArray::detail::UnaryEvalImpl<
