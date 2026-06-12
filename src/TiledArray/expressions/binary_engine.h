@@ -229,6 +229,35 @@ class BinaryEngine : public ExprEngine<Derived> {
               right_inner_permtype_ == PermutationType::general);
   }
 
+  /// \return the indices this subtree can supply (Phase E up-pass): the
+  /// first-occurrence-ordered union of the children's available indices,
+  /// outer and inner lists separately. Valid before init: it depends only on
+  /// the leaf annotations, never on resolved (post-init) index sets.
+  BipartiteIndexList available_indices() const {
+    auto union_ = [](auto const& a, auto const& b) {
+      container::svector<std::string> r(a.begin(), a.end());
+      for (auto&& idx : b)
+        if (!a.count(idx)) r.push_back(idx);
+      return r;
+    };
+    auto const l = left_.available_indices();
+    auto const r = right_.available_indices();
+    auto const out = union_(outer(l), outer(r));
+    auto const in = union_(inner(l), inner(r));
+    return BipartiteIndexList(IndexList(out.begin(), out.end()),
+                              IndexList(in.begin(), in.end()));
+  }
+
+  /// \return the layout this subtree prefers for producing the index set of
+  /// \p demand: element-wise binary ops (Add/Subt) impose no layout of their
+  /// own (both children must produce the same set and are aligned by
+  /// permutation), so the demand is returned unchanged. MultEngine overrides
+  /// this with its canonical product layout.
+  const BipartiteIndexList& preferred_layout(
+      const BipartiteIndexList& demand) const {
+    return demand;
+  }
+
   /// Initialize result tensor structure
 
   /// This function will initialize the permutation, tiled range, and shape
