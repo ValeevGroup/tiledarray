@@ -683,10 +683,13 @@ class ContEngine : public BinaryEngine<Derived> {
                     outer_size(right_indices_) - nh);
     } else {
       // the batched tile op must be perm-free (BatchedContractReduce cannot
-      // host the folded-rank result permutation); the outer perm is empty by
-      // the interleaved-target gate above, so only an explicit inner result
-      // permutation can require one
-      if (!implicit_permute_inner_ && bool(inner(perm_)))
+      // host the folded-rank result permutation); the outer perm is handled
+      // by the streaming re-permute (general_repermute_), so only a genuine
+      // (non-identity) explicit inner result permutation requires one. N.B.
+      // perm_ may carry a non-null identity inner component when only the
+      // outer modes are permuted (the bipartite perm is constructed whole).
+      if (!implicit_permute_inner_ && bool(inner(perm_)) &&
+          !inner(perm_).is_identity())
         TA_EXCEPTION(
             "general products of tensors-of-tensors: a non-identity inner "
             "result permutation is not yet supported; reorder the inner "
@@ -1707,7 +1710,11 @@ class ContEngine : public BinaryEngine<Derived> {
               TiledArray::detail::is_contraction_arena_tot_v<
                   result_tile_type, left_tile_type, right_tile_type>;
           if constexpr (arena_eligible_scale) {
-            if (this->outer_product_uses_summa()) {
+            // the fused arena scale ops are factor-free; a non-unit
+            // expression-level prefactor (ScalMult) takes the fallback op,
+            // which absorbs it
+            if (this->outer_product_uses_summa() &&
+                this->factor_ == scalar_type(1)) {
               // The inner perm handed to the plan must match how the inner
               // *result* permutation is applied for this result cell type --
               // and the two cell types apply it in different places:
@@ -1741,45 +1748,48 @@ class ContEngine : public BinaryEngine<Derived> {
           // cells. The Hadamard outer product is an assignment
           // `result = (perm ^ tot) * scalar`, which needs value-returning
           // `scale`; only owning inner cells support it.
-          auto fallback_op = [perm = !this->implicit_permute_inner_
-                                         ? inner(this->perm_)
-                                         : Permutation{},
-                              outer_uses_summa =
-                                  this->outer_product_uses_summa()](
-                                 result_tile_element_type& result,
-                                 const left_tile_element_type& left,
-                                 const right_tile_element_type& right) {
-            if (outer_uses_summa) {
-              using TiledArray::axpy_to;
-              if constexpr (tot_x_t) {
-                if (left.empty()) return;  // absent cell: no contribution
-                if (perm)
-                  axpy_to(result, left, right, perm);
-                else
-                  axpy_to(result, left, right);
-              } else {
-                if (right.empty()) return;  // absent cell: no contribution
-                if (perm)
-                  axpy_to(result, right, left, perm);
-                else
-                  axpy_to(result, right, left);
-              }
-            } else {
-              if constexpr (!TiledArray::is_tensor_view_v<
-                                result_tile_element_type>) {
-                using TiledArray::scale;
-                if constexpr (tot_x_t)
-                  result = perm ? scale(left, right, perm) : scale(left, right);
-                else
-                  result = perm ? scale(right, left, perm) : scale(right, left);
-              } else {
-                TA_EXCEPTION(
-                    "Tensor<View> scale-inner Hadamard-outer product: a "
-                    "view result cell cannot be value-assigned a fresh "
-                    "scaled tensor");
-              }
-            }
-          };
+          // N.B. the expression-level scalar prefactor (factor_, != 1 for
+          // ScalMult expressions) multiplies the plain operand's element
+          auto fallback_op =
+              [perm = !this->implicit_permute_inner_ ? inner(this->perm_)
+                                                     : Permutation{},
+               outer_uses_summa = this->outer_product_uses_summa(),
+               factor = this->factor_](result_tile_element_type& result,
+                                       const left_tile_element_type& left,
+                                       const right_tile_element_type& right) {
+                if (outer_uses_summa) {
+                  using TiledArray::axpy_to;
+                  if constexpr (tot_x_t) {
+                    if (left.empty()) return;  // absent cell: no contribution
+                    if (perm)
+                      axpy_to(result, left, right * factor, perm);
+                    else
+                      axpy_to(result, left, right * factor);
+                  } else {
+                    if (right.empty()) return;  // absent cell: no contribution
+                    if (perm)
+                      axpy_to(result, right, left * factor, perm);
+                    else
+                      axpy_to(result, right, left * factor);
+                  }
+                } else {
+                  if constexpr (!TiledArray::is_tensor_view_v<
+                                    result_tile_element_type>) {
+                    using TiledArray::scale;
+                    if constexpr (tot_x_t)
+                      result = perm ? scale(left, right * factor, perm)
+                                    : scale(left, right * factor);
+                    else
+                      result = perm ? scale(right, left * factor, perm)
+                                    : scale(right, left * factor);
+                  } else {
+                    TA_EXCEPTION(
+                        "Tensor<View> scale-inner Hadamard-outer product: a "
+                        "view result cell cannot be value-assigned a fresh "
+                        "scaled tensor");
+                  }
+                }
+              };
           if constexpr (arena_eligible_scale) {
             if (this->arena_plan_) {
               if constexpr (tot_x_t)
