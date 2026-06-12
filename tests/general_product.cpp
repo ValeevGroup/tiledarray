@@ -528,6 +528,75 @@ BOOST_AUTO_TEST_CASE(expression_general_product_t_times_tot) {
   BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(expression_mixed_t_tot_depth2_chains) {
+  // mixed T/ToT products at INNER nodes of the expression tree:
+  // left-deep:  w("i,k;x") = (s("i,j") * t("j,m")) * c("m,k;x")
+  // right-deep: w("i,k;x") = s("i,j") * (t("j,m") * c("m,k;x"))
+  // (plain contraction at every node, inner Scale where a plain factor
+  // meets the nested one)
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_s{{0, 2, 4}, {0, 2, 5}};  // i, j
+  TA::TiledRange tr_t{{0, 2, 5}, {0, 3, 4}};  // j, m
+  TA::TiledRange tr_c{{0, 3, 4}, {0, 2, 3}};  // m, k
+  auto s = make_patterned_array(world, tr_s, 1.0);
+  auto t = make_patterned_array(world, tr_t, 2.0);
+  auto c = make_patterned_tot_array(world, tr_c, {3}, 3.0);
+
+  // staged reference
+  TArrayToT i1, w_ref;
+  i1("j,k;x") = t("j,m") * c("m,k;x");
+  w_ref("i,k;x") = s("i,j") * i1("j,k;x");
+
+  TArrayToT w_l, w_r;
+  BOOST_REQUIRE_NO_THROW(w_l("i,k;x") = (s("i,j") * t("j,m")) * c("m,k;x"));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w_l, w_ref), 1e-10);
+  BOOST_REQUIRE_NO_THROW(w_r("i,k;x") = s("i,j") * (t("j,m") * c("m,k;x")));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w_r, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_mixed_t_tot_inner_general) {
+  // a mixed T x ToT GENERAL product at an INNER node:
+  //   w("i,j;x") = (g("b,i") * c("b,j;x")) * h("b")
+  // b is fused where g meets c (demanded by the h factor above) and
+  // contracted at the root
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_g{{0, 3, 5}, {0, 2, 4}};  // b, i
+  TA::TiledRange tr_c{{0, 3, 5}, {0, 2, 3}};  // b, j
+  TA::TiledRange tr_h{{0, 3, 5}};             // b
+  auto g = make_patterned_array(world, tr_g, 1.0);
+  auto c = make_patterned_tot_array(world, tr_c, {3}, 2.0);
+  TA::TArrayD h(world, tr_h);
+  h.fill(1.5);
+
+  TArrayToT i1, w_ref;
+  i1("b,i,j;x") = g("b,i") * c("b,j;x");  // depth-1 mixed general
+  w_ref("i,j;x") = i1("b,i,j;x") * h("b");
+
+  TArrayToT w;
+  try {
+    w("i,j;x") = (g("b,i") * c("b,j;x")) * h("b");
+  } catch (std::exception& e) {
+    BOOST_FAIL(std::string("threw: ") + e.what());
+  }
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_mixed_t_tot_scaled) {
+  // scaled mixed T x ToT general product (ScalMultEngine path):
+  //   w("b,i,k;x") = 2 * (a("b,i,j") * c("b,j,k;x"))
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_c{{0, 2, 4}, {0, 2, 5}, {0, 3, 4}};  // b, j, k
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto c = make_patterned_tot_array(world, tr_c, {3}, 2.0);
+
+  TArrayToT w_ref0, w_ref, w;
+  w_ref0("b,i,k;x") = a("b,i,j") * c("b,j,k;x");
+  w_ref("b,i,k;x") = 2.0 * w_ref0("b,i,k;x");
+  BOOST_REQUIRE_NO_THROW(w("b,i,k;x") = 2.0 * (a("b,i,j") * c("b,j,k;x")));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_outer_product) {
   // the PNO-CC PPL building-block shape: ToT x ToT with an EMPTY right
   // outer-external set and an inner OUTER-product:
