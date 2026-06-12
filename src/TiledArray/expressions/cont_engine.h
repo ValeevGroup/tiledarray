@@ -27,6 +27,7 @@
 #define TILEDARRAY_EXPRESSIONS_CONT_ENGINE_H__INCLUDED
 
 #include <TiledArray/dist_eval/contraction_eval.h>
+#include <TiledArray/dist_eval/unary_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/expressions/permopt.h>
 #include <TiledArray/pmap/slabbed_pmap.h>
@@ -36,6 +37,7 @@
 #include <TiledArray/tile_op/batched_contract_reduce.h>
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/tile_op/mult.h>
+#include <TiledArray/tile_op/noop.h>
 
 namespace TiledArray {
 namespace expressions {
@@ -179,6 +181,10 @@ class ContEngine : public BinaryEngine<Derived> {
   // General (fused + contracted + free indices) products only:
   unsigned int n_fused_modes_ = 0;  ///< # of leading fused (outer) modes
   size_type n_slabs_ = 1;           ///< # of fused-index tile slabs
+  bool general_repermute_ = false;  ///< whether the target layout differs
+                                    ///< from the canonical result layout, so
+                                    ///< the evaluated result is re-permuted
+                                    ///< by a streaming unary eval
 
   static unsigned int find(const BipartiteIndexList& indices,
                            const std::string& index_label, unsigned int i,
@@ -660,16 +666,13 @@ class ContEngine : public BinaryEngine<Derived> {
     TA_ASSERT(nh > 0u);  // else this is a pure contraction
     n_fused_modes_ = nh;
 
-    // initialize perm_; an interleaved target (a result permutation that
-    // mixes fused and free modes) is not yet supported -- the canonical
-    // result layout must equal the target
+    // initialize perm_; a target that differs from the canonical (fused...,
+    // left-free..., right-free...) result layout cannot be folded into the
+    // batched tile op (BatchedContractReduce must be perm-free), so the
+    // product is evaluated in its canonical layout and re-permuted to the
+    // target by a streaming unary eval (see make_dist_eval_general)
     this->init_perm(target_indices);
-    if (outer(target_indices) != outer(indices_))
-      TA_EXCEPTION(
-          "general products (fused + contracted + free indices): targets "
-          "that interleave fused and free indices are not yet supported; "
-          "reorder the result annotation to (fused..., left-free..., "
-          "right-free...)");
+    general_repermute_ = (outer(target_indices) != outer(indices_));
 
     // the tile op operates on the folded (fused-mode-free) shapes
     const auto left_op = to_cblas_op(left_outer_permtype_);
@@ -712,6 +715,12 @@ class ContEngine : public BinaryEngine<Derived> {
 
     trange_ = make_trange_general();
     shape_ = make_shape_general();
+    if (general_repermute_) {
+      // consumers see the target layout; the canonical structures are
+      // recomputed in make_dist_eval_general for the inner Summa
+      trange_ = outer(perm_) * trange_;
+      shape_ = shape_.perm(outer(perm_));
+    }
 
     if (ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape) {
       shape_ = shape_.mask(*ExprEngine_::override_ptr_->shape);
@@ -834,9 +843,37 @@ class ContEngine : public BinaryEngine<Derived> {
     }
   }
 
+  /// Streaming tile re-permute op for general products whose target layout
+  /// differs from the canonical (fused..., free...) result layout: the
+  /// batched tile op must stay perm-free, so the consumer-side unary eval
+  /// applies the result permutation per tile instead
+  struct GeneralRepermuteOp {
+    typedef value_type result_type;
+    typedef value_type argument_type;
+    static constexpr bool is_consumable = false;
+    /// Only the *outer* (result-layout) permutation is applied here; inner
+    /// (within-cell) permutation of tensor-of-tensor results is handled
+    /// separately (see init_struct_general / implicit_permute_inner_), so this
+    /// op stores a plain outer Permutation to avoid accidentally permuting
+    /// inner contents.
+    Permutation perm;
+    /// false when the consumer fuses the permutation into its own operation
+    /// (implicit permute, e.g. a transposed GEMM): then only the tile
+    /// ordinals/trange are remapped (by the host UnaryEvalImpl) and the tile
+    /// contents are delivered in the canonical layout
+    bool permute_contents = true;
+    result_type operator()(const argument_type& tile) const {
+      if (!permute_contents) return tile;
+      TiledArray::detail::Noop<value_type, value_type, false> noop;
+      return noop(tile, perm);
+    }
+  };
+
   /// Construct the distributed evaluator of a general product
 
-  /// \return The batched-Summa distributed evaluator for this expression
+  /// \return The batched-Summa distributed evaluator for this expression,
+  /// wrapped in a streaming re-permute when the target layout differs from
+  /// the canonical result layout
   dist_eval_type make_dist_eval_general() const {
     typedef TiledArray::detail::BatchedContractReduce<op_type> batched_op_type;
     typedef TiledArray::detail::Summa<typename left_type::dist_eval_type,
@@ -847,11 +884,46 @@ class ContEngine : public BinaryEngine<Derived> {
     typename left_type::dist_eval_type left = left_.make_dist_eval();
     typename right_type::dist_eval_type right = right_.make_dist_eval();
 
-    std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
-        left, right, *world_, trange_, shape_, pmap_, perm_,
-        batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_);
+    if (!general_repermute_) {
+      std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
+          left, right, *world_, trange_, shape_, pmap_, perm_,
+          batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_);
+      return dist_eval_type(pimpl);
+    }
 
-    return dist_eval_type(pimpl);
+    // evaluate in the canonical layout (Summa with perm-free op), then
+    // re-permute tiles to the target layout with a streaming unary eval;
+    // trange_/shape_ hold the target-layout structures (see
+    // init_struct_general), the canonical ones are recomputed here
+    auto const canonical_trange = make_trange_general();
+    auto const canonical_shape = [this]() {
+      auto s = make_shape_general();
+      if (ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape) {
+        // the consumer-supplied mask is expressed in the target layout
+        auto const inv_perm = outer(perm_).inv();
+        s = s.mask(ExprEngine_::override_ptr_->shape->perm(inv_perm));
+      }
+      return s;
+    }();
+    // the inner Summa's result placement must be slab-replicated (the owner
+    // of a tile independent of its slab index), regardless of the
+    // (target-layout) pmap the consumer supplied for this node
+    auto canonical_pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+        *world_, proc_grid_.make_pmap(), n_slabs_);
+    std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
+        left, right, *world_, canonical_trange, canonical_shape, canonical_pmap,
+        BipartitePermutation{}, batched_op_type(op_, n_fused_modes_), K_,
+        proc_grid_, n_slabs_);
+    dist_eval_type canonical(pimpl);
+
+    typedef TiledArray::detail::UnaryEvalImpl<
+        dist_eval_type, GeneralRepermuteOp, typename Derived::policy>
+        repermute_impl_type;
+    std::shared_ptr<repermute_impl_type> wrapper =
+        std::make_shared<repermute_impl_type>(
+            canonical, *world_, trange_, shape_, pmap_, perm_,
+            GeneralRepermuteOp{outer(perm_), !this->implicit_permute_outer_});
+    return dist_eval_type(wrapper);
   }
 
   /// Expression identification tag

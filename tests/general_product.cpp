@@ -235,26 +235,70 @@ BOOST_AUTO_TEST_CASE(expression_general_product_dense_batched_outer) {
   BOOST_CHECK_SMALL(diff_norm(c, c_ref, "b,i,k"), 1e-10);
 }
 
-BOOST_AUTO_TEST_CASE(expression_general_product_inner_node_gated) {
-  // THC-style reconstruction:
-  //   g("p,q,r,s") = X("p,r1") * X("q,r1") * Z("r1,r2") * X("r,r2") * X("s,r2")
-  // r1 is fused in X("p,r1") * X("q,r1") but contracted downstream. The
-  // first product is an INNER node of the expression tree, where the role of
-  // r1 cannot be deduced bottom-up (the target reaches only the root);
-  // resolving this requires top-down index-set deduction (deferred). Until
-  // then: an informative error, not garbage (bottom-up, X*X would contract
-  // r1, orphaning the r1 of Z).
+BOOST_AUTO_TEST_CASE(expression_general_product_noncanonical_root_target) {
+  // a root-level general product with a NON-canonical target layout: the
+  // product evaluates canonically (r1,p,q) and is re-permuted to the target
+  // by the streaming unary eval
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_x{{0, 2, 4}, {0, 3, 5}};  // orbital x auxiliary
+  auto x = make_patterned_array(world, tr_x, 1.0);
+
+  TA::TArrayD w, i1, w_ref;
+  BOOST_REQUIRE_NO_THROW(w("p,q,r1") = x("p,r1") * x("q,r1"));
+  i1("r1,p,q") = x("p,r1") * x("q,r1");  // canonical evaluation
+  w_ref("p,q,r1") = i1("r1,p,q");        // plain permute assignment
+
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "p,q,r1"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_inner_node_depth2) {
+  // minimal inner-node case: a general product (fused r1) feeding a
+  // contraction over r1 -- the general child evaluates canonically
+  // (r1,p,q) and is re-permuted on the fly to the consumer's GEMM layout
   auto& world = TA::get_default_world();
   TA::TiledRange tr_x{{0, 2, 4}, {0, 3, 5}};  // orbital x auxiliary
   TA::TiledRange tr_z{{0, 3, 5}, {0, 3, 5}};  // auxiliary x auxiliary
-  TA::TArrayD x(world, tr_x);
-  TA::TArrayD z(world, tr_z);
-  x.fill(1.0);
-  z.fill(1.0);
+  auto x = make_patterned_array(world, tr_x, 1.0);
+  auto z = make_patterned_array(world, tr_z, 2.0);
+
+  TA::TArrayD w;
+  BOOST_REQUIRE_NO_THROW(w("p,q,r2") = (x("p,r1") * x("q,r1")) * z("r1,r2"));
+
+  TA::TArrayD i1, w_ref;
+  i1("r1,p,q") = x("p,r1") * x("q,r1");
+  w_ref("p,q,r2") = i1("r1,p,q") * z("r1,r2");
+
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "p,q,r2"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_inner_node_thc) {
+  // THC-style reconstruction in ONE expression:
+  //   g("p,q,r,s") = X("p,r1") * X("q,r1") * Z("r1,r2") * X("r,r2") * X("s,r2")
+  // r1 is fused in X("p,r1") * X("q,r1") but contracted downstream, so the
+  // first product is a general product at an INNER node of the (left-deep)
+  // expression tree. The top-down index-set deduction demands r1 of the X*X
+  // node (its consumer carries it) and contracts it where Z meets that
+  // subtree; higher up, r1 is dropped from the demand (consumed entirely
+  // within). Verified against the same chain staged through explicit
+  // intermediates (the pre-deduction recipe, itself differential-tested
+  // against einsum in expression_general_product_thc_intermediates).
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_x{{0, 2, 4}, {0, 3, 5}};  // orbital x auxiliary
+  TA::TiledRange tr_z{{0, 3, 5}, {0, 3, 5}};  // auxiliary x auxiliary
+  auto x = make_patterned_array(world, tr_x, 1.0);
+  auto z = make_patterned_array(world, tr_z, 2.0);
+
   TA::TArrayD g;
-  BOOST_CHECK_THROW(
-      g("p,q,r,s") = x("p,r1") * x("q,r1") * z("r1,r2") * x("r,r2") * x("s,r2"),
-      TiledArray::Exception);
+  BOOST_REQUIRE_NO_THROW(g("p,q,r,s") = x("p,r1") * x("q,r1") * z("r1,r2") *
+                                        x("r,r2") * x("s,r2"));
+
+  TA::TArrayD i1, i2, i3, g_ref;
+  i1("r1,p,q") = x("p,r1") * x("q,r1");
+  i2("p,q,r2") = i1("r1,p,q") * z("r1,r2");
+  i3("r2,p,q,r") = i2("p,q,r2") * x("r,r2");
+  g_ref("p,q,r,s") = i3("r2,p,q,r") * x("s,r2");
+
+  BOOST_CHECK_SMALL(diff_norm(g, g_ref, "p,q,r,s"), 1e-10);
 }
 
 BOOST_AUTO_TEST_CASE(expression_general_product_thc_intermediates) {

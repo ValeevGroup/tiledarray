@@ -281,44 +281,65 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// \param target_indices The target index list for this expression
   void init_indices(const BipartiteIndexList& target_indices) {
-    // to decide what type of product this is must initialize indices down
-    // the tree.
-    // N.B. since this may be a contraction we do not know the target indices
-    // for the left and right, hence do target-neutral initialization
-    BinaryEngine_::left_.init_indices();
-    BinaryEngine_::right_.init_indices();
-
-    // Validate that the (bottom-up resolved) child indices are consistent
-    // with the target: every outer index of each child must appear in the
-    // other child or in the target (as a free, fused, or contracted index).
-    // A violation usually means a *general* product (fused + contracted +
-    // free indices) appears at an INNER node of the expression tree, where
-    // the role of a shared index cannot be deduced bottom-up; e.g. in the
-    // THC-like g("p,q,r,s") = X("p,r1") * X("q,r1") * Z("r1,r2") * ... the
-    // index r1 is fused in X*X but contracted downstream, while the
-    // bottom-up convention contracts it in X*X, orphaning the r1 of Z.
-    // Resolving this requires pushing the needed-index sets down the
-    // expression tree; until then materialize such inner products into
-    // explicit intermediates, so that every general product appears as the
-    // root of its own assignment (where the target determines the index
-    // roles).
+    // Deduce each child's index SET top-down (Phase E). The index set an
+    // inner node must produce depends on what its ancestors need: a shared
+    // index of the two children is fused iff this node's target carries it,
+    // contracted here otherwise; an index of one child that neither the
+    // sibling nor the target carries is consumed entirely within that
+    // child's subtree and is not demanded of it.
+    // Each child's demand is ordered target-kept-first (the indices this
+    // node's result keeps, in target order) followed by the
+    // contracted-here indices in the child's leaf-availability order --
+    // fused indices thus lead, matching the canonical layouts of
+    // GeneralPermutationOptimizer (h leading) so the nbatch fold stays
+    // zero-copy. E.g. in the THC-like g("p,q,r,s") = X("p,r1") * X("q,r1")
+    // * Z("r1,r2") * ... the index r1 is demanded of X*X by its consumer
+    // (fused there), and contracted where Z meets the X*X subtree.
+    // N.B. expressions consumed WITHOUT a target (reductions, e.g. dot)
+    // take the no-target init_indices() overload below, which retains the
+    // bottom-up contraction convention -- general products under
+    // reductions remain unsupported.
     {
-      auto const& left_outer = outer(BinaryEngine_::left_.indices());
-      auto const& right_outer = outer(BinaryEngine_::right_.indices());
-      auto const& target_outer = outer(target_indices);
-      auto validate = [&](const IndexList& a, const IndexList& b) {
-        for (auto&& idx : a)
-          if (!b.count(idx) && !target_outer.count(idx))
-            TA_EXCEPTION(
-                "MultEngine: an argument index appears in neither the other "
-                "argument nor the target. If a general product (fused + "
-                "contracted + free indices) appears at an inner node of the "
-                "expression tree, its index roles cannot be deduced "
-                "bottom-up; materialize it into an explicit intermediate so "
-                "that it appears as the root of its own assignment");
+      auto const avail_l = BinaryEngine_::left_.available_indices();
+      auto const avail_r = BinaryEngine_::right_.available_indices();
+      auto demand = [](auto const& avail, auto const& sibling,
+                       auto const& tgt) {
+        container::svector<std::string> r;
+        for (auto&& idx : tgt)
+          if (avail.count(idx)) r.push_back(idx);
+        for (auto&& idx : avail) {
+          if (tgt.count(idx)) continue;
+          if (sibling.count(idx)) r.push_back(idx);
+          // else: the index is consumed entirely within the child's own
+          // subtree (contracted deeper down) -- not demanded here. A
+          // genuinely orphaned index (single occurrence, demanded nowhere =
+          // implicit trace, unsupported) surfaces as the leaf-level
+          // target-is-not-a-permutation error.
+        }
+        return r;
       };
-      validate(left_outer, right_outer);
-      validate(right_outer, left_outer);
+      auto bipartite_demand = [&demand](auto const& avail, auto const& sib,
+                                        auto const& tgt) {
+        auto const out = demand(outer(avail), outer(sib), outer(tgt));
+        auto const in = demand(inner(avail), inner(sib), inner(tgt));
+        return BipartiteIndexList(IndexList(out.begin(), out.end()),
+                                  IndexList(in.begin(), in.end()));
+      };
+      // each child dictates the ORDER of its demand (preferred_layout): a
+      // product child reorders to its canonical (h, eA, eB) layout -- a
+      // general product cannot host a result permutation, and contraction
+      // consumers absorb any child layout via the GEMM transpose forms.
+      // Materialize the demands as named lvalues: some preferred_layout()
+      // overloads (leaf/binary/unary) return a reference to their argument, so
+      // binding that to a temporary demand would be needlessly fragile.
+      const BipartiteIndexList left_demand =
+          bipartite_demand(avail_l, avail_r, target_indices);
+      const BipartiteIndexList right_demand =
+          bipartite_demand(avail_r, avail_l, target_indices);
+      BinaryEngine_::left_.init_indices(
+          BinaryEngine_::left_.preferred_layout(left_demand));
+      BinaryEngine_::right_.init_indices(
+          BinaryEngine_::right_.preferred_layout(right_demand));
     }
 
     this->product_type_ = compute_product_type(
@@ -375,6 +396,40 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     } else {
       ContEngine_::init_indices(children_initialized);
     }
+  }
+
+  /// \return the layout this product prefers for producing the index set of
+  /// \p demand: the canonical general-product result layout (h, eA, eB) --
+  /// indices supplied by both children (fused here) lead, then indices
+  /// supplied by the left child only, then by the right child only, each
+  /// group in demand order. h-leading is required when this node resolves to
+  /// a general product (general results cannot host a result permutation and
+  /// the nbatch fold needs the fused modes leading); for a pure contraction
+  /// (empty h) the (eA, eB) order matches the GEMM result, and for a pure
+  /// Hadamard the demand order is preserved.
+  BipartiteIndexList preferred_layout(const BipartiteIndexList& demand) const {
+    auto const avail_l = BinaryEngine_::left_.available_indices();
+    auto const avail_r = BinaryEngine_::right_.available_indices();
+    auto canonical = [](auto const& d, auto const& al, auto const& ar) {
+      container::svector<std::string> h, ea, eb;
+      for (auto&& idx : d) {
+        bool const inl = al.count(idx);
+        bool const inr = ar.count(idx);
+        if (inl && inr)
+          h.push_back(idx);
+        else if (inl)
+          ea.push_back(idx);
+        else
+          eb.push_back(idx);
+      }
+      h.insert(h.end(), ea.begin(), ea.end());
+      h.insert(h.end(), eb.begin(), eb.end());
+      return h;
+    };
+    auto const out = canonical(outer(demand), outer(avail_l), outer(avail_r));
+    auto const in = canonical(inner(demand), inner(avail_l), inner(avail_r));
+    return BipartiteIndexList(IndexList(out.begin(), out.end()),
+                              IndexList(in.begin(), in.end()));
   }
 
   /// Initialize result tensor structure
