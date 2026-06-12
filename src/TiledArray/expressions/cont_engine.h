@@ -677,18 +677,20 @@ class ContEngine : public BinaryEngine<Derived> {
     this->init_perm(target_indices);
     general_repermute_ = (outer(target_indices) != outer(indices_));
 
-    // A product with NO external (free) outer indices (every outer index
-    // fused or contracted, e.g. C("i,j;a,b") = A("x,i,j;a") * B("x,i,j;b"))
-    // folds to a GEMM with no free modes, i.e. rank-0 tensors, which the
-    // tile kernels do not support. Evaluate it with a SYNTHETIC UNIT
-    // left-external mode instead: the folded product becomes
-    // (1,K) x (K) -> (1), the exact shape of the (supported) one-sided
-    // neB == 0 case. The unit mode lives only in the tile op's GemmHelper;
-    // tranges, shapes and tiles carry the true (external-free) ranks, and
-    // BatchedContractReduce / SparseShape::gemm_batched detect the
-    // synthetic mode from the one-rank mismatch and pad their folded views
+    // Some degenerate folded shapes would carry a rank-0 tensor, which the
+    // tile kernels do not support (see synthetic_unit_left_external()):
+    //  - a NO-EXTERNAL product (every outer index fused or contracted, e.g.
+    //    C("i,j;a,b") = A("x,i,j;a") * B("x,i,j;b")) folds to a rank-0 RESULT;
+    //  - a FUSED BROADCAST (the left operand is entirely fused, no contraction,
+    //    e.g. C("b,k") = A("b") * B("b,k")) folds to a rank-0 LEFT operand.
+    // Evaluate both with a SYNTHETIC UNIT left-external mode: the folded
+    // product becomes (1,K) x (K,N) -> (1,N), a supported shape (the no-
+    // external case has N == 1, the broadcast has K == 1). The unit mode lives
+    // only in the tile op's GemmHelper; tranges, shapes and tiles carry the
+    // true ranks, and BatchedContractReduce / SparseShape::gemm_batched detect
+    // the synthetic mode from the one-rank mismatch and pad their folded views
     // with a unit extent.
-    const unsigned int u = (outer_size(indices_) == nh) ? 1u : 0u;
+    const unsigned int u = synthetic_unit_left_external();
 
     // the tile op operates on the folded (fused-mode-free) shapes; the
     // synthetic unit mode leads the folded left operand, so it is NoTrans
@@ -749,6 +751,23 @@ class ContEngine : public BinaryEngine<Derived> {
     }
   }
 
+  /// \return 1 if the folded general product needs a SYNTHETIC unit
+  /// left-external mode, else 0. The folded (fused-mode-free) GEMM cannot host
+  /// a rank-0 tensor, which arises in two degenerate cases:
+  ///  - rank-0 RESULT: every outer index is fused or contracted (no external),
+  ///    i.e. outer_size(indices_) == n_fused_modes_;
+  ///  - rank-0 LEFT operand: the left argument is entirely fused with no
+  ///    contraction (a fused broadcast / per-fused-block scale), i.e.
+  ///    outer_size(left_indices_) == n_fused_modes_.
+  /// A unit left-external mode (carried only in the GemmHelper) restores a
+  /// supported (1,K) x (K,N) -> (1,N) shape in both cases.
+  unsigned int synthetic_unit_left_external() const {
+    return (outer_size(indices_) == n_fused_modes_ ||
+            outer_size(left_indices_) == n_fused_modes_)
+               ? 1u
+               : 0u;
+  }
+
   /// Tiled range factory function for a general product
 
   /// \return The result tiled range: the fused mode ranges followed by the
@@ -756,10 +775,10 @@ class ContEngine : public BinaryEngine<Derived> {
   trange_type make_trange_general() const {
     const unsigned int nh = n_fused_modes_;
     const unsigned int nc = op_.gemm_helper().num_contract_ranks();
-    // the no-external case carries a synthetic unit left-external mode in
-    // the GemmHelper only (see init_struct_general); the actual tranges do
-    // not have it
-    const unsigned int u = (outer_size(indices_) == n_fused_modes_) ? 1u : 0u;
+    // degenerate folds carry a synthetic unit left-external mode in the
+    // GemmHelper only (see synthetic_unit_left_external()); the actual tranges
+    // do not have it
+    const unsigned int u = synthetic_unit_left_external();
     const unsigned int neA = op_.gemm_helper().left_rank() - nc - u;
     const unsigned int neB = op_.gemm_helper().right_rank() - nc;
 
@@ -812,10 +831,10 @@ class ContEngine : public BinaryEngine<Derived> {
                                  std::shared_ptr<const pmap_interface> pmap) {
     const unsigned int nh = n_fused_modes_;
     const unsigned int nc = op_.gemm_helper().num_contract_ranks();
-    // the no-external case carries a synthetic unit left-external mode in
-    // the GemmHelper only (see init_struct_general); the actual tranges do
-    // not have it
-    const unsigned int u = (outer_size(indices_) == nh) ? 1u : 0u;
+    // degenerate folds carry a synthetic unit left-external mode in the
+    // GemmHelper only (see synthetic_unit_left_external()); the actual tranges
+    // do not have it
+    const unsigned int u = synthetic_unit_left_external();
     const unsigned int neA = op_.gemm_helper().left_rank() - nc - u;
     const unsigned int neB = op_.gemm_helper().right_rank() - nc;
 
