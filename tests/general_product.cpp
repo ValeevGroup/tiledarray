@@ -237,6 +237,37 @@ BOOST_AUTO_TEST_CASE(expression_general_product_dense_batched_outer) {
   BOOST_CHECK_SMALL(diff_norm(c, c_ref, "b,i,k"), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(expression_general_product_dense_broadcast) {
+  // fused broadcast: one operand is ENTIRELY fused, no contraction, the other
+  // carries an extra external -- C(b,k) = A(b) * B(b,k). Per fused block b this
+  // is scalar * vector (a scale). The general-product engine handles it via a
+  // synthetic unit left-external mode; einsum no longer needs replicate_array.
+  auto& world = TA::get_default_world();
+
+  TA::TiledRange tr_s{{0, 2, 5}};             // b
+  TA::TiledRange tr_v{{0, 2, 5}, {0, 4, 5}};  // b, k
+  auto s = make_patterned_array(world, tr_s, 1.0);
+  auto v = make_patterned_array(world, tr_v, 2.0);
+
+  // independent oracle: physically replicate s over k (NOT through the
+  // general-product engine), then a plain Hadamard multiply
+  TA::TiledRange tr_k{{0, 4, 5}};                     // k
+  auto s_rep = TA::Einsum::replicate_array(s, tr_k);  // s_rep(k, b)
+  TA::TArrayD ref;
+  ref("b,k") = s_rep("k,b") * v("b,k");
+
+  // (a) LEFT operand fully fused, straight through the expression layer
+  TA::TArrayD cc;
+  BOOST_REQUIRE_NO_THROW(cc("b,k") = s("b") * v("b,k"));
+  BOOST_CHECK_SMALL(diff_norm(cc, ref, "b,k"), 1e-10);
+
+  // (b) einsum, both operand orders (RIGHT operand fully fused too)
+  auto c_lr = TA::einsum(s("b"), v("b,k"), "b,k");
+  BOOST_CHECK_SMALL(diff_norm(c_lr, ref, "b,k"), 1e-10);
+  auto c_rl = TA::einsum(v("b,k"), s("b"), "b,k");
+  BOOST_CHECK_SMALL(diff_norm(c_rl, ref, "b,k"), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(expression_general_product_noncanonical_root_target) {
   // a root-level general product with a NON-canonical target layout: the
   // product evaluates canonically (r1,p,q) and is re-permuted to the target
@@ -778,6 +809,42 @@ BOOST_AUTO_TEST_CASE(expression_general_product_no_externals) {
   BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(
+    expression_general_product_tot_no_externals_inner_hadamard) {
+  // ToT no-external product with an INNER HADAMARD: outer i,j fused, x
+  // contracted, no free outer index; inner m fused. This is the einsum
+  // "hadamard-reduction-local" shape with an inner-Hadamard cell op -- verify
+  // the expression layer (synthetic unit left-external + inner Hadamard)
+  // reproduces it.
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 3, 5}, {0, 2, 4}, {0, 2, 3}};  // x, i, j
+  auto a = make_patterned_tot_array(world, tr, {2}, 1.0);
+  auto b = make_patterned_tot_array(world, tr, {2}, 2.0);
+
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("i,j;m") = a("x,i,j;m") * b("x,i,j;m"));
+  auto c_ref = TA::einsum(a("x,i,j;m"), b("x,i,j;m"), "i,j;m");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(
+    expression_general_product_tot_no_externals_inner_contraction) {
+  // ToT no-external product with an INNER CONTRACTION: outer i,j fused, x
+  // contracted, no free outer index; inner c contracted, m/n free. The einsum
+  // "hadamard-reduction-local" shape with an inner-contraction cell op.
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 3, 5}, {0, 2, 4}, {0, 2, 3}};         // x, i, j
+  auto a = make_patterned_tot_array(world, tr, {2, 3}, 1.0);  // inner m, c
+  auto b = make_patterned_tot_array(world, tr, {3, 2}, 2.0);  // inner c, n
+
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("i,j;m,n") = a("x,i,j;m,c") * b("x,i,j;c,n"));
+  auto c_ref = TA::einsum(a("x,i,j;m,c"), b("x,i,j;c,n"), "i,j;m,n");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(expression_general_product_sparse_no_externals) {
   // block-sparse no-external general product: exercises the synthetic
   // unit-mode handling in SparseShape::gemm_batched
@@ -1241,13 +1308,8 @@ BOOST_AUTO_TEST_CASE(expression_general_product_csv_like) {
   ArenaSpArr c1, c2;
   {
     ScopedEinsumRoute expression_route(false);
-    try {
-      c1 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
-      c2 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
-    } catch (std::exception& ex) {
-      std::cerr << "EXPRESSION ROUTE THREW: " << ex.what() << std::endl;
-      throw;
-    }
+    c1 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
+    c2 = TA::einsum(a("i2,i1,m;a"), b("m,i2,K"), "i1,i2,K;a");
   }
 
   // BISECT: same shape, CANONICAL target, direct expression (no einsum
@@ -1278,7 +1340,6 @@ BOOST_AUTO_TEST_CASE(expression_general_product_csv_like) {
         }
       }
     }
-    std::cerr << "CANONICAL-TARGET DIRECT-EXPR max_diff = " << md << std::endl;
     BOOST_CHECK_SMALL(md, 1e-10);
   }
 

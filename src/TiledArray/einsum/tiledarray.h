@@ -673,23 +673,38 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     auto range_map =
         (RangeMap(a, A.array().trange()) | RangeMap(b, B.array().trange()));
 
-    // special Hadamard
+    // Fused broadcast: one operand is ENTIRELY fused (h == its index set) and
+    // there is no contraction -- C(h,e) = A * B, a per-fused-block scale. The
+    // general-product expression engine evaluates this natively when the
+    // fully-fused operand LEADS (it folds to a rank-0 left tile, restored by a
+    // synthetic unit left-external mode; see ContEngine::
+    // synthetic_unit_left_external). Order the fully-fused operand first and
+    // delegate -- no physical replication needed.
     if (h.size() == a.size() || h.size() == b.size()) {
       TA_ASSERT(!i && e);
-      bool const small_a = h.size() == a.size();
-      auto const delta_trng = make_trange(range_map, e);
-      std::string target_layout = std::string(c) + inner.c;
-      ArrayC C;
-      if (small_a) {
-        auto temp = replicate_array(A.array(), delta_trng);
-        std::string temp_layout = std::string(e) + "," + A.annotation();
-        C(target_layout) = temp(temp_layout) * B;
-      } else {
-        auto temp = replicate_array(B.array(), delta_trng);
-        std::string temp_layout = std::string(e) + "," + B.annotation();
-        C(target_layout) = A * temp(temp_layout);
+      _ein_call.branch = "fused-broadcast-expression";
+      const bool a_leads = (h.size() == a.size());  // A entirely fused?
+      // the engine produces the result in its canonical inner layout
+      // (inner fused, then left-then-right inner externals, in the order the
+      // operands are handed to it) and rejects a non-identity inner result
+      // permutation; evaluate canonically, then apply the inner permutation
+      // (cf. the generalized-inner-perm-recurse path below). The canonical
+      // inner-external order tracks the operand order, so mirror the swap.
+      std::string canon_inner;
+      if constexpr (IsArrayToT<ArrayC>) {
+        auto inner_e = a_leads ? (inner.A ^ inner.B) : (inner.B ^ inner.A);
+        canon_inner = ";" + (std::string)(inner.h + inner_e);
       }
-
+      std::string canon_layout = std::string(c) + canon_inner;
+      ArrayC C0;
+      if (a_leads)  // A fully fused -> already leads
+        C0(canon_layout) = A * B;
+      else  // B fully fused -> put it first (multiplication commutes)
+        C0(canon_layout) = B * A;
+      std::string target_layout = std::string(c) + inner.c;
+      if (target_layout == canon_layout) return C0;
+      ArrayC C;
+      C(target_layout) = C0(canon_layout);  // inner-permute to requested layout
       return C;
     }
 
@@ -791,7 +806,28 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       }
     }
 
-    if (!e) {  // hadamard reduction
+    if (!e) {  // no external outer index (fused + contracted): a nesting-
+               // preserving reduction. By default the expression layer handles
+               // it natively (synthetic unit left-external mode, see
+               // ContEngine::synthetic_unit_left_external); the legacy local
+               // kernel below is retained only as the opt-in legacy
+               // cross-check oracle (cf. the generalized-subworld path).
+      if (!detail::einsum_legacy_subworld()) {
+        _ein_call.branch = "no-external-expression";
+        // evaluate in the engine's canonical inner layout, then apply any
+        // inner result permutation (cf. the broadcast / inner-perm-recurse)
+        std::string canon_inner;
+        if constexpr (IsArrayToT<ArrayC>)
+          canon_inner = ";" + (std::string)(inner.h + inner.e);
+        std::string canon_layout = std::string(c) + canon_inner;
+        ArrayC C0;
+        C0(canon_layout) = A * B;
+        std::string target_layout = std::string(c) + inner.c;
+        if (target_layout == canon_layout) return C0;
+        ArrayC C;
+        C(target_layout) = C0(canon_layout);
+        return C;
+      }
 
       _ein_call.branch = "hadamard-reduction-local";
       const auto _ein_he_t0 = _ein_call.active ? now() : time_point{};
