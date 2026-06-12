@@ -1350,8 +1350,12 @@ BOOST_AUTO_TEST_SUITE_END()
 // + np=1 evaluation), this suite carries NO label, so the CI harness runs it
 // at BOTH np=1 and np=2 (see tests/CMakeLists.txt: np-1 excludes @distributed,
 // np-2 excludes @serial). It exercises the batched Summa across ranks -- a
-// path the serial suite never covered. Each case differential-tests the
-// expression route against the legacy sub-World einsum oracle.
+// path the serial suite never covered. Most cases differential-test the
+// expression route against the legacy sub-World einsum oracle; the exception
+// is dist_inner_node_thc, which checks a single fused expression against a
+// reference built from explicit binary intermediates (the same expression
+// machinery), validating that nested general products at inner nodes agree
+// with the step-by-step evaluation.
 //
 // Most cases evaluate via the ordinary 2-d (proc_h == 1) batched Summa;
 // dist_no_externals_3d_grid exercises the 3-d (proc_h > 1) grid, where the

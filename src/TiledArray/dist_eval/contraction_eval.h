@@ -1515,8 +1515,12 @@ class Summa
 
     template <typename Derived>
     void make_next_step_tasks(Derived* task, ordinal_type depth) {
-      // Set the depth to be no greater than the maximum number steps
-      if (depth > owner_->nsteps_) depth = owner_->nsteps_;
+      // Set the depth to be no greater than the number of SUMMA steps this
+      // rank's group actually executes. In the 2-d (proc_h_ == 1) case this is
+      // nsteps_ (my_slabs_ == nh_); in the 3-d (proc_h_ > 1) case my_steps() <
+      // nsteps_, and clamping to nsteps_ would pre-spawn surplus step tasks
+      // that all resolve to the terminating step (k_ == nsteps_).
+      if (depth > owner_->my_steps()) depth = owner_->my_steps();
 
       // Spawn n=depth step tasks
       for (; depth > 0ul; --depth) {

@@ -874,7 +874,10 @@ class ContEngine : public BinaryEngine<Derived> {
         proc_h_ = std::min<size_type>(n_slabs_,
                                       std::max<size_type>(1ul, P / p2d_cap));
       }
-      proc_h_stride_ = P / proc_h_;
+      // keep the invariant proc_h_ == 1 => proc_h_stride_ == 0 (the ungrouped
+      // 2-d case) so downstream logic can key off either field; for grouped
+      // grids it is the per-plane world-rank count P / proc_h_.
+      proc_h_stride_ = (proc_h_ == 1ul) ? 0ul : P / proc_h_;
 
       if (proc_h_ == 1ul) {
         // Construct the per-slab process grid over the whole world.
