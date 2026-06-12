@@ -666,6 +666,19 @@ class ContEngine : public BinaryEngine<Derived> {
     TA_ASSERT(nh > 0u);  // else this is a pure contraction
     n_fused_modes_ = nh;
 
+    // a general product of tensors-of-tensors with NO external (free) outer
+    // indices (every outer index fused or contracted, e.g.
+    // C("i,j;a,b") = A("x,i,j;a") * B("x,i,j;b")) is not supported by the
+    // batched tile op yet (its folded GEMM has no free modes);
+    // einsum() evaluates this shape natively
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      if (outer_size(indices_) == nh)
+        TA_EXCEPTION(
+            "general products of tensors-of-tensors without external (free) "
+            "outer indices are not yet supported in the expression layer; "
+            "use TiledArray::einsum() for this contraction");
+    }
+
     // initialize perm_; a target that differs from the canonical (fused...,
     // left-free..., right-free...) result layout cannot be folded into the
     // batched tile op (BatchedContractReduce must be perm-free), so the

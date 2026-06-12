@@ -639,6 +639,114 @@ BOOST_AUTO_TEST_CASE(expression_general_product_into_block) {
   BOOST_CHECK_SMALL(diff_norm(w, w_ref, "b,i,k"), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(expression_general_product_block_in_tree) {
+  // a BLOCK leaf under an inner general node of a deeper tree:
+  //   w("p,q,r2") = (x.block("p,r1") * y("q,r1")) * z("r1,r2")
+  // r1 is fused at the inner (general) node, contracted at the root
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_x{{0, 2, 4}, {0, 3, 5}};  // p x r1
+  TA::TiledRange tr_z{{0, 3, 5}, {0, 3, 5}};  // r1 x r2
+  auto x = make_patterned_array(world, tr_x, 1.0);
+  auto y = make_patterned_array(world, tr_x, 1.5);
+  auto z = make_patterned_array(world, tr_z, 2.0);
+
+  TA::TArrayD xb, i1, w_ref, w;
+  xb("p,r1") = x("p,r1").block({0, 0}, {1, 2});
+  i1("r1,p,q") = xb("p,r1") * y("q,r1");
+  w_ref("p,q,r2") = i1("r1,p,q") * z("r1,r2");
+
+  BOOST_REQUIRE_NO_THROW(
+      w("p,q,r2") = (x("p,r1").block({0, 0}, {1, 2}) * y("q,r1")) * z("r1,r2"));
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "p,q,r2"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_repermute_into_block) {
+  // a general product with a NON-canonical target layout (streaming
+  // re-permute) assigned INTO a block view of the result
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_x{{0, 2}, {0, 3, 5}};                // p x r1
+  TA::TiledRange tr_w{{0, 2, 4}, {0, 2, 4}, {0, 3, 5}};  // p, q, r1
+  auto x = make_patterned_array(world, tr_x, 1.0);
+  auto y = make_patterned_array(world, tr_x, 1.5);
+
+  TA::TArrayD i1, w(world, tr_w), w_ref(world, tr_w);
+  w.fill(0.0);
+  w_ref.fill(0.0);
+  i1("r1,p,q") = x("p,r1") * y("q,r1");  // canonical evaluation
+  w_ref("p,q,r1").block({0, 0, 0}, {1, 1, 2}) = i1("r1,p,q");
+
+  BOOST_REQUIRE_NO_THROW(w("p,q,r1").block({0, 0, 0}, {1, 1, 2}) =
+                             x("p,r1") * y("q,r1"));
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "p,q,r1"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_sum_under_product) {
+  // a SUM nested under a product, with a general product as one summand:
+  //   F("i,j") = A("x,i") * (B("x,k") * C("x,k,j") + D("x,j"))
+  // x is fused inside B*C (demanded by the sum's consumer), k is contracted
+  // within the summand (never escapes), and x is contracted at the root.
+  // The down-pass prunes k from the sum's demand automatically (it appears
+  // in neither the target nor A) and hands (j,x) to BOTH summands.
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_a{{0, 3, 5}, {0, 2, 4}};             // x, i
+  TA::TiledRange tr_b{{0, 3, 5}, {0, 2, 3}};             // x, k
+  TA::TiledRange tr_c{{0, 3, 5}, {0, 2, 3}, {0, 2, 4}};  // x, k, j
+  TA::TiledRange tr_d{{0, 3, 5}, {0, 2, 4}};             // x, j
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto b = make_patterned_array(world, tr_b, 2.0);
+  auto c = make_patterned_array(world, tr_c, 3.0);
+  auto d = make_patterned_array(world, tr_d, 4.0);
+
+  TA::TArrayD i1, s, f_ref, f;
+  i1("x,j") = b("x,k") * c("x,k,j");  // general: x fused, k contracted
+  s("x,j") = i1("x,j") + d("x,j");
+  f_ref("i,j") = a("x,i") * s("x,j");
+
+  BOOST_REQUIRE_NO_THROW(f("i,j") =
+                             a("x,i") * (b("x,k") * c("x,k,j") + d("x,j")));
+  BOOST_CHECK_SMALL(diff_norm(f, f_ref, "i,j"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_kitchen_sink) {
+  // one expression combining a THC-like batching index (x: fused at the
+  // inner node, contracted at the root), a mixed T x ToT general product,
+  // a ToT x ToT general product with an inner outer-product, and a scalar
+  // prefactor (ScalMult at the root):
+  //   W("i,j,m;a,b") = 2 * ((g("x,i") * cv("x,j;a")) * dv("x,i,m;b"))
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_g{{0, 3, 5}, {0, 2, 4}};              // x, i
+  TA::TiledRange tr_cv{{0, 3, 5}, {0, 2, 3}};             // x, j
+  TA::TiledRange tr_dv{{0, 3, 5}, {0, 2, 4}, {0, 2, 3}};  // x, i, m
+  auto g = make_patterned_array(world, tr_g, 1.0);
+  auto cv = make_patterned_tot_array(world, tr_cv, {2}, 2.0);
+  auto dv = make_patterned_tot_array(world, tr_dv, {3}, 3.0);
+
+  TArrayToT i1, i2, w_ref, w;
+  i1("x,i,j;a") = g("x,i") * cv("x,j;a");           // T x ToT general
+  i2("i,j,m;a,b") = i1("x,i,j;a") * dv("x,i,m;b");  // ToT x ToT, inner outer
+  w_ref("i,j,m;a,b") = 2.0 * i2("i,j,m;a,b");
+
+  BOOST_REQUIRE_NO_THROW(w("i,j,m;a,b") =
+                             2.0 * ((g("x,i") * cv("x,j;a")) * dv("x,i,m;b")));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_no_externals_gated) {
+  // a ToT x ToT general product with NO external (free) outer indices --
+  // every outer index fused or contracted -- is not supported by the
+  // batched tile op (and used to segfault in the folded GEMM); the engine
+  // must reject it with an informative error (einsum() handles this shape
+  // natively via its no-external regime)
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr{{0, 3, 5}, {0, 2, 4}, {0, 2, 3}};  // x, i, j
+  auto a = make_patterned_tot_array(world, tr, {2}, 1.0);
+  auto b = make_patterned_tot_array(world, tr, {3}, 2.0);
+
+  TArrayToT c;
+  BOOST_CHECK_THROW(c("i,j;a,b") = a("x,i,j;a") * b("x,i,j;b"),
+                    TiledArray::Exception);
+}
+
 BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_outer_product) {
   // the PNO-CC PPL building-block shape: ToT x ToT with an EMPTY right
   // outer-external set and an inner OUTER-product:
