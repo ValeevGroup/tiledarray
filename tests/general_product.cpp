@@ -528,6 +528,269 @@ BOOST_AUTO_TEST_CASE(expression_general_product_t_times_tot) {
   BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(expression_mixed_t_tot_depth2_chains) {
+  // mixed T/ToT products at INNER nodes of the expression tree:
+  // left-deep:  w("i,k;x") = (s("i,j") * t("j,m")) * c("m,k;x")
+  // right-deep: w("i,k;x") = s("i,j") * (t("j,m") * c("m,k;x"))
+  // (plain contraction at every node, inner Scale where a plain factor
+  // meets the nested one)
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_s{{0, 2, 4}, {0, 2, 5}};  // i, j
+  TA::TiledRange tr_t{{0, 2, 5}, {0, 3, 4}};  // j, m
+  TA::TiledRange tr_c{{0, 3, 4}, {0, 2, 3}};  // m, k
+  auto s = make_patterned_array(world, tr_s, 1.0);
+  auto t = make_patterned_array(world, tr_t, 2.0);
+  auto c = make_patterned_tot_array(world, tr_c, {3}, 3.0);
+
+  // staged reference
+  TArrayToT i1, w_ref;
+  i1("j,k;x") = t("j,m") * c("m,k;x");
+  w_ref("i,k;x") = s("i,j") * i1("j,k;x");
+
+  TArrayToT w_l, w_r;
+  BOOST_REQUIRE_NO_THROW(w_l("i,k;x") = (s("i,j") * t("j,m")) * c("m,k;x"));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w_l, w_ref), 1e-10);
+  BOOST_REQUIRE_NO_THROW(w_r("i,k;x") = s("i,j") * (t("j,m") * c("m,k;x")));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w_r, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_mixed_t_tot_inner_general) {
+  // a mixed T x ToT GENERAL product at an INNER node:
+  //   w("i,j;x") = (g("b,i") * c("b,j;x")) * h("b")
+  // b is fused where g meets c (demanded by the h factor above) and
+  // contracted at the root
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_g{{0, 3, 5}, {0, 2, 4}};  // b, i
+  TA::TiledRange tr_c{{0, 3, 5}, {0, 2, 3}};  // b, j
+  TA::TiledRange tr_h{{0, 3, 5}};             // b
+  auto g = make_patterned_array(world, tr_g, 1.0);
+  auto c = make_patterned_tot_array(world, tr_c, {3}, 2.0);
+  TA::TArrayD h(world, tr_h);
+  h.fill(1.5);
+
+  TArrayToT i1, w_ref;
+  i1("b,i,j;x") = g("b,i") * c("b,j;x");  // depth-1 mixed general
+  w_ref("i,j;x") = i1("b,i,j;x") * h("b");
+
+  TArrayToT w;
+  try {
+    w("i,j;x") = (g("b,i") * c("b,j;x")) * h("b");
+  } catch (std::exception& e) {
+    BOOST_FAIL(std::string("threw: ") + e.what());
+  }
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_mixed_t_tot_scaled) {
+  // scaled mixed T x ToT general product (ScalMultEngine path):
+  //   w("b,i,k;x") = 2 * (a("b,i,j") * c("b,j,k;x"))
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_c{{0, 2, 4}, {0, 2, 5}, {0, 3, 4}};  // b, j, k
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto c = make_patterned_tot_array(world, tr_c, {3}, 2.0);
+
+  TArrayToT w_ref0, w_ref, w;
+  w_ref0("b,i,k;x") = a("b,i,j") * c("b,j,k;x");
+  w_ref("b,i,k;x") = 2.0 * w_ref0("b,i,k;x");
+  BOOST_REQUIRE_NO_THROW(w("b,i,k;x") = 2.0 * (a("b,i,j") * c("b,j,k;x")));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_block_operands) {
+  // general product of BLOCK views: C("b,i,k") = A.block * B.block with
+  // b fused, j contracted, i/k free; the blocks restrict b and i/k
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}, {0, 2, 4}};  // (b,i,j) / (b,j,k)
+  auto a = make_patterned_array(world, tr, 1.0);
+  auto t = make_patterned_array(world, tr, 2.0);
+
+  // materialized blocks as the reference operands
+  TA::TArrayD ab, tb, w_ref, w;
+  ab("b,i,j") = a("b,i,j").block({0, 0, 0}, {1, 2, 2});
+  tb("b,j,k") = t("b,j,k").block({0, 0, 0}, {1, 2, 1});
+  w_ref("b,i,k") = ab("b,i,j") * tb("b,j,k");
+
+  BOOST_REQUIRE_NO_THROW(w("b,i,k") = a("b,i,j").block({0, 0, 0}, {1, 2, 2}) *
+                                      t("b,j,k").block({0, 0, 0}, {1, 2, 1}));
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "b,i,k"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_into_block) {
+  // general product assigned INTO a block view of the result:
+  //   W.block = A * B (b fused, j contracted)
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_a{{0, 2}, {0, 2}, {0, 2, 4}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2}, {0, 2, 4}, {0, 2}};  // b, j, k
+  TA::TiledRange tr_w{{0, 2, 4}, {0, 2, 4}, {0, 2, 4}};
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto t = make_patterned_array(world, tr_b, 2.0);
+
+  TA::TArrayD prod;
+  prod("b,i,k") = a("b,i,j") * t("b,j,k");
+
+  TA::TArrayD w(world, tr_w), w_ref(world, tr_w);
+  w.fill(0.0);
+  w_ref.fill(0.0);
+  w_ref("b,i,k").block({0, 0, 0}, {1, 1, 1}) = prod("b,i,k");
+
+  BOOST_REQUIRE_NO_THROW(w("b,i,k").block({0, 0, 0}, {1, 1, 1}) =
+                             a("b,i,j") * t("b,j,k"));
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "b,i,k"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_block_in_tree) {
+  // a BLOCK leaf under an inner general node of a deeper tree:
+  //   w("p,q,r2") = (x.block("p,r1") * y("q,r1")) * z("r1,r2")
+  // r1 is fused at the inner (general) node, contracted at the root
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_x{{0, 2, 4}, {0, 3, 5}};  // p x r1
+  TA::TiledRange tr_z{{0, 3, 5}, {0, 3, 5}};  // r1 x r2
+  auto x = make_patterned_array(world, tr_x, 1.0);
+  auto y = make_patterned_array(world, tr_x, 1.5);
+  auto z = make_patterned_array(world, tr_z, 2.0);
+
+  TA::TArrayD xb, i1, w_ref, w;
+  xb("p,r1") = x("p,r1").block({0, 0}, {1, 2});
+  i1("r1,p,q") = xb("p,r1") * y("q,r1");
+  w_ref("p,q,r2") = i1("r1,p,q") * z("r1,r2");
+
+  BOOST_REQUIRE_NO_THROW(
+      w("p,q,r2") = (x("p,r1").block({0, 0}, {1, 2}) * y("q,r1")) * z("r1,r2"));
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "p,q,r2"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_repermute_into_block) {
+  // a general product with a NON-canonical target layout (streaming
+  // re-permute) assigned INTO a block view of the result
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_x{{0, 2}, {0, 3, 5}};                // p x r1
+  TA::TiledRange tr_w{{0, 2, 4}, {0, 2, 4}, {0, 3, 5}};  // p, q, r1
+  auto x = make_patterned_array(world, tr_x, 1.0);
+  auto y = make_patterned_array(world, tr_x, 1.5);
+
+  TA::TArrayD i1, w(world, tr_w), w_ref(world, tr_w);
+  w.fill(0.0);
+  w_ref.fill(0.0);
+  i1("r1,p,q") = x("p,r1") * y("q,r1");  // canonical evaluation
+  w_ref("p,q,r1").block({0, 0, 0}, {1, 1, 2}) = i1("r1,p,q");
+
+  BOOST_REQUIRE_NO_THROW(w("p,q,r1").block({0, 0, 0}, {1, 1, 2}) =
+                             x("p,r1") * y("q,r1"));
+  BOOST_CHECK_SMALL(diff_norm(w, w_ref, "p,q,r1"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_sum_under_product) {
+  // a SUM nested under a product, with a general product as one summand:
+  //   F("i,j") = A("x,i") * (B("x,k") * C("x,k,j") + D("x,j"))
+  // x is fused inside B*C (demanded by the sum's consumer), k is contracted
+  // within the summand (never escapes), and x is contracted at the root.
+  // The down-pass prunes k from the sum's demand automatically (it appears
+  // in neither the target nor A) and hands (j,x) to BOTH summands.
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_a{{0, 3, 5}, {0, 2, 4}};             // x, i
+  TA::TiledRange tr_b{{0, 3, 5}, {0, 2, 3}};             // x, k
+  TA::TiledRange tr_c{{0, 3, 5}, {0, 2, 3}, {0, 2, 4}};  // x, k, j
+  TA::TiledRange tr_d{{0, 3, 5}, {0, 2, 4}};             // x, j
+  auto a = make_patterned_array(world, tr_a, 1.0);
+  auto b = make_patterned_array(world, tr_b, 2.0);
+  auto c = make_patterned_array(world, tr_c, 3.0);
+  auto d = make_patterned_array(world, tr_d, 4.0);
+
+  TA::TArrayD i1, s, f_ref, f;
+  i1("x,j") = b("x,k") * c("x,k,j");  // general: x fused, k contracted
+  s("x,j") = i1("x,j") + d("x,j");
+  f_ref("i,j") = a("x,i") * s("x,j");
+
+  BOOST_REQUIRE_NO_THROW(f("i,j") =
+                             a("x,i") * (b("x,k") * c("x,k,j") + d("x,j")));
+  BOOST_CHECK_SMALL(diff_norm(f, f_ref, "i,j"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_kitchen_sink) {
+  // one expression combining a THC-like batching index (x: fused at the
+  // inner node, contracted at the root), a mixed T x ToT general product,
+  // a ToT x ToT general product with an inner outer-product, and a scalar
+  // prefactor (ScalMult at the root):
+  //   W("i,j,m;a,b") = 2 * ((g("x,i") * cv("x,j;a")) * dv("x,i,m;b"))
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr_g{{0, 3, 5}, {0, 2, 4}};              // x, i
+  TA::TiledRange tr_cv{{0, 3, 5}, {0, 2, 3}};             // x, j
+  TA::TiledRange tr_dv{{0, 3, 5}, {0, 2, 4}, {0, 2, 3}};  // x, i, m
+  auto g = make_patterned_array(world, tr_g, 1.0);
+  auto cv = make_patterned_tot_array(world, tr_cv, {2}, 2.0);
+  auto dv = make_patterned_tot_array(world, tr_dv, {3}, 3.0);
+
+  TArrayToT i1, i2, w_ref, w;
+  i1("x,i,j;a") = g("x,i") * cv("x,j;a");           // T x ToT general
+  i2("i,j,m;a,b") = i1("x,i,j;a") * dv("x,i,m;b");  // ToT x ToT, inner outer
+  w_ref("i,j,m;a,b") = 2.0 * i2("i,j,m;a,b");
+
+  BOOST_REQUIRE_NO_THROW(w("i,j,m;a,b") =
+                             2.0 * ((g("x,i") * cv("x,j;a")) * dv("x,i,m;b")));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_no_externals) {
+  // a ToT x ToT general product with NO external (free) outer indices --
+  // every outer index fused or contracted. The folded product has no free
+  // modes, so it is evaluated with a synthetic unit left-external mode
+  // carried by the tile op's GemmHelper only (this shape used to segfault).
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 3, 5}, {0, 2, 4}, {0, 2, 3}};  // x, i, j
+  auto a = make_patterned_tot_array(world, tr, {2}, 1.0);
+  auto b = make_patterned_tot_array(world, tr, {3}, 2.0);
+
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("i,j;a,b") = a("x,i,j;a") * b("x,i,j;b"));
+  auto c_ref = TA::einsum(a("x,i,j;a"), b("x,i,j;b"), "i,j;a,b");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+
+  // the same no-external root with the left operand produced by a general
+  // T x ToT product at an INNER node (the original motivating expression)
+  TA::TiledRange tr_g{{0, 3, 5}, {0, 2, 4}};   // x, i
+  TA::TiledRange tr_cv{{0, 3, 5}, {0, 2, 3}};  // x, j
+  auto g = make_patterned_array(world, tr_g, 1.0);
+  auto cv = make_patterned_tot_array(world, tr_cv, {2}, 2.0);
+  TArrayToT i1, w, w_ref;
+  i1("x,i,j;a") = g("x,i") * cv("x,j;a");
+  w_ref("i,j;a,b") = i1("x,i,j;a") * b("x,i,j;b");
+  BOOST_REQUIRE_NO_THROW(w("i,j;a,b") =
+                             (g("x,i") * cv("x,j;a")) * b("x,i,j;b"));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(w, w_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_no_externals) {
+  // the plain-tensor analogue of the no-external general product (the
+  // Hadamard-reduction shape): C("i") = A("i,j") * B("i,j")
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 2, 4}, {0, 3, 5}};  // i, j
+  auto a = make_patterned_array(world, tr, 1.0);
+  auto b = make_patterned_array(world, tr, 2.0);
+
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("i") = a("i,j") * b("i,j"));
+  auto c_ref = TA::einsum(a("i,j"), b("i,j"), "i");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_no_externals) {
+  // block-sparse no-external general product: exercises the synthetic
+  // unit-mode handling in SparseShape::gemm_batched
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 2, 5}, {0, 3, 4}, {0, 2, 6, 7}};  // b, i, j
+  auto a = make_patterned_sparse_array(world, tr, 1.0, 3);
+  auto b = make_patterned_sparse_array(world, tr, 2.0, 4);
+
+  TA::TSpArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,i") = a("b,i,j") * b("b,i,j"));
+  auto c_ref = TA::einsum(a("b,i,j"), b("b,i,j"), "b,i");
+  BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i"), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_outer_product) {
   // the PNO-CC PPL building-block shape: ToT x ToT with an EMPTY right
   // outer-external set and an inner OUTER-product:

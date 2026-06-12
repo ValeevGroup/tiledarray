@@ -674,19 +674,37 @@ class ContEngine : public BinaryEngine<Derived> {
     this->init_perm(target_indices);
     general_repermute_ = (outer(target_indices) != outer(indices_));
 
-    // the tile op operates on the folded (fused-mode-free) shapes
-    const auto left_op = to_cblas_op(left_outer_permtype_);
+    // A product with NO external (free) outer indices (every outer index
+    // fused or contracted, e.g. C("i,j;a,b") = A("x,i,j;a") * B("x,i,j;b"))
+    // folds to a GEMM with no free modes, i.e. rank-0 tensors, which the
+    // tile kernels do not support. Evaluate it with a SYNTHETIC UNIT
+    // left-external mode instead: the folded product becomes
+    // (1,K) x (K) -> (1), the exact shape of the (supported) one-sided
+    // neB == 0 case. The unit mode lives only in the tile op's GemmHelper;
+    // tranges, shapes and tiles carry the true (external-free) ranks, and
+    // BatchedContractReduce / SparseShape::gemm_batched detect the
+    // synthetic mode from the one-rank mismatch and pad their folded views
+    // with a unit extent.
+    const unsigned int u = (outer_size(indices_) == nh) ? 1u : 0u;
+
+    // the tile op operates on the folded (fused-mode-free) shapes; the
+    // synthetic unit mode leads the folded left operand, so it is NoTrans
+    const auto left_op =
+        u ? math::blas::NoTranspose : to_cblas_op(left_outer_permtype_);
     const auto right_op = to_cblas_op(right_outer_permtype_);
     if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh,
-                    outer_size(left_indices_) - nh,
+      op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh + u,
+                    outer_size(left_indices_) - nh + u,
                     outer_size(right_indices_) - nh);
     } else {
       // the batched tile op must be perm-free (BatchedContractReduce cannot
-      // host the folded-rank result permutation); the outer perm is empty by
-      // the interleaved-target gate above, so only an explicit inner result
-      // permutation can require one
-      if (!implicit_permute_inner_ && bool(inner(perm_)))
+      // host the folded-rank result permutation); the outer perm is handled
+      // by the streaming re-permute (general_repermute_), so only a genuine
+      // (non-identity) explicit inner result permutation requires one. N.B.
+      // perm_ may carry a non-null identity inner component when only the
+      // outer modes are permuted (the bipartite perm is constructed whole).
+      if (!implicit_permute_inner_ && bool(inner(perm_)) &&
+          !inner(perm_).is_identity())
         TA_EXCEPTION(
             "general products of tensors-of-tensors: a non-identity inner "
             "result permutation is not yet supported; reorder the inner "
@@ -694,7 +712,8 @@ class ContEngine : public BinaryEngine<Derived> {
 
       // factor_ is absorbed into element_nonreturn_op_
       op_ = op_type(left_op, right_op, scalar_type(1),
-                    outer_size(indices_) - nh, outer_size(left_indices_) - nh,
+                    outer_size(indices_) - nh + u,
+                    outer_size(left_indices_) - nh + u,
                     outer_size(right_indices_) - nh, BipartitePermutation{},
                     this->element_nonreturn_op_, std::move(this->arena_plan_));
       // ce+e, ce+ce_right and ce+ce_left are mutually exclusive; at most one
@@ -734,7 +753,11 @@ class ContEngine : public BinaryEngine<Derived> {
   trange_type make_trange_general() const {
     const unsigned int nh = n_fused_modes_;
     const unsigned int nc = op_.gemm_helper().num_contract_ranks();
-    const unsigned int neA = op_.gemm_helper().left_rank() - nc;
+    // the no-external case carries a synthetic unit left-external mode in
+    // the GemmHelper only (see init_struct_general); the actual tranges do
+    // not have it
+    const unsigned int u = (outer_size(indices_) == n_fused_modes_) ? 1u : 0u;
+    const unsigned int neA = op_.gemm_helper().left_rank() - nc - u;
     const unsigned int neB = op_.gemm_helper().right_rank() - nc;
 
     typename trange_type::Ranges ranges(nh + neA + neB);
@@ -786,7 +809,11 @@ class ContEngine : public BinaryEngine<Derived> {
                                  std::shared_ptr<const pmap_interface> pmap) {
     const unsigned int nh = n_fused_modes_;
     const unsigned int nc = op_.gemm_helper().num_contract_ranks();
-    const unsigned int neA = op_.gemm_helper().left_rank() - nc;
+    // the no-external case carries a synthetic unit left-external mode in
+    // the GemmHelper only (see init_struct_general); the actual tranges do
+    // not have it
+    const unsigned int u = (outer_size(indices_) == nh) ? 1u : 0u;
+    const unsigned int neA = op_.gemm_helper().left_rank() - nc - u;
     const unsigned int neB = op_.gemm_helper().right_rank() - nc;
 
     // Get pointers to the argument sizes
@@ -1707,7 +1734,11 @@ class ContEngine : public BinaryEngine<Derived> {
               TiledArray::detail::is_contraction_arena_tot_v<
                   result_tile_type, left_tile_type, right_tile_type>;
           if constexpr (arena_eligible_scale) {
-            if (this->outer_product_uses_summa()) {
+            // the fused arena scale ops are factor-free; a non-unit
+            // expression-level prefactor (ScalMult) takes the fallback op,
+            // which absorbs it
+            if (this->outer_product_uses_summa() &&
+                this->factor_ == scalar_type(1)) {
               // The inner perm handed to the plan must match how the inner
               // *result* permutation is applied for this result cell type --
               // and the two cell types apply it in different places:
@@ -1741,45 +1772,48 @@ class ContEngine : public BinaryEngine<Derived> {
           // cells. The Hadamard outer product is an assignment
           // `result = (perm ^ tot) * scalar`, which needs value-returning
           // `scale`; only owning inner cells support it.
-          auto fallback_op = [perm = !this->implicit_permute_inner_
-                                         ? inner(this->perm_)
-                                         : Permutation{},
-                              outer_uses_summa =
-                                  this->outer_product_uses_summa()](
-                                 result_tile_element_type& result,
-                                 const left_tile_element_type& left,
-                                 const right_tile_element_type& right) {
-            if (outer_uses_summa) {
-              using TiledArray::axpy_to;
-              if constexpr (tot_x_t) {
-                if (left.empty()) return;  // absent cell: no contribution
-                if (perm)
-                  axpy_to(result, left, right, perm);
-                else
-                  axpy_to(result, left, right);
-              } else {
-                if (right.empty()) return;  // absent cell: no contribution
-                if (perm)
-                  axpy_to(result, right, left, perm);
-                else
-                  axpy_to(result, right, left);
-              }
-            } else {
-              if constexpr (!TiledArray::is_tensor_view_v<
-                                result_tile_element_type>) {
-                using TiledArray::scale;
-                if constexpr (tot_x_t)
-                  result = perm ? scale(left, right, perm) : scale(left, right);
-                else
-                  result = perm ? scale(right, left, perm) : scale(right, left);
-              } else {
-                TA_EXCEPTION(
-                    "Tensor<View> scale-inner Hadamard-outer product: a "
-                    "view result cell cannot be value-assigned a fresh "
-                    "scaled tensor");
-              }
-            }
-          };
+          // N.B. the expression-level scalar prefactor (factor_, != 1 for
+          // ScalMult expressions) multiplies the plain operand's element
+          auto fallback_op =
+              [perm = !this->implicit_permute_inner_ ? inner(this->perm_)
+                                                     : Permutation{},
+               outer_uses_summa = this->outer_product_uses_summa(),
+               factor = this->factor_](result_tile_element_type& result,
+                                       const left_tile_element_type& left,
+                                       const right_tile_element_type& right) {
+                if (outer_uses_summa) {
+                  using TiledArray::axpy_to;
+                  if constexpr (tot_x_t) {
+                    if (left.empty()) return;  // absent cell: no contribution
+                    if (perm)
+                      axpy_to(result, left, right * factor, perm);
+                    else
+                      axpy_to(result, left, right * factor);
+                  } else {
+                    if (right.empty()) return;  // absent cell: no contribution
+                    if (perm)
+                      axpy_to(result, right, left * factor, perm);
+                    else
+                      axpy_to(result, right, left * factor);
+                  }
+                } else {
+                  if constexpr (!TiledArray::is_tensor_view_v<
+                                    result_tile_element_type>) {
+                    using TiledArray::scale;
+                    if constexpr (tot_x_t)
+                      result = perm ? scale(left, right * factor, perm)
+                                    : scale(left, right * factor);
+                    else
+                      result = perm ? scale(right, left * factor, perm)
+                                    : scale(right, left * factor);
+                  } else {
+                    TA_EXCEPTION(
+                        "Tensor<View> scale-inner Hadamard-outer product: a "
+                        "view result cell cannot be value-assigned a fresh "
+                        "scaled tensor");
+                  }
+                }
+              };
           if constexpr (arena_eligible_scale) {
             if (this->arena_plan_) {
               if constexpr (tot_x_t)
