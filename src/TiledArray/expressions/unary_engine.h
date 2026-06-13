@@ -120,6 +120,16 @@ class UnaryEngine : ExprEngine<Derived> {
     indices_ = arg_.indices();
   }
 
+  /// \return the indices this subtree can supply (Phase E up-pass): a unary
+  /// op supplies exactly what its argument supplies (valid before init)
+  decltype(auto) available_indices() const { return arg_.available_indices(); }
+
+  /// \return the layout this subtree prefers for producing the index set of
+  /// \p demand: a unary op defers to its argument's preference
+  decltype(auto) preferred_layout(const BipartiteIndexList& demand) const {
+    return arg_.preferred_layout(demand);
+  }
+
   /// Initialize result tensor structure
 
   /// This function will initialize the permutation, tiled range, and shape

@@ -260,7 +260,19 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   void perm_indices(const BipartiteIndexList& target_indices) {
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::perm_indices(target_indices);
-    else {
+    else if (this->product_type() == TensorProduct::General) {
+      // mirror ContEngine_::perm_indices, but lay out via
+      // GeneralPermutationOptimizer (the target determines which shared
+      // indices are fused vs contracted)
+      if (!this->implicit_permute()) {
+        BinaryEngine_::template init_indices_<TensorProduct::General>(
+            target_indices);
+        if (BinaryEngine_::left_indices_ != BinaryEngine_::left_.indices())
+          BinaryEngine_::left_.perm_indices(BinaryEngine_::left_indices_);
+        if (BinaryEngine_::right_indices_ != BinaryEngine_::right_.indices())
+          BinaryEngine_::right_.perm_indices(BinaryEngine_::right_indices_);
+      }
+    } else {
       BinaryEngine_::perm_indices(target_indices);
     }
   }
@@ -269,12 +281,26 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// \param target_indices The target index list for this expression
   void init_indices(const BipartiteIndexList& target_indices) {
-    // to decide what type of product this is must initialize indices down
-    // the tree.
-    // N.B. since this may be a contraction we do not know the target indices
-    // for the left and right, hence do target-neutral initialization
-    BinaryEngine_::left_.init_indices();
-    BinaryEngine_::right_.init_indices();
+    // Deduce each child's index SET top-down (Phase E). The index set an
+    // inner node must produce depends on what its ancestors need: a shared
+    // index of the two children is fused iff this node's target carries it,
+    // contracted here otherwise; an index of one child that neither the
+    // sibling nor the target carries is consumed entirely within that
+    // child's subtree and is not demanded of it.
+    // Each child's demand is ordered target-kept-first (the indices this
+    // node's result keeps, in target order) followed by the
+    // contracted-here indices in the child's leaf-availability order --
+    // fused indices thus lead, matching the canonical layouts of
+    // GeneralPermutationOptimizer (h leading) so the nbatch fold stays
+    // zero-copy. E.g. in the THC-like g("p,q,r,s") = X("p,r1") * X("q,r1")
+    // * Z("r1,r2") * ... the index r1 is demanded of X*X by its consumer
+    // (fused there), and contracted where Z meets the X*X subtree.
+    // N.B. expressions consumed WITHOUT a target (reductions, e.g. dot)
+    // take the no-target init_indices() overload below, which retains the
+    // bottom-up contraction convention -- general products under
+    // reductions remain unsupported.
+    BinaryEngine_::init_children_indices(target_indices);
+
     this->product_type_ = compute_product_type(
         outer(BinaryEngine_::left_.indices()),
         outer(BinaryEngine_::right_.indices()), outer(target_indices));
@@ -282,24 +308,27 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
         inner(BinaryEngine_::left_.indices()),
         inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
-    // TODO support general products that involve fused, contracted, and free
-    // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
-    // contracted, and index j is fused
-    // N.B. Currently only 2 types of products are supported:
-    // - Hadamard product (in which all indices are fused), and,
-    // - pure contraction (>=1 contracted, 0 fused, >=1 free indices)
-    // For the ToT arguments only the Hadamard product is supported
+    if (this->inner_product_type_ == TensorProduct::General)
+      TA_EXCEPTION(
+          "MultEngine: general products (fused + contracted + free indices) "
+          "between the inner (nested) indices of tensors-of-tensors are not "
+          "supported");
 
     // Check the *outer* indices to determine whether the arguments are
-    // - contracted, or
-    // - Hadamard-multiplied
-    // The latter is indicated by the equality (modulo permutation) of
-    // the outer left and right arg indices to the target indices.
+    // - Hadamard-multiplied (outer left, right, and target indices are all
+    //   related by permutations),
+    // - contracted (no index appears in left, right, AND target), or
+    // - generally multiplied (fused, contracted, and free indices coexist,
+    //   e.g. "b,i,j" * "b,j,k" -> "b,i,k"); the layout then depends on the
+    //   target, which determines the role (fused vs contracted) of every
+    //   shared index.
     // Only the outer indices matter here since the inner indices only encode
     // the tile op; the type of the tile op does not need to match the type of
     // the operation on the outer indices
     if (this->product_type() == TensorProduct::Hadamard) {
       BinaryEngine_::perm_indices(target_indices);
+    } else if (this->product_type() == TensorProduct::General) {
+      this->perm_indices(target_indices);
     } else {
       auto children_initialized = true;
       ContEngine_::init_indices(children_initialized);
@@ -328,12 +357,55 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     }
   }
 
+  /// \return the layout this product prefers for producing the index set of
+  /// \p demand: the canonical general-product result layout (h, eA, eB) --
+  /// indices supplied by both children (fused here) lead, then indices
+  /// supplied by the left child only, then by the right child only, each
+  /// group in demand order. h-leading is required when this node resolves to
+  /// a general product (general results cannot host a result permutation and
+  /// the nbatch fold needs the fused modes leading); for a pure contraction
+  /// (empty h) the (eA, eB) order matches the GEMM result, and for a pure
+  /// Hadamard the demand order is preserved.
+  BipartiteIndexList preferred_layout(const BipartiteIndexList& demand) const {
+    auto const avail_l = BinaryEngine_::left_.available_indices();
+    auto const avail_r = BinaryEngine_::right_.available_indices();
+    auto canonical = [](auto const& d, auto const& al, auto const& ar) {
+      container::svector<std::string> h, ea, eb;
+      for (auto&& idx : d) {
+        bool const inl = al.count(idx);
+        bool const inr = ar.count(idx);
+        if (inl && inr)
+          h.push_back(idx);
+        else if (inl)
+          ea.push_back(idx);
+        else
+          eb.push_back(idx);
+      }
+      h.insert(h.end(), ea.begin(), ea.end());
+      h.insert(h.end(), eb.begin(), eb.end());
+      return h;
+    };
+    auto const out = canonical(outer(demand), outer(avail_l), outer(avail_r));
+    auto const in = canonical(inner(demand), inner(avail_l), inner(avail_r));
+    return BipartiteIndexList(IndexList(out.begin(), out.end()),
+                              IndexList(in.begin(), in.end()));
+  }
+
   /// Initialize result tensor structure
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    if (this->product_type() == TensorProduct::General) {
+      // the inner tile op (for tensors-of-tensors) must be initialized
+      // first; init_struct_general consumes element_nonreturn_op_ and the
+      // arena plan it builds
+      this->init_inner_tile_op(inner(target_indices));
+      ContEngine_::init_struct_general(target_indices);
+      return;
+    }
+
     this->init_perm(target_indices);
 
     // for ContEngine_::init_struct need to initialize element op first
@@ -354,6 +426,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
                          std::shared_ptr<const pmap_interface> pmap) {
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_distribution(world, pmap);
+    else if (this->product_type() == TensorProduct::General)
+      ContEngine_::init_distribution_general(world, pmap);
     else
       BinaryEngine_::init_distribution(world, pmap);
   }
@@ -364,6 +438,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   trange_type make_trange() const {
     if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange();
+    else if (this->product_type() == TensorProduct::General)
+      return ContEngine_::make_trange_general();
     else
       return BinaryEngine_::make_trange();
   }
@@ -485,6 +561,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   dist_eval_type make_dist_eval() const {
     if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_dist_eval();
+    else if (this->product_type() == TensorProduct::General)
+      return ContEngine_::make_dist_eval_general();
     else
       return BinaryEngine_::make_dist_eval();
   }
@@ -576,7 +654,16 @@ class ScalMultEngine
   void perm_indices(const BipartiteIndexList& target_indices) {
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::perm_indices(target_indices);
-    else {
+    else if (this->product_type() == TensorProduct::General) {
+      if (!this->implicit_permute()) {
+        BinaryEngine_::template init_indices_<TensorProduct::General>(
+            target_indices);
+        if (BinaryEngine_::left_indices_ != BinaryEngine_::left_.indices())
+          BinaryEngine_::left_.perm_indices(BinaryEngine_::left_indices_);
+        if (BinaryEngine_::right_indices_ != BinaryEngine_::right_.indices())
+          BinaryEngine_::right_.perm_indices(BinaryEngine_::right_indices_);
+      }
+    } else {
       BinaryEngine_::perm_indices(target_indices);
     }
   }
@@ -585,18 +672,34 @@ class ScalMultEngine
 
   /// \param target_indices The target index list for this expression
   void init_indices(const BipartiteIndexList& target_indices) {
-    BinaryEngine_::left_.init_indices();
-    BinaryEngine_::right_.init_indices();
+    // deduce the children's index sets top-down (see
+    // BinaryEngine::init_children_indices), then classify and route exactly
+    // as MultEngine does (the scalar factor does not affect index roles)
+    BinaryEngine_::init_children_indices(target_indices);
+
     this->product_type_ = compute_product_type(
         outer(BinaryEngine_::left_.indices()),
         outer(BinaryEngine_::right_.indices()), outer(target_indices));
+    this->inner_product_type_ = compute_product_type(
+        inner(BinaryEngine_::left_.indices()),
+        inner(BinaryEngine_::right_.indices()), inner(target_indices));
+
+    if (this->inner_product_type_ == TensorProduct::General)
+      TA_EXCEPTION(
+          "ScalMultEngine: general products (fused + contracted + free "
+          "indices) between the inner (nested) indices of tensors-of-tensors "
+          "are not supported");
 
     if (this->product_type() == TensorProduct::Hadamard) {
       // since already initialized left and right arg indices assign the target
       // indices
       BinaryEngine_::perm_indices(target_indices);
+    } else if (this->product_type() == TensorProduct::General) {
+      this->perm_indices(target_indices);
     } else {
-      ContEngine_::init_indices(target_indices);
+      auto children_initialized = true;
+      ContEngine_::init_indices(children_initialized);
+      ContEngine_::perm_indices(target_indices);
     }
   }
 
@@ -628,6 +731,15 @@ class ScalMultEngine
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    if (this->product_type() == TensorProduct::General) {
+      // the inner tile op (for tensors-of-tensors) must be initialized
+      // first; init_struct_general consumes element_nonreturn_op_ and the
+      // arena plan it builds
+      this->init_inner_tile_op(inner(target_indices));
+      ContEngine_::init_struct_general(target_indices);
+      return;
+    }
+
     this->init_perm(target_indices);
 
     // for ContEngine_::init_struct need to initialize element op first
@@ -648,6 +760,8 @@ class ScalMultEngine
                          std::shared_ptr<const pmap_interface> pmap) {
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_distribution(world, pmap);
+    else if (this->product_type() == TensorProduct::General)
+      ContEngine_::init_distribution_general(world, pmap);
     else
       BinaryEngine_::init_distribution(world, pmap);
   }
@@ -658,6 +772,8 @@ class ScalMultEngine
   dist_eval_type make_dist_eval() const {
     if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_dist_eval();
+    else if (this->product_type() == TensorProduct::General)
+      return ContEngine_::make_dist_eval_general();
     else
       return BinaryEngine_::make_dist_eval();
   }
@@ -668,6 +784,8 @@ class ScalMultEngine
   trange_type make_trange() const {
     if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange();
+    else if (this->product_type() == TensorProduct::General)
+      return ContEngine_::make_trange_general();
     else
       return BinaryEngine_::make_trange();
   }

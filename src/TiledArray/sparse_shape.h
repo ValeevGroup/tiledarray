@@ -1690,6 +1690,196 @@ class SparseShape {
     return gemm(other, factor, gemm_helper).perm(perm);
   }
 
+  /// Batched (fused-index) analogue of gemm
+
+  /// Computes the shape of a *general* product (fused + contracted + free
+  /// indices): the leading \p nfused modes of both shapes and of the result
+  /// are fused (Hadamard/batch) modes, and each fused-index slab is
+  /// contracted exactly as in gemm using the *folded* (fused-mode-free)
+  /// \p gemm_helper.
+  /// \tparam Factor The scaling factor type
+  /// \param other The right-hand shape; its leading \p nfused modes must be
+  ///        congruent with this shape's
+  /// \param factor The scaling factor
+  /// \param gemm_helper The folded (fused-mode-free) GEMM helper
+  /// \param nfused The number of leading fused modes
+  template <typename Factor>
+  SparseShape_ gemm_batched(const SparseShape_& other, const Factor factor,
+                            const math::GemmHelper& gemm_helper,
+                            const unsigned int nfused) const {
+    TA_ASSERT(!tile_norms_.empty());
+    TA_ASSERT(!other.tile_norms_.empty());
+
+    const value_type abs_factor = to_abs_factor(factor);
+    const value_type threshold = threshold_;
+    madness::AtomicInt zero_tile_count;
+    zero_tile_count = 0;
+
+    // the number of fused-index slabs and the folded matrix sizes
+    using integer = TiledArray::math::blas::integer;
+    const auto* left_extent = tile_norms_.range().extent_data();
+    const auto* right_extent = other.tile_norms_.range().extent_data();
+
+    // a no-external product carries a SYNTHETIC unit left-external mode in
+    // the GemmHelper only (see ContEngine::init_struct_general); detect it
+    // from the one-rank mismatch with the actual norm tensor and pad the
+    // folded left/result views with a unit extent
+    const bool unit_external =
+        (tile_norms_.range().rank() + 1u == nfused + gemm_helper.left_rank());
+    const unsigned int u = unit_external ? 1u : 0u;
+
+    // check that the ranks match the folded gemm ranks plus the fused modes,
+    // and that the fused and contracted mode extents of the two shapes are
+    // congruent
+    TA_ASSERT(tile_norms_.range().rank() + u ==
+              nfused + gemm_helper.left_rank());
+    TA_ASSERT(other.tile_norms_.range().rank() ==
+              nfused + gemm_helper.right_rank());
+    for (unsigned int d = 0u; d < nfused; ++d)
+      TA_ASSERT(left_extent[d] == right_extent[d]);
+    for (unsigned int i = gemm_helper.left_inner_begin(),
+                      j = gemm_helper.right_inner_begin();
+         i < gemm_helper.left_inner_end(); ++i, ++j)
+      TA_ASSERT(left_extent[nfused + i - u] == right_extent[nfused + j]);
+
+    integer H = 1, M = 1, N = 1, K = 1;
+    for (unsigned int d = 0u; d < nfused; ++d) H *= left_extent[d];
+    if (!unit_external)
+      for (unsigned int i = gemm_helper.left_outer_begin();
+           i < gemm_helper.left_outer_end(); ++i)
+        M *= left_extent[nfused + i];
+    for (unsigned int i = gemm_helper.left_inner_begin();
+         i < gemm_helper.left_inner_end(); ++i)
+      K *= left_extent[nfused + i - u];
+    for (unsigned int i = gemm_helper.right_outer_begin();
+         i < gemm_helper.right_outer_end(); ++i)
+      N *= right_extent[nfused + i];
+
+    // result size vectors: fused modes (from this), then the left and right
+    // outer modes (the synthetic unit left-external mode is absent from the
+    // actual result)
+    const unsigned int result_rank = nfused + gemm_helper.result_rank() - u;
+    std::shared_ptr<vector_type> result_size_vectors(
+        new vector_type[result_rank], std::default_delete<vector_type[]>());
+    unsigned int x = 0ul;
+    for (unsigned int i = 0u; i < nfused; ++i, ++x)
+      result_size_vectors.get()[x] = size_vectors_.get()[i];
+    if (!unit_external)
+      for (unsigned int i = gemm_helper.left_outer_begin();
+           i < gemm_helper.left_outer_end(); ++i, ++x)
+        result_size_vectors.get()[x] = size_vectors_.get()[nfused + i];
+    for (unsigned int i = gemm_helper.right_outer_begin();
+         i < gemm_helper.right_outer_end(); ++i, ++x)
+      result_size_vectors.get()[x] = other.size_vectors_.get()[nfused + i];
+
+    // the result norm tensor over (fused..., left outer..., right outer...)
+    using range_type = typename Tensor<value_type>::range_type;
+    using index1_type = typename range_type::index1_type;
+    container::svector<index1_type> lobounds, upbounds;
+    lobounds.reserve(result_rank);
+    upbounds.reserve(result_rank);
+    for (unsigned int d = 0u; d < nfused; ++d) {
+      lobounds.push_back(tile_norms_.range().lobound_data()[d]);
+      upbounds.push_back(tile_norms_.range().upbound_data()[d]);
+    }
+    if (!unit_external)
+      for (unsigned int i = gemm_helper.left_outer_begin();
+           i < gemm_helper.left_outer_end(); ++i) {
+        lobounds.push_back(tile_norms_.range().lobound_data()[nfused + i]);
+        upbounds.push_back(tile_norms_.range().upbound_data()[nfused + i]);
+      }
+    for (unsigned int i = gemm_helper.right_outer_begin();
+         i < gemm_helper.right_outer_end(); ++i) {
+      lobounds.push_back(other.tile_norms_.range().lobound_data()[nfused + i]);
+      upbounds.push_back(other.tile_norms_.range().upbound_data()[nfused + i]);
+    }
+    Tensor<value_type> result_norms(range_type(lobounds, upbounds), 0);
+
+    // the range spanned by modes [nfused, rank) of \p r, rebased to zero
+    // lobounds (scratch view for the slab-batched norm GEMM)
+    auto fold_range = [nfused](const range_type& r,
+                               const bool prepend_unit = false) {
+      const auto* extent = r.extent_data();
+      container::svector<index1_type> extents;
+      extents.reserve(r.rank() - nfused + (prepend_unit ? 1u : 0u));
+      if (prepend_unit) extents.push_back(1);
+      extents.insert(extents.end(), extent + nfused, extent + r.rank());
+      return range_type(extents);
+    };
+
+    // the number of inner ranks
+    const unsigned int k_rank =
+        gemm_helper.left_inner_end() - gemm_helper.left_inner_begin();
+
+    if (k_rank > 0u) {
+      // the contracted-mode size vector; identical for every slab since the
+      // contracted modes follow the fused modes (helper coordinates carry
+      // the synthetic unit mode, the actual size vectors do not)
+      const vector_type k_sizes = recursive_outer_product(
+          size_vectors_.get() + nfused + gemm_helper.left_inner_begin() - u,
+          k_rank, [](const vector_type& size_vector) -> const vector_type& {
+            return size_vector;
+          });
+
+      // scale the rows of the left norms (k_sizes pattern repeats per slab)
+      Tensor<value_type> left(tile_norms_.range());
+      const size_type hmk = H * M * K;
+      auto left_op = [](const value_type left, const value_type right) {
+        return left * right;
+      };
+      for (size_type i = 0ul; i < hmk; i += K)
+        math::vector_op(left_op, K, left.data() + i, tile_norms_.data() + i,
+                        k_sizes.data());
+
+      // scale the rows of the right norms (within-slab row r has factor
+      // k_sizes[r % K])
+      Tensor<value_type> right(other.tile_norms_.range());
+      const size_type hk = H * K;
+      for (size_type i = 0ul, r = 0ul; r < hk; i += N, ++r) {
+        const value_type factor = k_sizes[r % K];
+        auto right_op = [=](const value_type arg) { return arg * factor; };
+        math::vector_op(right_op, N, right.data() + i,
+                        other.tile_norms_.data() + i);
+      }
+
+      // slab-batched norm GEMM: fold the fused modes into the tensor batch
+      // dimension by zero-copy reshape; result_folded shares result_norms'
+      // buffer, so the accumulation lands in place
+      auto left_folded =
+          left.reshape(fold_range(left.range(), unit_external), H);
+      auto right_folded = right.reshape(fold_range(right.range()), H);
+      auto result_folded = result_norms.reshape(
+          fold_range(result_norms.range(), unit_external), H);
+      result_folded.gemm(left_folded, right_folded, abs_factor, gemm_helper);
+
+      // Hard zero tiles that are below the zero threshold.
+      result_norms.inplace_unary(
+          [threshold, &zero_tile_count](value_type& value) {
+            if (value < threshold) {
+              value = value_type(0);
+              ++zero_tile_count;
+            }
+          });
+    } else {
+      // batched outer product: per-slab outer products of the norms
+      for (integer h = 0; h < H; ++h)
+        math::outer_fill(M, N, tile_norms_.data() + h * M,
+                         other.tile_norms_.data() + h * N,
+                         result_norms.data() + h * M * N,
+                         [threshold, &zero_tile_count, abs_factor](
+                             const value_type left, const value_type right) {
+                           value_type norm = left * right * abs_factor;
+                           if (norm < threshold) {
+                             norm = value_type(0);
+                             ++zero_tile_count;
+                           }
+                           return norm;
+                         });
+    }
+
+    return SparseShape_(result_norms, result_size_vectors, zero_tile_count);
+  }
+
   template <typename Archive,
             typename std::enable_if<madness::is_input_archive_v<
                 std::decay_t<Archive>>>::type* = nullptr>

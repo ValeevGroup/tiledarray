@@ -127,6 +127,18 @@ class LeafEngine : public ExprEngine<Derived> {
   /// This function is a noop since the index list is fixed.
   void init_indices() {}
 
+  /// \return the indices this subtree can supply (Phase E up-pass): for a
+  /// leaf, simply its annotation (set at construction, valid before init)
+  const BipartiteIndexList& available_indices() const { return indices_; }
+
+  /// \return the layout this subtree prefers for producing the index set of
+  /// \p demand: a leaf accepts any ordering (the consumer aligns against the
+  /// fixed annotation by permutation), so the demand is returned unchanged
+  const BipartiteIndexList& preferred_layout(
+      const BipartiteIndexList& demand) const {
+    return demand;
+  }
+
   void init_distribution(World* world,
                          const std::shared_ptr<const pmap_interface>& pmap) {
     ExprEngine_::init_distribution(world, (pmap ? pmap : array_.pmap()));

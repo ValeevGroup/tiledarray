@@ -3,6 +3,7 @@
 
 #include "TiledArray/conversions/make_array.h"
 #include "TiledArray/dist_array.h"
+#include "TiledArray/einsum/einsum_instrument.h"
 #include "TiledArray/einsum/index.h"
 #include "TiledArray/einsum/range.h"
 #include "TiledArray/expressions/fwd.h"
@@ -13,9 +14,60 @@
 
 #include <madness/world/thread.h>
 
+#include <cstdlib>
+#include <optional>
+#include <string_view>
+
 namespace TiledArray {
 enum struct DeNest { True, False };
 }
+
+namespace TiledArray::detail {
+
+/// Runtime toggle for the legacy per-Hadamard-slab sub-World evaluation of
+/// general products in einsum.
+///
+/// einsum can route a general product (fused + contracted + free indices)
+/// through the expression layer's native support (TensorProduct::General,
+/// evaluated by the batched Summa: one task graph in one World, no per-slab
+/// sub-Worlds) or through the legacy path (one MPI_Comm_split + sub-World +
+/// fence per Hadamard slab). The expression route is the DEFAULT; set
+/// TA_EINSUM_LEGACY_SUBWORLD in the environment (any non-empty value other
+/// than "0"), or assign \c true to the reference returned by this function,
+/// to force the legacy path. The legacy implementation is retained
+/// indefinitely as a reference for differential testing
+/// (TA_EINSUM_DIFFERENTIAL).
+///
+/// \note the two routes may legitimately differ on block-sparse data: the
+/// legacy path derives the result shape from the harvested tile norms and
+/// thus hard-zeroes sub-threshold result tiles, while the expression route
+/// keeps them (its shape is the standard estimate-derived contraction
+/// shape). Per the TA screening philosophy norms are trusted as genuine and
+/// no implicit truncation is performed; call truncate() explicitly if the
+/// tighter shape is desired.
+inline bool &einsum_legacy_subworld() {
+  static bool flag = [] {
+    const char *e = std::getenv("TA_EINSUM_LEGACY_SUBWORLD");
+    return e != nullptr && e[0] != char(0) && std::string_view(e) != "0";
+  }();
+  return flag;
+}
+
+/// Differential-testing mode for einsum's general products: when enabled
+/// (TA_EINSUM_DIFFERENTIAL set to a non-empty value other than "0"), every
+/// general product is evaluated by BOTH the expression route and the legacy
+/// sub-World route; the two results are compared (squared norm of the
+/// difference) and mismatches are reported to stderr with the contraction
+/// annotation. The legacy result is returned.
+inline bool &einsum_differential() {
+  static bool flag = [] {
+    const char *e = std::getenv("TA_EINSUM_DIFFERENTIAL");
+    return e != nullptr && e[0] != '\0' && std::string_view(e) != "0";
+  }();
+  return flag;
+}
+
+}  // namespace TiledArray::detail
 
 namespace TiledArray::Einsum {
 
@@ -468,7 +520,12 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
   // blocking calls
   // TODO figure out why having free threads left after blocking MPI split
   //  still not enough to ensure progress
+  const auto _ein_entry_t0 =
+      detail::einsum_instrument_enabled() ? now() : time_point{};
   world.gop.fence();
+  const std::int64_t _ein_entry_fence_ns =
+      detail::einsum_instrument_enabled() ? duration_in_ns(_ein_entry_t0, now())
+                                          : 0;
 
   using ArrayA = std::remove_cv_t<ArrayA_>;
   using ArrayB = std::remove_cv_t<ArrayB_>;
@@ -517,6 +574,12 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       TA_ASSERT(!(inner.h && (inner.i || inner.e)) &&
                 "General product between inner tensors not supported");
   }
+
+  // einsum attribution profiler (TA_EINSUM_INSTRUMENT); no-op when disabled
+  detail::EinsumCall _ein_call{(std::string)a + inner.a + " * " +
+                               (std::string)b + inner.b + " -> " +
+                               (std::string)c + inner.c};
+  _ein_call.add(detail::EinsumBucket::EntryFence, _ein_entry_fence_ns);
 
   if constexpr (DeNestFlag == DeNest::True) {
     static_assert(detail::nested_rank<ArrayA> == detail::nested_rank<ArrayB> &&
@@ -610,23 +673,38 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     auto range_map =
         (RangeMap(a, A.array().trange()) | RangeMap(b, B.array().trange()));
 
-    // special Hadamard
+    // Fused broadcast: one operand is ENTIRELY fused (h == its index set) and
+    // there is no contraction -- C(h,e) = A * B, a per-fused-block scale. The
+    // general-product expression engine evaluates this natively when the
+    // fully-fused operand LEADS (it folds to a rank-0 left tile, restored by a
+    // synthetic unit left-external mode; see ContEngine::
+    // synthetic_unit_left_external). Order the fully-fused operand first and
+    // delegate -- no physical replication needed.
     if (h.size() == a.size() || h.size() == b.size()) {
       TA_ASSERT(!i && e);
-      bool const small_a = h.size() == a.size();
-      auto const delta_trng = make_trange(range_map, e);
-      std::string target_layout = std::string(c) + inner.c;
-      ArrayC C;
-      if (small_a) {
-        auto temp = replicate_array(A.array(), delta_trng);
-        std::string temp_layout = std::string(e) + "," + A.annotation();
-        C(target_layout) = temp(temp_layout) * B;
-      } else {
-        auto temp = replicate_array(B.array(), delta_trng);
-        std::string temp_layout = std::string(e) + "," + B.annotation();
-        C(target_layout) = A * temp(temp_layout);
+      _ein_call.branch = "fused-broadcast-expression";
+      const bool a_leads = (h.size() == a.size());  // A entirely fused?
+      // the engine produces the result in its canonical inner layout
+      // (inner fused, then left-then-right inner externals, in the order the
+      // operands are handed to it) and rejects a non-identity inner result
+      // permutation; evaluate canonically, then apply the inner permutation
+      // (cf. the generalized-inner-perm-recurse path below). The canonical
+      // inner-external order tracks the operand order, so mirror the swap.
+      std::string canon_inner;
+      if constexpr (IsArrayToT<ArrayC>) {
+        auto inner_e = a_leads ? (inner.A ^ inner.B) : (inner.B ^ inner.A);
+        canon_inner = ";" + (std::string)(inner.h + inner_e);
       }
-
+      std::string canon_layout = std::string(c) + canon_inner;
+      ArrayC C0;
+      if (a_leads)  // A fully fused -> already leads
+        C0(canon_layout) = A * B;
+      else  // B fully fused -> put it first (multiplication commutes)
+        C0(canon_layout) = B * A;
+      std::string target_layout = std::string(c) + inner.c;
+      if (target_layout == canon_layout) return C0;
+      ArrayC C;
+      C(target_layout) = C0(canon_layout);  // inner-permute to requested layout
       return C;
     }
 
@@ -728,7 +806,31 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
       }
     }
 
-    if (!e) {  // hadamard reduction
+    if (!e) {  // no external outer index (fused + contracted): a nesting-
+               // preserving reduction. By default the expression layer handles
+               // it natively (synthetic unit left-external mode, see
+               // ContEngine::synthetic_unit_left_external); the legacy local
+               // kernel below is retained only as the opt-in legacy
+               // cross-check oracle (cf. the generalized-subworld path).
+      if (!detail::einsum_legacy_subworld()) {
+        _ein_call.branch = "no-external-expression";
+        // evaluate in the engine's canonical inner layout, then apply any
+        // inner result permutation (cf. the broadcast / inner-perm-recurse)
+        std::string canon_inner;
+        if constexpr (IsArrayToT<ArrayC>)
+          canon_inner = ";" + (std::string)(inner.h + inner.e);
+        std::string canon_layout = std::string(c) + canon_inner;
+        ArrayC C0;
+        C0(canon_layout) = A * B;
+        std::string target_layout = std::string(c) + inner.c;
+        if (target_layout == canon_layout) return C0;
+        ArrayC C;
+        C(target_layout) = C0(canon_layout);
+        return C;
+      }
+
+      _ein_call.branch = "hadamard-reduction-local";
+      const auto _ein_he_t0 = _ein_call.active ? now() : time_point{};
 
       auto &[A, B] = AB;
       TiledRange trange(range_map[i]);
@@ -866,6 +968,9 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         C_local_tiles.emplace_back(std::move(c), std::move(tile));
       }
 
+      _ein_call.add(detail::EinsumBucket::LocalKernel,
+                    _ein_call.active ? duration_in_ns(_ein_he_t0, now()) : 0);
+
       build_C_array();
 
       return C.array;
@@ -873,11 +978,15 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
 
     // generalized contraction
 
+    _ein_call.branch = "generalized-subworld";
+    const auto _ein_gen_t0 = _ein_call.active ? now() : time_point{};
+
     if constexpr (IsArrayToT<ArrayC>) {
       if (inner.C != inner.h + inner.e) {
         // when inner tensor permutation is non-trivial (could be potentially
         // elided by extending this function (@c einsum) to take into account
         // of inner tensor's permutations)
+        _ein_call.branch = "generalized-inner-perm-recurse";
         auto temp_annot = std::string(c) + ";" + std::string(inner.h + inner.e);
         ArrayC temp = einsum(tnsrExprA, tnsrExprB,
                              Einsum::idx<ArrayC>(temp_annot), world);
@@ -885,6 +994,35 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
         result(std::string(c) + inner.c) = temp(temp_annot);
         return result;
       }
+    }
+
+    // Route the general product through the expression layer's native
+    // support (TensorProduct::General -> batched Summa: one task graph in
+    // one World, no per-slab sub-Worlds) unless the legacy path is forced
+    // (see detail::einsum_legacy_subworld). The engine requires the
+    // canonical (fused..., left-free..., right-free...) result layout; an
+    // arbitrary einsum target is reached by a final permutation assignment.
+    // N.B. the inner annotation is already canonical here (the non-trivial
+    // inner permutation case recursed above).
+    std::optional<ArrayC> expr_route_result;
+    if (!detail::einsum_legacy_subworld() || detail::einsum_differential()) {
+      _ein_call.branch = "generalized-expression";
+      detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::LocalKernel);
+
+      TensorOpIndices<std::string> top(a, b, c);
+      const auto c_canon = top.ix_C_canon();
+      ArrayC result;
+      result(std::string(c_canon) + inner.c) = tnsrExprA * tnsrExprB;
+      if (c_canon == c) {
+        expr_route_result = std::move(result);
+      } else {
+        ArrayC result_perm;
+        result_perm(std::string(c) + inner.c) =
+            result(std::string(c_canon) + inner.c);
+        expr_route_result = std::move(result_perm);
+      }
+      if (!detail::einsum_differential()) return std::move(*expr_route_result);
+      _ein_call.branch = "generalized-subworld";
     }
 
     auto update_tr = [&e = std::as_const(e), &i = std::as_const(i),
@@ -899,13 +1037,21 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
     std::invoke(update_tr, std::get<0>(AB));
     std::invoke(update_tr, std::get<1>(AB));
 
+    _ein_call.add(detail::EinsumBucket::Setup,
+                  _ein_call.active ? duration_in_ns(_ein_gen_t0, now()) : 0);
+
     // iterates over tiles of hadamard indices
     for (Index h : H.tiles) {
       auto &[A, B] = AB;
+      _ein_call.add_slices(1);
+      const auto _ein_cs0 = _ein_call.active ? now() : time_point{};
       auto own = A.own(h) || B.own(h);
       auto comm = madness::blocking_invoke(&SafeMPI::Intracomm::Split,
                                            world.mpi.comm(), own, world.rank());
       worlds.push_back(std::make_unique<World>(comm));
+      _ein_call.add_subworld();
+      _ein_call.add(detail::EinsumBucket::CommSplitWorld,
+                    _ein_call.active ? duration_in_ns(_ein_cs0, now()) : 0);
       auto &owners = worlds.back();
       if (!own) continue;
       size_t batch = 1;
@@ -933,38 +1079,113 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             *owners, term.ei_tiled_range, term.local_tiles.begin(),
             term.local_tiles.end(), replicated);
       };
-      std::invoke(retile, std::get<0>(AB));
-      std::invoke(retile, std::get<1>(AB));
+      {
+        detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::Retile);
+        std::invoke(retile, std::get<0>(AB));
+        std::invoke(retile, std::get<1>(AB));
+      }
 
-      C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
-      A.ei.defer_deleter_to_next_fence();
-      B.ei.defer_deleter_to_next_fence();
-      A.ei = ArrayA();
-      B.ei = ArrayB();
-      // why omitting this fence leads to deadlock?
-      owners->gop.fence();
-      for (Index e : C.tiles) {
-        if (!C.ei.is_local(e)) continue;
-        if (C.ei.is_zero(e)) continue;
-        // TODO no need for immediate evaluation
-        auto tile = C.ei.find_local(e).get();
-        assert(tile.nbatch() == batch);
-        const Permutation &P = C.permutation;
-        auto c = apply(P, h + e);
-        auto shape = C.array.trange().tile(c);
-        shape = apply_inverse(P, shape);
-        tile = tile.reshape(shape);
-        if (P) tile = tile.permute(P);
-        C_local_tiles.emplace_back(std::move(c), std::move(tile));
+      {
+        detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::ContractFence);
+        C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
+        A.ei.defer_deleter_to_next_fence();
+        B.ei.defer_deleter_to_next_fence();
+        A.ei = ArrayA();
+        B.ei = ArrayB();
+        // why omitting this fence leads to deadlock?
+        owners->gop.fence();
+      }
+      {
+        detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::Harvest);
+        for (Index e : C.tiles) {
+          if (!C.ei.is_local(e)) continue;
+          if (C.ei.is_zero(e)) continue;
+          // TODO no need for immediate evaluation
+          auto tile = C.ei.find_local(e).get();
+          assert(tile.nbatch() == batch);
+          const Permutation &P = C.permutation;
+          auto c = apply(P, h + e);
+          auto shape = C.array.trange().tile(c);
+          shape = apply_inverse(P, shape);
+          tile = tile.reshape(shape);
+          if (P) tile = tile.permute(P);
+          C_local_tiles.emplace_back(std::move(c), std::move(tile));
+        }
       }
       // mark for lazy deletion
       C.ei = ArrayC();
     }
 
-    build_C_array();
+    {
+      detail::EinsumTimer _t(_ein_call, detail::EinsumBucket::Teardown);
+      build_C_array();
 
-    for (auto &w : worlds) {
-      w->gop.fence();
+      for (auto &w : worlds) {
+        w->gop.fence();
+      }
+    }
+
+    if (expr_route_result) {
+      // differential mode: compare the expression route against the legacy
+      // result
+      const std::string c_annot = std::string(c) + inner.c;
+      ArrayC diff;
+      diff(c_annot) = (*expr_route_result)(c_annot)-C.array(c_annot);
+      const double d2 = diff(c_annot).squared_norm().get();
+      const double ref2 = C.array(c_annot).squared_norm().get();
+      if (!(d2 <= 1e-20 * std::max(ref2, 1.0))) {
+        if (world.rank() == 0)
+          std::cerr << "!! einsum DIFFERENTIAL MISMATCH: "
+                    << (std::string)a + inner.a << " * "
+                    << (std::string)b + inner.b << " -> " << c_annot
+                    << " : diff2 = " << d2 << ", legacy2 = " << ref2
+                    << std::endl;
+        // per-tile forensics: compare tile norms of the two routes
+        auto tile_norm2 = [](auto const &tile) -> double {
+          using TileT =
+              std::remove_cv_t<std::remove_reference_t<decltype(tile)>>;
+          double n2 = 0;
+          if constexpr (TiledArray::detail::is_tensor_of_tensor_v<TileT>) {
+            for (std::size_t o = 0; o < tile.range().volume(); ++o) {
+              auto const &cell = tile.data()[o];
+              if (cell.empty()) continue;
+              for (std::size_t e = 0; e < cell.range().volume(); ++e)
+                n2 += std::abs(cell.data()[e]) * std::abs(cell.data()[e]);
+            }
+          } else {
+            for (std::size_t e = 0; e < tile.range().volume() * tile.nbatch();
+                 ++e)
+              n2 += std::abs(tile.data()[e]) * std::abs(tile.data()[e]);
+          }
+          return n2;
+        };
+        const auto ntiles = C.array.trange().tiles_range().volume();
+        std::size_t n_diff = 0, n_expr_zero = 0, n_legacy_zero = 0,
+                    n_printed = 0;
+        for (std::size_t ord = 0; ord < ntiles; ++ord) {
+          const bool ez = expr_route_result->is_zero(ord);
+          const bool lz = C.array.is_zero(ord);
+          double en2 =
+              ez ? 0.0 : tile_norm2(expr_route_result->find(ord).get());
+          double ln2 = lz ? 0.0 : tile_norm2(C.array.find(ord).get());
+          const double dd = std::abs(en2 - ln2);
+          if (dd <= 1e-14 * std::max(std::max(en2, ln2), 1.0)) continue;
+          ++n_diff;
+          if (en2 == 0.0) ++n_expr_zero;
+          if (ln2 == 0.0) ++n_legacy_zero;
+          if (world.rank() == 0 && n_printed < 8) {
+            ++n_printed;
+            std::cerr << "    tile " << ord << " ("
+                      << C.array.trange().tiles_range().idx(ord)
+                      << "): expr_n2 = " << en2 << ", legacy_n2 = " << ln2
+                      << std::endl;
+          }
+        }
+        if (world.rank() == 0)
+          std::cerr << "    summary: " << n_diff << "/" << ntiles
+                    << " tiles differ by norm; expr-zero " << n_expr_zero
+                    << ", legacy-zero " << n_legacy_zero << std::endl;
+      }
     }
 
     return C.array;

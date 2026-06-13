@@ -100,13 +100,20 @@ class BinaryEngine : public ExprEngine<Derived> {
   template <TensorProduct OuterProductType>
   void init_indices_(const BipartiteIndexList& target_indices = {}) {
     static_assert(OuterProductType == TensorProduct::Contraction ||
-                  OuterProductType == TensorProduct::Hadamard);
+                  OuterProductType == TensorProduct::Hadamard ||
+                  OuterProductType == TensorProduct::General);
+    // N.B. a General product's layout depends on the target (the role of a
+    // shared index -- fused vs contracted -- is defined by which indices the
+    // target keeps), so OuterProductType == General requires nonempty
+    // target_indices (GeneralPermutationOptimizer throws otherwise).
     // prefer to permute the arg with fewest leaves to try to minimize the
     // number of possible permutations
-    using permopt_type =
-        std::conditional_t<OuterProductType == TensorProduct::Contraction,
-                           GEMMPermutationOptimizer,
-                           HadamardPermutationOptimizer>;
+    using permopt_type = std::conditional_t<
+        OuterProductType == TensorProduct::Contraction,
+        GEMMPermutationOptimizer,
+        std::conditional_t<OuterProductType == TensorProduct::General,
+                           GeneralPermutationOptimizer,
+                           HadamardPermutationOptimizer>>;
 
     std::shared_ptr<BinaryOpPermutationOptimizer> outer_opt, inner_opt;
     if (!target_indices) {
@@ -220,6 +227,81 @@ class BinaryEngine : public ExprEngine<Derived> {
     init_indices_<TensorProduct::Hadamard>();
     TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
               right_inner_permtype_ == PermutationType::general);
+  }
+
+  /// \return the indices this subtree can supply (Phase E up-pass): the
+  /// first-occurrence-ordered union of the children's available indices,
+  /// outer and inner lists separately. Valid before init: it depends only on
+  /// the leaf annotations, never on resolved (post-init) index sets.
+  BipartiteIndexList available_indices() const {
+    auto union_ = [](auto const& a, auto const& b) {
+      container::svector<std::string> r(a.begin(), a.end());
+      for (auto&& idx : b)
+        if (!a.count(idx)) r.push_back(idx);
+      return r;
+    };
+    auto const l = left_.available_indices();
+    auto const r = right_.available_indices();
+    auto const out = union_(outer(l), outer(r));
+    auto const in = union_(inner(l), inner(r));
+    return BipartiteIndexList(IndexList(out.begin(), out.end()),
+                              IndexList(in.begin(), in.end()));
+  }
+
+  /// \return the layout this subtree prefers for producing the index set of
+  /// \p demand: element-wise binary ops (Add/Subt) impose no layout of their
+  /// own (both children must produce the same set and are aligned by
+  /// permutation), so the demand is returned unchanged. MultEngine overrides
+  /// this with its canonical product layout.
+  const BipartiteIndexList& preferred_layout(
+      const BipartiteIndexList& demand) const {
+    return demand;
+  }
+
+  /// Deduce each child's index SET top-down from this node's target and
+  /// initialize the children with the deduced demands (the product-engine
+  /// down-pass). The index set an inner node must produce depends on what
+  /// its ancestors need: a shared index of the two children is fused iff
+  /// this node's target carries it, contracted here otherwise; an index of
+  /// one child that neither the sibling nor the target carries is consumed
+  /// entirely within that child's subtree and is not demanded of it (a
+  /// genuinely orphaned index -- an implicit trace, unsupported -- surfaces
+  /// as the leaf-level target-is-not-a-permutation error). Each child's
+  /// demand is ordered target-kept-first followed by the contracted-here
+  /// indices in leaf-availability order, then reordered by the child's own
+  /// preferred_layout() (a product child reorders to its canonical
+  /// (fused, left-free, right-free) layout -- a general product cannot host
+  /// a result permutation, and contraction consumers absorb any child
+  /// layout via the GEMM transpose forms).
+  void init_children_indices(const BipartiteIndexList& target_indices) {
+    auto const avail_l = left_.available_indices();
+    auto const avail_r = right_.available_indices();
+    auto demand = [](auto const& avail, auto const& sibling, auto const& tgt) {
+      container::svector<std::string> r;
+      for (auto&& idx : tgt)
+        if (avail.count(idx)) r.push_back(idx);
+      for (auto&& idx : avail) {
+        if (tgt.count(idx)) continue;
+        if (sibling.count(idx)) r.push_back(idx);
+      }
+      return r;
+    };
+    auto bipartite_demand = [&demand](auto const& avail, auto const& sib,
+                                      auto const& tgt) {
+      auto const out = demand(outer(avail), outer(sib), outer(tgt));
+      auto const in = demand(inner(avail), inner(sib), inner(tgt));
+      return BipartiteIndexList(IndexList(out.begin(), out.end()),
+                                IndexList(in.begin(), in.end()));
+    };
+    // Materialize the demands as named lvalues: some preferred_layout()
+    // overloads (leaf/binary/unary) return a reference to their argument, so
+    // binding that to a temporary demand would be needlessly fragile.
+    const BipartiteIndexList left_demand =
+        bipartite_demand(avail_l, avail_r, target_indices);
+    const BipartiteIndexList right_demand =
+        bipartite_demand(avail_r, avail_l, target_indices);
+    left_.init_indices(left_.preferred_layout(left_demand));
+    right_.init_indices(right_.preferred_layout(right_demand));
   }
 
   /// Initialize result tensor structure

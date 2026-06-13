@@ -55,6 +55,14 @@ namespace detail {
 /// \f]
 /// where the positive, real root of \f$P_{\rm{row}}\f$ give the optimal
 /// optimal communication time.
+
+/// Tag to disambiguate the rank-subset ProcGrid constructor from the
+/// (same-arity) test-only constructor.
+struct rank_subset_t {
+  explicit rank_subset_t() = default;
+};
+inline constexpr rank_subset_t rank_subset{};
+
 class ProcGrid {
  public:
   typedef uint_fast32_t size_type;
@@ -71,9 +79,12 @@ class ProcGrid {
                         ///<  may be less than the number of processes in world.
   ProcessID rank_row_;  ///< This process's row in the process grid
   ProcessID rank_col_;  ///< This process's column in the process grid
-  size_type local_rows_;  ///< The number of local element rows
-  size_type local_cols_;  ///< The number of local element columns
-  size_type local_size_;  ///< Number of local elements
+  ProcessID rank_offset_ = 0;  ///< World rank of the grid's first process
+                               ///< (nonzero for a grid over a contiguous
+                               ///< subset of the world's ranks)
+  size_type local_rows_;       ///< The number of local element rows
+  size_type local_cols_;       ///< The number of local element columns
+  size_type local_size_;       ///< Number of local elements
 
   /// Compute the number of process rows that minimizes communication
 
@@ -180,14 +191,16 @@ class ProcGrid {
       proc_cols_ = 1u;
       proc_size_ = 1u;
 
-      // Set this process rank
-      rank_row_ = 0;
-      rank_col_ = 0;
+      if (rank < proc_size_) {
+        // Set this process rank
+        rank_row_ = 0;
+        rank_col_ = 0;
 
-      // Set local counts
-      local_rows_ = rows_;
-      local_cols_ = cols_;
-      local_size_ = size_;
+        // Set local counts
+        local_rows_ = rows_;
+        local_cols_ = cols_;
+        local_size_ = size_;
+      }
 
     } else if (size_ <= nprocs) {  // Max one tile per process
 
@@ -291,6 +304,48 @@ class ProcGrid {
     init(world_->rank(), world_->size(), row_size, col_size);
   }
 
+  /// Construct a process grid over a contiguous subset of the world's ranks
+
+  /// The grid spans world ranks [rank_offset, rank_offset + nprocs); ranks
+  /// outside that interval construct a valid "not in the grid" instance
+  /// (zero local sizes, empty groups). Used by the h-grouped (3-d) batched
+  /// Summa, where each fused-index slab group runs its own 2-d grid.
+  /// \param world The world where the process grid will live
+  /// \param rank_offset The world rank of the grid's first process
+  /// \param nprocs The number of processes spanned by the grid
+  /// \param rows The number of tile rows
+  /// \param cols The number of tile columns
+  /// \param row_size The number of element rows
+  /// \param col_size The number of element columns
+  ProcGrid(World& world, rank_subset_t, const ProcessID rank_offset,
+           const size_type nprocs, const size_type rows, const size_type cols,
+           const std::size_t row_size, const std::size_t col_size)
+      : world_(&world),
+        rows_(rows),
+        cols_(cols),
+        size_(rows_ * cols_),
+        proc_rows_(0ul),
+        proc_cols_(0ul),
+        proc_size_(0ul),
+        rank_row_(-1),
+        rank_col_(-1),
+        rank_offset_(rank_offset),
+        local_rows_(0ul),
+        local_cols_(0ul),
+        local_size_(0ul) {
+    TA_ASSERT(rank_offset >= 0);
+    TA_ASSERT(nprocs >= 1u);
+    TA_ASSERT(rank_offset + nprocs <= size_type(world.size()));
+    const auto world_rank = world.rank();
+    // out-of-grid ranks pass rank == nprocs, which every init() branch
+    // treats as "not in the grid"
+    const size_type rank = (world_rank >= rank_offset &&
+                            world_rank < rank_offset + ProcessID(nprocs))
+                               ? world_rank - rank_offset
+                               : nprocs;
+    init(rank, nprocs, row_size, col_size);
+  }
+
 #ifdef TILEDARRAY_ENABLE_TEST_PROC_GRID
   // Note: The following function is here for testing purposes only. It
   // has the same functionality as the default constructor above, except the
@@ -350,6 +405,7 @@ class ProcGrid {
         proc_size_(other.proc_size_),
         rank_row_(other.rank_row_),
         rank_col_(other.rank_col_),
+        rank_offset_(other.rank_offset_),
         local_rows_(other.local_rows_),
         local_cols_(other.local_cols_),
         local_size_(other.local_size_) {}
@@ -367,6 +423,7 @@ class ProcGrid {
     proc_size_ = other.proc_size_;
     rank_row_ = other.rank_row_;
     rank_col_ = other.rank_col_;
+    rank_offset_ = other.rank_offset_;
     local_rows_ = other.local_rows_;
     local_cols_ = other.local_cols_;
     local_size_ = other.local_size_;
@@ -447,7 +504,7 @@ class ProcGrid {
       // Populate the row process list
       size_type p = rank_row_ * proc_cols_;
       const size_type row_end = p + proc_cols_;
-      for (; p < row_end; ++p) proc_list.push_back(p);
+      for (; p < row_end; ++p) proc_list.push_back(p + rank_offset_);
 
       // Construct the group
       group = madness::Group(*world_, proc_list, did);
@@ -472,7 +529,7 @@ class ProcGrid {
 
       // Populate the column process list
       for (size_type p = rank_col_; p < proc_size_; p += proc_cols_)
-        proc_list.push_back(p);
+        proc_list.push_back(p + rank_offset_);
 
       // Construct the group
       if (proc_list.size() != 0)
@@ -489,7 +546,7 @@ class ProcGrid {
   /// (row,rank_col)
   ProcessID map_row(const size_type row) const {
     TA_ASSERT(row < proc_rows_);
-    return rank_col_ + row * proc_cols_;
+    return rank_col_ + row * proc_cols_ + rank_offset_;
   }
 
   /// Map a column to the process in this process's row
@@ -499,7 +556,7 @@ class ProcGrid {
   /// (rank_row,col)
   ProcessID map_col(const size_type col) const {
     TA_ASSERT(col < proc_cols_);
-    return rank_row_ * proc_cols_ + col;
+    return rank_row_ * proc_cols_ + col + rank_offset_;
   }
 
   /// Construct a cyclic process

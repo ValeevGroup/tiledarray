@@ -746,7 +746,9 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_base1, F, Fixtures, F) {
                                a_base1("a,b,c")
                                    .block({3, 3, 3}, {5, 5, 5})
                                    .set_trange_lobound({0, 0, 0}));
-    // overriding trange of result block is not allowed ...
+    // overriding trange of result block is not allowed ... (this is enforced
+    // by a TA_ASSERT, so the throw only happens when assertions throw)
+#if TA_ASSERT_POLICY == TA_ASSERT_THROW
     BOOST_REQUIRE_THROW(
         a_block("a,b,c")
             .block({0, 0, 0}, {2, 2, 2})
@@ -754,6 +756,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_base1, F, Fixtures, F) {
                                                  .block({3, 3, 3}, {5, 5, 5})
                                                  .set_trange_lobound({0, 0, 0}),
         Exception);
+#endif
     // ... unless makes it same as trange lobound of the underlying array
     BOOST_REQUIRE_NO_THROW(a_block("a,b,c")
                                .block({0, 0, 0}, {2, 2, 2})
