@@ -153,4 +153,64 @@ BOOST_AUTO_TEST_CASE(conjugated_left) {
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
 }
 
+// conj + CONTRACTION outer. The outer index j is contracted (il result), which
+// routes the dot through the ContractReduce / element_nonreturn_op_
+// ACCUMULATING path (not the Hadamard Mult/element_return_op_ path). This
+// confirms the lazy .conj() on the LEFT operand survives all the way into
+// flat_dot even when the per-cell scalar results are summed over the contracted
+// outer index. Oracle: conjugate A eagerly, then NON-conjugating denest dot.
+BOOST_AUTO_TEST_CASE(conjugated_contraction_outer) {
+  using Tc = TA::Tensor<std::complex<double>>;
+  using ToTc = TA::Tensor<Tc>;
+  using ArrayToTc = TA::DistArray<ToTc>;
+  using ArrayTc = TA::DistArray<Tc>;
+  // outer: contract j -> il ; inner ab fully contracted; LEFT conjugated.
+  TA::TiledRange a_tr{{0, 2, 4}, {0, 2}};  // i, j
+  TA::TiledRange b_tr{{0, 2}, {0, 2, 4}};  // j, l
+  auto A = random_array<ArrayToTc>(a_tr, {3, 2});
+  auto B = random_array<ArrayToTc>(b_tr, {3, 2});
+  ArrayToTc Aconj;
+  Aconj("i,j;a,b") = A("i,j;a,b").conj();
+  ArrayTc ref = TA::einsum<DeNest::True>("ij;ab,jl;ab->il", Aconj, B);
+  ArrayTc out;
+  out("i,l") = A("i,j;a,b").conj().dot_inner(B("j,l;a,b"));
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
+// conj + PERMUTED Hadamard outer. The outer regime is Hadamard ij, but the
+// result is transposed to ji, which reaches DotInnerEngine::make_tile_op(Perm).
+// This confirms .conj() composes faithfully with an outer permutation of the
+// plain-T result. Oracle: conjugate A eagerly, then NON-conjugating denest dot
+// with the same ji output permutation.
+BOOST_AUTO_TEST_CASE(conjugated_permuted_outer) {
+  using Tc = TA::Tensor<std::complex<double>>;
+  using ToTc = TA::Tensor<Tc>;
+  using ArrayToTc = TA::DistArray<ToTc>;
+  using ArrayTc = TA::DistArray<Tc>;
+  // outer Hadamard ij, result transposed to ji; LEFT conjugated.
+  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}};
+  auto A = random_array<ArrayToTc>(tr, {3, 2});
+  auto B = random_array<ArrayToTc>(tr, {3, 2});
+  ArrayToTc Aconj;
+  Aconj("i,j;a,b") = A("i,j;a,b").conj();
+  ArrayTc ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ji", Aconj, B);
+  ArrayTc out;
+  out("j,i") = A("i,j;a,b").conj().dot_inner(B("i,j;a,b"));
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
+// PLAIN permuted Hadamard outer (no conj). Closes the make_tile_op(Perm)
+// coverage gap with exact integer arithmetic: the outer permutation of the
+// plain-T result must match einsum's denest path. T = Tensor<int>, so the
+// comparison is exact.
+BOOST_AUTO_TEST_CASE(permuted_hadamard_outer) {
+  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}};
+  auto A = random_array<ArrayToT>(tr, {3, 2});
+  auto B = random_array<ArrayToT>(tr, {3, 2});
+  ArrayT ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ji", A, B);
+  ArrayT out;
+  out("j,i") = A("i,j;a,b").dot_inner(B("i,j;a,b"));
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
