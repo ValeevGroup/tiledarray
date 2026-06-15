@@ -104,4 +104,27 @@ BOOST_AUTO_TEST_CASE(nonuniform_and_empty_inner) {
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
 }
 
+// SparsePolicy: the result SparseShape (per-tile Frobenius-norm estimates +
+// threshold) must match what einsum produces. dot_inner reuses the contraction
+// engine's norm-GEMM shape propagation; this checks the denest result-shape
+// path (scalar result tiles derived from ToT operand norms). are_equal with
+// ShapeComp::True compares the sparse shapes AND the element values; with
+// T = Tensor<int> the arithmetic is exact, so the comparison is faithful.
+BOOST_AUTO_TEST_CASE(sparse_policy) {
+  using SpToT = TA::DistArray<ToT, TA::SparsePolicy>;
+  using SpT = TA::DistArray<T, TA::SparsePolicy>;
+  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}};
+  auto A = random_array<SpToT>(tr, {3, 2});
+  auto B = random_array<SpToT>(tr, {3, 2});
+
+  SpT ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A, B);
+  ref.truncate();
+
+  SpT out;
+  out("i,j") = A("i,j;a,b").dot_inner(B("i,j;a,b"));
+  out.truncate();
+
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
