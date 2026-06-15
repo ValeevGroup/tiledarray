@@ -10,6 +10,34 @@ using T = TA::Tensor<int>;
 using ToT = TA::Tensor<T>;
 using ArrayToT = TA::DistArray<ToT>;
 using ArrayT = TA::DistArray<T>;
+
+// Build an ArrayToT whose inner (a,b) extents are a deterministic function of
+// the outer element index (i,j): Range{2 + (i%2), 3 + (j%2)}. This makes the
+// inner extents NON-UNIFORM across outer cells. The extents depend ONLY on the
+// outer index, never on `seed`, so two arrays built with the same TiledRange
+// have congruent inner extents cell-by-cell -- only the element VALUES differ
+// (they are offset by `seed`), which is exactly what a per-cell dot needs.
+//
+// The outer element at the global origin (0,0) is left with a DEFAULT-
+// CONSTRUCTED (empty) inner tensor, so that cell's dot contributes nothing
+// (result element is 0 there); the einsum oracle does the same.
+ArrayToT make_nonuniform_tot(TA::World& world, TA::TiledRange const& tr,
+                             int seed) {
+  auto make_tile = [seed](ToT& tile, TA::Range const& rng) {
+    tile = ToT(rng, [seed](TA::Range::index_type const& oix) {
+      const auto i = oix[0];
+      const auto j = oix[1];
+      if (i == 0 && j == 0) return T{};  // empty inner cell at the origin
+      TA::Range inner{2 + (i % 2), 3 + (j % 2)};
+      T inner_tile(inner);
+      int v = seed + 1;
+      for (auto& x : inner_tile) x = v++;  // deterministic, seed-shifted values
+      return inner_tile;
+    });
+    return tile.norm();
+  };
+  return TA::make_array<ArrayToT>(world, tr, make_tile);
+}
 }  // namespace
 
 BOOST_AUTO_TEST_CASE(hadamard_outer) {
@@ -58,6 +86,21 @@ BOOST_AUTO_TEST_CASE(no_hadamard_contraction) {
   ArrayT ref = TA::einsum<DeNest::True>("ij;ab,jl;ab->il", A, B);
   ArrayT out;
   out("i,l") = A("i,j;a,b").dot_inner(B("j,l;a,b"));
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
+// Genuine tensor-of-tensors: inner extents depend on the outer element index
+// (non-uniform), and the origin cell's inner tensor is empty. Cross-checked
+// against the einsum oracle. A and B share per-cell inner extents (so the
+// per-cell dot is well-defined) but carry different values.
+BOOST_AUTO_TEST_CASE(nonuniform_and_empty_inner) {
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr{{0, 2, 4}, {0, 4}};
+  ArrayToT A = make_nonuniform_tot(world, tr, /*seed=*/1);
+  ArrayToT B = make_nonuniform_tot(world, tr, /*seed=*/2);
+  ArrayT ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A, B);
+  ArrayT out;
+  out("i,j") = A("i,j;a,b").dot_inner(B("i,j;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
 }
 
