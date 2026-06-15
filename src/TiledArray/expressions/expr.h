@@ -919,6 +919,17 @@ class Expr {
     return inner_product(right_expr, default_world());
   }
 
+  /// Inner-dot product (ToT * ToT -> T)
+
+  /// For two tensor-of-tensor operands, computes a per-outer-cell inner dot
+  /// product over a general outer product, producing a plain tensor-of-scalars
+  /// result. Defined out-of-line in dot_inner_expr.h.
+  /// \tparam D The right-hand expression type
+  /// \param right The right-hand expression
+  /// \return A DotInnerExpr node
+  template <typename D>
+  auto dot_inner(const Expr<D>& right) const;
+
 };  // class Expr
 
 }  // namespace TiledArray::expressions

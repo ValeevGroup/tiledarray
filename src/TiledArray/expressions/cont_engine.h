@@ -47,6 +47,8 @@ template <typename, typename>
 class MultExpr;
 template <typename, typename, typename>
 class ScalMultExpr;
+template <typename, typename>
+class DotInnerExpr;
 
 /// Multiplication expression engine
 
@@ -124,6 +126,14 @@ class ContEngine : public BinaryEngine<Derived> {
   using result_tile_element_type = typename result_tile_type::value_type;
   using left_tile_element_type = typename left_tile_type::value_type;
   using right_tile_element_type = typename right_tile_type::value_type;
+
+  /// True when both operand tiles are nested (ToT) but the result tile is a
+  /// plain tensor of scalars: the inner (nested) modes are fully contracted
+  /// (dotted) away to a scalar per outer cell. This is the dot_inner regime.
+  static constexpr bool denest_to_scalar =
+      TiledArray::detail::is_tensor_of_tensor_v<left_tile_type,
+                                                right_tile_type> &&
+      !TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>;
 
   std::function<void(result_tile_element_type&, const left_tile_element_type&,
                      const right_tile_element_type&)>
@@ -266,6 +276,15 @@ class ContEngine : public BinaryEngine<Derived> {
   template <typename L, typename R, typename S>
   ContEngine(const ScalMultExpr<L, R, S>& expr)
       : BinaryEngine_(expr), factor_(expr.factor()) {}
+
+  /// Constructor
+
+  /// \tparam L The left-hand argument expression type
+  /// \tparam R The right-hand argument expression type
+  /// \param expr The parent expression
+  template <typename L, typename R>
+  ContEngine(const DotInnerExpr<L, R>& expr)
+      : BinaryEngine_(expr), factor_(1) {}
 
   // Pull base class functions into this class.
   using ExprEngine_::derived;
@@ -1063,6 +1082,45 @@ class ContEngine : public BinaryEngine<Derived> {
 
  protected:
   void init_inner_tile_op(const IndexList& inner_target_indices) {
+    if constexpr (denest_to_scalar) {
+      // dot_inner: both operand cells are inner tensors, the result cell is a
+      // scalar. The inner modes are fully contracted (a flat, non-conjugating
+      // dot of the operand cells) and accumulated into the scalar result cell.
+      // This mirrors the phantom-unit denest in init_inner_tile_op_owning_ but
+      // writes a bare scalar instead of a unit-extent [1] cell. The outer
+      // ContractReduce (built in init_struct) routes the !plain_tensors case to
+      // gemm(result, left, right, helper, elem_muladd_op), invoking this op per
+      // outer cell.
+      const scalar_type factor = this->factor_;
+      this->element_nonreturn_op_ = [factor](
+                                        result_tile_element_type& result,
+                                        const left_tile_element_type& left,
+                                        const right_tile_element_type& right) {
+        if (left.empty() || right.empty()) return;
+        const std::size_t n = left.range().volume();
+        TA_ASSERT(n == right.range().volume());
+        const auto* lp = left.data();
+        const auto* rp = right.data();
+        result_tile_element_type acc{0};
+        for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
+        result += static_cast<result_tile_element_type>(factor) * acc;
+      };
+      // value-returning form for the outer-Hadamard regime (the Mult binary
+      // tile op maps it over the outer cells via TiledArray::binary)
+      this->element_return_op_ = [factor](const left_tile_element_type& left,
+                                          const right_tile_element_type& right)
+          -> result_tile_element_type {
+        if (left.empty() || right.empty()) return result_tile_element_type{0};
+        const std::size_t n = left.range().volume();
+        TA_ASSERT(n == right.range().volume());
+        const auto* lp = left.data();
+        const auto* rp = right.data();
+        result_tile_element_type acc{0};
+        for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
+        return static_cast<result_tile_element_type>(factor) * acc;
+      };
+      return;
+    }
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>) {
       constexpr bool tot_x_tot = TiledArray::detail::is_tensor_of_tensor_v<
           result_tile_type, left_tile_type, right_tile_type>;

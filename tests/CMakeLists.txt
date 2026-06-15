@@ -94,6 +94,7 @@ set(ta_test_src_files  ta_test.cpp
     annotation.cpp
     diagonal_array.cpp
     einsum.cpp
+    dot_inner.cpp
     general_product.cpp
     linalg.cpp
     cp.cpp

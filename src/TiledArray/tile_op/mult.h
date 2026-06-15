@@ -87,6 +87,18 @@ class Mult {
   static constexpr bool uses_tile_op_ =
       TiledArray::is_tensor_view_v<result_value_type>;
 
+  /// True when the plain element-wise `mult` fallback (used when no custom
+  /// element_op_ is supplied) is type-compatible with the result tile type.
+  /// This is false for the dot_inner denest, where both operands are nested
+  /// (ToT) but the result is a plain tensor of scalars: `mult(left, right)`
+  /// would yield a ToT, not the scalar-element result. In that case a custom
+  /// element_op_ is always supplied, so the fallback is unreachable; the
+  /// `if constexpr` guards below keep it from being instantiated.
+  static constexpr bool plain_mult_ok_ =
+      TiledArray::detail::is_nested_tensor_v<left_value_type,
+                                             right_value_type> ==
+      TiledArray::detail::is_nested_tensor_v<result_value_type>;
+
   /// type-erased reference to a whole-tile op. When set, eval() delegates the
   /// entire tile product to it. Used for arena tensor-of-tensors products
   /// whose per-cell op cannot value-return (e.g. ArenaTensor view inner
@@ -121,13 +133,16 @@ class Mult {
     if constexpr (uses_tile_op_) {
       if (tile_op_) return eval_tile_op(first, second, perm);
     }
-    if (!element_op_) {
-      using TiledArray::mult;
-      return mult(first, second, perm);
+    if constexpr (plain_mult_ok_) {
+      if (!element_op_) {
+        using TiledArray::mult;
+        return mult(first, second, perm);
+      }
     } else {
-      using TiledArray::binary;
-      return binary(first, second, element_op_, perm);
+      TA_ASSERT(element_op_);
     }
+    using TiledArray::binary;
+    return binary(first, second, element_op_, perm);
   }
 
   template <typename Perm, typename = std::enable_if_t<
@@ -155,13 +170,16 @@ class Mult {
     if constexpr (uses_tile_op_) {
       if (tile_op_) return eval_tile_op(first, second);
     }
-    if (!element_op_) {
-      using TiledArray::mult;
-      return mult(first, second);
+    if constexpr (plain_mult_ok_) {
+      if (!element_op_) {
+        using TiledArray::mult;
+        return mult(first, second);
+      }
     } else {
-      using TiledArray::binary;
-      return binary(first, second, element_op_);
+      TA_ASSERT(element_op_);
     }
+    using TiledArray::binary;
+    return binary(first, second, element_op_);
   }
 
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
@@ -169,26 +187,29 @@ class Mult {
     if constexpr (uses_tile_op_) {
       if (tile_op_) return eval_tile_op(first, second);
     }
-    if (!element_op_) {
-      if constexpr (uses_tile_op_) {
-        // View inner cells (e.g. ArenaTensor): a "consumable" tile is a
-        // shallow handle whose arena slab may be aliased by a persistent
-        // array, so an in-place mult_to would corrupt that operand. Always
-        // produce a fresh result for view-cell tiles.
-        using TiledArray::mult;
-        return mult(first, second);
-      } else {
-        using TiledArray::mult_to;
-        return mult_to(std::move(first), second);
+    if constexpr (plain_mult_ok_) {
+      if (!element_op_) {
+        if constexpr (uses_tile_op_) {
+          // View inner cells (e.g. ArenaTensor): a "consumable" tile is a
+          // shallow handle whose arena slab may be aliased by a persistent
+          // array, so an in-place mult_to would corrupt that operand. Always
+          // produce a fresh result for view-cell tiles.
+          using TiledArray::mult;
+          return mult(first, second);
+        } else {
+          using TiledArray::mult_to;
+          return mult_to(std::move(first), second);
+        }
       }
     } else {
-      // TODO figure out why this does not compiles!!!
-      //            using TiledArray::inplace_binary;
-      //            return inplace_binary(std::move(first), second,
-      //            element_op_);
-      using TiledArray::binary;
-      return binary(first, second, element_op_);
+      TA_ASSERT(element_op_);
     }
+    // TODO figure out why this does not compiles!!!
+    //            using TiledArray::inplace_binary;
+    //            return inplace_binary(std::move(first), second,
+    //            element_op_);
+    using TiledArray::binary;
+    return binary(first, second, element_op_);
   }
 
   template <bool LC, bool RC,
@@ -197,19 +218,24 @@ class Mult {
     if constexpr (uses_tile_op_) {
       if (tile_op_) return eval_tile_op(first, second);
     }
-    if (!element_op_) {
-      if constexpr (uses_tile_op_) {
-        // View inner cells: never consume a shallow handle in place (see the
-        // consume-left overload above).
-        using TiledArray::mult;
-        return mult(first, second);
-      } else {
-        using TiledArray::mult_to;
-        return mult_to(std::move(second), first);
+    if constexpr (plain_mult_ok_) {
+      if (!element_op_) {
+        if constexpr (uses_tile_op_) {
+          // View inner cells: never consume a shallow handle in place (see the
+          // consume-left overload above).
+          using TiledArray::mult;
+          return mult(first, second);
+        } else {
+          using TiledArray::mult_to;
+          return mult_to(std::move(second), first);
+        }
       }
-    } else {  // WARNING: element_op_ might be noncommuting, so can't swap first
-              // and second! for GEMM could optimize, but can't introspect
-              // element_op_
+    } else {
+      TA_ASSERT(element_op_);
+    }
+    {  // WARNING: element_op_ might be noncommuting, so can't swap first
+       // and second! for GEMM could optimize, but can't introspect
+       // element_op_
       using TiledArray::binary;
       return binary(first, second, element_op_);
     }

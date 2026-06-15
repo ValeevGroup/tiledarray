@@ -76,12 +76,20 @@ class ContractReduceBase {
       TiledArray::detail::is_nested_tensor_v<left_value_type, right_value_type,
                                              result_value_type>;
   static constexpr bool mixed_tensors = !plain_tensors && !nested_tensors;
-  static_assert(!mixed_tensors ||
-                    (mixed_tensors &&
-                     TiledArray::detail::is_nested_tensor_v<result_value_type>),
-                "ContractReduce applied to 1 plain tensor and 1 nested tensor "
-                "must produce a nested tensor "
-                "(tensors-of-tensors)");
+  /// dot_inner denest: both operands are nested (ToT) but the result element is
+  /// a scalar -- the inner modes are fully contracted (dotted) away. operator()
+  /// routes this (!plain_tensors) case through the generic gemm with the
+  /// scalar-result elem_muladd_op, so no separate handling is needed beyond
+  /// permitting the taxonomy.
+  static constexpr bool denest_to_scalar =
+      TiledArray::detail::is_nested_tensor_v<left_value_type,
+                                             right_value_type> &&
+      !TiledArray::detail::is_nested_tensor_v<result_value_type>;
+  static_assert(!mixed_tensors || denest_to_scalar ||
+                    TiledArray::detail::is_nested_tensor_v<result_value_type>,
+                "ContractReduce mixed plain/nested operands must produce a "
+                "nested tensor, unless both operands are nested and the result "
+                "is a scalar element (dot_inner denest)");
 
  private:
   struct Impl {
@@ -132,7 +140,8 @@ class ContractReduceBase {
     /// ContractReduce::operator() delegates the (pre-shaped) result fill to it
     /// instead of the generic gemm. Carries factor itself (alpha_ is forced to
     /// 1 for ToT).
-    /// \note lifetime managed by the callee (a ContEngine std::function member).
+    /// \note lifetime managed by the callee (a ContEngine std::function
+    /// member).
     using strided_oprod_op_type = void(result_type&, const left_tile_type&,
                                        const right_tile_type&,
                                        const math::GemmHelper&);
