@@ -3249,7 +3249,7 @@ class Tensor {
     if (this->empty()) {  // initialize, if empty
       auto result_range = gemm_helper.make_result_range<range_type>(
           left.range(), right.range());
-      if constexpr (!detail::is_tensor<value_type>::value) {
+      if constexpr (detail::is_numeric_v<value_type>) {
         // dot_inner denest: the result element is a scalar and elem_muladd_op
         // ACCUMULATES (result += ...), so a freshly-allocated tile must be
         // zero-initialized. The nbatches{} ctor default-initializes, which for
