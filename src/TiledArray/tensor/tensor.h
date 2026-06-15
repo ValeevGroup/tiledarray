@@ -517,6 +517,7 @@ class Tensor {
               typename = std::enable_if_t<std::is_integral_v<Int>>>
     nbatches& operator=(Int n) {
       this->n = n;
+      return *this;
     }
 
     size_type n = 1;
