@@ -44,8 +44,14 @@ struct ExprTrait<DotInnerExpr<Left, Right>> {
           TiledArray::detail::is_tensor_of_tensor_v<right_eval_type>,
       "dot_inner requires both operands to be tensors-of-tensors (ToT)");
 
-  /// inner numeric (scalar) type of the operand inner tensors
-  typedef TiledArray::detail::numeric_t<left_eval_type> scalar_value_type;
+  /// inner numeric (scalar) type of the result: the type of the PRODUCT of the
+  /// two operands' inner elements, so a mixed-precision inner dot (e.g.
+  /// int-inner dot_inner double-inner) accumulates in the promoted type rather
+  /// than silently narrowing to the left operand's numeric type.
+  typedef std::decay_t<
+      decltype(std::declval<TiledArray::detail::numeric_t<left_eval_type>>() *
+               std::declval<TiledArray::detail::numeric_t<right_eval_type>>())>
+      scalar_value_type;
 
  public:
   typedef Left left_type;    ///< The left-hand expression type

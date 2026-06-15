@@ -38,6 +38,35 @@ ArrayToT make_nonuniform_tot(TA::World& world, TA::TiledRange const& tr,
   };
   return TA::make_array<ArrayToT>(world, tr, make_tile);
 }
+
+// Deterministic ToT fill templated on the inner scalar type, so `int` and
+// `double` copies carry IDENTICAL (integer-valued) data. Used to check that a
+// mixed-precision dot_inner promotes the result scalar type rather than
+// narrowing to the left operand's type. When `frac` is true a 0.5 fractional
+// part is added (representable only in a floating result), so a narrowing-to-
+// int bug is observable in the values. Inner extents are a uniform {3,2}.
+template <typename InnerScalar>
+TA::DistArray<TA::Tensor<TA::Tensor<InnerScalar>>> make_uniform_tot_typed(
+    TA::World& world, TA::TiledRange const& tr, double base, bool frac) {
+  using InT = TA::Tensor<InnerScalar>;
+  using InToT = TA::Tensor<InT>;
+  using InArr = TA::DistArray<InToT>;
+  auto make_tile = [base, frac](InToT& tile, TA::Range const& rng) {
+    tile = InToT(rng, [base, frac](TA::Range::index_type const& oix) {
+      const auto i = oix[0];
+      const auto j = oix[1];
+      InT inner_tile(TA::Range{3, 2});
+      double v = base + i + 2.0 * j;
+      for (auto& x : inner_tile) {
+        x = static_cast<InnerScalar>(frac ? (v + 0.5) : v);
+        v += 1.0;
+      }
+      return inner_tile;
+    });
+    return tile.norm();
+  };
+  return TA::make_array<InArr>(world, tr, make_tile);
+}
 }  // namespace
 
 BOOST_AUTO_TEST_CASE(hadamard_outer) {
@@ -210,6 +239,43 @@ BOOST_AUTO_TEST_CASE(permuted_hadamard_outer) {
   ArrayT ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ji", A, B);
   ArrayT out;
   out("j,i") = A("i,j;a,b").dot_inner(B("i,j;a,b"));
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
+// Mixed-precision operands: int-inner dot_inner double-inner must produce a
+// DOUBLE result (the promoted product type), not silently narrow to int (the
+// left operand's type). Regression test for the result-scalar deduction
+// (reported by Copilot review on PR #567).
+BOOST_AUTO_TEST_CASE(mixed_inner_numeric_type) {
+  using ToTd = TA::Tensor<TA::Tensor<double>>;
+  using ArrayToTd = TA::DistArray<ToTd>;
+  using ArrayTd = TA::DistArray<TA::Tensor<double>>;
+  auto& world = TA::get_default_world();
+  TA::TiledRange tr{{0, 2, 4}, {0, 4}};
+
+  ArrayToT A_int = make_uniform_tot_typed<int>(world, tr, 1.0, false);
+  ArrayToTd A_dbl =
+      make_uniform_tot_typed<double>(world, tr, 1.0, false);  // == A_int values
+  ArrayToTd B_dbl =
+      make_uniform_tot_typed<double>(world, tr, 2.0, true);  // fractional
+
+  // Type: the result scalar must be the promoted product type (double). This
+  // static_assert fails to compile if the deduction narrows to the left
+  // operand's int.
+  using expr_t =
+      std::decay_t<decltype(A_int("i,j;a,b").dot_inner(B_dbl("i,j;a,b")))>;
+  static_assert(
+      std::is_same_v<typename TA::expressions::ExprTrait<expr_t>::scalar_type,
+                     double>,
+      "dot_inner must promote the result scalar across mixed-precision "
+      "operands");
+
+  // Value: the double oracle (A as double with identical integer values). With
+  // a narrowing-to-int bug the fractional contributions would be truncated and
+  // the values would differ from this reference.
+  ArrayTd ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A_dbl, B_dbl);
+  ArrayTd out;
+  out("i,j") = A_int("i,j;a,b").dot_inner(B_dbl("i,j;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
 }
 
