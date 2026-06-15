@@ -81,6 +81,8 @@ class ContractReduceBase {
   /// routes this (!plain_tensors) case through the generic gemm with the
   /// scalar-result elem_muladd_op, so no separate handling is needed beyond
   /// permitting the taxonomy.
+  /// See also the sibling predicate ContEngine::denest_to_scalar
+  /// (cont_engine.h); keep the two in sync.
   static constexpr bool denest_to_scalar =
       TiledArray::detail::is_nested_tensor_v<left_value_type,
                                              right_value_type> &&

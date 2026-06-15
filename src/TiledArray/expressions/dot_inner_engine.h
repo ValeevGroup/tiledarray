@@ -135,10 +135,6 @@ class DotInnerEngine : public ContEngine<DotInnerEngine<Left, Right, Result>> {
   typedef typename EngineTrait<DotInnerEngine_>::pmap_interface
       pmap_interface;  ///< Process map interface type
 
-  /// Tag consumed by ContEngine: this engine denests two nested operands to a
-  /// scalar-element result (the inner modes are dotted away).
-  static constexpr bool denest_to_scalar = true;
-
  public:
   /// Constructor
 

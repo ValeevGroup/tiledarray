@@ -130,6 +130,8 @@ class ContEngine : public BinaryEngine<Derived> {
   /// True when both operand tiles are nested (ToT) but the result tile is a
   /// plain tensor of scalars: the inner (nested) modes are fully contracted
   /// (dotted) away to a scalar per outer cell. This is the dot_inner regime.
+  /// See also the sibling predicate ContractReduce::denest_to_scalar
+  /// (contract_reduce.h); keep the two in sync.
   static constexpr bool denest_to_scalar =
       TiledArray::detail::is_tensor_of_tensor_v<left_tile_type,
                                                 right_tile_type> &&
@@ -1092,23 +1094,12 @@ class ContEngine : public BinaryEngine<Derived> {
       // gemm(result, left, right, helper, elem_muladd_op), invoking this op per
       // outer cell.
       const scalar_type factor = this->factor_;
-      this->element_nonreturn_op_ = [factor](
-                                        result_tile_element_type& result,
-                                        const left_tile_element_type& left,
-                                        const right_tile_element_type& right) {
-        if (left.empty() || right.empty()) return;
-        const std::size_t n = left.range().volume();
-        TA_ASSERT(n == right.range().volume());
-        const auto* lp = left.data();
-        const auto* rp = right.data();
-        result_tile_element_type acc{0};
-        for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
-        result += static_cast<result_tile_element_type>(factor) * acc;
-      };
-      // value-returning form for the outer-Hadamard regime (the Mult binary
-      // tile op maps it over the outer cells via TiledArray::binary)
-      this->element_return_op_ = [factor](const left_tile_element_type& left,
-                                          const right_tile_element_type& right)
+      // shared flat (non-conjugating) scalar dot of two inner cells, scaled by
+      // factor; returns the contribution for one outer cell (0 if either
+      // operand cell is empty). The numerically-sensitive accumulation lives
+      // here only -- see also denest_to_scalar at contract_reduce.h.
+      auto flat_dot = [factor](const left_tile_element_type& left,
+                               const right_tile_element_type& right)
           -> result_tile_element_type {
         if (left.empty() || right.empty()) return result_tile_element_type{0};
         const std::size_t n = left.range().volume();
@@ -1119,6 +1110,18 @@ class ContEngine : public BinaryEngine<Derived> {
         for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
         return static_cast<result_tile_element_type>(factor) * acc;
       };
+      this->element_nonreturn_op_ = [flat_dot](
+                                        result_tile_element_type& result,
+                                        const left_tile_element_type& left,
+                                        const right_tile_element_type& right) {
+        result += flat_dot(left, right);
+      };
+      // value-returning form for the outer-Hadamard regime (the Mult binary
+      // tile op maps it over the outer cells via TiledArray::binary)
+      this->element_return_op_ = [flat_dot](
+                                     const left_tile_element_type& left,
+                                     const right_tile_element_type& right)
+          -> result_tile_element_type { return flat_dot(left, right); };
       return;
     }
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>) {
