@@ -11,6 +11,17 @@ using ToT = TA::Tensor<T>;
 using ArrayToT = TA::DistArray<ToT>;
 using ArrayT = TA::DistArray<T>;
 
+// Forces TA::einsum<DeNest::True> down its LEGACY phantom-unit path for the
+// duration of its scope, so einsum can serve as an INDEPENDENT oracle for
+// dot_inner even though einsum now dispatches to dot_inner by default.
+struct LegacyEinsumGuard {
+  bool prev_;
+  LegacyEinsumGuard() : prev_(TA::detail::einsum_legacy_subworld()) {
+    TA::detail::einsum_legacy_subworld() = true;
+  }
+  ~LegacyEinsumGuard() { TA::detail::einsum_legacy_subworld() = prev_; }
+};
+
 // Build an ArrayToT whose inner (a,b) extents are a deterministic function of
 // the outer element index (i,j): Range{2 + (i%2), 3 + (j%2)}. This makes the
 // inner extents NON-UNIFORM across outer cells. The extents depend ONLY on the
@@ -73,7 +84,11 @@ BOOST_AUTO_TEST_CASE(hadamard_outer) {
   TA::TiledRange tr{{0, 2, 4}, {0, 4}};
   auto A = random_array<ArrayToT>(tr, {3, 2});
   auto B = random_array<ArrayToT>(tr, {3, 2});
-  ArrayT ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A, B);
+  ArrayT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A, B);
+  }
   ArrayT out;
   out("i,j") = A("i,j;a,b").dot_inner(B("i,j;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
@@ -87,7 +102,11 @@ BOOST_AUTO_TEST_CASE(hadamard_external_contracted_outer) {
   auto A = random_array<ArrayToT>(a_tr, {3, 2});
   auto B = random_array<ArrayToT>(b_tr, {3, 2});
 
-  ArrayT ref = TA::einsum<DeNest::True>("ipk;ab,iqk;ab->ipq", A, B);
+  ArrayT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ipk;ab,iqk;ab->ipq", A, B);
+  }
 
   ArrayT out;
   out("i,p,q") = A("i,p,k;a,b").dot_inner(B("i,q,k;a,b"));
@@ -101,7 +120,11 @@ BOOST_AUTO_TEST_CASE(permuted_inner) {
   TA::TiledRange b_tr{{0, 2}, {0, 2, 4}};             // outer j, k
   auto A = random_array<ArrayToT>(a_tr, {3, 2, 4});   // inner a,b,c
   auto B = random_array<ArrayToT>(b_tr, {2, 4, 3});   // inner b,c,a
-  ArrayT ref = TA::einsum<DeNest::True>("ijk;abc,jk;bca->ki", A, B);
+  ArrayT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ijk;abc,jk;bca->ki", A, B);
+  }
   ArrayT out;
   out("k,i") = A("i,j,k;a,b,c").dot_inner(B("j,k;b,c,a"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
@@ -112,7 +135,11 @@ BOOST_AUTO_TEST_CASE(no_hadamard_contraction) {
   TA::TiledRange b_tr{{0, 2}, {0, 2, 4}};  // outer j, l
   auto A = random_array<ArrayToT>(a_tr, {3, 2});
   auto B = random_array<ArrayToT>(b_tr, {3, 2});
-  ArrayT ref = TA::einsum<DeNest::True>("ij;ab,jl;ab->il", A, B);
+  ArrayT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,jl;ab->il", A, B);
+  }
   ArrayT out;
   out("i,l") = A("i,j;a,b").dot_inner(B("j,l;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
@@ -127,7 +154,11 @@ BOOST_AUTO_TEST_CASE(nonuniform_and_empty_inner) {
   TA::TiledRange tr{{0, 2, 4}, {0, 4}};
   ArrayToT A = make_nonuniform_tot(world, tr, /*seed=*/1);
   ArrayToT B = make_nonuniform_tot(world, tr, /*seed=*/2);
-  ArrayT ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A, B);
+  ArrayT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A, B);
+  }
   ArrayT out;
   out("i,j") = A("i,j;a,b").dot_inner(B("i,j;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
@@ -146,7 +177,11 @@ BOOST_AUTO_TEST_CASE(sparse_policy) {
   auto A = random_array<SpToT>(tr, {3, 2});
   auto B = random_array<SpToT>(tr, {3, 2});
 
-  SpT ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A, B);
+  SpT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A, B);
+  }
   ref.truncate();
 
   SpT out;
@@ -175,7 +210,11 @@ BOOST_AUTO_TEST_CASE(conjugated_left) {
   // dot
   ArrayToTc Aconj;
   Aconj("i,j;a,b") = A("i,j;a,b").conj();
-  ArrayTc ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", Aconj, B);
+  ArrayTc ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", Aconj, B);
+  }
 
   ArrayTc out;
   out("i,j") = A("i,j;a,b").conj().dot_inner(B("i,j;a,b"));
@@ -200,7 +239,11 @@ BOOST_AUTO_TEST_CASE(conjugated_contraction_outer) {
   auto B = random_array<ArrayToTc>(b_tr, {3, 2});
   ArrayToTc Aconj;
   Aconj("i,j;a,b") = A("i,j;a,b").conj();
-  ArrayTc ref = TA::einsum<DeNest::True>("ij;ab,jl;ab->il", Aconj, B);
+  ArrayTc ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,jl;ab->il", Aconj, B);
+  }
   ArrayTc out;
   out("i,l") = A("i,j;a,b").conj().dot_inner(B("j,l;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
@@ -222,7 +265,11 @@ BOOST_AUTO_TEST_CASE(conjugated_permuted_outer) {
   auto B = random_array<ArrayToTc>(tr, {3, 2});
   ArrayToTc Aconj;
   Aconj("i,j;a,b") = A("i,j;a,b").conj();
-  ArrayTc ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ji", Aconj, B);
+  ArrayTc ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ji", Aconj, B);
+  }
   ArrayTc out;
   out("j,i") = A("i,j;a,b").conj().dot_inner(B("i,j;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
@@ -236,7 +283,11 @@ BOOST_AUTO_TEST_CASE(permuted_hadamard_outer) {
   TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}};
   auto A = random_array<ArrayToT>(tr, {3, 2});
   auto B = random_array<ArrayToT>(tr, {3, 2});
-  ArrayT ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ji", A, B);
+  ArrayT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ji", A, B);
+  }
   ArrayT out;
   out("j,i") = A("i,j;a,b").dot_inner(B("i,j;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
@@ -273,9 +324,61 @@ BOOST_AUTO_TEST_CASE(mixed_inner_numeric_type) {
   // Value: the double oracle (A as double with identical integer values). With
   // a narrowing-to-int bug the fractional contributions would be truncated and
   // the values would differ from this reference.
-  ArrayTd ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A_dbl, B_dbl);
+  ArrayTd ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", A_dbl, B_dbl);
+  }
   ArrayTd out;
   out("i,j") = A_int("i,j;a,b").dot_inner(B_dbl("i,j;a,b"));
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
+// Inner extent depends on the CONTRACTED-OUTER index k: A(i,k) and B(k) inner
+// tensors have k-dependent extents, summed over k. This is the case the legacy
+// phantom-unit path was specifically designed for; confirm dot_inner matches
+// it. A's (i,k) cell and B's (k) cell share the SAME inner extents for each k
+// -- Range{2 + (k % 2), 3} -- so the per-(i) result dot over k is well-defined.
+// T = Tensor<int>, so the per-cell flat dot is exact integer arithmetic.
+BOOST_AUTO_TEST_CASE(inner_extent_depends_on_contracted_outer_vs_legacy) {
+  auto& world = TA::get_default_world();
+  TA::TiledRange a_tr{{0, 2, 4}, {0, 2, 4}};  // outer i, k
+  TA::TiledRange b_tr{{0, 2, 4}};             // outer k
+
+  auto make_A = [](ToT& tile, TA::Range const& rng) {
+    tile = ToT(rng, [](TA::Range::index_type const& oix) {
+      const auto i = oix[0];
+      const auto k = oix[1];
+      TA::Range inner{2 + (k % 2), 3};
+      T inner_tile(inner);
+      int v = static_cast<int>(1 + i + 10 * k);
+      for (auto& x : inner_tile) x = v++;
+      return inner_tile;
+    });
+    return tile.norm();
+  };
+  auto make_B = [](ToT& tile, TA::Range const& rng) {
+    tile = ToT(rng, [](TA::Range::index_type const& oix) {
+      const auto k = oix[0];
+      TA::Range inner{2 + (k % 2), 3};  // same extents as A's (i,k) cell for k
+      T inner_tile(inner);
+      int v = static_cast<int>(2 + 3 * k);
+      for (auto& x : inner_tile) x = v++;
+      return inner_tile;
+    });
+    return tile.norm();
+  };
+
+  ArrayToT A_ik = TA::make_array<ArrayToT>(world, a_tr, make_A);
+  ArrayToT B_k = TA::make_array<ArrayToT>(world, b_tr, make_B);
+
+  ArrayT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("ik;ab,k;ab->i", A_ik, B_k);
+  }
+  ArrayT out;
+  out("i") = A_ik("i,k;a,b").dot_inner(B_k("k;a,b"));
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
 }
 

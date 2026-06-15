@@ -593,6 +593,18 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
               "Nested-rank-reduction only supported when the inner tensor "
               "ranks match on the arguments");
 
+    // By default, evaluate the denesting inner reduction natively via the
+    // dot_inner expression. The legacy phantom-unit + foreach-squeeze path
+    // below is retained as the opt-in cross-check oracle
+    // (TA_EINSUM_LEGACY_SUBWORLD).
+    if (!detail::einsum_legacy_subworld()) {
+      _ein_call.branch = "denest-dot-inner-expression";
+      ArrayC C;
+      C(std::string(c)) = A.array()(std::string(a) + inner.a)
+                              .dot_inner(B.array()(std::string(b) + inner.b));
+      return C;
+    }
+
     //
     // Strategy. Consider A(ijpab;xy) * B(jiqba;yx) -> C(ipjq), inner xy fully
     // contracted. We reduce the contracted-outer indices ab and the contracted-
