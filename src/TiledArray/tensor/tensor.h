@@ -3247,14 +3247,26 @@ class Tensor {
     // (and skip zero-init); an existing one needs beta=1 to accumulate.
     [[maybe_unused]] const bool _scale_was_empty = this->empty();
     if (this->empty()) {  // initialize, if empty
-      // N.B. use the explicit nbatches{} tag: when value_type is a scalar (the
-      // dot_inner denest case, where this gemm dots nested operand cells to a
-      // scalar result), a bare integral second argument would otherwise bind to
-      // the scalar-fill constructor Tensor(range, value) -- which sets nbatch=1
-      // and fills with the batch count -- instead of the nbatch constructor.
-      *this = Tensor(gemm_helper.make_result_range<range_type>(left.range(),
-                                                               right.range()),
-                     nbatches{batch_sz});
+      auto result_range = gemm_helper.make_result_range<range_type>(
+          left.range(), right.range());
+      if constexpr (!detail::is_tensor<value_type>::value) {
+        // dot_inner denest: the result element is a scalar and elem_muladd_op
+        // ACCUMULATES (result += ...), so a freshly-allocated tile must be
+        // zero-initialized. The nbatches{} ctor default-initializes, which for
+        // a trivially-default-constructible scalar leaves the memory
+        // uninitialized -- the muladd would then accumulate onto garbage. Zero
+        // the whole (possibly batched) data block. batch_sz > 1 occurs when an
+        // outer Hadamard mode is batched into this gemm.
+        *this = Tensor(result_range, nbatches{batch_sz});
+        std::fill_n(this->data(), this->range_.volume() * batch_sz,
+                    value_type{0});
+      } else {
+        // nested (ToT) result: each inner cell is shaped/initialized by the
+        // per-cell op; default-init of the outer tile is fine.
+        // N.B. use the explicit nbatches{} tag so a bare integral second
+        // argument does not bind to the scalar-fill ctor Tensor(range, value).
+        *this = Tensor(result_range, nbatches{batch_sz});
+      }
     } else {
       // Check that the outer dimensions of left match the corresponding
       // dimensions in result
