@@ -3247,9 +3247,14 @@ class Tensor {
     // (and skip zero-init); an existing one needs beta=1 to accumulate.
     [[maybe_unused]] const bool _scale_was_empty = this->empty();
     if (this->empty()) {  // initialize, if empty
+      // N.B. use the explicit nbatches{} tag: when value_type is a scalar (the
+      // dot_inner denest case, where this gemm dots nested operand cells to a
+      // scalar result), a bare integral second argument would otherwise bind to
+      // the scalar-fill constructor Tensor(range, value) -- which sets nbatch=1
+      // and fills with the batch count -- instead of the nbatch constructor.
       *this = Tensor(gemm_helper.make_result_range<range_type>(left.range(),
                                                                right.range()),
-                     batch_sz);
+                     nbatches{batch_sz});
     } else {
       // Check that the outer dimensions of left match the corresponding
       // dimensions in result

@@ -375,39 +375,58 @@ class ContEngine : public BinaryEngine<Derived> {
     // initialize perm_
     this->init_perm(target_indices);
 
+    // The ContractReduce tile op needs the per-cell inner element op whenever
+    // the operands are nested -- both when the result is also nested
+    // (is_tensor_of_tensor_v<value_type>) and in the dot_inner regime, where
+    // the nested modes are fully contracted to a plain scalar result
+    // (denest_to_scalar). In the latter case the result tile is a plain tensor,
+    // so it carries no inner permutation and no arena plan, but it still routes
+    // through gemm(result, left, right, helper, elem_muladd_op).
+    constexpr bool tot_aware_op =
+        TiledArray::detail::is_tensor_of_tensor_v<value_type> ||
+        denest_to_scalar;
+
     // initialize op_, trange_, and shape_ which only refer to the outer modes
     if (outer(target_indices) != outer(indices_)) {
       const auto outer_perm = outer(perm_);
       // Initialize permuted structure
-      if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      if constexpr (!tot_aware_op) {
         op_ = op_type(
             left_op, right_op, factor_, outer_size(indices_),
             outer_size(left_indices_), outer_size(right_indices_),
             (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}));
       } else {
         auto make_total_perm = [this]() -> BipartitePermutation {
-          if (this->product_type() != TensorProduct::Contraction ||
-              this->implicit_permute_inner_)
+          // dot_inner: the result tile is a plain tensor of scalars with no
+          // inner modes, so only the outer permutation applies.
+          if constexpr (denest_to_scalar) {
             return this->implicit_permute_outer_
                        ? BipartitePermutation()
                        : BipartitePermutation(outer(this->perm_));
+          } else {
+            if (this->product_type() != TensorProduct::Contraction ||
+                this->implicit_permute_inner_)
+              return this->implicit_permute_outer_
+                         ? BipartitePermutation()
+                         : BipartitePermutation(outer(this->perm_));
 
-          // Here,
-          // this->product_type() is Tensor::Contraction, and,
-          // this->implicit_permute_inner_ is false
+            // Here,
+            // this->product_type() is Tensor::Contraction, and,
+            // this->implicit_permute_inner_ is false
 
-          if (this->inner_product_type() == TensorProduct::Scale) {
-            // Owning inner cells apply the inner result permutation in the
-            // per-cell scale op, so they carry only the outer perm here. View
-            // (arena) cells instead use a perm-free per-cell op + an unpermuted
-            // arena plan and rely on op_'s post-processing permute for the
-            // inner perm -- so they carry the full perm, like inner
-            // Contraction.
-            if constexpr (!TiledArray::is_tensor_view_v<
-                              result_tile_element_type>)
-              return BipartitePermutation(outer(this->perm_));
+            if (this->inner_product_type() == TensorProduct::Scale) {
+              // Owning inner cells apply the inner result permutation in the
+              // per-cell scale op, so they carry only the outer perm here. View
+              // (arena) cells instead use a perm-free per-cell op + an
+              // unpermuted arena plan and rely on op_'s post-processing permute
+              // for the inner perm -- so they carry the full perm, like inner
+              // Contraction.
+              if constexpr (!TiledArray::is_tensor_view_v<
+                                result_tile_element_type>)
+                return BipartitePermutation(outer(this->perm_));
+            }
+            return this->perm_;
           }
-          return this->perm_;
         };
 
         auto total_perm = make_total_perm();
@@ -442,13 +461,17 @@ class ContEngine : public BinaryEngine<Derived> {
     } else {
       // Initialize non-permuted structure
 
-      if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      if constexpr (!tot_aware_op) {
         op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_));
       } else {
         auto make_total_perm = [this]() -> BipartitePermutation {
-          if (this->product_type() != TensorProduct::Contraction ||
-              this->implicit_permute_inner_)
+          // dot_inner: the result tile is a plain tensor of scalars with no
+          // inner modes; this is the non-permuted branch, so no perm applies.
+          if constexpr (denest_to_scalar) {
+            return {};
+          } else if (this->product_type() != TensorProduct::Contraction ||
+                     this->implicit_permute_inner_)
             return {};
 
           // Here,
@@ -718,7 +741,14 @@ class ContEngine : public BinaryEngine<Derived> {
     const auto left_op =
         u ? math::blas::NoTranspose : to_cblas_op(left_outer_permtype_);
     const auto right_op = to_cblas_op(right_outer_permtype_);
-    if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+    // As in init_struct, the ContractReduce tile op needs the per-cell inner
+    // element op when the operands are nested -- including the dot_inner regime
+    // (denest_to_scalar), where the result tile is plain but the nested modes
+    // are still dotted per outer cell.
+    constexpr bool tot_aware_op =
+        TiledArray::detail::is_tensor_of_tensor_v<value_type> ||
+        denest_to_scalar;
+    if constexpr (!tot_aware_op) {
       op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh + u,
                     outer_size(left_indices_) - nh + u,
                     outer_size(right_indices_) - nh);
@@ -729,12 +759,16 @@ class ContEngine : public BinaryEngine<Derived> {
       // (non-identity) explicit inner result permutation requires one. N.B.
       // perm_ may carry a non-null identity inner component when only the
       // outer modes are permuted (the bipartite perm is constructed whole).
-      if (!implicit_permute_inner_ && bool(inner(perm_)) &&
-          !inner(perm_).is_identity())
-        TA_EXCEPTION(
-            "general products of tensors-of-tensors: a non-identity inner "
-            "result permutation is not yet supported; reorder the inner "
-            "annotation of the result");
+      // The dot_inner result has no inner modes, so this check is a no-op
+      // there.
+      if constexpr (!denest_to_scalar) {
+        if (!implicit_permute_inner_ && bool(inner(perm_)) &&
+            !inner(perm_).is_identity())
+          TA_EXCEPTION(
+              "general products of tensors-of-tensors: a non-identity inner "
+              "result permutation is not yet supported; reorder the inner "
+              "annotation of the result");
+      }
 
       // factor_ is absorbed into element_nonreturn_op_
       op_ = op_type(left_op, right_op, scalar_type(1),
