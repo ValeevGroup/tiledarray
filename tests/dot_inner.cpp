@@ -127,4 +127,30 @@ BOOST_AUTO_TEST_CASE(sparse_policy) {
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
 }
 
+// Conjugating inner_product semantics via a lazy .conj() on the LEFT ToT
+// operand: A.conj().dot_inner(B) must compute sum_ab conj(A_ab) * B_ab per
+// outer cell. Oracle: conjugate A EAGERLY, then run the NON-conjugating einsum
+// denest. Both paths perform the identical real arithmetic (conjugate, then
+// multiply-accumulate in the same per-cell summation order), so the complex
+// results match bit-for-bit and exact are_equal comparison is faithful.
+BOOST_AUTO_TEST_CASE(conjugated_left) {
+  using Tc = TA::Tensor<std::complex<double>>;
+  using ToTc = TA::Tensor<Tc>;
+  using ArrayToTc = TA::DistArray<ToTc>;
+  using ArrayTc = TA::DistArray<Tc>;
+  TA::TiledRange tr{{0, 2, 4}, {0, 4}};
+  auto A = random_array<ArrayToTc>(tr, {3, 2});
+  auto B = random_array<ArrayToTc>(tr, {3, 2});
+
+  // oracle: conjugate A's inner elements eagerly, then NON-conjugating denest
+  // dot
+  ArrayToTc Aconj;
+  Aconj("i,j;a,b") = A("i,j;a,b").conj();
+  ArrayTc ref = TA::einsum<DeNest::True>("ij;ab,ij;ab->ij", Aconj, B);
+
+  ArrayTc out;
+  out("i,j") = A("i,j;a,b").conj().dot_inner(B("i,j;a,b"));
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
