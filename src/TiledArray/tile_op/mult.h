@@ -89,15 +89,18 @@ class Mult {
 
   /// True when the plain element-wise `mult` fallback (used when no custom
   /// element_op_ is supplied) is type-compatible with the result tile type.
-  /// This is false for the dot_inner denest, where both operands are nested
-  /// (ToT) but the result is a plain tensor of scalars: `mult(left, right)`
-  /// would yield a ToT, not the scalar-element result. In that case a custom
-  /// element_op_ is always supplied, so the fallback is unreachable; the
-  /// `if constexpr` guards below keep it from being instantiated.
+  /// This is false only for the dot_inner denest: both operands are nested
+  /// (ToT) but the result is a plain (non-nested) tensor of scalars, so
+  /// `mult(left, right)` would yield a ToT, not the scalar-element result. In
+  /// that case a custom element_op_ is always supplied, so the fallback is
+  /// unreachable; the `if constexpr` guards below keep it from being
+  /// instantiated. Note this stays true for the mixed Hadamard product
+  /// ToT * T -> ToT (nested * plain -> nested), where the plain fallback is
+  /// the correct path.
   static constexpr bool plain_mult_ok_ =
-      TiledArray::detail::is_nested_tensor_v<left_value_type,
-                                             right_value_type> ==
-      TiledArray::detail::is_nested_tensor_v<result_value_type>;
+      !(TiledArray::detail::is_nested_tensor_v<left_value_type> &&
+        TiledArray::detail::is_nested_tensor_v<right_value_type> &&
+        !TiledArray::detail::is_nested_tensor_v<result_value_type>);
 
   /// type-erased reference to a whole-tile op. When set, eval() delegates the
   /// entire tile product to it. Used for arena tensor-of-tensors products
