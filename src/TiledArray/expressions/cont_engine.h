@@ -778,13 +778,16 @@ class ContEngine : public BinaryEngine<Derived> {
                     this->element_nonreturn_op_, std::move(this->arena_plan_));
       // ce+e, ce+ce_right and ce+ce_left are mutually exclusive; at most one
       // is non-null and only one install fires (see init_struct)
-      if (this->arena_strided_dgemm_ce_e_tile_op_)
-        op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
-      if (this->arena_strided_dgemm_ce_ce_right_tile_op_)
-        op_.set_strided_oprod_op(
-            this->arena_strided_dgemm_ce_ce_right_tile_op_);
-      if (this->arena_strided_dgemm_ce_ce_left_tile_op_)
-        op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_left_tile_op_);
+      if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+        if (this->arena_strided_dgemm_ce_e_tile_op_)
+          op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
+        if (this->arena_strided_dgemm_ce_ce_right_tile_op_)
+          op_.set_strided_oprod_op(
+              this->arena_strided_dgemm_ce_ce_right_tile_op_);
+        if (this->arena_strided_dgemm_ce_ce_left_tile_op_)
+          op_.set_strided_oprod_op(
+              this->arena_strided_dgemm_ce_ce_left_tile_op_);
+      }
       // Plan ownership transferred to op_; mark carrier slot empty so any
       // later use of arena_plan_ reads as "no plan" rather than moved-from.
       if constexpr (!std::is_same_v<arena_plan_storage_t, std::monostate>) {
