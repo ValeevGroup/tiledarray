@@ -28,6 +28,7 @@
 
 #include <TiledArray/expressions/add_expr.h>
 #include <TiledArray/expressions/blk_tsr_expr.h>
+#include <TiledArray/expressions/dot_inner_expr.h>
 #include <TiledArray/expressions/mult_expr.h>
 #include <TiledArray/expressions/scal_tsr_expr.h>
 #include <TiledArray/expressions/subt_expr.h>

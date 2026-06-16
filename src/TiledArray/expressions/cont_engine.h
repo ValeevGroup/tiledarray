@@ -47,6 +47,8 @@ template <typename, typename>
 class MultExpr;
 template <typename, typename, typename>
 class ScalMultExpr;
+template <typename, typename>
+class DotInnerExpr;
 
 /// Multiplication expression engine
 
@@ -124,6 +126,16 @@ class ContEngine : public BinaryEngine<Derived> {
   using result_tile_element_type = typename result_tile_type::value_type;
   using left_tile_element_type = typename left_tile_type::value_type;
   using right_tile_element_type = typename right_tile_type::value_type;
+
+  /// True when both operand tiles are nested (ToT) but the result tile is a
+  /// plain tensor of scalars: the inner (nested) modes are fully contracted
+  /// (dotted) away to a scalar per outer cell. This is the dot_inner regime.
+  /// See also the sibling predicate ContractReduce::denest_to_scalar
+  /// (contract_reduce.h); keep the two in sync.
+  static constexpr bool denest_to_scalar =
+      TiledArray::detail::is_tensor_of_tensor_v<left_tile_type,
+                                                right_tile_type> &&
+      !TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>;
 
   std::function<void(result_tile_element_type&, const left_tile_element_type&,
                      const right_tile_element_type&)>
@@ -267,6 +279,15 @@ class ContEngine : public BinaryEngine<Derived> {
   ContEngine(const ScalMultExpr<L, R, S>& expr)
       : BinaryEngine_(expr), factor_(expr.factor()) {}
 
+  /// Constructor
+
+  /// \tparam L The left-hand argument expression type
+  /// \tparam R The right-hand argument expression type
+  /// \param expr The parent expression
+  template <typename L, typename R>
+  ContEngine(const DotInnerExpr<L, R>& expr)
+      : BinaryEngine_(expr), factor_(1) {}
+
   // Pull base class functions into this class.
   using ExprEngine_::derived;
   using ExprEngine_::indices;
@@ -354,39 +375,58 @@ class ContEngine : public BinaryEngine<Derived> {
     // initialize perm_
     this->init_perm(target_indices);
 
+    // The ContractReduce tile op needs the per-cell inner element op whenever
+    // the operands are nested -- both when the result is also nested
+    // (is_tensor_of_tensor_v<value_type>) and in the dot_inner regime, where
+    // the nested modes are fully contracted to a plain scalar result
+    // (denest_to_scalar). In the latter case the result tile is a plain tensor,
+    // so it carries no inner permutation and no arena plan, but it still routes
+    // through gemm(result, left, right, helper, elem_muladd_op).
+    constexpr bool tot_aware_op =
+        TiledArray::detail::is_tensor_of_tensor_v<value_type> ||
+        denest_to_scalar;
+
     // initialize op_, trange_, and shape_ which only refer to the outer modes
     if (outer(target_indices) != outer(indices_)) {
       const auto outer_perm = outer(perm_);
       // Initialize permuted structure
-      if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      if constexpr (!tot_aware_op) {
         op_ = op_type(
             left_op, right_op, factor_, outer_size(indices_),
             outer_size(left_indices_), outer_size(right_indices_),
             (!implicit_permute_outer_ ? std::move(outer_perm) : Permutation{}));
       } else {
         auto make_total_perm = [this]() -> BipartitePermutation {
-          if (this->product_type() != TensorProduct::Contraction ||
-              this->implicit_permute_inner_)
+          // dot_inner: the result tile is a plain tensor of scalars with no
+          // inner modes, so only the outer permutation applies.
+          if constexpr (denest_to_scalar) {
             return this->implicit_permute_outer_
                        ? BipartitePermutation()
                        : BipartitePermutation(outer(this->perm_));
+          } else {
+            if (this->product_type() != TensorProduct::Contraction ||
+                this->implicit_permute_inner_)
+              return this->implicit_permute_outer_
+                         ? BipartitePermutation()
+                         : BipartitePermutation(outer(this->perm_));
 
-          // Here,
-          // this->product_type() is Tensor::Contraction, and,
-          // this->implicit_permute_inner_ is false
+            // Here,
+            // this->product_type() is Tensor::Contraction, and,
+            // this->implicit_permute_inner_ is false
 
-          if (this->inner_product_type() == TensorProduct::Scale) {
-            // Owning inner cells apply the inner result permutation in the
-            // per-cell scale op, so they carry only the outer perm here. View
-            // (arena) cells instead use a perm-free per-cell op + an unpermuted
-            // arena plan and rely on op_'s post-processing permute for the
-            // inner perm -- so they carry the full perm, like inner
-            // Contraction.
-            if constexpr (!TiledArray::is_tensor_view_v<
-                              result_tile_element_type>)
-              return BipartitePermutation(outer(this->perm_));
+            if (this->inner_product_type() == TensorProduct::Scale) {
+              // Owning inner cells apply the inner result permutation in the
+              // per-cell scale op, so they carry only the outer perm here. View
+              // (arena) cells instead use a perm-free per-cell op + an
+              // unpermuted arena plan and rely on op_'s post-processing permute
+              // for the inner perm -- so they carry the full perm, like inner
+              // Contraction.
+              if constexpr (!TiledArray::is_tensor_view_v<
+                                result_tile_element_type>)
+                return BipartitePermutation(outer(this->perm_));
+            }
+            return this->perm_;
           }
-          return this->perm_;
         };
 
         auto total_perm = make_total_perm();
@@ -421,13 +461,17 @@ class ContEngine : public BinaryEngine<Derived> {
     } else {
       // Initialize non-permuted structure
 
-      if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      if constexpr (!tot_aware_op) {
         op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_));
       } else {
         auto make_total_perm = [this]() -> BipartitePermutation {
-          if (this->product_type() != TensorProduct::Contraction ||
-              this->implicit_permute_inner_)
+          // dot_inner: the result tile is a plain tensor of scalars with no
+          // inner modes; this is the non-permuted branch, so no perm applies.
+          if constexpr (denest_to_scalar) {
+            return {};
+          } else if (this->product_type() != TensorProduct::Contraction ||
+                     this->implicit_permute_inner_)
             return {};
 
           // Here,
@@ -697,7 +741,14 @@ class ContEngine : public BinaryEngine<Derived> {
     const auto left_op =
         u ? math::blas::NoTranspose : to_cblas_op(left_outer_permtype_);
     const auto right_op = to_cblas_op(right_outer_permtype_);
-    if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+    // As in init_struct, the ContractReduce tile op needs the per-cell inner
+    // element op when the operands are nested -- including the dot_inner regime
+    // (denest_to_scalar), where the result tile is plain but the nested modes
+    // are still dotted per outer cell.
+    constexpr bool tot_aware_op =
+        TiledArray::detail::is_tensor_of_tensor_v<value_type> ||
+        denest_to_scalar;
+    if constexpr (!tot_aware_op) {
       op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh + u,
                     outer_size(left_indices_) - nh + u,
                     outer_size(right_indices_) - nh);
@@ -708,12 +759,16 @@ class ContEngine : public BinaryEngine<Derived> {
       // (non-identity) explicit inner result permutation requires one. N.B.
       // perm_ may carry a non-null identity inner component when only the
       // outer modes are permuted (the bipartite perm is constructed whole).
-      if (!implicit_permute_inner_ && bool(inner(perm_)) &&
-          !inner(perm_).is_identity())
-        TA_EXCEPTION(
-            "general products of tensors-of-tensors: a non-identity inner "
-            "result permutation is not yet supported; reorder the inner "
-            "annotation of the result");
+      // The dot_inner result has no inner modes, so this check is a no-op
+      // there.
+      if constexpr (!denest_to_scalar) {
+        if (!implicit_permute_inner_ && bool(inner(perm_)) &&
+            !inner(perm_).is_identity())
+          TA_EXCEPTION(
+              "general products of tensors-of-tensors: a non-identity inner "
+              "result permutation is not yet supported; reorder the inner "
+              "annotation of the result");
+      }
 
       // factor_ is absorbed into element_nonreturn_op_
       op_ = op_type(left_op, right_op, scalar_type(1),
@@ -723,13 +778,16 @@ class ContEngine : public BinaryEngine<Derived> {
                     this->element_nonreturn_op_, std::move(this->arena_plan_));
       // ce+e, ce+ce_right and ce+ce_left are mutually exclusive; at most one
       // is non-null and only one install fires (see init_struct)
-      if (this->arena_strided_dgemm_ce_e_tile_op_)
-        op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
-      if (this->arena_strided_dgemm_ce_ce_right_tile_op_)
-        op_.set_strided_oprod_op(
-            this->arena_strided_dgemm_ce_ce_right_tile_op_);
-      if (this->arena_strided_dgemm_ce_ce_left_tile_op_)
-        op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_ce_left_tile_op_);
+      if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+        if (this->arena_strided_dgemm_ce_e_tile_op_)
+          op_.set_strided_oprod_op(this->arena_strided_dgemm_ce_e_tile_op_);
+        if (this->arena_strided_dgemm_ce_ce_right_tile_op_)
+          op_.set_strided_oprod_op(
+              this->arena_strided_dgemm_ce_ce_right_tile_op_);
+        if (this->arena_strided_dgemm_ce_ce_left_tile_op_)
+          op_.set_strided_oprod_op(
+              this->arena_strided_dgemm_ce_ce_left_tile_op_);
+      }
       // Plan ownership transferred to op_; mark carrier slot empty so any
       // later use of arena_plan_ reads as "no plan" rather than moved-from.
       if constexpr (!std::is_same_v<arena_plan_storage_t, std::monostate>) {
@@ -1063,6 +1121,46 @@ class ContEngine : public BinaryEngine<Derived> {
 
  protected:
   void init_inner_tile_op(const IndexList& inner_target_indices) {
+    if constexpr (denest_to_scalar) {
+      // dot_inner: both operand cells are inner tensors, the result cell is a
+      // scalar. The inner modes are fully contracted (a flat, non-conjugating
+      // dot of the operand cells) and accumulated into the scalar result cell.
+      // This mirrors the phantom-unit denest in init_inner_tile_op_owning_ but
+      // writes a bare scalar instead of a unit-extent [1] cell. The outer
+      // ContractReduce (built in init_struct) routes the !plain_tensors case to
+      // gemm(result, left, right, helper, elem_muladd_op), invoking this op per
+      // outer cell.
+      const scalar_type factor = this->factor_;
+      // shared flat (non-conjugating) scalar dot of two inner cells, scaled by
+      // factor; returns the contribution for one outer cell (0 if either
+      // operand cell is empty). The numerically-sensitive accumulation lives
+      // here only -- see also denest_to_scalar at contract_reduce.h.
+      auto flat_dot = [factor](const left_tile_element_type& left,
+                               const right_tile_element_type& right)
+          -> result_tile_element_type {
+        if (left.empty() || right.empty()) return result_tile_element_type{0};
+        const std::size_t n = left.range().volume();
+        TA_ASSERT(n == right.range().volume());
+        const auto* lp = left.data();
+        const auto* rp = right.data();
+        result_tile_element_type acc{0};
+        for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
+        return static_cast<result_tile_element_type>(factor) * acc;
+      };
+      this->element_nonreturn_op_ = [flat_dot](
+                                        result_tile_element_type& result,
+                                        const left_tile_element_type& left,
+                                        const right_tile_element_type& right) {
+        result += flat_dot(left, right);
+      };
+      // value-returning form for the outer-Hadamard regime (the Mult binary
+      // tile op maps it over the outer cells via TiledArray::binary)
+      this->element_return_op_ = [flat_dot](
+                                     const left_tile_element_type& left,
+                                     const right_tile_element_type& right)
+          -> result_tile_element_type { return flat_dot(left, right); };
+      return;
+    }
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>) {
       constexpr bool tot_x_tot = TiledArray::detail::is_tensor_of_tensor_v<
           result_tile_type, left_tile_type, right_tile_type>;
