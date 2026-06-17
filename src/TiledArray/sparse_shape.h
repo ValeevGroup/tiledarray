@@ -1727,13 +1727,21 @@ class SparseShape {
     const bool unit_external =
         (tile_norms_.range().rank() + 1u == nfused + gemm_helper.left_rank());
     const unsigned int u = unit_external ? 1u : 0u;
+    // a fused broadcast on the RIGHT carries a SYNTHETIC unit right-external
+    // mode in the GemmHelper only (mirror of unit_external; see
+    // ContEngine::synthetic_unit_right_external); detect it from the one-rank
+    // mismatch with the actual right norm tensor and pad the folded
+    // right/result views with a unit extent
+    const bool unit_right_external = (other.tile_norms_.range().rank() + 1u ==
+                                      nfused + gemm_helper.right_rank());
+    const unsigned int u_right = unit_right_external ? 1u : 0u;
 
     // check that the ranks match the folded gemm ranks plus the fused modes,
     // and that the fused and contracted mode extents of the two shapes are
     // congruent
     TA_ASSERT(tile_norms_.range().rank() + u ==
               nfused + gemm_helper.left_rank());
-    TA_ASSERT(other.tile_norms_.range().rank() ==
+    TA_ASSERT(other.tile_norms_.range().rank() + u_right ==
               nfused + gemm_helper.right_rank());
     for (unsigned int d = 0u; d < nfused; ++d)
       TA_ASSERT(left_extent[d] == right_extent[d]);
@@ -1751,14 +1759,16 @@ class SparseShape {
     for (unsigned int i = gemm_helper.left_inner_begin();
          i < gemm_helper.left_inner_end(); ++i)
       K *= left_extent[nfused + i - u];
-    for (unsigned int i = gemm_helper.right_outer_begin();
-         i < gemm_helper.right_outer_end(); ++i)
-      N *= right_extent[nfused + i];
+    if (!unit_right_external)
+      for (unsigned int i = gemm_helper.right_outer_begin();
+           i < gemm_helper.right_outer_end(); ++i)
+        N *= right_extent[nfused + i];
 
     // result size vectors: fused modes (from this), then the left and right
-    // outer modes (the synthetic unit left-external mode is absent from the
-    // actual result)
-    const unsigned int result_rank = nfused + gemm_helper.result_rank() - u;
+    // outer modes (the synthetic unit left-/right-external modes are absent
+    // from the actual result)
+    const unsigned int result_rank =
+        nfused + gemm_helper.result_rank() - u - u_right;
     std::shared_ptr<vector_type> result_size_vectors(
         new vector_type[result_rank], std::default_delete<vector_type[]>());
     unsigned int x = 0ul;
@@ -1768,9 +1778,10 @@ class SparseShape {
       for (unsigned int i = gemm_helper.left_outer_begin();
            i < gemm_helper.left_outer_end(); ++i, ++x)
         result_size_vectors.get()[x] = size_vectors_.get()[nfused + i];
-    for (unsigned int i = gemm_helper.right_outer_begin();
-         i < gemm_helper.right_outer_end(); ++i, ++x)
-      result_size_vectors.get()[x] = other.size_vectors_.get()[nfused + i];
+    if (!unit_right_external)
+      for (unsigned int i = gemm_helper.right_outer_begin();
+           i < gemm_helper.right_outer_end(); ++i, ++x)
+        result_size_vectors.get()[x] = other.size_vectors_.get()[nfused + i];
 
     // the result norm tensor over (fused..., left outer..., right outer...)
     using range_type = typename Tensor<value_type>::range_type;
@@ -1788,22 +1799,28 @@ class SparseShape {
         lobounds.push_back(tile_norms_.range().lobound_data()[nfused + i]);
         upbounds.push_back(tile_norms_.range().upbound_data()[nfused + i]);
       }
-    for (unsigned int i = gemm_helper.right_outer_begin();
-         i < gemm_helper.right_outer_end(); ++i) {
-      lobounds.push_back(other.tile_norms_.range().lobound_data()[nfused + i]);
-      upbounds.push_back(other.tile_norms_.range().upbound_data()[nfused + i]);
-    }
+    if (!unit_right_external)
+      for (unsigned int i = gemm_helper.right_outer_begin();
+           i < gemm_helper.right_outer_end(); ++i) {
+        lobounds.push_back(
+            other.tile_norms_.range().lobound_data()[nfused + i]);
+        upbounds.push_back(
+            other.tile_norms_.range().upbound_data()[nfused + i]);
+      }
     Tensor<value_type> result_norms(range_type(lobounds, upbounds), 0);
 
     // the range spanned by modes [nfused, rank) of \p r, rebased to zero
     // lobounds (scratch view for the slab-batched norm GEMM)
     auto fold_range = [nfused](const range_type& r,
-                               const bool prepend_unit = false) {
+                               const bool prepend_unit = false,
+                               const bool append_unit = false) {
       const auto* extent = r.extent_data();
       container::svector<index1_type> extents;
-      extents.reserve(r.rank() - nfused + (prepend_unit ? 1u : 0u));
+      extents.reserve(r.rank() - nfused + (prepend_unit ? 1u : 0u) +
+                      (append_unit ? 1u : 0u));
       if (prepend_unit) extents.push_back(1);
       extents.insert(extents.end(), extent + nfused, extent + r.rank());
+      if (append_unit) extents.push_back(1);
       return range_type(extents);
     };
 
@@ -1847,9 +1864,11 @@ class SparseShape {
       // buffer, so the accumulation lands in place
       auto left_folded =
           left.reshape(fold_range(left.range(), unit_external), H);
-      auto right_folded = right.reshape(fold_range(right.range()), H);
+      auto right_folded = right.reshape(
+          fold_range(right.range(), false, unit_right_external), H);
       auto result_folded = result_norms.reshape(
-          fold_range(result_norms.range(), unit_external), H);
+          fold_range(result_norms.range(), unit_external, unit_right_external),
+          H);
       result_folded.gemm(left_folded, right_folded, abs_factor, gemm_helper);
 
       // Hard zero tiles that are below the zero threshold.

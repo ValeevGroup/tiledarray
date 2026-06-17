@@ -257,11 +257,20 @@ BOOST_AUTO_TEST_CASE(expression_general_product_dense_broadcast) {
   ref("b,k") = s_rep("k,b") * v("b,k");
 
   // (a) LEFT operand fully fused, straight through the expression layer
+  // (synthetic unit LEFT-external mode)
   TA::TArrayD cc;
   BOOST_REQUIRE_NO_THROW(cc("b,k") = s("b") * v("b,k"));
   BOOST_CHECK_SMALL(diff_norm(cc, ref, "b,k"), 1e-10);
 
-  // (b) einsum, both operand orders (RIGHT operand fully fused too)
+  // (b) RIGHT operand fully fused, straight through the expression layer
+  // (synthetic unit RIGHT-external mode). The expression layer respects
+  // operand order (no swap), so this is the only place the right-broadcast
+  // shape is exercised; einsum (case (c)) may reorder operands and dodge it.
+  TA::TArrayD cc_r;
+  BOOST_REQUIRE_NO_THROW(cc_r("b,k") = v("b,k") * s("b"));
+  BOOST_CHECK_SMALL(diff_norm(cc_r, ref, "b,k"), 1e-10);
+
+  // (c) einsum, both operand orders (RIGHT operand fully fused too)
   auto c_lr = TA::einsum(s("b"), v("b,k"), "b,k");
   BOOST_CHECK_SMALL(diff_norm(c_lr, ref, "b,k"), 1e-10);
   auto c_rl = TA::einsum(v("b,k"), s("b"), "b,k");
@@ -439,6 +448,26 @@ BOOST_AUTO_TEST_CASE(expression_general_product_sparse_batched_outer) {
   BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i,k"), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_broadcast_right) {
+  // block-sparse fused broadcast on the RIGHT: C(b,k) = A(b,k) * B(b), the
+  // right operand entirely fused (no outer external/contracted mode). Exercises
+  // the synthetic unit RIGHT-external mode in SparseShape::gemm_batched (the
+  // shape-level analog) as well as the batched tile op, through the expression
+  // layer (which respects operand order).
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+
+  TA::TiledRange tr_a{{0, 2, 5}, {0, 4, 5}};  // b, k
+  TA::TiledRange tr_b{{0, 2, 5}};             // b
+  auto a = make_patterned_sparse_array(world, tr_a, 1.0, 3);
+  auto b = make_patterned_sparse_array(world, tr_b, 2.0, 2);
+
+  TA::TSpArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,k") = a("b,k") * b("b"));
+  auto c_ref = TA::einsum(a("b,k"), b("b"), "b,k");
+  BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,k"), 1e-10);
+}
+
 namespace {
 
 using TArrayToT =
@@ -526,6 +555,28 @@ BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_contraction) {
   TArrayToT c;
   BOOST_REQUIRE_NO_THROW(c("b,i,k;m,n") = a("b,i,j;m,c") * b("b,j,k;c,n"));
   auto c_ref = TA::einsum(a("b,i,j;m,c"), b("b,j,k;c,n"), "b,i,k;m,n");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_broadcast_right) {
+  // ToT general product, RIGHT operand entirely fused at the outer level (a
+  // per-fused-block scale on the right), inner Hadamard:
+  //   C("b,k;m") = A("b,k;m") * B("b;m")
+  // outer: b fused, k free (from left), right operand B("b") carries NO outer
+  // external/contracted mode -> a rank-0 RIGHT fold that needs the synthetic
+  // unit RIGHT-external mode (mirror of the left broadcast above). The
+  // expression layer respects operand order, so this exercises the
+  // right-broadcast path that einsum's operand reordering would otherwise hide.
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 3, 4}};  // b, k
+  TA::TiledRange tr_b{{0, 2, 4}};             // b
+  auto a = make_patterned_tot_array(world, tr_a, {3}, 1.0);
+  auto b = make_patterned_tot_array(world, tr_b, {3}, 2.0);
+
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("b,k;m") = a("b,k;m") * b("b;m"));
+  auto c_ref = TA::einsum(a("b,k;m"), b("b;m"), "b,k;m");
   BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
 }
 
