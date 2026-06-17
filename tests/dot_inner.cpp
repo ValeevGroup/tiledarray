@@ -94,6 +94,31 @@ BOOST_AUTO_TEST_CASE(hadamard_outer) {
   BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
 }
 
+// RIGHT operand entirely fused at the outer level (a per-fused-block scale on
+// the right): bk;ab . b;ab -> bk. Outer b fused, k external (from left), the
+// right operand carries NO outer external/contracted mode, so the folded right
+// operand is rank-0 and needs the synthetic unit RIGHT-external mode
+// (ContEngine::synthetic_unit_right_external). This is the denest (->T) analog
+// of the CSV-CCk fused-broadcast-right shape; without the fix the folded right
+// reshape aborts. inner ab fully contracted.
+BOOST_AUTO_TEST_CASE(broadcast_right_outer) {
+  TA::TiledRange a_tr{{0, 2, 4}, {0, 3, 4}};  // b, k
+  TA::TiledRange b_tr{{0, 2, 4}};             // b
+  auto A = random_array<ArrayToT>(a_tr, {3, 2});
+  auto B = random_array<ArrayToT>(b_tr, {3, 2});
+
+  ArrayT ref;
+  {
+    LegacyEinsumGuard g;
+    ref = TA::einsum<DeNest::True>("bk;mn,b;mn->bk", A, B);
+  }
+
+  ArrayT out;
+  out("b,k") = A("b,k;m,n").dot_inner(B("b;m,n"));
+
+  BOOST_REQUIRE((ToTArrayFixture::are_equal<ShapeComp::True>(ref, out)));
+}
+
 // outer: ipk x iqk -> ipq  (Hadamard i, external p & q, contracted-outer k);
 // inner ab fully contracted. Exercises the Contraction/General outer routing.
 BOOST_AUTO_TEST_CASE(hadamard_external_contracted_outer) {

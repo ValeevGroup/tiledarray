@@ -735,12 +735,20 @@ class ContEngine : public BinaryEngine<Derived> {
     // the synthetic mode from the one-rank mismatch and pad their folded views
     // with a unit extent.
     const unsigned int u = synthetic_unit_left_external();
+    //  - a FUSED BROADCAST ON THE RIGHT (the right operand is entirely fused,
+    //    no contraction, e.g. C("b,k") = A("b,k") * B("b")) folds to a rank-0
+    //    RIGHT operand; a synthetic unit RIGHT-external mode restores a
+    //    supported (M,K) x (K,1) -> (M,1) shape (see
+    //    synthetic_unit_right_external()).
+    const unsigned int u_right = synthetic_unit_right_external();
 
     // the tile op operates on the folded (fused-mode-free) shapes; the
-    // synthetic unit mode leads the folded left operand, so it is NoTrans
+    // synthetic unit mode leads the folded left operand (trails the folded
+    // right operand), so it is NoTrans on that side
     const auto left_op =
         u ? math::blas::NoTranspose : to_cblas_op(left_outer_permtype_);
-    const auto right_op = to_cblas_op(right_outer_permtype_);
+    const auto right_op =
+        u_right ? math::blas::NoTranspose : to_cblas_op(right_outer_permtype_);
     // As in init_struct, the ContractReduce tile op needs the per-cell inner
     // element op when the operands are nested -- including the dot_inner regime
     // (denest_to_scalar), where the result tile is plain but the nested modes
@@ -749,9 +757,10 @@ class ContEngine : public BinaryEngine<Derived> {
         TiledArray::detail::is_tensor_of_tensor_v<value_type> ||
         denest_to_scalar;
     if constexpr (!tot_aware_op) {
-      op_ = op_type(left_op, right_op, factor_, outer_size(indices_) - nh + u,
+      op_ = op_type(left_op, right_op, factor_,
+                    outer_size(indices_) - nh + u + u_right,
                     outer_size(left_indices_) - nh + u,
-                    outer_size(right_indices_) - nh);
+                    outer_size(right_indices_) - nh + u_right);
     } else {
       // the batched tile op must be perm-free (BatchedContractReduce cannot
       // host the folded-rank result permutation); the outer perm is handled
@@ -772,10 +781,11 @@ class ContEngine : public BinaryEngine<Derived> {
 
       // factor_ is absorbed into element_nonreturn_op_
       op_ = op_type(left_op, right_op, scalar_type(1),
-                    outer_size(indices_) - nh + u,
+                    outer_size(indices_) - nh + u + u_right,
                     outer_size(left_indices_) - nh + u,
-                    outer_size(right_indices_) - nh, BipartitePermutation{},
-                    this->element_nonreturn_op_, std::move(this->arena_plan_));
+                    outer_size(right_indices_) - nh + u_right,
+                    BipartitePermutation{}, this->element_nonreturn_op_,
+                    std::move(this->arena_plan_));
       // ce+e, ce+ce_right and ce+ce_left are mutually exclusive; at most one
       // is non-null and only one install fires (see init_struct)
       if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
@@ -826,6 +836,20 @@ class ContEngine : public BinaryEngine<Derived> {
                : 0u;
   }
 
+  /// \return 1 if the folded general product needs a SYNTHETIC unit
+  /// right-external mode, else 0. Mirror of synthetic_unit_left_external() for
+  /// the RIGHT operand: a rank-0 RIGHT operand arises when the right argument
+  /// is entirely fused with no contraction (a fused broadcast on the right,
+  /// e.g. C("b,k") = A("b,k") * B("b")), i.e.
+  /// outer_size(right_indices_) == n_fused_modes_. A left-external unit cannot
+  /// fix it (the right operand stays rank-0), so a unit right-external mode
+  /// (carried only in the GemmHelper) restores a supported (M,K) x (K,1) ->
+  /// (M,1) shape. The result gains a trailing unit mode that is absent from the
+  /// actual tranges/shapes/tiles, exactly as the left case prepends one.
+  unsigned int synthetic_unit_right_external() const {
+    return (outer_size(right_indices_) == n_fused_modes_) ? 1u : 0u;
+  }
+
   /// Tiled range factory function for a general product
 
   /// \return The result tiled range: the fused mode ranges followed by the
@@ -837,8 +861,9 @@ class ContEngine : public BinaryEngine<Derived> {
     // GemmHelper only (see synthetic_unit_left_external()); the actual tranges
     // do not have it
     const unsigned int u = synthetic_unit_left_external();
+    const unsigned int u_right = synthetic_unit_right_external();
     const unsigned int neA = op_.gemm_helper().left_rank() - nc - u;
-    const unsigned int neB = op_.gemm_helper().right_rank() - nc;
+    const unsigned int neB = op_.gemm_helper().right_rank() - nc - u_right;
 
     typename trange_type::Ranges ranges(nh + neA + neB);
     unsigned int i = 0ul;
@@ -893,8 +918,9 @@ class ContEngine : public BinaryEngine<Derived> {
     // GemmHelper only (see synthetic_unit_left_external()); the actual tranges
     // do not have it
     const unsigned int u = synthetic_unit_left_external();
+    const unsigned int u_right = synthetic_unit_right_external();
     const unsigned int neA = op_.gemm_helper().left_rank() - nc - u;
-    const unsigned int neB = op_.gemm_helper().right_rank() - nc;
+    const unsigned int neB = op_.gemm_helper().right_rank() - nc - u_right;
 
     // Get pointers to the argument sizes
     const auto* MADNESS_RESTRICT const left_tiles_size =
