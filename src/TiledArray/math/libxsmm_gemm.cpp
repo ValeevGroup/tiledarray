@@ -9,6 +9,7 @@
 #ifdef TILEDARRAY_HAS_LIBXSMM
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <mutex>
 #include <libxsmm.h>
 #endif
@@ -51,6 +52,11 @@ bool libxsmm_gemm_le64(bool trans_a, bool trans_b, std::int64_t m,
   // libxsmm SMM has no alpha and only beta in {0,1} (LIBXSMM_GEMM_NO_BYPASS).
   if (alpha != 1.0) return false;
   if (beta != 0.0 && beta != 1.0) return false;
+  // libxsmm_blasint is 32-bit; refuse leading dims that would narrow silently.
+  // (M,N,K are already <=64; lda/ldb/ldc are strides and unbounded in general.)
+  constexpr std::int64_t bi_max =
+      static_cast<std::int64_t>(std::numeric_limits<libxsmm_blasint>::max());
+  if (lda > bi_max || ldb > bi_max || ldc > bi_max) return false;
 
   static std::once_flag init_flag;
   std::call_once(init_flag, [] {

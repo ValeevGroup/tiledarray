@@ -70,6 +70,10 @@ else ()
         set(_libxsmm_cxx ${CMAKE_CXX_COMPILER})
     endif ()
 
+    # parallelism for the libxsmm sub-make (overridable; default mirrors the
+    # project's typical build budget rather than hardcoding into the command)
+    set(LIBXSMM_BUILD_NJOBS 6 CACHE STRING "Parallel jobs for the libxsmm sub-make")
+
     # libxsmm Make knobs:
     #   STATIC=1   build libxsmm.a (we link the archive into tiledarray)
     #   FORTRAN=0  skip the Fortran interface (no gfortran needed)
@@ -93,7 +97,7 @@ else ()
             BUILD_IN_SOURCE 1
             CONFIGURE_COMMAND ""
             #--Build step----------------- build + install in one make invocation
-            BUILD_COMMAND make -j6 STATIC=1 FORTRAN=0 BLAS=0
+            BUILD_COMMAND make -j${LIBXSMM_BUILD_NJOBS} STATIC=1 FORTRAN=0 BLAS=0
                           CC=${_libxsmm_cc} CXX=${_libxsmm_cxx} AR=${CMAKE_AR}
                           PREFIX=${_LIBXSMM_INSTALL_DIR} install
             BUILD_BYPRODUCTS ${LIBXSMM_BUILD_BYPRODUCTS}
@@ -112,16 +116,37 @@ else ()
 
 endif (_LIBXSMM_INSTALL_DIR)
 
+# Fold libxsmm's static lib + headers into TiledArray's OWN install prefix, so
+# the exported TiledArray config is self-contained and does not reference TA's
+# build tree (which a downstream find_package(TiledArray) consumer like MPQC
+# would otherwise link against -- and which breaks once the build tree is
+# wiped/relocated). Done for both the fetched and the prebuilt cases so the TA
+# install is identical either way.
+install(FILES "${_LIBXSMM_INSTALL_DIR}/lib/libxsmm.a"
+        DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}" COMPONENT tiledarray)
+install(DIRECTORY "${_LIBXSMM_INSTALL_DIR}/include/"
+        DESTINATION "${TILEDARRAY_INSTALL_INCLUDEDIR}" COMPONENT tiledarray)
+
 # Synthetic target carrying the include dir, the static archive, and the gating
-# define. PUBLIC propagation (via _TILEDARRAY_DEPENDENCIES) makes
-# TILEDARRAY_HAS_LIBXSMM + the include path visible to consumers (e.g. MPQC).
+# define. PUBLIC propagation (via _TILEDARRAY_DEPENDENCIES) makes the libxsmm.a
+# link requirement reach consumers (libtiledarray is a static archive, so its
+# undefined libxsmm symbols are resolved at the consumer's final link), plus
+# TILEDARRAY_HAS_LIBXSMM + the include path. The link/include paths are split
+# into BUILD_INTERFACE (TA's build tree) and INSTALL_INTERFACE (the installed
+# copy above), so the exported config never references the build tree. The
+# include INSTALL_INTERFACE is relative (CMake prepends the import prefix); the
+# link library INSTALL_INTERFACE must be an absolute path to the installed
+# archive -- CMake does NOT prepend the import prefix to INTERFACE_LINK_LIBRARIES
+# entries, so a relative path there would be resolved against the consumer's cwd
+# and fail to link. Absolute CMAKE_INSTALL_PREFIX is leak-free (the install tree
+# is the stable final location, unlike the build tree).
 add_library(TiledArray_LIBXSMM INTERFACE)
 set_target_properties(TiledArray_LIBXSMM
         PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES
-        "$<BUILD_INTERFACE:${_LIBXSMM_INSTALL_DIR}/include>;$<INSTALL_INTERFACE:include>"
+        "$<BUILD_INTERFACE:${_LIBXSMM_INSTALL_DIR}/include>;$<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>"
         INTERFACE_LINK_LIBRARIES
-        "${_LIBXSMM_INSTALL_DIR}/lib/libxsmm.a;${CMAKE_DL_LIBS}"
+        "$<BUILD_INTERFACE:${_LIBXSMM_INSTALL_DIR}/lib/libxsmm.a>;$<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${TILEDARRAY_INSTALL_LIBDIR}/libxsmm.a>;${CMAKE_DL_LIBS}"
         INTERFACE_COMPILE_DEFINITIONS
         "TILEDARRAY_HAS_LIBXSMM"
         )
