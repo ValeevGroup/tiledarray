@@ -154,6 +154,10 @@ if (TA_STRIDED_DGEMM_COUNT)
   add_compile_definitions(TA_STRIDED_DGEMM_COUNT)
 endif()
 
+option(TA_LIBXSMM
+       "Fetch+build libxsmm from source and route small strided ToT micro-GEMMs (ce+e, ce+ce, scale) through its JIT fast path; falls back to vendor BLAS for shapes max(M,N,K)>64. Runtime toggle: TA_LIBXSMM=0"
+       OFF)
+
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
 redefaultable_option(TA_WERROR "Treat compiler warnings as errors when compiling TiledArray's own translation units (does not propagate to consumers of installed TiledArray targets)" OFF)
@@ -365,6 +369,9 @@ include(external/boost.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBTAS.cmake)
 if(TA_SCALAPACK)
   include(external/scalapackpp.cmake)
+endif()
+if(TA_LIBXSMM)
+  include(external/libxsmm.cmake)
 endif()
 
 # other optional deps:

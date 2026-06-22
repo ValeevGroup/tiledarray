@@ -5,6 +5,7 @@
 
 #include "TiledArray/error.h"
 #include "TiledArray/math/gemm_helper.h"
+#include "TiledArray/math/libxsmm_gemm.h"
 #include "TiledArray/permutation.h"
 #include "TiledArray/tensor/arena.h"
 #include "TiledArray/tensor/arena_kernels.h"
@@ -1247,14 +1248,27 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
           {
             ScopedShapedGemmTimer _gt(g_gemm_ns_ce_e, g_gemm_calls_ce_e,
                                       g_ce_e_shapes, P, Q, K);
-            blas::gemm(blas::Transpose, blas::NoTranspose,
-                       /*M=*/static_cast<integer>(P),
-                       /*N=*/static_cast<integer>(Q),
-                       /*K=*/static_cast<integer>(K), factor,
-                       /*A=*/l0.data(), /*lda=*/static_cast<integer>(ldA),
-                       /*B=*/r0.data(), /*ldb=*/static_cast<integer>(ldB),
-                       /*beta=*/1.0,
-                       /*C=*/Cc.data(), /*ldc=*/static_cast<integer>(Q));
+            // libxsmm fast path when max(M,N,K)<=64 (and alpha==1); else the
+            // vendor-BLAS fallback. The ScopedShapedGemmTimer above wraps EITHER
+            // path, so wall/shape capture is backend-agnostic.
+            if (!TiledArray::detail::libxsmm_gemm_le64(
+                    /*trans_a=*/true, /*trans_b=*/false,
+                    /*M=*/static_cast<integer>(P),
+                    /*N=*/static_cast<integer>(Q),
+                    /*K=*/static_cast<integer>(K), factor,
+                    /*A=*/l0.data(), /*lda=*/static_cast<integer>(ldA),
+                    /*B=*/r0.data(), /*ldb=*/static_cast<integer>(ldB),
+                    /*beta=*/1.0,
+                    /*C=*/Cc.data(), /*ldc=*/static_cast<integer>(Q))) {
+              blas::gemm(blas::Transpose, blas::NoTranspose,
+                         /*M=*/static_cast<integer>(P),
+                         /*N=*/static_cast<integer>(Q),
+                         /*K=*/static_cast<integer>(K), factor,
+                         /*A=*/l0.data(), /*lda=*/static_cast<integer>(ldA),
+                         /*B=*/r0.data(), /*ldb=*/static_cast<integer>(ldB),
+                         /*beta=*/1.0,
+                         /*C=*/Cc.data(), /*ldc=*/static_cast<integer>(Q));
+            }
           }
 #ifdef TA_STRIDED_DGEMM_COUNT
           g_strided_dgemm_ce_e_calls.fetch_add(1, std::memory_order_relaxed);
@@ -1539,17 +1553,31 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
           {
             ScopedShapedGemmTimer _gt(g_gemm_ns_ce_ce, g_gemm_calls_ce_ce,
                                       g_ce_ce_shapes, Mseg, P, Q);
-            blas::gemm(
-                blas::NoTranspose,
-                left_inner_transposed ? blas::NoTranspose : blas::Transpose,
-                /*M=*/static_cast<integer>(Mseg),
-                /*N=*/static_cast<integer>(P),
-                /*K=*/static_cast<integer>(Q), factor,
-                /*A=*/rstart, /*lda=*/static_cast<integer>(ldR),
-                /*B=*/Lk,
-                /*ldb=*/static_cast<integer>(left_inner_transposed ? P : Q),
-                /*beta=*/1.0,
-                /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
+            // libxsmm fast path when max(M,N,K)<=64 (and alpha==1); else the
+            // vendor-BLAS fallback. The ScopedShapedGemmTimer wraps EITHER path.
+            if (!TiledArray::detail::libxsmm_gemm_le64(
+                    /*trans_a=*/false,
+                    /*trans_b=*/!left_inner_transposed,
+                    /*M=*/static_cast<integer>(Mseg),
+                    /*N=*/static_cast<integer>(P),
+                    /*K=*/static_cast<integer>(Q), factor,
+                    /*A=*/rstart, /*lda=*/static_cast<integer>(ldR),
+                    /*B=*/Lk,
+                    /*ldb=*/static_cast<integer>(left_inner_transposed ? P : Q),
+                    /*beta=*/1.0,
+                    /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC))) {
+              blas::gemm(
+                  blas::NoTranspose,
+                  left_inner_transposed ? blas::NoTranspose : blas::Transpose,
+                  /*M=*/static_cast<integer>(Mseg),
+                  /*N=*/static_cast<integer>(P),
+                  /*K=*/static_cast<integer>(Q), factor,
+                  /*A=*/rstart, /*lda=*/static_cast<integer>(ldR),
+                  /*B=*/Lk,
+                  /*ldb=*/static_cast<integer>(left_inner_transposed ? P : Q),
+                  /*beta=*/1.0,
+                  /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
+            }
           }
 #ifdef TA_STRIDED_DGEMM_COUNT
           g_strided_dgemm_ce_ce_right_calls.fetch_add(1,
@@ -1775,17 +1803,31 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
           {
             ScopedShapedGemmTimer _gt(g_gemm_ns_ce_ce, g_gemm_calls_ce_ce,
                                       g_ce_ce_shapes, Mseg, P, Q);
-            blas::gemm(
-                blas::NoTranspose,
-                right_inner_transposed ? blas::Transpose : blas::NoTranspose,
-                /*M=*/static_cast<integer>(Mseg),
-                /*N=*/static_cast<integer>(P),
-                /*K=*/static_cast<integer>(Q), factor,
-                /*A=*/lstart, /*lda=*/static_cast<integer>(ldA),
-                /*B=*/Rk,
-                /*ldb=*/static_cast<integer>(right_inner_transposed ? Q : P),
-                /*beta=*/1.0,
-                /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
+            // libxsmm fast path when max(M,N,K)<=64 (and alpha==1); else the
+            // vendor-BLAS fallback. The ScopedShapedGemmTimer wraps EITHER path.
+            if (!TiledArray::detail::libxsmm_gemm_le64(
+                    /*trans_a=*/false,
+                    /*trans_b=*/right_inner_transposed,
+                    /*M=*/static_cast<integer>(Mseg),
+                    /*N=*/static_cast<integer>(P),
+                    /*K=*/static_cast<integer>(Q), factor,
+                    /*A=*/lstart, /*lda=*/static_cast<integer>(ldA),
+                    /*B=*/Rk,
+                    /*ldb=*/static_cast<integer>(right_inner_transposed ? Q : P),
+                    /*beta=*/1.0,
+                    /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC))) {
+              blas::gemm(
+                  blas::NoTranspose,
+                  right_inner_transposed ? blas::Transpose : blas::NoTranspose,
+                  /*M=*/static_cast<integer>(Mseg),
+                  /*N=*/static_cast<integer>(P),
+                  /*K=*/static_cast<integer>(Q), factor,
+                  /*A=*/lstart, /*lda=*/static_cast<integer>(ldA),
+                  /*B=*/Rk,
+                  /*ldb=*/static_cast<integer>(right_inner_transposed ? Q : P),
+                  /*beta=*/1.0,
+                  /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
+            }
           }
 #ifdef TA_STRIDED_DGEMM_COUNT
           g_strided_dgemm_ce_ce_left_calls.fetch_add(1,
