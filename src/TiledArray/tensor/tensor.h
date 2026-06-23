@@ -40,6 +40,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -136,6 +137,13 @@ struct ScaleRegimeCounters {
   //   (row pointer setup, loop control, A<=0 skips; absorbs probe clock cost)
 };
 inline ScaleRegimeCounters g_scale[2];  // [0]=tot_x_t, [1]=t_x_tot
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+// Test-observable strided scale-GEMM fire counters: [0]=tot_x_t, [1]=t_x_tot.
+// Incremented once per strided scale GEMM (independent of TA_GEMM_TIMING).
+// Type matches the arena counters (g_strided_dgemm_ce_*_calls in arena_einsum.h).
+inline std::atomic<std::size_t> g_scale_strided_calls[2]{};
+#endif
 
 /// Manual (non-scoped) phase clock for regions that set locals used later, so a
 /// timed scope can't wrap them. No-op unless TA_GEMM_TIMING is set. Mirrors the
@@ -3420,6 +3428,10 @@ class Tensor {
                           static_cast<std::uint64_t>(A),
                       std::memory_order_relaxed);
                 }
+#ifdef TA_STRIDED_DGEMM_COUNT
+                detail::g_scale_strided_calls[0].fetch_add(
+                    1, std::memory_order_relaxed);
+#endif
                 const integer Ai = static_cast<integer>(A);
                 detail::ScopedScaleTimer _scale_gt(detail::g_scale[0].gemm_ns);
                 TiledArray::math::blas::gemm(
@@ -3584,6 +3596,10 @@ class Tensor {
                           static_cast<std::uint64_t>(A),
                       std::memory_order_relaxed);
                 }
+#ifdef TA_STRIDED_DGEMM_COUNT
+                detail::g_scale_strided_calls[1].fetch_add(
+                    1, std::memory_order_relaxed);
+#endif
                 const integer Ai = static_cast<integer>(A);
                 detail::ScopedScaleTimer _scale_gt(detail::g_scale[1].gemm_ns);
                 TiledArray::math::blas::gemm(
