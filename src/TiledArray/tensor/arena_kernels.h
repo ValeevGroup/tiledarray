@@ -17,7 +17,10 @@
 #include "TiledArray/tensor/arena_tensor.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <memory_resource>
 #include <new>
@@ -50,6 +53,62 @@ std::shared_ptr<typename OuterTensor::value_type[]> make_outer_data(
 }
 
 }  // namespace
+
+/// Single-page invariant check for arena ToT outer tiles, env-gated by
+/// `TA_ASSERT_SINGLE_PAGE` (zero overhead when unset). A size-determinable ToT
+/// outer tile must occupy at most one arena page; `Arena::page_count() > 1`
+/// means an incremental build spilled across pages and the strided-BLAS fast
+/// path would silently revert to per-cell AXPY. On violation we print the
+/// offending site and throw a TiledArray::Exception so the run fails loudly.
+/// When the gate is on, a summary (tiles checked, violations) is printed at
+/// process exit (on a clean exit; the throw path skips it). Using
+/// `page_count()` -- not `classify_run` -- so the check is valid for tiles with
+/// null or non-uniform inner cells (which are still single-page).
+inline bool arena_single_page_assert_enabled() {
+  static const bool on = [] {
+    const char* e = std::getenv("TA_ASSERT_SINGLE_PAGE");
+    return e != nullptr && e[0] != '\0' && e[0] != '0';
+  }();
+  return on;
+}
+
+inline std::atomic<std::size_t>& arena_single_page_check_count() {
+  static std::atomic<std::size_t> c{0};
+  return c;
+}
+
+inline std::atomic<std::size_t>& arena_single_page_violation_count() {
+  static std::atomic<std::size_t> c{0};
+  return c;
+}
+
+inline void arena_assert_single_page(const Arena& arena, const char* where) {
+  if (!arena_single_page_assert_enabled()) return;
+  static const bool registered = [] {
+    std::atexit([] {
+      std::fprintf(
+          stderr,
+          "[TA_ASSERT_SINGLE_PAGE] checked %zu arena ToT outer tile(s), "
+          "%zu multi-page violation(s)\n",
+          arena_single_page_check_count().load(std::memory_order_relaxed),
+          arena_single_page_violation_count().load(std::memory_order_relaxed));
+    });
+    return true;
+  }();
+  (void)registered;
+  arena_single_page_check_count().fetch_add(1, std::memory_order_relaxed);
+  const std::size_t pages = arena.page_count();
+  if (pages > 1) {
+    arena_single_page_violation_count().fetch_add(1, std::memory_order_relaxed);
+    std::fprintf(stderr,
+                 "[TA_ASSERT_SINGLE_PAGE] VIOLATION at %s: arena ToT outer tile "
+                 "spans %zu pages (expected <= 1)\n",
+                 where, pages);
+    TA_EXCEPTION(
+        "TA_ASSERT_SINGLE_PAGE: arena ToT outer tile spans multiple arena "
+        "pages -- a size-determinable ToT must be single-page");
+  }
+}
 
 /// Allocate an arena-backed ToT outer tile with caller-provided inner ranges.
 ///
@@ -138,6 +197,7 @@ OuterTensor arena_outer_init(
           InnerT(r, std::shared_ptr<T[]>(h, reinterpret_cast<T*>(h.get())));
     }
   }
+  arena_assert_single_page(*arena_ptr, "arena_outer_init");
   return result;
 }
 
@@ -229,6 +289,7 @@ class ArenaToTBuilder {
 
   /// Finalize and hand back the assembled outer tile; the builder is spent.
   OuterTensor finish() && {
+    arena_assert_single_page(*arena_, "ArenaToTBuilder::finish");
     return OuterTensor(outer_range_, batch_sz_, std::move(data_));
   }
 
