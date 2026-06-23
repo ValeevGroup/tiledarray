@@ -1044,17 +1044,22 @@ std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
       // build each target tile in one pass: a single source lookup per cell
       // sizes it and fills it together (no separate all-ranges walk).
       const auto outer_range = target_trange.make_tile_range(target_ord);
-      ArenaToTBuilder<Tile> builder(outer_range);
       const std::size_t n = outer_range.volume();
-      for (std::size_t o = 0; o < n; ++o) {
+      using InnerRange = typename Tile::value_type::range_type;
+      auto range_fn = [&](std::size_t o) -> InnerRange {
         const auto* sc = source_cell_at(outer_range.idx(o));
-        if (!sc || sc->empty()) continue;  // leaves a deliberately-null cell
-        auto& cell = builder.emplace(o, sc->range());
+        return (!sc || sc->empty()) ? InnerRange{} : sc->range();
+      };
+      Tile tile = arena_outer_init<Tile>(outer_range, 1, range_fn);
+      for (std::size_t o = 0; o < n; ++o) {
+        auto& cell = tile.data()[o];
+        if (cell.empty()) continue;  // deliberately-null cell
+        const auto* sc = source_cell_at(outer_range.idx(o));
         const auto* s = sc->data();
         auto* d = cell.data();
         for (std::size_t p = 0; p < cell.size(); ++p) d[p] = s[p];
       }
-      target_array.set(target_ord, std::move(builder).finish());
+      target_array.set(target_ord, std::move(tile));
     }
     target_array.world().gop.fence();
   } else {
