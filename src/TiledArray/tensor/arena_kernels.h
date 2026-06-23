@@ -250,21 +250,28 @@ class ArenaToTBuilder {
 /// to the next -- no separate all-ranges walk. A zero-volume inner range
 /// yields a deliberately-null cell, which `inner_fill_fn` is not invoked on.
 /// Cells are zero-initialized, so the default no-op fill still leaves zeroed
-/// storage. Backed by `ArenaToTBuilder`.
+/// storage. Backed by the up-front single-page `arena_outer_init`.
 template <typename OuterTensor, typename InnerRangeFn,
           typename InnerFillFn = nested_fill_noop>
 OuterTensor make_nested_tile(
     const typename OuterTensor::range_type& outer_range,
     InnerRangeFn&& inner_range_fn, InnerFillFn&& inner_fill_fn = {}) {
-  ArenaToTBuilder<OuterTensor> builder(outer_range, /*batch_sz=*/1,
-                                       /*zero_init=*/true);
+  // Up-front, single contiguous page: pre-walk ranges (cheap headers only),
+  // reserve one exact slab, fill in place. inner_range_fn/inner_fill_fn are
+  // random-access (idx-driven), so there is no single-pass data to buffer and
+  // no peak-memory doubling -- only the genuinely single-pass init_tiles path
+  // needs the incremental ArenaToTBuilder.
+  auto cell_range_fn = [&](std::size_t ord) {
+    return inner_range_fn(outer_range.idx(ord));
+  };
+  OuterTensor result =
+      arena_outer_init<OuterTensor>(outer_range, 1, cell_range_fn);
   const std::size_t N = outer_range.volume();
   for (std::size_t ord = 0; ord < N; ++ord) {
-    const auto idx = outer_range.idx(ord);
-    auto& cell = builder.emplace(ord, inner_range_fn(idx));
-    if (!cell.empty()) inner_fill_fn(cell, idx);
+    auto& cell = result.data()[ord];
+    if (!cell.empty()) inner_fill_fn(cell, outer_range.idx(ord));
   }
-  return std::move(builder).finish();
+  return result;
 }
 
 /// Apply a unary fill op while preserving each source inner range.

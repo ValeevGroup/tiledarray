@@ -36,6 +36,17 @@ auto inner_range_2d(std::size_t d0, std::size_t d1) {
   return typename InnerTile::range_type(std::vector<std::size_t>{d0, d1});
 }
 
+// Assert an arena ToT outer tile is a single contiguous page: uniform-size
+// cells at constant page-jump-free stride. classify_run returns 0 when clean,
+// 3 on a page jump (multi-page build).
+template <typename OuterTile>
+static void check_single_page_uniform(const OuterTile& tile) {
+  const std::size_t n = tile.range().volume();
+  const int code = TA::detail::classify_run(
+      [&](std::size_t i) -> decltype(auto) { return tile.data()[i]; }, n);
+  BOOST_CHECK_EQUAL(code, 0);  // 0 == clean single-page constant stride
+}
+
 template <typename InnerTile>
 void verify_cell(const InnerTile& cell, long e, bool expect_filled) {
   BOOST_REQUIRE(!cell.empty());
@@ -776,6 +787,25 @@ BOOST_AUTO_TEST_CASE(einsum_t_x_tot_arena_inner) {
 
 BOOST_AUTO_TEST_CASE(arena_tile_bipartite_permute) {
   test_arena_tile_permute();
+}
+
+BOOST_AUTO_TEST_CASE(make_nested_tile_arena_single_page) {
+  using Inner = TA::ArenaTensor<double>;
+  using OuterTile = TA::Tensor<Inner>;
+  // 256 cells x 64 doubles = 128 KiB > 64 KiB default page, so a multi-page
+  // builder spills; a single-page allocator does not.
+  const std::size_t ncells = 256, isize = 64;
+  TA::Range outer(std::array<std::size_t, 1>{ncells});
+  auto range_fn = [isize](const TA::Range::index_type&) {
+    return Inner::range_type(std::vector<std::size_t>{isize});
+  };
+  auto fill = [](Inner& cell, const TA::Range::index_type&) {
+    for (std::size_t p = 0; p < cell.size(); ++p) cell[p] = double(p);
+  };
+  OuterTile tile =
+      TA::detail::make_nested_tile<OuterTile>(outer, range_fn, fill);
+  BOOST_REQUIRE_EQUAL(ncells * isize * sizeof(double), std::size_t(128 * 1024));
+  check_single_page_uniform(tile);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
