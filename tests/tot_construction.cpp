@@ -816,4 +816,29 @@ BOOST_AUTO_TEST_CASE(arena_tot_remote_tile_transport) {
   test_distributed_arena_tot();
 }
 
+BOOST_AUTO_TEST_CASE(retile_arena_tot_single_page) {
+  using Inner = TA::ArenaTensor<double>;
+  using OuterTile = TA::Tensor<Inner>;
+  using Array = TA::DistArray<OuterTile, TA::DensePolicy>;
+  auto& world = *GlobalFixture::world;
+  const std::size_t isize = 64;     // 256 cells x 64 doubles = 128 KiB > page
+  TA::TiledRange src_tr{{0, 256}};  // 256 cells in one outer tile
+  Array src(world, src_tr);
+  src.init_tiles_nested(
+      [isize](const auto&) {
+        return Inner::range_type(std::vector<std::size_t>{isize});
+      },
+      [](Inner& c, const auto&) {
+        for (std::size_t p = 0; p < c.size(); ++p) c[p] = double(p);
+      });
+  world.gop.fence();
+  TA::TiledRange dst_tr{{0, 128, 256}};  // ncells/2, ncells -> 2 tiles
+  Array dst = TA::retile(src, dst_tr);
+  world.gop.fence();
+  for (const auto ord : *dst.pmap()) {
+    if (dst.is_zero(ord)) continue;
+    check_single_page_uniform(dst.find(ord).get());
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
