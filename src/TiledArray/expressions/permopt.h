@@ -30,7 +30,9 @@
 #include <TiledArray/expressions/product.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/permutation.h>
+#include <cstdlib>
 #include <memory>
+#include <string_view>
 
 namespace TiledArray {
 namespace expressions {
@@ -53,6 +55,22 @@ inline blas::Op to_cblas_op(PermutationType permtype) {
   return permtype == PermutationType::matrix_transpose
              ? math::blas::Transpose
              : math::blas::NoTranspose;
+}
+
+/// Kill switch for outer-index canonicalization of ToT contractions. When this
+/// returns true, GEMMPermutationOptimizer keeps the legacy (free) matrix
+/// transpose instead of physically permuting an operand into NoTranspose
+/// layout, i.e. the strided-DGEMM kernels are NOT forced to fire. Backed by the
+/// environment variable TA_STRIDED_CANONICALIZE: set it to "0" to disable
+/// canonicalization (legacy behavior); any other value (or unset) leaves it on.
+/// Mutable by reference for tests/benchmarks. Mirrors
+/// TiledArray::detail::ce_ce_strided_disabled() in arena_einsum.h.
+inline bool& strided_canonicalize_disabled() {
+  static bool flag = [] {
+    const char* e = std::getenv("TA_STRIDED_CANONICALIZE");
+    return e != nullptr && std::string_view(e) == "0";
+  }();
+  return flag;
 }
 
 /// Optimizer of permutations for a unary operation
@@ -190,25 +208,27 @@ class GEMMPermutationOptimizer : public BinaryOpPermutationOptimizer {
 
   GEMMPermutationOptimizer(const IndexList& left_indices,
                            const IndexList& right_indices,
-                           const bool prefer_to_permute_left = true)
+                           const bool prefer_to_permute_left = true,
+                           const bool transpose_is_free = true)
       : BinaryOpPermutationOptimizer(left_indices, right_indices,
                                      prefer_to_permute_left) {
     std::tie(target_left_indices_, target_right_indices_,
              target_result_indices_, left_permtype_, right_permtype_) =
         compute_index_list_contraction(left_indices, right_indices,
-                                       prefer_to_permute_left);
+                                       prefer_to_permute_left, transpose_is_free);
   }
 
   GEMMPermutationOptimizer(const IndexList& result_indices,
                            const IndexList& left_indices,
                            const IndexList& right_indices,
-                           const bool prefer_to_permute_left = true)
+                           const bool prefer_to_permute_left = true,
+                           const bool transpose_is_free = true)
       : BinaryOpPermutationOptimizer(left_indices, right_indices,
                                      prefer_to_permute_left) {
     std::tie(target_left_indices_, target_right_indices_,
              target_result_indices_, left_permtype_, right_permtype_) =
         compute_index_list_contraction(left_indices, right_indices,
-                                       prefer_to_permute_left);
+                                       prefer_to_permute_left, transpose_is_free);
   }
 
   const IndexList& target_left_indices() const override final {
@@ -255,7 +275,8 @@ class GEMMPermutationOptimizer : public BinaryOpPermutationOptimizer {
                     PermutationType>
   compute_index_list_contraction(const IndexList& left_indices,
                                  const IndexList& right_indices,
-                                 const bool prefer_to_permute_left = true) {
+                                 const bool prefer_to_permute_left = true,
+                                 const bool transpose_is_free = true) {
     const auto left_rank = left_indices.size();
     const auto right_rank = right_indices.size();
 
@@ -359,12 +380,16 @@ class GEMMPermutationOptimizer : public BinaryOpPermutationOptimizer {
       }
     }
 
-    auto to_tensor_op = [](bool no_trans, bool trans) {
+    auto to_tensor_op = [transpose_is_free](bool no_trans, bool trans) {
       if (no_trans)
         return PermutationType::identity;
-      else if (trans)
+      else if (trans && transpose_is_free)
         return PermutationType::matrix_transpose;
       else
+        // transpose is not free (a ToT strided kernel needs true NoTranspose
+        // layout): report `general` so the operand is physically permuted to
+        // the canonical (free..., contracted...) layout this function already
+        // computed in target_left/right_indices_.
         return PermutationType::general;
     };
 

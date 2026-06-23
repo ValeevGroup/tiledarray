@@ -1387,7 +1387,8 @@ class ContEngine : public BinaryEngine<Derived> {
                         typename right_tile_element_type::numeric_type,
                         double>) {
                   if (contrreduce_op.gemm_helper().num_contract_ranks() == 0 &&
-                      !bool(inner(this->perm_))) {
+                      (!bool(inner(this->perm_)) ||
+                       inner(this->perm_).is_identity())) {
                     const scalar_type factor = this->factor_;
                     this->arena_strided_dgemm_ce_e_tile_op_ =
                         [factor](result_tile_type& Cc, const left_tile_type& Lt,
@@ -1469,7 +1470,8 @@ class ContEngine : public BinaryEngine<Derived> {
                           TiledArray::expressions::PermutationType::identity &&
                       this->right_inner_permtype_ ==
                           TiledArray::expressions::PermutationType::identity &&
-                      !bool(inner(this->perm_));
+                      (!bool(inner(this->perm_)) ||
+                       inner(this->perm_).is_identity());
                   // RELAXED gate. The strided kernel can fold a
                   // matrix_transpose of the EXTERNAL-carrying operand into the
                   // inner GEMM op flag (zero-copy), because matrix_transpose is
@@ -1486,7 +1488,9 @@ class ContEngine : public BinaryEngine<Derived> {
                                p == TiledArray::expressions::PermutationType::
                                         matrix_transpose;
                       };
-                  const bool no_result_inner_perm = !bool(inner(this->perm_));
+                  const bool no_result_inner_perm =
+                      !bool(inner(this->perm_)) ||
+                      inner(this->perm_).is_identity();
                   const bool right_arm_ok =
                       inner_contraction && no_result_inner_perm &&
                       right_inner_clean && right_has_ext &&

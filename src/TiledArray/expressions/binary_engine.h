@@ -102,6 +102,37 @@ class BinaryEngine : public ExprEngine<Derived> {
     static_assert(OuterProductType == TensorProduct::Contraction ||
                   OuterProductType == TensorProduct::Hadamard ||
                   OuterProductType == TensorProduct::General);
+
+    using left_tile_type = typename EngineTrait<left_type>::eval_type;
+    using right_tile_type = typename EngineTrait<right_type>::eval_type;
+    constexpr bool left_tile_is_tot =
+        TiledArray::detail::is_tensor_of_tensor_v<left_tile_type>;
+    constexpr bool right_tile_is_tot =
+        TiledArray::detail::is_tensor_of_tensor_v<right_tile_type>;
+    // Only a ToT whose INNER cell is a view (arena-backed) has a strided kernel
+    // to enable; owning ToT (inner = TA::Tensor) has none, so canonicalizing it
+    // is pure overhead (S2). Gate on the inner cell being a view -- exactly the
+    // condition TA::Tensor::gemm's strided arms test (tensor.h: is_tensor_view_v
+    // on the cell type). For non-ToT, value_type is a scalar and the trait is
+    // false, so the && short-circuits to false.
+    constexpr bool left_is_arena_tot =
+        left_tile_is_tot &&
+        TiledArray::is_tensor_view_v<typename left_tile_type::value_type>;
+    constexpr bool right_is_arena_tot =
+        right_tile_is_tot &&
+        TiledArray::is_tensor_view_v<typename right_tile_type::value_type>;
+    // For an arena-ToT contraction an outer matrix_transpose is NOT free: it
+    // disqualifies the strided-DGEMM kernels. Force a physical canonicalization
+    // (permtype `general`) unless the user disabled it. A SINGLE flag for both
+    // operands by design (see "Cost-guard decision" above): we prioritize
+    // "ce+ce/ce+e/scale always fire" over sparing a large ToT from a deep
+    // permute. `strided_canonicalize_disabled()` is declared in `permopt.h`
+    // (Task 1), reached transitively via the permutation-optimizer header.
+    // [[maybe_unused]] because it is consumed only in the `if constexpr`
+    // Contraction branch below.
+    [[maybe_unused]] const bool transpose_is_free =
+        !((left_is_arena_tot || right_is_arena_tot) &&
+          !strided_canonicalize_disabled());
     // N.B. a General product's layout depends on the target (the role of a
     // shared index -- fused vs contracted -- is defined by which indices the
     // target keeps), so OuterProductType == General requires nonempty
@@ -117,16 +148,29 @@ class BinaryEngine : public ExprEngine<Derived> {
 
     std::shared_ptr<BinaryOpPermutationOptimizer> outer_opt, inner_opt;
     if (!target_indices) {
-      outer_opt = std::make_shared<permopt_type>(
-          outer(left_.indices()), outer(right_.indices()),
-          left_type::leaves <= right_type::leaves);
+      if constexpr (OuterProductType == TensorProduct::Contraction) {
+        outer_opt = std::make_shared<GEMMPermutationOptimizer>(
+            outer(left_.indices()), outer(right_.indices()),
+            left_type::leaves <= right_type::leaves, transpose_is_free);
+      } else {
+        outer_opt = std::make_shared<permopt_type>(
+            outer(left_.indices()), outer(right_.indices()),
+            left_type::leaves <= right_type::leaves);
+      }
       inner_opt = make_permutation_optimizer(
           inner(left_.indices()), inner(right_.indices()),
           left_type::leaves <= right_type::leaves);
     } else {
-      outer_opt = std::make_shared<permopt_type>(
-          outer(target_indices), outer(left_.indices()),
-          outer(right_.indices()), left_type::leaves <= right_type::leaves);
+      if constexpr (OuterProductType == TensorProduct::Contraction) {
+        outer_opt = std::make_shared<GEMMPermutationOptimizer>(
+            outer(target_indices), outer(left_.indices()),
+            outer(right_.indices()), left_type::leaves <= right_type::leaves,
+            transpose_is_free);
+      } else {
+        outer_opt = std::make_shared<permopt_type>(
+            outer(target_indices), outer(left_.indices()),
+            outer(right_.indices()), left_type::leaves <= right_type::leaves);
+      }
       inner_opt = make_permutation_optimizer(
           inner(target_indices), inner(left_.indices()),
           inner(right_.indices()), left_type::leaves <= right_type::leaves);
@@ -148,12 +192,6 @@ class BinaryEngine : public ExprEngine<Derived> {
     // argument tensors. If both arguments are plain tensors
     // (tensors-of-scalars) and their permutations can be fused into GEMM,
     // disable their permutation
-    using left_tile_type = typename EngineTrait<left_type>::eval_type;
-    using right_tile_type = typename EngineTrait<right_type>::eval_type;
-    constexpr bool left_tile_is_tot =
-        TiledArray::detail::is_tensor_of_tensor_v<left_tile_type>;
-    constexpr bool right_tile_is_tot =
-        TiledArray::detail::is_tensor_of_tensor_v<right_tile_type>;
     // implicit_permute_{outer,inner}() denotes whether permutations will be
     // fused into consuming operation
     if (left_outer_permtype_ == PermutationType::matrix_transpose ||
