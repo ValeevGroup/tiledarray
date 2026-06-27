@@ -3342,155 +3342,187 @@ class Tensor {
             for (integer m = 0; m != M; ++m) {
               auto* lc0 = left_data + (m * K);  // left cells (m,0..K-1)
               auto* rc0 = this_data + (m * N);  // result cells (m,0..N-1)
-              // A "clean" row has all cells present, uniform inner size A, and
-              // laid out as one contiguous stride-A block (so the GEMM can run
-              // zero-copy directly on the slab). Else fall back to per-cell
-              // AXPY.
-              long A = -1;
-              bool clean = true;
+              // 2-D segment walker (replaces the old all-or-nothing per-row
+              // clean gate). Holes live on the ToT side -- the left k-cells
+              // (lc0[k]) and the result n-cells (rc0[n]); the plain `right`
+              // (K x N scalars) is dense. A cell joins a strided GEMM only if
+              // it is present and has the uniform inner size A (SHAPE check).
+              // The n (output) axis and the k (contraction) axis are each
+              // segmented into maximal present/uniform-A/constant-stride runs;
+              // one GEMM is emitted per (n-run x k-run) sub-block (beta=1
+              // accumulates across k-runs AND across the nbatch `b` loop). Any
+              // (n,k) pair that cannot ride a GEMM (either endpoint absent or
+              // size != A) is handled once by the per-cell AXPY residue below
+              // -- so no contribution is double-counted.
+              //
+              // Discover A from the first GEMM-eligible (present) cell. The
+              // strided segments require A > 0; a row with no present cell on
+              // either side contributes nothing.
               const auto _scale_tcp = detail::scale_phase_start();
-              for (integer k = 0; k != K && clean; ++k) {
-                const auto& c = lc0[k];
-                if (c.empty()) {
-                  clean = false;
+              long A = -1;
+              for (integer k = 0; k != K; ++k)
+                if (!lc0[k].empty()) {
+                  A = static_cast<long>(lc0[k].size());
                   break;
                 }
-                long s = static_cast<long>(c.size());
-                if (A < 0)
-                  A = s;
-                else if (A != s)
-                  clean = false;
-              }
-              for (integer n = 0; n != N && clean; ++n) {
-                const auto& c = rc0[n];
-                if (c.empty()) {
-                  clean = false;
-                  break;
-                }
-                long s = static_cast<long>(c.size());
-                if (A < 0)
-                  A = s;
-                else if (A != s)
-                  clean = false;
-              }
+              if (A < 0)
+                for (integer n = 0; n != N; ++n)
+                  if (!rc0[n].empty()) {
+                    A = static_cast<long>(rc0[n].size());
+                    break;
+                  }
               detail::scale_phase_stop(detail::g_scale[0].check_pres_ns,
                                        _scale_tcp);
-              // Arena cells are SIMD-padded, so the per-row inter-cell stride
-              // is the padded inner size (>= A). The strided GEMM requires the
-              // row's cells to be ONE contiguous run at constant stride -- only
-              // true for a single-page arena. An incrementally-built (un-
-              // compacted) ToT tile may span multiple pages, where the stride
-              // jumps at a page boundary; verify constant stride across ALL
-              // cells (so multi-page tiles fall back to the AXPY loop).
+              if (A <= 0) continue;  // row entirely absent: nothing to write
+              const integer Ai = static_cast<integer>(A);
+
+              // GEMM-eligibility per cell: present AND inner size == A. (Cells
+              // that are present but ragged are excluded from segments and fall
+              // to the per-cell residue, which the element op shapes correctly.)
+              auto k_elig = [&](integer k) {
+                return !lc0[k].empty() && static_cast<long>(lc0[k].size()) == A;
+              };
+              auto n_elig = [&](integer n) {
+                return !rc0[n].empty() && static_cast<long>(rc0[n].size()) == A;
+              };
+
+              // For each maximal present-n run [n0,n1) (constant result n-
+              // stride sc, single page) and present-k run [k0,k1) (constant
+              // left k-stride sb, single page) emit ONE strided GEMM:
+              //   C2(Nseg x A) += right_sub^T(Nseg x Kseg) * L2(Kseg x A),
+              // right_sub = right_data + k0*N + n0 (ld=N, the full plain row
+              // stride), L2 = lc0[k0].data() (ld=sb), C2 = rc0[n0].data()
+              // (ld=sc). Strides are recomputed LOCALLY per segment (a segment
+              // breaks on a page jump / overlap / non-constant stride), mirror-
+              // ing arena_strided_dgemm_ce_ce_right.
               const auto _scale_tcs = detail::scale_phase_start();
-              integer ldb = static_cast<integer>(A);
-              integer ldc = static_cast<integer>(A);
-              if (clean && A > 0) {
-                if (K > 1)
-                  ldb = static_cast<integer>(lc0[1].data() - lc0[0].data());
-                if (N > 1)
-                  ldc = static_cast<integer>(rc0[1].data() - rc0[0].data());
-                if (ldb < A || ldc < A) clean = false;  // sanity
-                const std::ptrdiff_t sb = ldb, sc = ldc;
-                for (integer k = 0; clean && k != K; ++k)
-                  if (lc0[k].data() != lc0[0].data() + k * sb) clean = false;
-                for (integer n = 0; clean && n != N; ++n)
-                  if (rc0[n].data() != rc0[0].data() + n * sc) clean = false;
+              integer n0 = 0;
+              while (n0 != N) {
+                if (!n_elig(n0)) {
+                  ++n0;
+                  continue;
+                }
+                // Grow the maximal constant-stride present-n run [n0,n1).
+                Real* cstart = rc0[n0].data();
+                integer n1 = n0 + 1;
+                long sc = A;  // single-cell run defaults to the inner size
+                while (n1 != N && n_elig(n1)) {
+                  const long dC =
+                      static_cast<long>(rc0[n1].data() - cstart);
+                  const long off = static_cast<long>(n1 - n0);
+                  if (off == 1) {
+                    sc = dC;
+                    if (sc < A) break;  // page jump / overlap
+                  } else if (dC != off * sc) {
+                    break;
+                  }
+                  ++n1;
+                }
+                const integer Nseg = n1 - n0;
+                const integer ldc = (Nseg > 1) ? static_cast<integer>(sc) : Ai;
+
+                // Within this n-run, segment the k axis the same way.
+                integer k0 = 0;
+                while (k0 != K) {
+                  if (!k_elig(k0)) {
+                    ++k0;
+                    continue;
+                  }
+                  const Real* L2 = lc0[k0].data();
+                  integer k1 = k0 + 1;
+                  long sb = A;
+                  while (k1 != K && k_elig(k1)) {
+                    const long dB =
+                        static_cast<long>(lc0[k1].data() - L2);
+                    const long off = static_cast<long>(k1 - k0);
+                    if (off == 1) {
+                      sb = dB;
+                      if (sb < A) break;  // page jump / overlap
+                    } else if (dB != off * sb) {
+                      break;
+                    }
+                    ++k1;
+                  }
+                  const integer Kseg = k1 - k0;
+                  const integer ldb =
+                      (Kseg > 1) ? static_cast<integer>(sb) : Ai;
+                  if (detail::scale_gemm_timing_enabled()) {
+                    detail::g_scale[0].gemm_runs.fetch_add(
+                        1, std::memory_order_relaxed);
+                    detail::g_scale[0].gemm_flop.fetch_add(
+                        2ull * static_cast<std::uint64_t>(Kseg) *
+                            static_cast<std::uint64_t>(Nseg) *
+                            static_cast<std::uint64_t>(A),
+                        std::memory_order_relaxed);
+                  }
+#ifdef TA_STRIDED_DGEMM_COUNT
+                  detail::g_scale_strided_calls[0].fetch_add(
+                      1, std::memory_order_relaxed);
+#endif
+                  detail::ScopedScaleTimer _scale_gt(detail::g_scale[0].gemm_ns);
+                  TiledArray::math::blas::gemm(
+                      TiledArray::math::blas::Transpose,
+                      TiledArray::math::blas::NoTranspose,
+                      /*M=*/Nseg, /*N=*/Ai, /*K=*/Kseg, Real(1),
+                      /*A=*/right_data + (static_cast<std::ptrdiff_t>(k0) * N +
+                                          n0),
+                      /*lda=*/N,
+                      /*B=*/L2, /*ldb=*/ldb, Real(1),
+                      /*C=*/cstart, /*ldc=*/ldc);
+                  k0 = k1;
+                }
+                n0 = n1;
               }
               detail::scale_phase_stop(detail::g_scale[0].check_str_ns,
                                        _scale_tcs);
-              if (A <= 0) {
-                // The presence probe stops at the first empty cell, so
-                // A <= 0 only means no non-empty cell was seen BEFORE the
-                // probe stopped -- NOT that the row is empty. The row
-                // contributes nothing only if EVERY left cell is absent;
-                // else it must take the per-cell AXPY fallback (whose
-                // element op skips absent cells).
-                bool row_empty = true;
-                for (integer k = 0; row_empty && k != K; ++k)
-                  if (!lc0[k].empty()) row_empty = false;
-                if (row_empty) continue;
-                clean = false;
-              }
-              if (clean) {
-                // result[m,n][a] += sum_k left[m,k][a] * right[k,n].
-                // Row-major gemm: C2(N x A) += right^T(N x K) * L2(K x A),
-                // where L2 = left row-m slab (K x A, ld=ldb), C2 = result row-m
-                // slab (N x A, ld=ldc), right is K x N (ld=N). ldb/ldc carry
-                // padding.
+
+              // Per-cell AXPY residue: handle exactly the (n,k) pairs NOT
+              // covered by a GEMM segment. The only pairs that need genuine
+              // per-cell math are those touching a PRESENT-but-ragged cell
+              // (inner size != A) -- a pair with an absent left k-cell or absent
+              // result n-cell contributes nothing (the operand skip / no result
+              // storage), so it is not a "revert". We therefore run the residue
+              // loop (and count it as a fallback) only when a present-but-ragged
+              // cell exists. Pairs where both endpoints are GEMM-eligible already
+              // rode a segment above and are skipped here -> no double count.
+              bool ragged = false;
+              for (integer k = 0; k != K && !ragged; ++k)
+                if (!lc0[k].empty() && static_cast<long>(lc0[k].size()) != A)
+                  ragged = true;
+              for (integer n = 0; n != N && !ragged; ++n)
+                if (!rc0[n].empty() && static_cast<long>(rc0[n].size()) != A)
+                  ragged = true;
+              if (ragged) {
                 if (detail::scale_gemm_timing_enabled()) {
-                  detail::g_scale[0].gemm_runs.fetch_add(
-                      1, std::memory_order_relaxed);
-                  detail::g_scale[0].gemm_flop.fetch_add(
-                      2ull * static_cast<std::uint64_t>(K) *
-                          static_cast<std::uint64_t>(N) *
-                          static_cast<std::uint64_t>(A),
-                      std::memory_order_relaxed);
-                }
-#ifdef TA_STRIDED_DGEMM_COUNT
-                detail::g_scale_strided_calls[0].fetch_add(
-                    1, std::memory_order_relaxed);
-#endif
-                const integer Ai = static_cast<integer>(A);
-                detail::ScopedScaleTimer _scale_gt(detail::g_scale[0].gemm_ns);
-                TiledArray::math::blas::gemm(
-                    TiledArray::math::blas::Transpose,
-                    TiledArray::math::blas::NoTranspose,
-                    /*M=*/N, /*N=*/Ai, /*K=*/K, Real(1),
-                    /*A=*/right_data, /*lda=*/N,
-                    /*B=*/lc0[0].data(), /*ldb=*/ldb, Real(1),
-                    /*C=*/rc0[0].data(), /*ldc=*/ldc);
-              } else {  // per-cell AXPY fallback for this row
-                if (detail::scale_gemm_timing_enabled()) {
-                  // classify fallback reason (re-scan; observation only, does
-                  // not affect the decision above) + exact fallback FLOPs.
-                  bool absent = false, ragged = false;
-                  long a0 = -1;
-                  for (integer k = 0; k != K; ++k) {
-                    const auto& c = lc0[k];
-                    if (c.empty()) {
-                      absent = true;
-                      break;
-                    }
-                    long s = static_cast<long>(c.size());
-                    if (a0 < 0)
-                      a0 = s;
-                    else if (a0 != s)
-                      ragged = true;
-                  }
-                  if (!absent)
-                    for (integer n = 0; n != N; ++n) {
-                      const auto& c = rc0[n];
-                      if (c.empty()) {
-                        absent = true;
-                        break;
-                      }
-                      long s = static_cast<long>(c.size());
-                      if (a0 < 0)
-                        a0 = s;
-                      else if (a0 != s)
-                        ragged = true;
-                    }
                   std::uint64_t fl = 0;
-                  for (integer n = 0; n != N; ++n)
-                    fl += 2ull * static_cast<std::uint64_t>(K) *
-                          static_cast<std::uint64_t>(rc0[n].size());
+                  for (integer n = 0; n != N; ++n) {
+                    if (n_elig(n) || rc0[n].empty()) continue;
+                    for (integer k = 0; k != K; ++k)
+                      if (!lc0[k].empty())
+                        fl +=
+                            2ull * static_cast<std::uint64_t>(rc0[n].size());
+                  }
                   detail::g_scale[0].fb_runs.fetch_add(
                       1, std::memory_order_relaxed);
                   detail::g_scale[0].fb_flop.fetch_add(
                       fl, std::memory_order_relaxed);
-                  (absent   ? detail::g_scale[0].fb_absent
-                   : ragged ? detail::g_scale[0].fb_ragged
-                            : detail::g_scale[0].fb_stride)
-                      .fetch_add(1, std::memory_order_relaxed);
+                  detail::g_scale[0].fb_ragged.fetch_add(
+                      1, std::memory_order_relaxed);
                 }
                 detail::ScopedScaleTimer _scale_fb(detail::g_scale[0].fb_ns);
                 for (integer n = 0; n != N; ++n) {
+                  // No result cell -> no storage to accumulate into; the
+                  // contribution targets a non-existent cell, so drop it (the
+                  // scale element op contract requires a present result).
+                  if (rc0[n].empty()) continue;
+                  const bool ne = n_elig(n);
                   auto c_offset = m * N + n;
-                  for (integer k = 0; k != K; ++k)
+                  for (integer k = 0; k != K; ++k) {
+                    if (ne && k_elig(k)) continue;  // rode a GEMM segment
                     elem_muladd_op(*(this_data + c_offset),
                                    *(left_data + (m * K + k)),
                                    *(right_data + (k * N + n)));
+                  }
                 }
               }
             }
@@ -3522,144 +3554,169 @@ class Tensor {
             auto left_data = left.batch_data(b);    // M x K row-major scalars
             auto right_data = right.batch_data(b);  // K x N ToT
             for (integer n = 0; n != N; ++n) {
-              long A = -1;
-              bool clean = true;
+              // 2-D segment walker mirror of the tot_x_t arm. Here the ToT
+              // (holey) operands are the right k-cells (right_data[k*N+n]) and
+              // the result m-cells (this_data[m*N+n]); the plain `left` (M x K
+              // scalars) is dense. Per column n, segment the m (result/output)
+              // axis and the k (contraction) axis into maximal present/uniform-
+              // A/constant-stride runs and emit ONE GEMM per (m-run x k-run)
+              // sub-block (beta=1 accumulates across k-runs and the nbatch
+              // loop). Residual (m,k) pairs with an ineligible endpoint go to
+              // the per-cell AXPY once each (no double count).
               const auto _scale_tcp = detail::scale_phase_start();
-              for (integer k = 0; k != K && clean; ++k) {
-                const auto& c = right_data[k * N + n];
-                if (c.empty()) {
-                  clean = false;
+              long A = -1;
+              for (integer k = 0; k != K; ++k)
+                if (!right_data[k * N + n].empty()) {
+                  A = static_cast<long>(right_data[k * N + n].size());
                   break;
                 }
-                long s = static_cast<long>(c.size());
-                if (A < 0)
-                  A = s;
-                else if (A != s)
-                  clean = false;
-              }
-              for (integer m = 0; m != M && clean; ++m) {
-                const auto& c = this_data[m * N + n];
-                if (c.empty()) {
-                  clean = false;
-                  break;
-                }
-                long s = static_cast<long>(c.size());
-                if (A < 0)
-                  A = s;
-                else if (A != s)
-                  clean = false;
-              }
+              if (A < 0)
+                for (integer m = 0; m != M; ++m)
+                  if (!this_data[m * N + n].empty()) {
+                    A = static_cast<long>(this_data[m * N + n].size());
+                    break;
+                  }
               detail::scale_phase_stop(detail::g_scale[1].check_pres_ns,
                                        _scale_tcp);
+              if (A <= 0) continue;  // column entirely absent
+              const integer Ai = static_cast<integer>(A);
+
+              auto k_elig = [&](integer k) {
+                const auto& c = right_data[k * N + n];
+                return !c.empty() && static_cast<long>(c.size()) == A;
+              };
+              auto m_elig = [&](integer m) {
+                const auto& c = this_data[m * N + n];
+                return !c.empty() && static_cast<long>(c.size()) == A;
+              };
+
               const auto _scale_tcs = detail::scale_phase_start();
-              integer ldb = static_cast<integer>(A);  // k-stride, right col n
-              integer ldc = static_cast<integer>(A);  // m-stride, result col n
-              if (clean && A > 0) {
-                if (K > 1)
-                  ldb = static_cast<integer>(right_data[N + n].data() -
-                                             right_data[n].data());
-                if (M > 1)
-                  ldc = static_cast<integer>(this_data[N + n].data() -
-                                             this_data[n].data());
-                if (ldb < A || ldc < A) clean = false;
-                const std::ptrdiff_t sb = ldb, sc = ldc;
-                for (integer k = 0; clean && k != K; ++k)
-                  if (right_data[k * N + n].data() !=
-                      right_data[n].data() + k * sb)
-                    clean = false;
-                for (integer m = 0; clean && m != M; ++m)
-                  if (this_data[m * N + n].data() !=
-                      this_data[n].data() + m * sc)
-                    clean = false;
+              integer m0 = 0;
+              while (m0 != M) {
+                if (!m_elig(m0)) {
+                  ++m0;
+                  continue;
+                }
+                Real* cstart = this_data[m0 * N + n].data();
+                integer m1 = m0 + 1;
+                long sc = A;
+                while (m1 != M && m_elig(m1)) {
+                  const long dC = static_cast<long>(
+                      this_data[m1 * N + n].data() - cstart);
+                  const long off = static_cast<long>(m1 - m0);
+                  if (off == 1) {
+                    sc = dC;
+                    if (sc < A) break;  // page jump / overlap
+                  } else if (dC != off * sc) {
+                    break;
+                  }
+                  ++m1;
+                }
+                const integer Mseg = m1 - m0;
+                const integer ldc = (Mseg > 1) ? static_cast<integer>(sc) : Ai;
+
+                integer k0 = 0;
+                while (k0 != K) {
+                  if (!k_elig(k0)) {
+                    ++k0;
+                    continue;
+                  }
+                  const Real* B = right_data[k0 * N + n].data();
+                  integer k1 = k0 + 1;
+                  long sb = A;
+                  while (k1 != K && k_elig(k1)) {
+                    const long dB = static_cast<long>(
+                        right_data[k1 * N + n].data() - B);
+                    const long off = static_cast<long>(k1 - k0);
+                    if (off == 1) {
+                      sb = dB;
+                      if (sb < A) break;  // page jump / overlap
+                    } else if (dB != off * sb) {
+                      break;
+                    }
+                    ++k1;
+                  }
+                  const integer Kseg = k1 - k0;
+                  const integer ldb =
+                      (Kseg > 1) ? static_cast<integer>(sb) : Ai;
+                  if (detail::scale_gemm_timing_enabled()) {
+                    detail::g_scale[1].gemm_runs.fetch_add(
+                        1, std::memory_order_relaxed);
+                    detail::g_scale[1].gemm_flop.fetch_add(
+                        2ull * static_cast<std::uint64_t>(Mseg) *
+                            static_cast<std::uint64_t>(Kseg) *
+                            static_cast<std::uint64_t>(A),
+                        std::memory_order_relaxed);
+                  }
+#ifdef TA_STRIDED_DGEMM_COUNT
+                  detail::g_scale_strided_calls[1].fetch_add(
+                      1, std::memory_order_relaxed);
+#endif
+                  detail::ScopedScaleTimer _scale_gt(detail::g_scale[1].gemm_ns);
+                  TiledArray::math::blas::gemm(
+                      TiledArray::math::blas::NoTranspose,
+                      TiledArray::math::blas::NoTranspose,
+                      /*M=*/Mseg, /*N=*/Ai, /*K=*/Kseg, Real(1),
+                      /*A=*/left_data + (static_cast<std::ptrdiff_t>(m0) * K +
+                                         k0),
+                      /*lda=*/K,
+                      /*B=*/B, /*ldb=*/ldb, Real(1),
+                      /*C=*/cstart, /*ldc=*/ldc);
+                  k0 = k1;
+                }
+                m0 = m1;
               }
               detail::scale_phase_stop(detail::g_scale[1].check_str_ns,
                                        _scale_tcs);
-              if (A <= 0) {
-                // see the ToT x scalar mirror above: A <= 0 does not imply
-                // an empty column when the probe stopped at the first
-                // absent cell
-                bool col_empty = true;
-                for (integer k = 0; col_empty && k != K; ++k)
-                  if (!right_data[k * N + n].empty()) col_empty = false;
-                if (col_empty) continue;
-                clean = false;
+
+              // Per-cell AXPY residue (each (m,k) once): only pairs touching a
+              // PRESENT-but-ragged cell need genuine per-cell math; absent
+              // endpoints contribute nothing. Run (and count as fallback) only
+              // when a present-but-ragged cell exists. Pairs with both endpoints
+              // GEMM-eligible already rode a segment -> no double count.
+              bool ragged = false;
+              for (integer k = 0; k != K && !ragged; ++k) {
+                const auto& c = right_data[k * N + n];
+                if (!c.empty() && static_cast<long>(c.size()) != A)
+                  ragged = true;
               }
-              if (clean) {
-                // C_n(M x A) += left(M x K) * B_n(K x A). Row-major gemm.
+              for (integer m = 0; m != M && !ragged; ++m) {
+                const auto& c = this_data[m * N + n];
+                if (!c.empty() && static_cast<long>(c.size()) != A)
+                  ragged = true;
+              }
+              if (ragged) {
                 if (detail::scale_gemm_timing_enabled()) {
-                  detail::g_scale[1].gemm_runs.fetch_add(
-                      1, std::memory_order_relaxed);
-                  detail::g_scale[1].gemm_flop.fetch_add(
-                      2ull * static_cast<std::uint64_t>(M) *
-                          static_cast<std::uint64_t>(K) *
-                          static_cast<std::uint64_t>(A),
-                      std::memory_order_relaxed);
-                }
-#ifdef TA_STRIDED_DGEMM_COUNT
-                detail::g_scale_strided_calls[1].fetch_add(
-                    1, std::memory_order_relaxed);
-#endif
-                const integer Ai = static_cast<integer>(A);
-                detail::ScopedScaleTimer _scale_gt(detail::g_scale[1].gemm_ns);
-                TiledArray::math::blas::gemm(
-                    TiledArray::math::blas::NoTranspose,
-                    TiledArray::math::blas::NoTranspose,
-                    /*M=*/M, /*N=*/Ai, /*K=*/K, Real(1),
-                    /*A=*/left_data, /*lda=*/K,
-                    /*B=*/right_data[n].data(), /*ldb=*/ldb, Real(1),
-                    /*C=*/this_data[n].data(), /*ldc=*/ldc);
-              } else {  // per-cell AXPY fallback for this column
-                if (detail::scale_gemm_timing_enabled()) {
-                  // classify fallback reason (re-scan; observation only) +
-                  // exact fallback FLOPs.
-                  bool absent = false, ragged = false;
-                  long a0 = -1;
-                  for (integer k = 0; k != K; ++k) {
-                    const auto& c = right_data[k * N + n];
-                    if (c.empty()) {
-                      absent = true;
-                      break;
-                    }
-                    long s = static_cast<long>(c.size());
-                    if (a0 < 0)
-                      a0 = s;
-                    else if (a0 != s)
-                      ragged = true;
-                  }
-                  if (!absent)
-                    for (integer m = 0; m != M; ++m) {
-                      const auto& c = this_data[m * N + n];
-                      if (c.empty()) {
-                        absent = true;
-                        break;
-                      }
-                      long s = static_cast<long>(c.size());
-                      if (a0 < 0)
-                        a0 = s;
-                      else if (a0 != s)
-                        ragged = true;
-                    }
                   std::uint64_t fl = 0;
-                  for (integer m = 0; m != M; ++m)
-                    fl +=
-                        2ull * static_cast<std::uint64_t>(K) *
-                        static_cast<std::uint64_t>(this_data[m * N + n].size());
+                  for (integer m = 0; m != M; ++m) {
+                    if (m_elig(m)) continue;
+                    const auto& cm = this_data[m * N + n];
+                    if (cm.empty()) continue;
+                    for (integer k = 0; k != K; ++k)
+                      if (!right_data[k * N + n].empty())
+                        fl += 2ull * static_cast<std::uint64_t>(cm.size());
+                  }
                   detail::g_scale[1].fb_runs.fetch_add(
                       1, std::memory_order_relaxed);
                   detail::g_scale[1].fb_flop.fetch_add(
                       fl, std::memory_order_relaxed);
-                  (absent   ? detail::g_scale[1].fb_absent
-                   : ragged ? detail::g_scale[1].fb_ragged
-                            : detail::g_scale[1].fb_stride)
-                      .fetch_add(1, std::memory_order_relaxed);
+                  detail::g_scale[1].fb_ragged.fetch_add(
+                      1, std::memory_order_relaxed);
                 }
                 detail::ScopedScaleTimer _scale_fb(detail::g_scale[1].fb_ns);
                 for (integer m = 0; m != M; ++m) {
+                  // Absent result cell -> nothing to accumulate into; drop the
+                  // contribution (the scale element op requires a present
+                  // result).
+                  if (this_data[m * N + n].empty()) continue;
+                  const bool me = m_elig(m);
                   auto c_offset = m * N + n;
-                  for (integer k = 0; k != K; ++k)
+                  for (integer k = 0; k != K; ++k) {
+                    if (me && k_elig(k)) continue;
                     elem_muladd_op(*(this_data + c_offset),
                                    *(left_data + (m * K + k)),
                                    *(right_data + (k * N + n)));
+                  }
                 }
               }
             }

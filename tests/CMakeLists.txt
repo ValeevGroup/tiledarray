@@ -108,6 +108,7 @@ set(ta_test_src_files  ta_test.cpp
     arena_tensor_kernels.cpp
     arena_strided_dgemm.cpp
     strided_canonicalize.cpp
+    scale_segment_dgemm.cpp
     summa_two_trange.cpp
     tot_construction.cpp
 )
