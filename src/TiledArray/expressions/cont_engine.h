@@ -194,7 +194,17 @@ class ContEngine : public BinaryEngine<Derived> {
                      ///< general products)
   // General (fused + contracted + free indices) products only:
   unsigned int n_fused_modes_ = 0;  ///< # of leading fused (outer) modes
-  size_type n_slabs_ = 1;           ///< # of fused-index tile slabs
+  size_type n_slabs_ = 1;           ///< # of fused-index tile slabs (COARSE
+                                    ///< count == nh_ in the Summa; for an
+                                    ///< active COARSEN-H plan < n_slabs_u_)
+  size_type n_slabs_u_ = 1;         ///< # of FINE (U) fused-index tile slabs ==
+                                    ///< how many H slabs operands/result are
+                                    ///< physically tiled into. == n_slabs_
+                                    ///< except under an active COARSEN-H plan.
+                                    ///< The operand/result SlabbedPmap
+                                    ///< replication uses THIS (the arrays carry
+                                    ///< U-H tiles); the SUMMA grid/step geometry
+                                    ///< uses the coarse n_slabs_.
   bool general_repermute_ = false;  ///< whether the target layout differs
                                     ///< from the canonical result layout, so
                                     ///< the evaluated result is re-permuted
@@ -1332,19 +1342,57 @@ class ContEngine : public BinaryEngine<Derived> {
     K_ = 1ul;
     for (unsigned int i = 0u; i < nh; ++i) n_slabs_u *= left_tiles_size[i];
     n_slabs_ = coarse_H_(n_slabs_u);
-    // COARSEN-H is np=1 scope. When the COARSE fused count is
-    // strictly fewer than the U fused count the SUMMA slab axis no longer maps
-    // 1:1 onto the U storage slabs, so the proc_h_ slab grouping / U-replicated
-    // SlabbedPmap composition at np>1 is not yet implemented.
-    // Reject it loudly at np>1 (symmetric across ranks => collective throw),
-    // exactly as refine is rejected; identity-H (n_slabs_ == n_slabs_u) is
-    // unaffected and the np>1 identity-H path stays byte-for-byte stock.
-    if (plan_.active && world->size() > 1 && n_slabs_ < n_slabs_u)
-      TA_EXCEPTION(
-          "in-SUMMA two-trange retile (.retile) with a COARSEN Hadamard (H) "
-          "axis is currently supported only at MPI world size 1; np>1 coarse-H "
-          "support is not yet implemented (identity-H coarsen is supported at "
-          "np>1)");
+    // Carry the FINE (U) fused-tile count to make_dist_eval_general (the
+    // general_repermute_ canonical_pmap) and keep it in scope for the grouped
+    // active branch below: operand/result distribution replicates over the U
+    // count because the arrays carry U-H tiles, while the SUMMA grid/step
+    // geometry uses the coarse n_slabs_. Identity-H => the two are equal.
+    n_slabs_u_ = n_slabs_u;
+    // COARSEN-H at np>1: the COARSE fused count is strictly
+    // fewer than the U fused count, so the SUMMA slab axis no longer maps 1:1
+    // onto the U storage slabs. This is now supported: the proc_h_ slab
+    // grouping rides the COARSE slabs while the operand/result SlabbedPmaps
+    // replicate over the U count (n_slabs_u_), and the bcast key-space stays
+    // collision-free (tile-bcast keys live in DistCache keyed by the FINE
+    // left_.size()/right_.size(); the per-step + static GROUP keys live in the
+    // separate group registry keyed by the coarse nsteps_, so the two never
+    // alias even though nsteps_ shrinks while left_.size() stays fine -- see
+    // dist_eval/contraction_eval.h make_col_group/make_row_group and the
+    // static_key_base derivation). Identity-H (n_slabs_ == n_slabs_u) is the
+    // prior byte-for-byte path. REFINE-H stays rejected via plan_has_refine_.
+    //
+    // SCOPE GUARD: COARSEN-H at np>1 is validated only for a
+    // SINGLE DENSE Hadamard axis with UNIFORM group widths. Multi-H (the
+    // coarse_slab_u_fused_ordinals / step_h row-major flatten over >1 fused
+    // axis), per-slab SPARSE-H (the coarse presence probes pin H to slab 0,
+    // exact for dense only), and NON-UNIFORM coarse-H (a coarse slab covering
+    // a varying number of U slabs -- the grouped SlabbedPmap and the Summa's
+    // left.size()/nh_ slab arithmetic both assume a constant u_per_coarse_slab
+    // = n_slabs_u / n_slabs_) remain deferred -- reject them loudly at np>1
+    // (collective, symmetric across ranks) rather than risk a mis-sized carve
+    // / bcast membership skew. np=1 is unaffected (the np=1 coarse-H path
+    // covers these by the per-slab carve it has always used). Identity-H
+    // (n_slabs_ == n_slabs_u) never trips this.
+    if (plan_.active && world->size() > 1 && n_slabs_ < n_slabs_u) {
+      bool uniform_single_dense_h =
+          plan_.hadamard.size() == 1ul && shape_type::is_dense() &&
+          (n_slabs_u % n_slabs_ == 0ul);
+      if (uniform_single_dense_h) {
+        // each coarse group must cover exactly n_slabs_u / n_slabs_ U tiles
+        const std::size_t w = static_cast<std::size_t>(n_slabs_u / n_slabs_);
+        for (const auto& g : plan_.hadamard[0].groups)
+          if (g.second - g.first != w) {
+            uniform_single_dense_h = false;
+            break;
+          }
+      }
+      if (!uniform_single_dense_h)
+        TA_EXCEPTION(
+            "in-SUMMA two-trange retile (.retile) with a COARSEN Hadamard (H) "
+            "axis at MPI world size > 1 is currently supported only for a "
+            "single DENSE H axis with uniform group widths; multi-H / "
+            "sparse-H / non-uniform coarsen-H at np>1 is not yet implemented");
+    }
     for (unsigned int i = nh; i < nh + neA; ++i) {
       M *= left_tiles_size[i];
       m *= left_element_size[i];
@@ -1501,13 +1549,22 @@ class ContEngine : public BinaryEngine<Derived> {
           // owners in [0, proc_h_stride_); make_operand_coarse_pmap /
           // make_result_coarse_pmap co-locate every U external tile on the
           // group-local rank owning its covering coarse T-cell; the h-grouped
-          // SlabbedPmap(.., n_slabs_, proc_h_, proc_h_stride_) then offsets each
-          // slab's base owner by its group (slab h -> group h % proc_h_ at
-          // world-rank offset (h % proc_h_) * proc_h_stride_). The result base
-          // is the GLOBAL slab index in initialize_active / finalize_active
-          // (slab_u_base = h * (u_vol / nh_), contraction_eval.h), matching this
-          // owner layout (the fix). Refine at np>1 was rejected above; H
-          // is identity here, so n_slabs_ stays U-derived.
+          // SlabbedPmap then offsets each slab's base owner by the group of the
+          // COARSE slab covering it (coarse slab c -> group c % proc_h_ at
+          // world-rank offset (c % proc_h_) * proc_h_stride_). The SUMMA grid /
+          // step geometry rides the COARSE slabs (proc_h_ = min(n_slabs_, P)),
+          // so the SlabbedPmap replicates over the U slab count n_slabs_u_
+          // (operands/result carry U-H tiles) but groups by the covering coarse
+          // slab via u_per_coarse_slab = n_slabs_u_ / n_slabs_. The result base
+          // is the GLOBAL coarse slab index in initialize_active /
+          // finalize_active (a coarse slab carves into ALL its covered U fused
+          // tiles, each at base uh * per_u_mn), and result_tile_owner delegates
+          // to THIS pmap, so the carve's set_tile lands on the rank that ran
+          // that coarse slab. Identity-H => n_slabs_u_ == n_slabs_ and
+          // u_per_coarse_slab == 1, byte-for-byte the prior behavior.
+          // Refine at np>1 was rejected above; COARSEN-H is now supported here
+          // single dense H axis (guarded above).
+          const size_type u_per_coarse_slab = n_slabs_u / n_slabs_;
           proc_grid_ = TiledArray::detail::ProcGrid(
               *world, TiledArray::detail::rank_subset, grid_offset,
               proc_h_stride_, M_grid, N_grid, m, n);
@@ -1521,7 +1578,8 @@ class ContEngine : public BinaryEngine<Derived> {
                          make_operand_coarse_pmap(*world, left_.trange(),
                                                   plan_.summaM, plan_.summaK,
                                                   left_phase, K_coarse, nh),
-                         n_slabs_, proc_h_, proc_h_stride_));
+                         n_slabs_u, proc_h_, proc_h_stride_,
+                         u_per_coarse_slab));
           // right U layout = [H-axes..., K-axes..., N-axes...]; phase rows =
           // K_coarse, cols = N_grid; skip the nh leading H modes.
           auto right_phase = proc_grid_.make_col_phase_pmap(K_coarse);
@@ -1531,14 +1589,15 @@ class ContEngine : public BinaryEngine<Derived> {
                          make_operand_coarse_pmap(*world, right_.trange(),
                                                   plan_.summaK, plan_.summaN,
                                                   right_phase, N_grid, nh),
-                         n_slabs_, proc_h_, proc_h_stride_));
+                         n_slabs_u, proc_h_, proc_h_stride_,
+                         u_per_coarse_slab));
 
           if (!pmap)
             pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
                 *world,
                 make_result_coarse_pmap(*world, trange_, proc_grid_.make_pmap(),
                                         N_grid, nh),
-                n_slabs_, proc_h_, proc_h_stride_);
+                n_slabs_u, proc_h_, proc_h_stride_, u_per_coarse_slab);
           ExprEngine_::init_distribution(world, pmap);
         } else {
           // Inactive: stock group-local per-slab U grid (M_grid==M, N_grid==N,
@@ -1635,13 +1694,19 @@ class ContEngine : public BinaryEngine<Derived> {
     }();
     // the inner Summa's result placement must be slab-replicated (the owner
     // of a tile independent of its slab index), regardless of the
-    // (target-layout) pmap the consumer supplied for this node
+    // (target-layout) pmap the consumer supplied for this node. The result is
+    // delivered at the FINE (U) tiling, so the SlabbedPmap replicates over the
+    // U slab count n_slabs_u_ (== n_slabs_ for identity-H); under a grouped
+    // COARSEN-H plan it groups U slabs by their covering coarse slab via
+    // u_per_coarse_slab = n_slabs_u_ / n_slabs_ (mirrors the non-repermute
+    // result pmap above so the carve's owner is consistent).
     auto canonical_pmap =
-        proc_h_ == 1ul ? std::make_shared<TiledArray::detail::SlabbedPmap>(
-                             *world_, proc_grid_.make_pmap(), n_slabs_)
-                       : std::make_shared<TiledArray::detail::SlabbedPmap>(
-                             *world_, proc_grid_.make_pmap(), n_slabs_, proc_h_,
-                             proc_h_stride_);
+        proc_h_ == 1ul
+            ? std::make_shared<TiledArray::detail::SlabbedPmap>(
+                  *world_, proc_grid_.make_pmap(), n_slabs_u_)
+            : std::make_shared<TiledArray::detail::SlabbedPmap>(
+                  *world_, proc_grid_.make_pmap(), n_slabs_u_, proc_h_,
+                  proc_h_stride_, n_slabs_u_ / n_slabs_);
     std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
         left, right, *world_, canonical_trange, canonical_shape, canonical_pmap,
         BipartitePermutation{}, batched_op_type(op_, n_fused_modes_),

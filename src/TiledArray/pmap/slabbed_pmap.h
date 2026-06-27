@@ -54,6 +54,17 @@ namespace detail {
 /// `proc_h == 1` reduces to the slab-replicated map above (and is constructed
 /// via the 2-argument-base constructor, which delegates locality to the base
 /// map).
+///
+/// COARSEN-H (two-trange retile): when the array is physically tiled into
+/// `nslabs` FINE (U) slabs but the SUMMA process grid rides COARSE slabs --
+/// each coarse slab covering \c u_per_coarse_slab contiguous U slabs -- the
+/// h-plane of a U slab is that of its COVERING coarse slab, so the group of
+/// U slab \f$ h \f$ is \f$ \lfloor h / u\_per\_coarse\_slab \rfloor \% proc\_h
+/// \f$. This co-locates every U tile of a coarse slab on the plane that runs
+/// that coarse slab's SUMMA work, matching the coarse step grouping
+/// (Summa::next_step / first_slab_) and the coarse result_tile_owner. With
+/// `u_per_coarse_slab == 1` (identity-H) this is exactly the per-U-slab
+/// grouping above and is byte-for-byte the prior behavior.
 class SlabbedPmap : public Pmap {
  protected:
   // Import Pmap protected variables
@@ -71,6 +82,15 @@ class SlabbedPmap : public Pmap {
   const size_type proc_h_stride_ = 0;  ///< Ranks per h-plane (0 = the whole
                                        ///< world; base owners are world ranks
                                        ///< and locality delegates to the base)
+  const size_type u_per_coarse_slab_ = 1;  ///< # of FINE (U) slabs each COARSE
+                                           ///< SUMMA slab covers (COARSEN-H);
+                                           ///< 1 == identity-H (group by U slab)
+
+  /// \return the COARSE slab covering U slab \p u_slab (== u_slab for
+  /// identity-H, where u_per_coarse_slab_ == 1)
+  size_type coarse_slab_of(const size_type u_slab) const {
+    return u_slab / u_per_coarse_slab_;
+  }
 
   /// \return whether this map distributes the slab axis over a process plane
   bool hgrouped() const { return proc_h_stride_ != 0ul; }
@@ -102,20 +122,28 @@ class SlabbedPmap : public Pmap {
   /// \param nslabs The number of slabs
   /// \param proc_h The number of slab groups (slab h -> group h % proc_h)
   /// \param proc_h_stride The number of (contiguous) world ranks per group
+  /// \param u_per_coarse_slab The number of FINE (U) slabs each COARSE SUMMA
+  ///        slab covers (COARSEN-H); the group of U slab \c h is
+  ///        `(h / u_per_coarse_slab) % proc_h`. Default 1 (identity-H) groups
+  ///        by the U slab directly, byte-for-byte the prior behavior.
   SlabbedPmap(World& world, std::shared_ptr<const Pmap> base,
               const size_type nslabs, const size_type proc_h,
-              const size_type proc_h_stride)
+              const size_type proc_h_stride,
+              const size_type u_per_coarse_slab = 1ul)
       : Pmap(world, base->size() * nslabs),
         base_(std::move(base)),
         slab_size_(base_->size()),
         nslabs_(nslabs),
         proc_h_(proc_h),
-        proc_h_stride_(proc_h_stride) {
+        proc_h_stride_(proc_h_stride),
+        u_per_coarse_slab_(u_per_coarse_slab) {
     TA_ASSERT(base_);
     TA_ASSERT(nslabs_ > 0ul);
     TA_ASSERT(proc_h_ > 0ul);
     TA_ASSERT(proc_h_stride_ > 0ul);
     TA_ASSERT(proc_h_ * proc_h_stride_ <= size_type(world.size()));
+    TA_ASSERT(u_per_coarse_slab_ > 0ul);
+    TA_ASSERT(nslabs_ % u_per_coarse_slab_ == 0ul);
 
     // this rank's group and group-local rank; ranks beyond the grouped
     // prefix of the world own nothing
@@ -123,10 +151,14 @@ class SlabbedPmap : public Pmap {
     if (rank < proc_h_ * proc_h_stride_) {
       const size_type my_group = rank / proc_h_stride_;
       const size_type my_group_rank = rank % proc_h_stride_;
-      // count of my group's slabs: h in [0, nslabs) with h % proc_h ==
-      // my_group
-      const size_type my_slabs =
-          (nslabs_ / proc_h_) + (my_group < (nslabs_ % proc_h_) ? 1u : 0u);
+      // count of my group's U slabs: U slab h in [0, nslabs) whose COVERING
+      // coarse slab (h / u_per_coarse_slab) is congruent to my_group mod
+      // proc_h. The n_coarse coarse slabs split round-robin over proc_h groups
+      // and each coarse slab carries u_per_coarse_slab U slabs.
+      const size_type n_coarse = nslabs_ / u_per_coarse_slab_;
+      const size_type my_coarse_slabs =
+          (n_coarse / proc_h_) + (my_group < (n_coarse % proc_h_) ? 1u : 0u);
+      const size_type my_slabs = my_coarse_slabs * u_per_coarse_slab_;
       // count of slab indices the base assigns to my group-local rank
       size_type base_local = 0ul;
       for (size_type j = 0ul; j < slab_size_; ++j)
@@ -155,7 +187,10 @@ class SlabbedPmap : public Pmap {
   virtual size_type owner(const size_type tile) const {
     TA_ASSERT(tile < size_);
     if (!hgrouped()) return base_->owner(tile % slab_size_);
-    const size_type group = (tile / slab_size_) % proc_h_;
+    // The U slab of this tile is (tile / slab_size_); its h-plane is that of
+    // the COARSE slab covering it (coarse_slab_of), so co-located U tiles of
+    // one coarse slab land on the rank that runs that coarse slab's SUMMA.
+    const size_type group = coarse_slab_of(tile / slab_size_) % proc_h_;
     return group * proc_h_stride_ + base_->owner(tile % slab_size_);
   }
 
