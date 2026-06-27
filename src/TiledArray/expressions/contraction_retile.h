@@ -95,6 +95,15 @@ struct RetilePlan {
   std::vector<std::size_t> result_t_extent;
   /// Per result axis: number of U tiles (the U-result trange extent).
   std::vector<std::size_t> result_u_extent;
+
+  /// Per-role TARGET (T) tilings, in role-axis order. Populated by
+  /// make_retile_plan from the .retile() targets (an empty role keeps the
+  /// vector empty, meaning "T == U" on every axis of that role). The refine
+  /// path needs the T tile *element* boundaries (not just the T->U ordinal
+  /// groups) to carve a U operand/result tile down to the exact T sub-box;
+  /// these carry that information. On a Coarsen/Identity axis the engine never
+  /// consults these (the gather box is the union of covered U tiles).
+  std::vector<TiledRange1> targetH, targetM, targetN, targetK;
 };
 
 namespace detail {
@@ -362,6 +371,13 @@ inline RetilePlan make_retile_plan(const TiledRange& left_U,
   append_result(plan.hadamard, hU, targetH);
   append_result(plan.summaM, mU, targetM);
   append_result(plan.summaN, nU, targetN);
+
+  // Carry the per-role TARGET tilings so the refine path can compute exact T
+  // tile element boxes (an empty role => T == U, no refine on that role).
+  plan.targetH = targetH;
+  plan.targetM = targetM;
+  plan.targetN = targetN;
+  plan.targetK = targetK;
 
   return plan;
 }

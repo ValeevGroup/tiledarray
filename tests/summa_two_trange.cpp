@@ -659,6 +659,284 @@ BOOST_AUTO_TEST_CASE(retile_coarsen_m_ce_ce) {
 #endif
 }
 
+// ---------------------------------------------------------------------------
+// REFINE-K (free operand split). ce_e ToT contraction
+// C(i1,i2,j1,j2;a,b) = A(i1,i2,k;a) * B(j1,j2,k;b) with the OUTER contracted
+// index k tiled as ONE U tile [0,8); a .retile() REFINES K into 4 T tiles
+// (width 2). The externals (M={i1,i2}, N={j1,j2}) stay Identity.
+//
+// HAND PREDICTION: coarse grid M=2*2=4, N=2*2=4, K_coarse=4 (4 T K-tiles).
+// np=1 1x1 grid. SUMMA steps over the 4 T K-cells. For each T K-cell `kc` the
+// (single) U K-tile [0,8) is view-split to the T K-box [2kc,2kc+2) per operand
+// outer cell, packed, and the 4 partial GEMMs accumulate over K -- exactly
+// reproducing the single full-K GEMM. Result trange == U (1 K tile gone from
+// the result anyway; the result is M x N = 16 U tiles). The result axes are
+// Identity, so each coarse cell maps 1:1 to a distinct U tile -- the MERGE
+// path must NOT engage (g_summa_result_merge_count == 0).
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(retile_refine_k_ce_e) {
+  auto& w = TA::get_default_world();
+  auto t = tr1(4, 2);    // 2 external tiles per axis
+  auto kU = tr1(8, 8);   // ONE U K-tile [0,8)
+  auto kT = tr1(8, 2);   // REFINE K -> 4 T tiles of width 2
+
+  ArrayToT1 A0 = make_arena1(w, TA::TiledRange{t, t, kU}, TA::Range{3});
+  ArrayToT1 B0 = make_arena1(w, TA::TiledRange{t, t, kU}, TA::Range{5});
+  OwnArr1 A0o = make_own1(w, TA::TiledRange{t, t, kU}, TA::Range{3});
+  OwnArr1 B0o = make_own1(w, TA::TiledRange{t, t, kU}, TA::Range{5});
+  w.gop.fence();
+
+  OwnArr1 ref =
+      TA::einsum(A0o("i1,i2,k;a"), B0o("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  ArrayToT1 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_ref, ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_summa_plan_active_calls.store(0);
+  TA::detail::g_summa_result_merge_count.store(0);
+#endif
+
+  ArrayToT1 C_refine;
+  C_refine("i1,i2,j1,j2;a,b") =
+      (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+          .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t}, /*K=*/{kT});
+  w.gop.fence();
+
+  // L3: result trange is the no-retile (U) trange.
+  BOOST_CHECK(C_refine.trange() == C_ref.trange());
+  // Values match the no-retile oracle.
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_refine, C_ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t active = TA::detail::g_summa_plan_active_calls.load();
+  w.gop.sum(&active, 1);
+  BOOST_CHECK_GT(active, std::size_t{0});
+
+  // Refine on an OPERAND (K) axis is the FREE direction: NO outbound merge.
+  std::size_t merged = TA::detail::g_summa_result_merge_count.load();
+  w.gop.sum(&merged, 1);
+  BOOST_CHECK_EQUAL(merged, std::size_t{0});
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// REFINE a RESULT axis (SUMMA-N). ce_ce ToT contraction
+// C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c). The SUMMA-N result axis j1 is
+// ONE U tile [0,4); a .retile() REFINES it into 2 T tiles (width 2).
+//
+// HAND PREDICTION: coarse grid M=2*2=4 (i1,i2 identity), N_coarse=2 (2 T
+// N-tiles), K=1. T result grid = 4*2 = 8 cells. U result C(i1,i2,j1) = 2*2*1
+// = 4 U tiles. Each U tile (i1,i2,j1=0) is covered by the 2 T cells sharing
+// (i1,i2) with N in {0,1} => 2 T result sub-pages MERGE into 1 U tile. So the
+// MERGE path ENGAGES: g_summa_result_merge_count == 8 (4 U tiles x 2 T
+// sub-pages each). Right operand B(j1,k) is view-split on N to the T N-box.
+// Oracle match < 1e-9.
+//
+// witness: a PURE-COARSEN config (same shapes as retile_coarsen_m_ce_ce,
+// M coarsened, no result axis refined) keeps the SAME counter at 0.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(retile_refine_n_ce_ce) {
+  auto& w = TA::get_default_world();
+  auto i1 = tr1(4, 2);   // 2 M-tiles
+  auto i2 = tr1(4, 2);   // 2 M-tiles
+  auto j1U = tr1(4, 4);  // ONE U N-tile [0,4)
+  auto j1T = tr1(4, 2);  // REFINE N -> 2 T tiles of width 2
+  auto kk = tr1(4, 4);   // single K tile
+
+  ArrayToT1 A0 = make_arena1(w, TA::TiledRange{i1, i2, kk}, TA::Range{3, 4});
+  ArrayToT1 B0 = make_arena1(w, TA::TiledRange{j1U, kk}, TA::Range{4});
+  OwnArr1 A0o = make_own1(w, TA::TiledRange{i1, i2, kk}, TA::Range{3, 4});
+  OwnArr1 B0o = make_own1(w, TA::TiledRange{j1U, kk}, TA::Range{4});
+  w.gop.fence();
+
+  OwnArr1 ref = TA::einsum(A0o("i1,i2,k;a,c"), B0o("j1,k;c"), "i1,i2,j1;a");
+  ArrayToT1 C_ref =
+      TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_ref, ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_summa_plan_active_calls.store(0);
+  TA::detail::g_summa_result_merge_count.store(0);
+#endif
+
+  ArrayToT1 C_refine;
+  C_refine("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+          .retile(/*H=*/{}, /*M=*/{i1, i2}, /*N=*/{j1T}, /*K=*/{kk});
+  w.gop.fence();
+
+  // L3: result trange is the no-retile (U) trange (N back at U: 1 tile).
+  BOOST_CHECK(C_refine.trange() == C_ref.trange());
+  // Values match the no-retile oracle.
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_refine, C_ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t active = TA::detail::g_summa_plan_active_calls.load();
+  w.gop.sum(&active, 1);
+  BOOST_CHECK_GT(active, std::size_t{0});
+
+  // Refine on a RESULT axis ENGAGES the outbound merge: 4 U tiles each gather
+  // 2 T sub-pages => 8.
+  std::size_t merged = TA::detail::g_summa_result_merge_count.load();
+  w.gop.sum(&merged, 1);
+  BOOST_CHECK_EQUAL(merged, std::size_t{8});
+#endif
+}
+
+// witness: a pure-coarsen config (no result axis refined) must keep the
+// result-merge counter at 0. Reuses retile_coarsen_m_ce_ce's shapes.
+BOOST_AUTO_TEST_CASE(retile_coarsen_no_merge_l5) {
+  auto& w = TA::get_default_world();
+  auto i1U = tr1(8, 2);  // 4 U M-tiles on the ride axis
+  auto i2 = tr1(4, 2);   // 2 tiles
+  auto j1 = tr1(4, 2);   // 2 tiles
+  auto kk = tr1(4, 4);   // single K tile
+  auto i1T = tr1(8, 8);  // coarsen i1 to ONE tile
+
+  ArrayToT1 A0 = make_arena1(w, TA::TiledRange{i1U, i2, kk}, TA::Range{3, 4});
+  ArrayToT1 B0 = make_arena1(w, TA::TiledRange{j1, kk}, TA::Range{4});
+  ArrayToT1 C_ref =
+      TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_summa_result_merge_count.store(0);
+#endif
+
+  ArrayToT1 C_coarsen;
+  C_coarsen("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+          .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1}, /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_coarsen, C_ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // L5: a pure-coarsen config never engages the outbound merge.
+  std::size_t merged = TA::detail::g_summa_result_merge_count.load();
+  w.gop.sum(&merged, 1);
+  BOOST_CHECK_EQUAL(merged, std::size_t{0});
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// review (cross-step operand re-fetch). The per-gather dedupe cache
+// in get_col_coarsen/get_row_coarsen lives per get_col/get_row CALL (one call
+// per SUMMA-K step). The reviewer flagged that with k_>1 (multiple SUMMA-K
+// steps) AND a refined result axis (the outbound-merge path engaged), a shared
+// U operand tile could be re-fetched ACROSS steps and re-arm the lazy-operand
+// over-notify deadlock that the per-call cache fixed within a step.
+//
+// (A) k_=2 via K-IDENTITY (2 U K-tiles -> 2 SUMMA steps) + REFINE result axis
+// N. ce_ce C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c). Each K step selects a
+// DISTINCT U K-tile, so the right operand B(j1,k) U tiles fetched in step 0
+// (k_u=0) and step 1 (k_u=1) are disjoint -- no cross-step re-fetch -- while
+// the refined N within each step still shares B's N tile across the 2 N-cols
+// (per-call cache covers that). Result merge engages (j1 refined): 4 U result
+// tiles x 2 T N-sub-pages = 8. Must run green (no hang) + oracle match.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(retile_refine_n_multistep_k_ce_ce) {
+  auto& w = TA::get_default_world();
+  auto i1 = tr1(4, 2);   // 2 M-tiles
+  auto i2 = tr1(4, 2);   // 2 M-tiles
+  auto j1U = tr1(4, 4);  // ONE U N-tile [0,4)
+  auto j1T = tr1(4, 2);  // REFINE N -> 2 T tiles of width 2
+  auto kU = tr1(8, 4);   // 2 U K-tiles
+  auto kT = tr1(8, 4);   // K IDENTITY -> 2 T K-tiles => k_=2 SUMMA steps
+
+  ArrayToT1 A0 = make_arena1(w, TA::TiledRange{i1, i2, kU}, TA::Range{3, 4});
+  ArrayToT1 B0 = make_arena1(w, TA::TiledRange{j1U, kU}, TA::Range{4});
+  OwnArr1 A0o = make_own1(w, TA::TiledRange{i1, i2, kU}, TA::Range{3, 4});
+  OwnArr1 B0o = make_own1(w, TA::TiledRange{j1U, kU}, TA::Range{4});
+  w.gop.fence();
+
+  OwnArr1 ref = TA::einsum(A0o("i1,i2,k;a,c"), B0o("j1,k;c"), "i1,i2,j1;a");
+  ArrayToT1 C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_ref, ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_summa_plan_active_calls.store(0);
+  TA::detail::g_summa_result_merge_count.store(0);
+#endif
+
+  ArrayToT1 C_refine;
+  C_refine("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+          .retile(/*H=*/{}, /*M=*/{i1, i2}, /*N=*/{j1T}, /*K=*/{kT});
+  w.gop.fence();
+
+  BOOST_CHECK(C_refine.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_refine, C_ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t active = TA::detail::g_summa_plan_active_calls.load();
+  w.gop.sum(&active, 1);
+  BOOST_CHECK_GT(active, std::size_t{0});
+  // 4 U result tiles each gather 2 T N-sub-pages => 8 (independent of k_).
+  std::size_t merged = TA::detail::g_summa_result_merge_count.load();
+  w.gop.sum(&merged, 1);
+  BOOST_CHECK_EQUAL(merged, std::size_t{8});
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// (B) The strongest cross-step re-fetch: REFINE-K (ONE U K-tile -> 2 T K-tiles
+// => k_=2 SUMMA steps that BOTH map back to the SAME single U K-tile) combined
+// with REFINE result axis N. ce_ce C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c).
+// Here step 0 and step 1 of the SUMMA-K loop each view-split the SAME U K-tile
+// [0,8), so the right operand B(j1,k=0) AND left operand A(.,.,k=0) U tiles are
+// fetched in BOTH steps -- the genuine cross-step re-fetch. If the lazy-operand
+// over-notify were re-armed across steps this would HANG; it must run green and
+// match the oracle. (refine_k_ce_e already exercises the 4-step operand-axis
+// re-fetch; this adds the result-merge path on top.)
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(retile_refine_nk_ce_ce) {
+  auto& w = TA::get_default_world();
+  auto i1 = tr1(4, 2);   // 2 M-tiles
+  auto i2 = tr1(4, 2);   // 2 M-tiles
+  auto j1U = tr1(4, 4);  // ONE U N-tile [0,4)
+  auto j1T = tr1(4, 2);  // REFINE N -> 2 T tiles of width 2
+  auto kU = tr1(8, 8);   // ONE U K-tile [0,8)
+  auto kT = tr1(8, 4);   // REFINE K -> 2 T K-tiles => k_=2 steps, same U K-tile
+
+  ArrayToT1 A0 = make_arena1(w, TA::TiledRange{i1, i2, kU}, TA::Range{3, 4});
+  ArrayToT1 B0 = make_arena1(w, TA::TiledRange{j1U, kU}, TA::Range{4});
+  OwnArr1 A0o = make_own1(w, TA::TiledRange{i1, i2, kU}, TA::Range{3, 4});
+  OwnArr1 B0o = make_own1(w, TA::TiledRange{j1U, kU}, TA::Range{4});
+  w.gop.fence();
+
+  OwnArr1 ref = TA::einsum(A0o("i1,i2,k;a,c"), B0o("j1,k;c"), "i1,i2,j1;a");
+  ArrayToT1 C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_ref, ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_summa_plan_active_calls.store(0);
+  TA::detail::g_summa_result_merge_count.store(0);
+#endif
+
+  ArrayToT1 C_refine;
+  C_refine("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+          .retile(/*H=*/{}, /*M=*/{i1, i2}, /*N=*/{j1T}, /*K=*/{kT});
+  w.gop.fence();
+
+  BOOST_CHECK(C_refine.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_refine, C_ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t active = TA::detail::g_summa_plan_active_calls.load();
+  w.gop.sum(&active, 1);
+  BOOST_CHECK_GT(active, std::size_t{0});
+  std::size_t merged = TA::detail::g_summa_result_merge_count.load();
+  w.gop.sum(&merged, 1);
+  BOOST_CHECK_EQUAL(merged, std::size_t{8});
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 // ===========================================================================
