@@ -1714,21 +1714,17 @@ BOOST_AUTO_TEST_CASE(retile_identity_hadamard_ce_ce_nh_gt_1_dist) {
 // plan-active counter must be > 0 (an active path ran), and the ce_ce strided
 // DGEMM must fire (> 0).
 //
-// NP SCOPING (binding): the np>1 COARSE distribution is NOT yet implemented --
-// init_distribution_general (cont_engine.h) is still U-derived (no plan_.active
-// branch, no coarse operand/result pmaps). Driving this ACTIVE retile at np>1
-// therefore HANGS: the coarse SUMMA step count desyncs from the U-derived
-// operand/result placement, so a reduce task waits forever on a contribution
-// that never lands on its owner. The ENTIRE active body is consequently guarded
-// to world.size()==1; at np>1 the case is a no-op (this suite is unlabeled so
-// it still ENTERS at np=2, it just does not exercise the active path).
-// drop the world.size()==1 guard once init_distribution_general is
-// coarse-aware (T-derived n_slabs_/proc_h_ + coarse operand/result pmaps).
+// NP SCOPING: init_distribution_general is now coarse-aware on
+// the ungrouped (proc_h_ == 1) general path -- it composes the COARSE
+// co-location of the ordinary 2-d path (make_operand/result_coarse_pmap) with
+// the slab replication of the general path (SlabbedPmap over n_slabs_). With
+// n_slabs_ == 2 fused slabs, M_grid == N_grid == 2 externals and P == 2 the
+// proc_h_ heuristic picks proc_h_ == 1 (the 2-d cap absorbs the 2 ranks), so
+// this case exercises the new ACTIVE ungrouped branch at np=2. The result is
+// delivered at the FINE (U) tiling and validated against the no-retile einsum
+// oracle. (The grouped proc_h_ > 1 active path is, a separate case.)
 BOOST_AUTO_TEST_CASE(retile_active_hadamard_identityH_coarsenK_ce_ce_dist) {
   auto& w = TA::get_default_world();
-  // green gate is np=1 only; the np>1 active path is (it would hang
-  // today). Skip the active body entirely at np>1.
-  if (w.size() != 1) return;
 
   auto h = tr1d(4, 2);   // 2 fused H tiles  => n_slabs_ == 2 (nh_>1)
   auto i = tr1d(4, 2);   // 2 left-external M-tiles

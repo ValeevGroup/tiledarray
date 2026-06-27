@@ -684,22 +684,34 @@ class ContEngine : public BinaryEngine<Derived> {
   }
 
   /// Compose the coarse-cell-owner pmap for an operand whose U outer trange is
-  /// laid out [lead-role axes..., tail-role axes...] (left: M then K; right: K
-  /// then N). \p coarse_phase is the matching coarse phase pmap (left:
-  /// make_row_phase_pmap(coarse_K); right: make_col_phase_pmap(coarse_N=cols)).
-  /// The coarse-cell ordinal is lead_t * tail_coarse + tail_t, matching the
-  /// CyclicPmap row-major (rows=lead_coarse, cols=tail_coarse) decode.
+  /// laid out [(skipped) H axes..., lead-role axes..., tail-role axes...]
+  /// (left: M then K; right: K then N). \p coarse_phase is the matching coarse
+  /// phase pmap (left: make_row_phase_pmap(coarse_K); right:
+  /// make_col_phase_pmap(coarse_N=cols)). The coarse-cell ordinal is
+  /// lead_t * tail_coarse + tail_t, matching the CyclicPmap row-major
+  /// (rows=lead_coarse, cols=tail_coarse) decode.
+  ///
+  /// \p n_skip is the number of LEADING Hadamard (fused) U-trange modes to skip
+  /// (the general/Hadamard path; 0 on the ordinary 2-d path). When n_skip > 0
+  /// the returned pmap is a PER-SLAB base map over only the EXTERNAL (non-H)
+  /// tiles -- its size is the per-slab external U-tile count, exactly what
+  /// SlabbedPmap expects as its base. The H tiling is identity here
+  /// so every slab is distributed identically and the base map is
+  /// slab-agnostic; SlabbedPmap then replicates it across n_slabs_.
   std::shared_ptr<const pmap_interface> make_operand_coarse_pmap(
       World& world, const trange_type& u_tr,
       const std::vector<expressions::AxisNest>& lead_role,
       const std::vector<expressions::AxisNest>& tail_role,
-      const std::shared_ptr<Pmap>& coarse_phase,
-      std::size_t tail_coarse) const {
+      const std::shared_ptr<Pmap>& coarse_phase, std::size_t tail_coarse,
+      std::size_t n_skip = 0ul) const {
     const auto& u_tiles = u_tr.tiles_range();
     const std::size_t n_lead = lead_role.size();
     const std::size_t n_tail = tail_role.size();
     const std::size_t rank = n_lead + n_tail;
-    TA_ASSERT(u_tiles.rank() == rank);
+    // The U trange carries n_skip leading H modes followed by the external
+    // (lead-role + tail-role) modes. The base pmap is built over the external
+    // tiles only; H is replicated by SlabbedPmap at the call site.
+    TA_ASSERT(u_tiles.rank() == n_skip + rank);
 
     // Precompute per-axis U->T lookups.
     std::vector<std::vector<std::size_t>> lead_u2t(n_lead), tail_u2t(n_tail);
@@ -713,15 +725,19 @@ class ContEngine : public BinaryEngine<Derived> {
       tail_t_ext[b] = role_t_extent(tail_role, b);
     }
 
-    const std::size_t n_u_tiles = u_tiles.volume();
-    std::vector<ProcessID> owners(n_u_tiles);
+    // Per-slab external extents are the trailing `rank` axes of the U trange.
     const auto* extent = u_tiles.extent_data();
+    std::size_t n_ext_tiles = 1ul;
+    for (std::size_t a = 0; a < rank; ++a)
+      n_ext_tiles *= static_cast<std::size_t>(extent[n_skip + a]);
+
+    std::vector<ProcessID> owners(n_ext_tiles);
     std::vector<std::size_t> idx(rank);
-    for (std::size_t ord = 0; ord < n_u_tiles; ++ord) {
-      // decompose ord row-major into per-axis U indices
+    for (std::size_t ord = 0; ord < n_ext_tiles; ++ord) {
+      // decompose ord row-major into per-external-axis U indices
       std::size_t rem = ord;
       for (std::size_t a = rank; a-- > 0;) {
-        const std::size_t e = static_cast<std::size_t>(extent[a]);
+        const std::size_t e = static_cast<std::size_t>(extent[n_skip + a]);
         idx[a] = e ? (rem % e) : 0;
         rem = e ? (rem / e) : rem;
       }
@@ -742,24 +758,32 @@ class ContEngine : public BinaryEngine<Derived> {
       if (static_cast<std::size_t>(o) == me) ++local;
     auto owners_ptr = std::make_shared<std::vector<ProcessID>>(std::move(owners));
     return std::make_shared<TiledArray::detail::UserPmap>(
-        world, n_u_tiles, local,
+        world, n_ext_tiles, local,
         [owners_ptr](std::size_t t) -> std::size_t {
           return static_cast<std::size_t>((*owners_ptr)[t]);
         });
   }
 
   /// Compose the coarse-cell-owner pmap for the RESULT whose U trange is laid
-  /// out [M-axes..., N-axes...] (no Hadamard on this path). The coarse result
-  /// grid (proc_grid_.make_pmap()) is CyclicPmap(rows=M_grid, cols=N_grid), so
-  /// the coarse-cell ordinal is mc * N_grid + nc.
+  /// out [(skipped) H-axes..., M-axes..., N-axes...]. The coarse result grid
+  /// (proc_grid_.make_pmap()) is CyclicPmap(rows=M_grid, cols=N_grid), so the
+  /// coarse-cell ordinal is mc * N_grid + nc.
+  ///
+  /// \p n_skip is the number of LEADING Hadamard (fused) result-trange modes to
+  /// skip (the general/Hadamard path; 0 on the ordinary 2-d path). When
+  /// n_skip > 0 the returned pmap is a PER-SLAB base map over only the EXTERNAL
+  /// (non-H) result tiles -- its size is the per-slab external result-tile
+  /// count, exactly what SlabbedPmap expects as its base (H is identity here
+  /// so the base is slab-agnostic and SlabbedPmap replicates it).
   std::shared_ptr<const pmap_interface> make_result_coarse_pmap(
       World& world, const trange_type& u_tr,
-      const std::shared_ptr<Pmap>& coarse_result, std::size_t N_grid) const {
+      const std::shared_ptr<Pmap>& coarse_result, std::size_t N_grid,
+      std::size_t n_skip = 0ul) const {
     const auto& u_tiles = u_tr.tiles_range();
     const std::size_t n_m = plan_.summaM.size();
     const std::size_t n_n = plan_.summaN.size();
     const std::size_t rank = n_m + n_n;
-    TA_ASSERT(u_tiles.rank() == rank);
+    TA_ASSERT(u_tiles.rank() == n_skip + rank);
 
     std::vector<std::vector<std::size_t>> m_u2t(n_m), n_u2t(n_n);
     std::vector<std::size_t> m_t_ext(n_m), n_t_ext(n_n);
@@ -772,14 +796,18 @@ class ContEngine : public BinaryEngine<Derived> {
       n_t_ext[b] = role_t_extent(plan_.summaN, b);
     }
 
-    const std::size_t n_u_tiles = u_tiles.volume();
-    std::vector<ProcessID> owners(n_u_tiles);
+    // Per-slab external extents are the trailing `rank` axes of the U trange.
     const auto* extent = u_tiles.extent_data();
+    std::size_t n_ext_tiles = 1ul;
+    for (std::size_t a = 0; a < rank; ++a)
+      n_ext_tiles *= static_cast<std::size_t>(extent[n_skip + a]);
+
+    std::vector<ProcessID> owners(n_ext_tiles);
     std::vector<std::size_t> idx(rank);
-    for (std::size_t ord = 0; ord < n_u_tiles; ++ord) {
+    for (std::size_t ord = 0; ord < n_ext_tiles; ++ord) {
       std::size_t rem = ord;
       for (std::size_t a = rank; a-- > 0;) {
-        const std::size_t e = static_cast<std::size_t>(extent[a]);
+        const std::size_t e = static_cast<std::size_t>(extent[n_skip + a]);
         idx[a] = e ? (rem % e) : 0;
         rem = e ? (rem / e) : rem;
       }
@@ -799,7 +827,7 @@ class ContEngine : public BinaryEngine<Derived> {
       if (static_cast<std::size_t>(o) == me) ++local;
     auto owners_ptr = std::make_shared<std::vector<ProcessID>>(std::move(owners));
     return std::make_shared<TiledArray::detail::UserPmap>(
-        world, n_u_tiles, local,
+        world, n_ext_tiles, local,
         [owners_ptr](std::size_t t) -> std::size_t {
           return static_cast<std::size_t>((*owners_ptr)[t]);
         });
@@ -1294,10 +1322,23 @@ class ContEngine : public BinaryEngine<Derived> {
       //       using the h-, left-external-, and right-external-mode element
       //       extents (and a per-rank memory bound), rather than the current
       //       greedy tile-count heuristic.
+      //
+      // When the retile plan is ACTIVE the SUMMA process grid spans the COARSE
+      // (T) external M/N tile counts -- the broadcast keys/roots on the coarse
+      // grid even though operands stay tiled at the fine (U) M/N count -- while
+      // the element extents (m,n) stay the total U element counts (retiling
+      // does not change the element space). So the 2-d cap and the per-slab
+      // ProcGrid below must both use coarse M/N. Inactive plans keep the stock
+      // U grid byte-for-byte (coarse_M_/coarse_N_ are the identity then). H is
+      // identity on this subtask, so n_slabs_/proc_h_/proc_h_stride_
+      // stay U-derived; only the per-slab external grid is coarsened. (Coarse-H
+      // -- a T-derived n_slabs_ -- is.)
+      const size_type M_grid = coarse_M_(M);
+      const size_type N_grid = coarse_N_(N);
       const size_type P = world->size();
       proc_h_ = 1ul;
       if (n_slabs_ > 1ul && P > 1ul) {
-        const size_type p2d_cap = std::min<size_type>(P, M * N);
+        const size_type p2d_cap = std::min<size_type>(P, M_grid * N_grid);
         proc_h_ = std::min<size_type>(n_slabs_,
                                       std::max<size_type>(1ul, P / p2d_cap));
       }
@@ -1307,23 +1348,79 @@ class ContEngine : public BinaryEngine<Derived> {
       proc_h_stride_ = (proc_h_ == 1ul) ? 0ul : P / proc_h_;
 
       if (proc_h_ == 1ul) {
-        // Construct the per-slab process grid over the whole world.
-        proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
+        if (plan_.active) {
+          // ACTIVE coarsen/identity (np>=1): COMPOSE the coarse co-location of
+          // the ordinary 2-d path (init_distribution :865-892) with the slab
+          // replication this general path needs. The per-slab SUMMA grid spans
+          // the COARSE external M/N; operands/result stay at the FINE (U)
+          // tiling but every U EXTERNAL tile is co-located on the rank owning
+          // its covering coarse T-cell (matching coarse phase pmap), so the
+          // in-step gather is local and the coarse-keyed broadcast is
+          // consistent. SlabbedPmap then replicates that per-slab base map over
+          // every (identity-H) slab. At np=1 every owner is rank 0, identical
+          // to the stock fine-U grid. (Refine at np>1 was rejected above; only
+          // coarsen/identity reaches here.)
+          proc_grid_ = TiledArray::detail::ProcGrid(*world, M_grid, N_grid, m, n);
+          const size_type K_coarse = coarse_K_(K_);
+          // left U layout = [H-axes..., M-axes..., K-axes...]; phase rows =
+          // M_grid, cols = K_coarse; skip the nh leading H modes.
+          auto left_phase = proc_grid_.make_row_phase_pmap(K_coarse);
+          left_.init_distribution(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world,
+                         make_operand_coarse_pmap(*world, left_.trange(),
+                                                  plan_.summaM, plan_.summaK,
+                                                  left_phase, K_coarse, nh),
+                         n_slabs_));
+          // right U layout = [H-axes..., K-axes..., N-axes...]; phase rows =
+          // K_coarse, cols = N_grid; skip the nh leading H modes.
+          auto right_phase = proc_grid_.make_col_phase_pmap(K_coarse);
+          right_.init_distribution(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world,
+                         make_operand_coarse_pmap(*world, right_.trange(),
+                                                  plan_.summaK, plan_.summaN,
+                                                  right_phase, N_grid, nh),
+                         n_slabs_));
 
-        // Initialize children with slab-replicated SUMMA phase maps
-        left_.init_distribution(
-            world, std::make_shared<TiledArray::detail::SlabbedPmap>(
-                       *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_));
-        right_.init_distribution(
-            world, std::make_shared<TiledArray::detail::SlabbedPmap>(
-                       *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_));
+          if (!pmap)
+            pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+                *world,
+                make_result_coarse_pmap(*world, trange_, proc_grid_.make_pmap(),
+                                        N_grid, nh),
+                n_slabs_);
+          ExprEngine_::init_distribution(world, pmap);
+        } else {
+          // Inactive: stock per-slab U grid over the whole world (M_grid==M,
+          // N_grid==N, K_coarse==K_ so this is byte-for-byte the prior code).
+          proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
 
-        // Initialize the process map if not already defined
-        if (!pmap)
-          pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-              *world, proc_grid_.make_pmap(), n_slabs_);
-        ExprEngine_::init_distribution(world, pmap);
+          // Initialize children with slab-replicated SUMMA phase maps
+          left_.init_distribution(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_));
+          right_.init_distribution(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_));
+
+          // Initialize the process map if not already defined
+          if (!pmap)
+            pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+                *world, proc_grid_.make_pmap(), n_slabs_);
+          ExprEngine_::init_distribution(world, pmap);
+        }
       } else {
+        // grouped (proc_h_ > 1) 3-d grid. The ACTIVE coarse co-location for
+        // this branch is commit 2; until then an active
+        // plan that lands here would distribute operands at the stock U grid
+        // while the SUMMA keys on the coarse grid -- a guaranteed np>1 desync.
+        // Reject it explicitly (TA_EXCEPTION, not TA_ASSERT: .retile() is
+        // user-reachable and this must survive Release) rather than hang.
+        if (plan_.active)
+          TA_EXCEPTION(
+              "in-SUMMA two-trange retile (.retile) of a Hadamard (fused-outer) "
+              "contraction with an h-grouped process grid (proc_h_ > 1) is not "
+              "yet supported");
         // Construct this rank's GROUP-LOCAL per-slab process grid (ranks
         // outside the grouped prefix of the world construct a valid
         // not-in-grid instance). The grid shape is a pure function of
