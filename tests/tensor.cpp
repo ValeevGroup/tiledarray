@@ -201,6 +201,41 @@ BOOST_AUTO_TEST_CASE(permute_constructor_tensor) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(permute_preserves_batches) {
+  // A batched (nbatch=2) 2x3 tensor; permuting the two outer modes must
+  // permute EACH batch slice independently (regression for the strided
+  // canonicalization's physical operand permute on a batched tile).
+  using T = TA::Tensor<double>;
+  const TA::Range r(std::array<std::size_t, 2>{2, 3});  // 2x3, volume 6
+  const std::size_t vol = r.volume();
+  const std::size_t nb = 2;
+
+  // Build a flat 12-element tensor and reshape it to (2x3) x nbatch=2.
+  T flat(TA::Range(std::array<std::size_t, 1>{vol * nb}));
+  for (std::size_t e = 0; e < vol * nb; ++e) flat.data()[e] = 1.0 + double(e);
+  T batched = flat.reshape(r, nb);
+  BOOST_REQUIRE_EQUAL(batched.nbatch(), nb);
+
+  const TA::Permutation p(std::array<unsigned int, 2>{1, 0});  // swap modes
+
+  // Under test: permuting ctor on a batched tensor (aborts today at
+  // TA_ASSERT(nbatch()==1)).
+  T permuted(batched, p);
+
+  BOOST_REQUIRE_EQUAL(permuted.nbatch(), nb);
+  BOOST_REQUIRE(permuted.range() == (p * r));
+
+  // Oracle: permute each batch slice on its own (the nbatch==1 path, which
+  // works today) and compare element-by-element.
+  for (std::size_t b = 0; b < nb; ++b) {
+    T expect(batched.batch(b), p);  // single-batch permute
+    const double* got = permuted.batch_data(b);
+    const double* exp = expect.data();
+    for (std::size_t e = 0; e < vol; ++e)
+      BOOST_CHECK_CLOSE(got[e], exp[e], 1e-12);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(unary_constructor) {
   // check constructor
   BOOST_REQUIRE_NO_THROW(TensorN x(t, [](const int arg) { return arg * 83; }));

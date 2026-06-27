@@ -657,12 +657,33 @@ class Tensor {
       : Tensor(outer(perm) * other.range(), other.nbatch(),
                default_construct{false}) {
     const auto outer_perm = outer(perm);
-    if (outer_perm) {
-      detail::tensor_init(value_converter<typename T1::value_type>, outer_perm,
-                          *this, other);
+    // The outer permute kernel (tensor_init -> permute) writes through
+    // at_ordinal, which requires nbatch()==1. Apply it per batch slice when
+    // batched: batch(b) is a writable nbatch==1 view sharing this/other's
+    // storage, so each slice permutes in place. For nbatch()==1 (every
+    // production/expression path -- see plan Background) the loop body runs
+    // exactly once and is identical to the prior code. nbatch()>1 only
+    // arises on the deprecated legacy subworld einsum route.
+    if (this->nbatch() == 1) {
+      if (outer_perm) {
+        detail::tensor_init(value_converter<typename T1::value_type>,
+                            outer_perm, *this, other);
+      } else {
+        detail::tensor_init(value_converter<typename T1::value_type>, *this,
+                            other);
+      }
     } else {
-      detail::tensor_init(value_converter<typename T1::value_type>, *this,
-                          other);
+      for (std::size_t b = 0; b < this->nbatch(); ++b) {
+        auto this_b = this->batch(b);
+        auto other_b = other.batch(b);
+        if (outer_perm) {
+          detail::tensor_init(value_converter<typename T1::value_type>,
+                              outer_perm, this_b, other_b);
+        } else {
+          detail::tensor_init(value_converter<typename T1::value_type>, this_b,
+                              other_b);
+        }
+      }
     }
 
     // If we actually have a ToT the inner permutation was not applied above so
