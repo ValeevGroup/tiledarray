@@ -1768,4 +1768,88 @@ BOOST_AUTO_TEST_CASE(retile_active_hadamard_identityH_coarsenK_ce_ce_dist) {
 #endif
 }
 
+// ===========================================================================
+// ACTIVE retile on a fused (nh_>1) Hadamard contraction that
+// RIDES the externals down to a SINGLE coarse tile, exercising the h-GROUPED
+// (proc_h_ > 1) 3-d grid branch at np=2.
+//
+// Same contraction as / -- C("h,i,j;a") = A("h,i,k;a,c") * B("h,j,k;c")
+// -- driven by an ACTIVE .retile() that:
+//   * H IDENTITY  (targetH == U h tiling): the fused axis is not coarsened;
+// n_slabs_ stays U-derived == 2 (coarse H is a separate case).
+//   * M COARSENED to ONE coarse tile (i: 2 U tiles -> iT one T tile) and
+//   * N COARSENED to ONE coarse tile (j: 2 U tiles -> jT one T tile): the
+//     per-slab external SUMMA grid collapses to 1x1 (coarse M_grid==N_grid==1).
+//   * K COARSENED (2 U K-tiles -> 1 coarse SUMMA K-tile).
+//
+// With M_grid*N_grid == 1 the 2-d cap is 1, so at np>1 the proc_h_ heuristic
+// spreads the world over the slab (h) axis (proc_h_ == min(n_slabs_, P) > 1),
+// engaging the h-GROUPED 3-d grid branch. re-implemented that branch's
+// ACTIVE coarse co-location (group-local coarse proc_grid_ + coarse-co-located
+// operand/result pmaps wrapped in the h-grouped SlabbedPmap) and fixed the
+// result-ordinal base: initialize_active / finalize_active now base the U
+// result tile on the GLOBAL slab index h (slab_u_base = h * (u_vol / nh_)),
+// matching the reduce-task / result-owner layout (slab_base = h *
+// result_slab_size_). Previously they used the GROUP-LOCAL slab_ord(h), which
+// aliased every group's tiles onto slab 0's ordinals -> the closing-fence
+// deadlock that blocked.
+//
+// Both np=1 (ungrouped 1x1 active path) and np=2 (grouped, proc_h_ == 2) must
+// match the no-retile einsum oracle. At np=2 we additionally assert the grouped
+// path engaged via the g_summa_proc_h_grouped_calls witness.
+BOOST_AUTO_TEST_CASE(retile_active_hadamard_ride_single_tile_grouped_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+
+  auto h = tr1d(4, 2);    // 2 fused H tiles  => n_slabs_ == 2 (nh_>1)
+  auto i = tr1d(4, 2);    // 2 left-external M U-tiles ...
+  auto iT = tr1d(4, 4);   // ... coarsened to ONE coarse M tile
+  auto j = tr1d(4, 2);    // 2 right-external N U-tiles ...
+  auto jT = tr1d(4, 4);   // ... coarsened to ONE coarse N tile
+  auto kU = tr1d(8, 4);   // 2 contracted K U-tiles
+  auto kT = tr1d(8, 8);   // coarsen K: 2 U K-tiles -> 1 coarse T K-tile
+  // A(h,i,k; a,c): inner a=3 spectator (rides), c=4 contracted.
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i, kU}, TA::Range{3, 4});
+  // B(h,j,k; c): inner c=4 contracted.
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, kU}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+  TA::detail::g_summa_proc_h_grouped_calls.store(0);
+#endif
+
+  // No-retile reference: same inputs, Hadamard general product over fused h.
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "h,i,j;a");
+  w.gop.fence();
+
+  // ACTIVE retile, ride single-tile (M/N coarsened to one coarse tile), K
+  // coarsened, H identity. At np=1 the 1x1 coarse grid is the ungrouped active
+  // path; at np=2 the surplus rank rides the slab axis (proc_h_ == 2, the
+  // h-grouped 3-d grid). Both must match the oracle, no hang.
+  ArrayToT2 C;
+  C("h,i,j;a") = (A0("h,i,k;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{h}, /*M=*/{iT}, /*N=*/{jT}, /*K=*/{kT});
+  w.gop.fence();
+
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+  // At np>1 the ride-single-tile regime must engage the h-grouped (proc_h_ > 1)
+  // active distribution; at np=1 it stays ungrouped (counter 0).
+  std::size_t grouped = TA::detail::g_summa_proc_h_grouped_calls.load();
+  w.gop.sum(&grouped, 1);
+  if (w.size() > 1)
+    BOOST_CHECK_GT(grouped, std::size_t{0});
+  else
+    BOOST_CHECK_EQUAL(grouped, std::size_t{0});
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -70,6 +70,14 @@ inline std::atomic<std::size_t> g_summa_gather_block_count{0};
 /// coarsen/identity config (no result axis refined) -- the unit tests assert
 /// that as the witness. gop.sum it across ranks for np-correctness.
 inline std::atomic<std::size_t> g_summa_result_merge_count{0};
+
+/// witness: incremented in the `Summa` ctor ONLY when a
+/// retile plan is active AND the process grid is h-GROUPED (proc_h_ > 1), i.e.
+/// the np>=2 "ride single-tile" optimum spread the surplus ranks over the slab
+/// axis. Stays 0 on the ungrouped (proc_h_ == 1) and inactive paths. The unit
+/// tests assert it is > 0 to prove the grouped active distribution engaged.
+/// gop.sum it across ranks for np-correctness.
+inline std::atomic<std::size_t> g_summa_proc_h_grouped_calls{0};
 #endif
 
 /// \brief Distributed contraction evaluator implementation
@@ -214,7 +222,22 @@ class Summa
   /// owner (from the group-local process grid) shifted by the world-rank
   /// offset of the group that owns \p i's slab. For proc_h_ == 1 the offset
   /// is 0 and this is the ordinary cyclic owner.
+  ///
+  /// ACTIVE two-trange path: the result array is the FINE (U) trange while the
+  /// process grid (and result_slab_size_ = proc_grid_.rows()*cols()) is COARSE
+  /// (T). When the COARSE M/N tile counts differ from the FINE U M/N counts
+  /// (e.g. the ride-single-tile optimum collapses coarse M/N to 1) the
+  /// coarse-grid arithmetic below does NOT match the FINE U result pmap. The
+  /// authoritative owner of U result tile i is the result pmap installed by the
+  /// engine (TensorImpl_::owner(i) -- the SlabbedPmap over make_result_coarse_
+  /// pmap), and set_tile sends to exactly that owner, so get_tile MUST recv from
+  /// it too. Delegate to it. Canonical (no permutation) only on the active path,
+  /// so perm_index_to_source(i) == i. (Inactive: result == coarse trange so the
+  /// arithmetic below is exact -- byte-for-byte stock.)
   ProcessID result_tile_owner(const ordinal_type i) const {
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) return ProcessID(TensorImpl_::owner(i));
+    }
     const ordinal_type source_index = DistEvalImpl_::perm_index_to_source(i);
     // owner is independent of slab index *within a group*
     const ordinal_type slab_index = source_index % result_slab_size_;
@@ -2385,8 +2408,18 @@ class Summa
     ordinal_type tile_count = 0ul;
     ReducePairTask<op_type>* MADNESS_RESTRICT reduce_task = reduce_tasks_;
     for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
+      // The U result tiles for GLOBAL slab h occupy the GLOBAL ordinal range
+      // [h * (u_vol / nh_), (h+1) * (u_vol / nh_)). The reduce-task /
+      // result-owner layout already indexes by GLOBAL h (slab_base =
+      // h * result_slab_size_ at finalize/initialize; result_tile_owner uses
+      // slab = source_index / result_slab_size_), so the result base MUST be
+      // global h -- NOT the group-local slab_ord(h). At proc_h_ == 1 the two
+      // coincide; at proc_h_ > 1 a non-zero group would otherwise set U result
+      // tiles at slab-0 ordinals it does not own (set/notify imbalance ->
+      // deadlock). The OPERAND-side bases (slab_ord(step_h(s)) * local_size in
+      // contract()) are correctly group-local and stay as-is.
       const ordinal_type slab_u_base =
-          slab_ord(h) * (this->trange().tiles_range().volume() / nh_);
+          h * (this->trange().tiles_range().volume() / nh_);
       // Per-slab set of distinct fine-nonzero U ordinals seen so far (each is
       // SET exactly once). A U covered by several cells (refine-result)
       // increments the count only on first sight.
@@ -2618,8 +2651,14 @@ class Summa
 
     ReducePairTask<op_type>* reduce_task = reduce_tasks_;
     for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
-      const ordinal_type slab_u_base =
-          slab_ord(h) * (u_vol / nh_);
+      // GLOBAL slab base (see initialize_active for the full rationale): the U
+      // result tiles for GLOBAL slab h live at GLOBAL ordinals
+      // [h * (u_vol / nh_), (h+1) * (u_vol / nh_)), matching the reduce-task /
+      // result-owner layout (slab_base = h * result_slab_size_;
+      // result_tile_owner's slab = source_index / result_slab_size_). At
+      // proc_h_ > 1 the group-local slab_ord(h) would alias every group's tiles
+      // onto slab 0's ordinals -> the set/notify imbalance the hang.
+      const ordinal_type slab_u_base = h * (u_vol / nh_);
 
       // Pass 1: per cell, submit the page future and collect its covered,
       // non-zero U ordinals (slab-local). Build, per U ordinal, the list of
@@ -3356,6 +3395,12 @@ class Summa
     TA_ASSERT(proc_h_ > 0);
     TA_ASSERT(proc_h_ == 1ul || proc_h_stride > 0ul);
     TA_ASSERT(proc_h_ <= nh_);
+#ifdef TA_STRIDED_DGEMM_COUNT
+    // witness: an active retile landed on the h-grouped (proc_h_ > 1)
+    // 3-d grid (the np>=2 ride-single-tile optimum). See declaration above.
+    if (plan_.active && proc_h_ > 1ul)
+      g_summa_proc_h_grouped_calls.fetch_add(1, std::memory_order_relaxed);
+#endif
   }
 
   /// FINE-member binder. Returns the coarse-derived \p coarse_value

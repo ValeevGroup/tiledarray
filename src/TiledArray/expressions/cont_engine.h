@@ -1410,48 +1410,92 @@ class ContEngine : public BinaryEngine<Derived> {
           ExprEngine_::init_distribution(world, pmap);
         }
       } else {
-        // grouped (proc_h_ > 1) 3-d grid. The ACTIVE coarse co-location for
-        // this branch is commit 2; until then an active
-        // plan that lands here would distribute operands at the stock U grid
-        // while the SUMMA keys on the coarse grid -- a guaranteed np>1 desync.
-        // Reject it explicitly (TA_EXCEPTION, not TA_ASSERT: .retile() is
-        // user-reachable and this must survive Release) rather than hang.
-        if (plan_.active)
-          TA_EXCEPTION(
-              "in-SUMMA two-trange retile (.retile) of a Hadamard (fused-outer) "
-              "contraction with an h-grouped process grid (proc_h_ > 1) is not "
-              "yet supported");
-        // Construct this rank's GROUP-LOCAL per-slab process grid (ranks
-        // outside the grouped prefix of the world construct a valid
-        // not-in-grid instance). The grid shape is a pure function of
-        // (proc_h_stride_, M, N, m, n), so it is congruent across all groups,
-        // and the CyclicPmap factories below emit GROUP-LOCAL owners in
-        // [0, proc_h_stride_) which the h-grouped SlabbedPmap offsets by each
-        // slab's group.
+        // grouped (proc_h_ > 1) 3-d grid. Construct this rank's GROUP-LOCAL
+        // per-slab process grid (ranks outside the grouped prefix of the world
+        // construct a valid not-in-grid instance). The grid shape is a pure
+        // function of (proc_h_stride_, <M/N or coarse M/N>, m, n), so it is
+        // congruent across all groups, and the CyclicPmap factories below emit
+        // GROUP-LOCAL owners in [0, proc_h_stride_) which the h-grouped
+        // SlabbedPmap offsets by each slab's group.
         const size_type rank = world->rank();
         const bool in_groups = rank < proc_h_ * proc_h_stride_;
         const ProcessID grid_offset =
             in_groups ? ProcessID((rank / proc_h_stride_) * proc_h_stride_)
                       : ProcessID(0);
-        proc_grid_ = TiledArray::detail::ProcGrid(
-            *world, TiledArray::detail::rank_subset, grid_offset,
-            proc_h_stride_, M, N, m, n);
 
-        left_.init_distribution(
-            world, std::make_shared<TiledArray::detail::SlabbedPmap>(
-                       *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_,
-                       proc_h_, proc_h_stride_));
-        right_.init_distribution(
-            world, std::make_shared<TiledArray::detail::SlabbedPmap>(
-                       *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_,
-                       proc_h_, proc_h_stride_));
+        if (plan_.active) {
+          // ACTIVE coarsen/identity, h-grouped (the np>=2 "ride single-tile"
+          // optimum: M_grid * N_grid collapses to 1 so the 2-d cap is 1 and the
+          // surplus ranks ride the slab axis, proc_h_ = min(n_slabs_, P)). This
+          // is the SAME coarse co-location as the ungrouped active branch above
+          // (init_distribution :865-892 mirrored, n_skip = nh), composed with
+          // the GROUP-LOCAL coarse process grid and the h-grouped SlabbedPmap.
+          // The group-local proc_grid_ phase pmaps emit GROUP-LOCAL coarse-cell
+          // owners in [0, proc_h_stride_); make_operand_coarse_pmap /
+          // make_result_coarse_pmap co-locate every U external tile on the
+          // group-local rank owning its covering coarse T-cell; the h-grouped
+          // SlabbedPmap(.., n_slabs_, proc_h_, proc_h_stride_) then offsets each
+          // slab's base owner by its group (slab h -> group h % proc_h_ at
+          // world-rank offset (h % proc_h_) * proc_h_stride_). The result base
+          // is the GLOBAL slab index in initialize_active / finalize_active
+          // (slab_u_base = h * (u_vol / nh_), contraction_eval.h), matching this
+          // owner layout (the fix). Refine at np>1 was rejected above; H
+          // is identity here, so n_slabs_ stays U-derived.
+          proc_grid_ = TiledArray::detail::ProcGrid(
+              *world, TiledArray::detail::rank_subset, grid_offset,
+              proc_h_stride_, M_grid, N_grid, m, n);
+          const size_type K_coarse = coarse_K_(K_);
+          // left U layout = [H-axes..., M-axes..., K-axes...]; phase rows =
+          // M_grid, cols = K_coarse; skip the nh leading H modes.
+          auto left_phase = proc_grid_.make_row_phase_pmap(K_coarse);
+          left_.init_distribution(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world,
+                         make_operand_coarse_pmap(*world, left_.trange(),
+                                                  plan_.summaM, plan_.summaK,
+                                                  left_phase, K_coarse, nh),
+                         n_slabs_, proc_h_, proc_h_stride_));
+          // right U layout = [H-axes..., K-axes..., N-axes...]; phase rows =
+          // K_coarse, cols = N_grid; skip the nh leading H modes.
+          auto right_phase = proc_grid_.make_col_phase_pmap(K_coarse);
+          right_.init_distribution(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world,
+                         make_operand_coarse_pmap(*world, right_.trange(),
+                                                  plan_.summaK, plan_.summaN,
+                                                  right_phase, N_grid, nh),
+                         n_slabs_, proc_h_, proc_h_stride_));
 
-        // Initialize the process map if not already defined
-        if (!pmap)
-          pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-              *world, proc_grid_.make_pmap(), n_slabs_, proc_h_,
-              proc_h_stride_);
-        ExprEngine_::init_distribution(world, pmap);
+          if (!pmap)
+            pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+                *world,
+                make_result_coarse_pmap(*world, trange_, proc_grid_.make_pmap(),
+                                        N_grid, nh),
+                n_slabs_, proc_h_, proc_h_stride_);
+          ExprEngine_::init_distribution(world, pmap);
+        } else {
+          // Inactive: stock group-local per-slab U grid (M_grid==M, N_grid==N,
+          // K_coarse==K_ so this is byte-for-byte the prior code).
+          proc_grid_ = TiledArray::detail::ProcGrid(
+              *world, TiledArray::detail::rank_subset, grid_offset,
+              proc_h_stride_, M, N, m, n);
+
+          left_.init_distribution(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_,
+                         proc_h_, proc_h_stride_));
+          right_.init_distribution(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_,
+                         proc_h_, proc_h_stride_));
+
+          // Initialize the process map if not already defined
+          if (!pmap)
+            pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+                *world, proc_grid_.make_pmap(), n_slabs_, proc_h_,
+                proc_h_stride_);
+          ExprEngine_::init_distribution(world, pmap);
+        }
       }
     }
   }
