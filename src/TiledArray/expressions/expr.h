@@ -39,6 +39,7 @@
 #include "TiledArray/config.h"
 #include "TiledArray/tile.h"
 #include "TiledArray/tile_interface/trace.h"
+#include "TiledArray/tiled_range1.h"
 #include "expr_engine.h"
 #ifdef TILEDARRAY_HAS_DEVICE
 #include <TiledArray/device/device_task_fn.h>
@@ -53,9 +54,23 @@
 
 namespace TiledArray::expressions {
 
+/// User-supplied per-role contraction *target* tiling, set via
+/// MultExpr::retile(). Each vector holds the target TiledRange1 per axis on
+/// one contraction role (Hadamard / SUMMA-M / SUMMA-N / SUMMA-K); an empty
+/// vector on a role means "leave that role at the operands' own (U) tiling".
+/// \c present is false unless retile() was called. Consumed by the contraction
+/// engine to derive a RetilePlan (see contraction_retile.h); when all targets
+/// are empty or coincide with U the plan is inactive and behavior is identical
+/// to the no-retile path.
+struct ContractionTarget {
+  bool present = false;
+  std::vector<TiledRange1> targetH, targetM, targetN, targetK;
+};
+
 template <typename Engine>
 struct EngineParamOverride {
-  EngineParamOverride() : world(nullptr), pmap(), shape(nullptr) {}
+  EngineParamOverride()
+      : world(nullptr), pmap(), shape(nullptr), contraction_target() {}
 
   typedef
       typename EngineTrait<Engine>::policy policy;  ///< The result policy type
@@ -67,6 +82,7 @@ struct EngineParamOverride {
   World* world;
   std::shared_ptr<const pmap_interface> pmap;
   const shape_type* shape;
+  ContractionTarget contraction_target;  ///< retile() target tilings
 };
 
 /// \brief type trait checks if T has array() member
@@ -145,6 +161,15 @@ class Expr {
       override_ptr_->pmap = pmap;
     }
     return derived();
+  }
+
+ protected:
+  /// \return a reference to the lazily-created engine-parameter override slot;
+  /// used by derived expressions (e.g. MultExpr::retile) to record overrides
+  /// that they expose with their own typed setters.
+  override_type& mutable_override() {
+    if (!override_ptr_) override_ptr_ = std::make_shared<override_type>();
+    return *override_ptr_;
   }
 
  private:

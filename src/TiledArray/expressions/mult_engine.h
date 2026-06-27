@@ -397,6 +397,20 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    // A .retile() target is only meaningful for a product that has a
+    // contraction role partition (Contraction or General/fused). An
+    // elementwise (Hadamard) product has no such partition, so reject the
+    // request rather than silently ignore it. (contraction_target.present can
+    // only be set via MultExpr::retile.) The Contraction/General paths consume
+    // the target in ContEngine::init_struct[_general].
+    if (this->product_type() == TensorProduct::Hadamard &&
+        ExprEngine_::override_ptr_ &&
+        ExprEngine_::override_ptr_->contraction_target.present) {
+      TA_EXCEPTION(
+          "MultExpr::retile() was requested on an elementwise (Hadamard) "
+          "product, which has no contraction role partition to retile");
+    }
+
     if (this->product_type() == TensorProduct::General) {
       // the inner tile op (for tensors-of-tensors) must be initialized
       // first; init_struct_general consumes element_nonreturn_op_ and the
@@ -731,6 +745,20 @@ class ScalMultEngine
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    // A .retile() target is only meaningful for a product that has a
+    // contraction role partition (Contraction or General/fused). An
+    // elementwise (Hadamard) product has no such partition, so reject the
+    // request rather than silently ignore it. (contraction_target.present can
+    // only be set via MultExpr::retile.) The Contraction/General paths consume
+    // the target in ContEngine::init_struct[_general].
+    if (this->product_type() == TensorProduct::Hadamard &&
+        ExprEngine_::override_ptr_ &&
+        ExprEngine_::override_ptr_->contraction_target.present) {
+      TA_EXCEPTION(
+          "MultExpr::retile() was requested on an elementwise (Hadamard) "
+          "product, which has no contraction role partition to retile");
+    }
+
     if (this->product_type() == TensorProduct::General) {
       // the inner tile op (for tensors-of-tensors) must be initialized
       // first; init_struct_general consumes element_nonreturn_op_ and the

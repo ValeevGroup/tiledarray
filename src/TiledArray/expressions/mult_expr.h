@@ -28,6 +28,10 @@
 
 #include <TiledArray/expressions/binary_expr.h>
 #include <TiledArray/expressions/mult_engine.h>
+#include <TiledArray/tiled_range1.h>
+
+#include <utility>
+#include <vector>
 
 namespace TiledArray {
 namespace expressions {
@@ -131,6 +135,36 @@ class MultExpr : public BinaryExpr<MultExpr<Left, Right> > {
                 TiledArray::detail::is_numeric_v<Numeric> >::type* = nullptr>
   explicit operator Future<Numeric>() const {
     return BinaryExpr_::left().dot(BinaryExpr_::right());
+  }
+
+  /// Request a contraction *target* tiling for this product.
+
+  /// Records, per contraction role, the target TiledRange1 the engine should
+  /// retile the operands to during evaluation. An empty vector on a role leaves
+  /// that role at the operands' own (user) tiling; passing all-empty (or
+  /// targets that coincide with the operands' own tilings) is a no-op (the
+  /// engine derives an *inactive* RetilePlan and behaves exactly as without a
+  /// retile request). The retile is only meaningful for a contraction (or
+  /// general/fused) product; if this product resolves to an elementwise
+  /// (Hadamard) MultEngine product, the engine has no contraction role
+  /// partition and rejects the request at evaluation time with a
+  /// TA::Exception.
+  /// \param targetH target tiling per Hadamard (fused) axis
+  /// \param targetM target tiling per SUMMA-M (left external) axis
+  /// \param targetN target tiling per SUMMA-N (right external) axis
+  /// \param targetK target tiling per SUMMA-K (contracted) axis
+  /// \return a reference to this expression
+  MultExpr_& retile(std::vector<TiledRange1> targetH,
+                    std::vector<TiledRange1> targetM,
+                    std::vector<TiledRange1> targetN,
+                    std::vector<TiledRange1> targetK) {
+    auto& ct = this->mutable_override().contraction_target;
+    ct.present = true;
+    ct.targetH = std::move(targetH);
+    ct.targetM = std::move(targetM);
+    ct.targetN = std::move(targetN);
+    ct.targetK = std::move(targetK);
+    return *this;
   }
 
 };  // class MultExpr

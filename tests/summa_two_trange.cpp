@@ -7,6 +7,10 @@
  *  TiledRange1 / TiledRange / GemmHelper are all built directly.
  */
 
+#include "tiledarray.h"
+
+#include <TiledArray/conversions/foreach.h>
+#include <TiledArray/einsum/tiledarray.h>
 #include <TiledArray/expressions/contraction_retile.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/gemm_helper.h>
@@ -21,6 +25,8 @@
 
 #include "unit_test_config.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <vector>
 
@@ -347,6 +353,157 @@ BOOST_AUTO_TEST_CASE(arena_gather_nonuniform) {
   int cls = TA::detail::classify_run(
       [&](std::size_t i) -> const ArenaInner& { return g.data()[i]; }, 4);
   BOOST_CHECK_EQUAL(cls, 2);
+}
+
+// ---------------------------------------------------------------------------
+// .retile(...) plumbing through the engine. Identity (empty / own-U
+// targets) must be bit-for-bit the no-retile result (the identity anchor);
+// a Hadamard product with .retile must reject (MultEngine guard).
+//
+// Harness mirrors tests/strided_canonicalize.cpp: ArenaTensor<double> inner
+// cells, single-page arena ToT built via arena_outer_init, an owning-ToT twin
+// as independent ground truth, and a relative max-diff oracle.
+// ---------------------------------------------------------------------------
+namespace {
+using ArenaInner1 = TA::ArenaTensor<double, TA::Range>;
+using ArenaOuter1 = TA::Tensor<ArenaInner1>;
+using ArrayToT1 = TA::DistArray<ArenaOuter1, TA::DensePolicy>;
+using OwnInner1 = TA::Tensor<double>;
+using OwnOuter1 = TA::Tensor<OwnInner1>;
+using OwnArr1 = TA::DistArray<OwnOuter1, TA::DensePolicy>;
+
+template <typename Index>
+double outer_seed1(const Index& oix) {
+  double seed = 0.0, f = 1.0;
+  for (auto c : oix) {
+    seed += double(c) * f;
+    f *= 31.0;
+  }
+  return seed;
+}
+inline double cell_val1(double outer_s, std::size_t e) {
+  return 1.0 + 1e-3 * double(e) + 1e-2 * outer_s;
+}
+
+ArrayToT1 make_arena1(TA::World& w, const TA::TiledRange& tr,
+                      const TA::Range& inner) {
+  ArrayToT1 x(w, tr);
+  x.init_tiles([inner](const TA::Range& t_outer) {
+    ArenaOuter1 t = TA::detail::arena_outer_init<ArenaOuter1>(
+        t_outer, 1, [inner](std::size_t) { return inner; });
+    std::size_t o = 0;
+    for (const auto& idx : t_outer) {
+      ArenaInner1& c = t.data()[o++];
+      if (!c) continue;
+      const double s = outer_seed1(idx);
+      for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = cell_val1(s, e);
+    }
+    return t;
+  });
+  return x;
+}
+OwnArr1 make_own1(TA::World& w, const TA::TiledRange& tr,
+                  const TA::Range& inner) {
+  OwnArr1 x(w, tr);
+  x.init_tiles([inner](const TA::Range& t_outer) {
+    OwnOuter1 t(t_outer);
+    std::size_t o = 0;
+    for (const auto& idx : t_outer) {
+      OwnInner1 cell(inner);
+      const double s = outer_seed1(idx);
+      for (std::size_t e = 0; e < cell.size(); ++e)
+        cell.data()[e] = cell_val1(s, e);
+      t.data()[o++] = cell;
+    }
+    return t;
+  });
+  return x;
+}
+
+template <typename ArrA, typename ArrB>
+double array_max_reldiff1(const ArrA& A, const ArrB& B) {
+  double d = 0.0;
+  for (auto it = A.begin(); it != A.end(); ++it) {
+    const auto a_tile = (*it).get();
+    if (a_tile.empty()) continue;
+    const auto b_tile = B.find(it.index()).get();
+    if (a_tile.size() != b_tile.size()) {
+      d = std::max(d, 1.0);
+      continue;
+    }
+    for (std::size_t o = 0; o < a_tile.size(); ++o) {
+      const auto& ac = a_tile[o];
+      const auto& bc = b_tile[o];
+      if (ac.size() != bc.size()) {
+        d = std::max(d, 1.0);
+        continue;
+      }
+      for (std::size_t e = 0; e < ac.size(); ++e) {
+        const double av = double(ac.data()[e]), bv = double(bc.data()[e]);
+        d = std::max(d, std::abs(av - bv) / std::max(1.0, std::abs(bv)));
+      }
+    }
+  }
+  A.world().gop.max(&d, 1);
+  return d;
+}
+}  // namespace
+
+// (a) identity: a real strided-eligible ce+e ToT contraction
+// C(i1,i2,j1,j2;a,b) = A(i1,i2,k;a) * B(j1,j2,k;b) computed normally, then with
+// .retile() using EMPTY targets and with targets == the operands' own U
+// tilings. Both retile variants must equal the no-retile result to 1e-12.
+BOOST_AUTO_TEST_CASE(retile_identity_ce_e) {
+  auto& w = TA::get_default_world();
+  auto t = tr1(4, 2), kk = tr1(4, 4);
+  ArrayToT1 A0 = make_arena1(w, TA::TiledRange{t, t, kk}, TA::Range{3});
+  ArrayToT1 B0 = make_arena1(w, TA::TiledRange{t, t, kk}, TA::Range{5});
+  OwnArr1 A0o = make_own1(w, TA::TiledRange{t, t, kk}, TA::Range{3});
+  OwnArr1 B0o = make_own1(w, TA::TiledRange{t, t, kk}, TA::Range{5});
+  w.gop.fence();
+
+  // no-retile reference (also cross-checked against the owning ground truth)
+  OwnArr1 ref = TA::einsum(A0o("i1,i2,k;a"), B0o("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  ArrayToT1 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_ref, ref), 1e-9);
+
+  // .retile() with EMPTY targets -> plan inactive -> identical result.
+  ArrayToT1 C_empty;
+  C_empty("i1,i2,j1,j2;a,b") =
+      (A0("i1,i2,k;a") * B0("j1,j2,k;b")).retile({}, {}, {}, {});
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_empty, C_ref), 1e-12);
+
+  // .retile() with targets == the operands' own U tilings -> every axis
+  // Identity -> plan inactive -> identical result. Roles for this ce+e:
+  // M = {i1,i2} (left externals), N = {j1,j2} (right externals), K = {k}.
+  ArrayToT1 C_self;
+  C_self("i1,i2,j1,j2;a,b") =
+      (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+          .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t}, /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_self, C_ref), 1e-12);
+}
+
+// (b) Hadamard reject: an elementwise product C(i,j) = A(i,j) * B(i,j) resolves
+// to MultEngine (Hadamard outer product), where the retile target has no
+// well-defined contraction role partition. Requesting .retile(...) must throw
+// TA::Exception (the MultEngine guard).
+BOOST_AUTO_TEST_CASE(retile_hadamard_reject) {
+  auto& w = TA::get_default_world();
+  auto i = tr1(4, 2), j = tr1(4, 2);
+  using ArrayD = TA::DistArray<TA::Tensor<double>, TA::DensePolicy>;
+  ArrayD A(w, TA::TiledRange{i, j});
+  ArrayD B(w, TA::TiledRange{i, j});
+  A.fill(1.0);
+  B.fill(2.0);
+  w.gop.fence();
+  ArrayD C;
+  BOOST_REQUIRE_THROW(
+      (C("i,j") = (A("i,j") * B("i,j")).retile({}, {i}, {j}, {})),
+      TA::Exception);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

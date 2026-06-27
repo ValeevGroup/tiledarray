@@ -24,6 +24,7 @@
 
 #include <TiledArray/config.h>
 #include <TiledArray/dist_eval/dist_eval.h>
+#include <TiledArray/expressions/contraction_retile.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/reduce_task.h>
 #include <TiledArray/shape.h>
@@ -142,6 +143,11 @@ class Summa
                                    ///< group index), or nh_ if this rank is
                                    ///< in no group (idle for this eval)
   const ordinal_type my_slabs_;    ///< Number of slabs of this rank's group
+  const TiledArray::expressions::RetilePlan
+      plan_; ///< Two-trange retile plan. Default-constructed
+              ///< (inactive) unless the engine threaded a user .retile()
+              ///< target. Stored only in this phase; consumed by later phases.
+              ///< When inactive the SUMMA behaves exactly as without a retile.
 
   /// \return the world rank that owns result tile \p i: the within-group
   /// owner (from the group-local process grid) shifted by the world-rank
@@ -1740,7 +1746,9 @@ class Summa
         const std::shared_ptr<const pmap_interface>& pmap, const Perm& perm,
         const op_type& op, const ordinal_type k, const ProcGrid& proc_grid,
         const ordinal_type nh = 1ul, const ordinal_type proc_h = 1ul,
-        const ordinal_type proc_h_stride = 0ul)
+        const ordinal_type proc_h_stride = 0ul,
+        const TiledArray::expressions::RetilePlan& plan =
+            TiledArray::expressions::RetilePlan{})
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         left_(left),
         right_(right),
@@ -1759,6 +1767,7 @@ class Summa
         first_slab_(compute_first_slab(world, nh, proc_h, proc_h_stride)),
         my_slabs_(first_slab_ < nh ? (nh - first_slab_ + proc_h - 1ul) / proc_h
                                    : 0ul),
+        plan_(plan),
         reduce_tasks_(NULL),
         left_start_local_(proc_grid_.rank_row() * k),
         left_end_(left.size() / nh),

@@ -29,6 +29,7 @@
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/dist_eval/unary_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
+#include <TiledArray/expressions/contraction_retile.h>
 #include <TiledArray/expressions/permopt.h>
 #include <TiledArray/pmap/slabbed_pmap.h>
 #include <TiledArray/proc_grid.h>
@@ -200,6 +201,14 @@ class ContEngine : public BinaryEngine<Derived> {
   size_type proc_h_ = 1;            ///< process-grid extent along the slab (h)
                                     ///< axis of the 3-d grid (# of h-planes)
   size_type proc_h_stride_ = 0;     ///< ranks per h-plane (0 = ungrouped 2-d)
+
+  /// Two-trange retile plan derived from a user .retile() target. Inactive
+  /// (active == false) unless the consumer set a target that differs from the
+  /// operands' own (U) tilings; when inactive every code path below behaves
+  /// exactly as without a retile request. Computed by maybe_make_retile_plan_()
+  /// at the end of init_struct[_general]; consumed by later phases (passed to
+  /// the Summa ctor, which currently only stores it).
+  RetilePlan plan_;
 
   static unsigned int find(const BipartiteIndexList& indices,
                            const std::string& index_label, unsigned int i,
@@ -526,6 +535,47 @@ class ContEngine : public BinaryEngine<Derived> {
     if (ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape) {
       shape_ = shape_.mask(*ExprEngine_::override_ptr_->shape);
     }
+
+    // Two-trange retile plan from a user .retile() target (no-op when absent;
+    // inactive when the target coincides with the operands' own tilings).
+    maybe_make_retile_plan_();
+  }
+
+  /// Build plan_ from a user .retile() target, if one was set. When no target
+  /// is present plan_ stays default (inactive) and nothing else changes. When a
+  /// target is present the plan is derived from the operands' own (U) tranges,
+  /// the OUTER role-partition helper (op_.gemm_helper(), built above), the
+  /// INNER contract-reduce helper (recomputed here from the inner index sizes,
+  /// exactly as init_inner_tile_op builds contrreduce_op), and the leading
+  /// fused-mode count. An identity target (or one coinciding with U) yields an
+  /// inactive plan. The plan is consumed by later phases; in this phase it is
+  /// only stored and threaded to the Summa ctor.
+  void maybe_make_retile_plan_() {
+    if (!(ExprEngine_::override_ptr_ &&
+          ExprEngine_::override_ptr_->contraction_target.present))
+      return;
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      const auto& ct = ExprEngine_::override_ptr_->contraction_target;
+      // OUTER (SUMMA-level) role-partition helper, as already built into op_.
+      const math::GemmHelper& outer_gh = op_.gemm_helper();
+      // INNER (per-tile contract-reduce) helper: same construction as
+      // contrreduce_op in init_inner_tile_op -- index-structure-only, so its
+      // contracted-rank count (the only thing make_retile_plan reads) is exact.
+      const math::GemmHelper inner_gh(
+          to_cblas_op(this->left_inner_permtype_),
+          to_cblas_op(this->right_inner_permtype_),
+          inner_size(this->indices_), inner_size(this->left_indices_),
+          inner_size(this->right_indices_));
+      plan_ = make_retile_plan(left_.trange(), right_.trange(), ct.targetH,
+                               ct.targetM, ct.targetN, ct.targetK, outer_gh,
+                               inner_gh, this->n_fused_modes_);
+    } else {
+      // a .retile() target only makes sense for nested (ToT) contractions;
+      // for plain-tensor contractions there is no two-trange retile to derive.
+      TA_EXCEPTION(
+          "MultExpr::retile() is only supported for tensor-of-tensor "
+          "contractions");
+    }
   }
 
   /// Initialize result tensor distribution
@@ -669,9 +719,9 @@ class ContEngine : public BinaryEngine<Derived> {
     typename left_type::dist_eval_type left = left_.make_dist_eval();
     typename right_type::dist_eval_type right = right_.make_dist_eval();
 
-    std::shared_ptr<impl_type> pimpl =
-        std::make_shared<impl_type>(left, right, *world_, trange_, shape_,
-                                    pmap_, perm_, op_, K_, proc_grid_);
+    std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
+        left, right, *world_, trange_, shape_, pmap_, perm_, op_, K_,
+        proc_grid_, /*nh=*/1ul, /*proc_h=*/1ul, /*proc_h_stride=*/0ul, plan_);
 
     return dist_eval_type(pimpl);
   }
@@ -817,6 +867,10 @@ class ContEngine : public BinaryEngine<Derived> {
     if (ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape) {
       shape_ = shape_.mask(*ExprEngine_::override_ptr_->shape);
     }
+
+    // Two-trange retile plan from a user .retile() target (no-op when absent;
+    // inactive when the target coincides with the operands' own tilings).
+    maybe_make_retile_plan_();
   }
 
   /// \return 1 if the folded general product needs a SYNTHETIC unit
@@ -1080,7 +1134,7 @@ class ContEngine : public BinaryEngine<Derived> {
       std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
           left, right, *world_, trange_, shape_, pmap_, perm_,
           batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_,
-          proc_h_, proc_h_stride_);
+          proc_h_, proc_h_stride_, plan_);
       return dist_eval_type(pimpl);
     }
 
@@ -1110,7 +1164,7 @@ class ContEngine : public BinaryEngine<Derived> {
     std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
         left, right, *world_, canonical_trange, canonical_shape, canonical_pmap,
         BipartitePermutation{}, batched_op_type(op_, n_fused_modes_), K_,
-        proc_grid_, n_slabs_, proc_h_, proc_h_stride_);
+        proc_grid_, n_slabs_, proc_h_, proc_h_stride_, plan_);
     dist_eval_type canonical(pimpl);
 
     typedef TiledArray::detail::UnaryEvalImpl<
