@@ -20,6 +20,8 @@
 #ifndef TILEDARRAY_DIST_EVAL_CONTRACTION_EVAL_H__INCLUDED
 #define TILEDARRAY_DIST_EVAL_CONTRACTION_EVAL_H__INCLUDED
 
+#include <atomic>
+#include <limits>
 #include <vector>
 
 #include <TiledArray/config.h>
@@ -30,6 +32,8 @@
 #include <TiledArray/shape.h>
 #include <TiledArray/type_traits.h>
 
+#include <TiledArray/tensor/arena_retile.h>
+#include <TiledArray/tensor/arena_tensor.h>
 #include <TiledArray/tensor/type_traits.h>
 
 // #define TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL 1
@@ -48,6 +52,13 @@ namespace detail {
 /// introduced no active code path on the stock SUMMA path. gop.sum it across
 /// ranks for np-correctness.
 inline std::atomic<std::size_t> g_summa_plan_active_calls{0};
+
+/// debug hook: total number of FINE U K-tiles gathered+packed per
+/// coarse K-cell, accumulated across the active inbound-coarsen gathers in
+/// `get_col`/`get_row`. Stays 0 on the inactive (stock SUMMA) path. gop.sum it
+/// across ranks for np-correctness. For a single coarse K-cell collapse the
+/// per-cell width equals the fine K-tile count (e.g. 4).
+inline std::atomic<std::size_t> g_summa_gather_block_count{0};
 #endif
 
 /// \brief Distributed contraction evaluator implementation
@@ -101,6 +112,13 @@ class Summa
 
   // Dimension information
   const ordinal_type k_;      ///< Number of tiles in the inner dimension
+                              ///< (COARSE/T count when plan_.active, else U)
+  const ordinal_type
+      k_fine_;  ///< Number of FINE (U) inner-dimension tiles. Equals k_ on the
+                ///< inactive path; on the active inbound-coarsen path the
+                ///< operands are stored at the fine count while SUMMA steps
+                ///< over the coarse count k_, so get_col/get_row use this to
+                ///< index and gather the fine U K-block per coarse cell.
   const ProcGrid proc_grid_;  ///< Process grid for this contraction
 
   // Batched (fused/Hadamard-index) dimension information. A batched
@@ -686,15 +704,163 @@ class Summa
     TA_ASSERT(vec.size() > 0ul);
   }
 
+  // -- inbound K-coarsen (active plan) support ---------------------
+
+  /// True iff the evaluated argument tile type is an arena-backed ToT outer
+  /// tile (the only tile family the single-page pack `arena_gather_block`
+  /// supports). The inbound-coarsen gather is gated on this AND `plan_.active`.
+  /// Uses is_tensor_helper (true for any `TA::Tensor<...>`) rather than the
+  /// exclusive is_tensor_v (which excludes tensor-of-tensor outers), then
+  /// requires the inner cell type to be an `ArenaTensor`.
+  template <typename EvalTile>
+  static constexpr bool is_arena_tot_v =
+      TiledArray::detail::is_tensor_helper<EvalTile>::value &&
+      TiledArray::is_arena_tensor_v<typename EvalTile::value_type>;
+
+  /// Map a COARSE within-slab K index \p kc to the half-open range
+  /// [first,last) of FINE (U) K-tile indices it covers. Uses the (single)
+  /// SUMMA-K role axis of the active plan: each coarse T K-tile spans the
+  /// contiguous group of fine U K-tiles `plan_.summaK[0].groups[kc]`. For the
+  /// collapse case (one coarse K-tile) this is [0, k_fine_). Falls back to the
+  /// trivial diagonal when the plan carries no K axis.
+  std::pair<ordinal_type, ordinal_type> fine_k_range(
+      const ordinal_type kc) const {
+    if (plan_.summaK.empty())
+      return {kc, kc + 1};
+    // Only a single SUMMA-K axis is supported on this path; a
+    // multi-axis K coarsening is a later phase.
+    TA_ASSERT(plan_.summaK.size() == 1ul);
+    const auto& g = plan_.summaK[0].groups;
+    TA_ASSERT(kc < g.size());
+    return {static_cast<ordinal_type>(g[kc].first),
+            static_cast<ordinal_type>(g[kc].second)};
+  }
+
+  /// Pack one coarse K-block: a `madness::TaskInterface` that depends
+  /// on the variable-count set of FINE (U) operand futures, and on run() packs
+  /// them into ONE single-page coarse tile via `arena_gather_block`, setting the
+  /// result future. A bespoke task is used (rather than the variadic
+  /// `taskq.add`) because madness's `Future<std::vector<Future<T>>>` dependency
+  /// holder is non-copyable/non-movable and so cannot be a `TaskFn` argument.
+  /// The fine cells share outer (M/N) bounds and partition the K axis, so the
+  /// merged outer range is the elementwise min-lobound / max-upbound box.
+  template <typename EvalTile>
+  class PackBlockTask : public madness::TaskInterface {
+   private:
+    std::vector<Future<EvalTile>> fine_;  ///< the fine K-block operand futures
+    Future<EvalTile> result_;             ///< the packed coarse tile
+
+   public:
+    PackBlockTask(std::vector<Future<EvalTile>> fine)
+        : madness::TaskInterface(0, "PackBlockTask",
+                                 madness::TaskAttributes::hipri()),
+          fine_(std::move(fine)),
+          result_() {
+      // Register each not-yet-ready fine future as a dependency.
+      for (auto& f : fine_) {
+        if (!f.probe()) {
+          madness::DependencyInterface::inc();
+          f.register_callback(this);
+        }
+      }
+    }
+
+    const Future<EvalTile>& result() const { return result_; }
+
+    void run(const madness::TaskThreadEnv&) override {
+      TA_ASSERT(!fine_.empty());
+      std::vector<EvalTile> fine;
+      fine.reserve(fine_.size());
+      for (auto& f : fine_) fine.push_back(f.get());
+      const unsigned int rank = fine.front().range().rank();
+      std::vector<std::size_t> lo(rank), up(rank);
+      for (unsigned int d = 0; d < rank; ++d) {
+        lo[d] = static_cast<std::size_t>(fine.front().range().lobound_data()[d]);
+        up[d] = static_cast<std::size_t>(fine.front().range().upbound_data()[d]);
+      }
+      std::size_t nbatch = 1ul;
+      for (const auto& t : fine) {
+        if (t.empty()) continue;
+        nbatch = static_cast<std::size_t>(t.nbatch());
+        const auto* tl = t.range().lobound_data();
+        const auto* tu = t.range().upbound_data();
+        for (unsigned int d = 0; d < rank; ++d) {
+          lo[d] = std::min<std::size_t>(lo[d], static_cast<std::size_t>(tl[d]));
+          up[d] = std::max<std::size_t>(up[d], static_cast<std::size_t>(tu[d]));
+        }
+      }
+      const Range coarse_outer(lo, up);
+      result_.set(TiledArray::detail::arena_gather_block<EvalTile>(
+          fine, coarse_outer, nbatch));
+    }
+  };  // class PackBlockTask
+
+  /// Gather + pack the FINE (U) operand tiles in \p fine_futs (the contiguous
+  /// K-block for one coarse external cell) into ONE single-page coarse tile,
+  /// returning a future to it. Only instantiated for arena ToT tiles;
+  /// the caller gates on `is_arena_tot_v` so the non-arena branch is never
+  /// reached.
+  template <typename EvalTile>
+  Future<EvalTile> pack_fine_block(
+      std::vector<Future<EvalTile>> fine_futs) const {
+    TA_ASSERT(!fine_futs.empty());
+#ifdef TA_STRIDED_DGEMM_COUNT
+    g_summa_gather_block_count.fetch_add(fine_futs.size(),
+                                         std::memory_order_relaxed);
+#endif
+    auto* task = new PackBlockTask<EvalTile>(std::move(fine_futs));
+    Future<EvalTile> result = task->result();
+    TensorImpl_::world().taskq.add(task);
+    return result;
+  }
+
   /// Collect non-zero tiles from column \c k of slab \c h of \c left_
 
   /// \param[in] s The SUMMA step (slab * k_ + column index)
   /// \param[out] col The column vector that will hold the tiles
   void get_col(const ordinal_type s, std::vector<col_datum>& col) const {
+    using left_eval = typename left_type::eval_type;
+    if constexpr (is_arena_tot_v<left_eval>) {
+      if (plan_.active) {
+        get_col_coarsen(s, col);
+        return;
+      }
+    }
     const ordinal_type base = step_h(s) * left_slab_size_;
     col.reserve(proc_grid_.local_rows());
     get_vector(left_, base + left_start_local_ + step_k(s), base + left_end_,
                left_stride_local_, col);
+  }
+
+  /// Active-plan (inbound-coarsen) left-column gather. For each local M-row r
+  /// of the grid, gather the contiguous FINE (U) K-block covered by coarse
+  /// within-slab K index step_k(s) and pack it into ONE single-page coarse tile
+  /// tagged with the coarse-cell-local M-row r so `contract` indexes
+  /// reduce tasks unchanged. The packed tile carries the whole K-block in its
+  /// outer range, so the strided ce_e op rides it as ONE fat GEMM. np=1 only on
+  /// this phase (the fine block is locally owned).
+  void get_col_coarsen(const ordinal_type s,
+                       std::vector<col_datum>& col) const {
+    using left_eval = typename left_type::eval_type;
+    const ordinal_type base = step_h(s) * left_fine_slab_size_;
+    const auto [kf_first, kf_last] = fine_k_range(step_k(s));
+    const ordinal_type local_rows = proc_grid_.local_rows();
+    col.reserve(local_rows);
+    // local M-row index r in [0, local_rows); fine left tile (r, kf) ordinal is
+    // base + left_fine_start_local_ + kf + r * left_fine_stride_local_.
+    for (ordinal_type r = 0ul; r < local_rows; ++r) {
+      const ordinal_type row_base =
+          base + left_fine_start_local_ + r * left_fine_stride_local_;
+      std::vector<Future<left_eval>> fine;
+      fine.reserve(kf_last - kf_first);
+      for (ordinal_type kf = kf_first; kf < kf_last; ++kf) {
+        const ordinal_type idx = row_base + kf;
+        if (left_.shape().is_zero(idx)) continue;
+        fine.emplace_back(get_tile(left_, idx));
+      }
+      if (fine.empty()) continue;
+      col.emplace_back(r, pack_fine_block<left_eval>(std::move(fine)));
+    }
   }
 
   /// Collect non-zero tiles from row \c k of slab \c h of \c right_
@@ -702,6 +868,13 @@ class Summa
   /// \param[in] s The SUMMA step (slab * k_ + row index)
   /// \param[out] row The row vector that will hold the tiles
   void get_row(const ordinal_type s, std::vector<row_datum>& row) const {
+    using right_eval = typename right_type::eval_type;
+    if constexpr (is_arena_tot_v<right_eval>) {
+      if (plan_.active) {
+        get_row_coarsen(s, row);
+        return;
+      }
+    }
     row.reserve(proc_grid_.local_cols());
 
     // Compute local iteration limits for row k of slab h of right_.
@@ -711,6 +884,34 @@ class Summa
     begin += proc_grid_.rank_col();
 
     get_vector(right_, begin, end, right_stride_local_, row);
+  }
+
+  /// Active-plan (inbound-coarsen) right-row gather. Mirror of
+  /// `get_col_coarsen`: for each local N-col c, gather the contiguous FINE (U)
+  /// K-block covered by coarse within-slab K index step_k(s) and pack it into
+  /// ONE single-page coarse tile, tagged with the coarse-cell-local
+  /// N-col c. The fine right tile (kf, c) ordinal within a slab is
+  /// kf * cols + rank_col + c * right_fine_stride_local_.
+  void get_row_coarsen(const ordinal_type s,
+                       std::vector<row_datum>& row) const {
+    using right_eval = typename right_type::eval_type;
+    const ordinal_type base = step_h(s) * right_fine_slab_size_;
+    const auto [kf_first, kf_last] = fine_k_range(step_k(s));
+    const ordinal_type local_cols = proc_grid_.local_cols();
+    const ordinal_type col_origin = base + proc_grid_.rank_col();
+    row.reserve(local_cols);
+    for (ordinal_type c = 0ul; c < local_cols; ++c) {
+      const ordinal_type col_base = col_origin + c * right_fine_stride_local_;
+      std::vector<Future<right_eval>> fine;
+      fine.reserve(kf_last - kf_first);
+      for (ordinal_type kf = kf_first; kf < kf_last; ++kf) {
+        const ordinal_type idx = col_base + kf * proc_grid_.cols();
+        if (right_.shape().is_zero(idx)) continue;
+        fine.emplace_back(get_tile(right_, idx));
+      }
+      if (fine.empty()) continue;
+      row.emplace_back(c, pack_fine_block<right_eval>(std::move(fine)));
+    }
   }
 
   /// Broadcast tiles from \c arg
@@ -1780,7 +1981,9 @@ class Summa
         const ordinal_type nh = 1ul, const ordinal_type proc_h = 1ul,
         const ordinal_type proc_h_stride = 0ul,
         const TiledArray::expressions::RetilePlan& plan =
-            TiledArray::expressions::RetilePlan{})
+            TiledArray::expressions::RetilePlan{},
+        const ordinal_type k_fine =
+            std::numeric_limits<ordinal_type>::max())
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         left_(left),
         right_(right),
@@ -1788,6 +1991,8 @@ class Summa
         row_group_(),
         col_group_(),
         k_(k),
+        k_fine_(k_fine == std::numeric_limits<ordinal_type>::max() ? k
+                                                                   : k_fine),
         proc_grid_(proc_grid),
         nh_(nh),
         nsteps_(nh * k),
@@ -1807,19 +2012,22 @@ class Summa
         left_stride_local_(proc_grid.proc_rows() * k),
         right_stride_(1ul),
         right_stride_local_(proc_grid.proc_cols()),
-        // FINE family. Each fine member is its coarse twin's
-        // expression routed through fine_member(): when !plan_.active the helper
-        // is the identity, so the fine value is byte-for-byte the coarse value
-        // (and equals the pre-split single value). When plan_.active the helper
-        // fires the plan-active counter; the *value* is still the coarse expression in
-        // this phase (no divergence yet) -- substitute U-derived
-        // expressions on the active branch here.
+        // FINE family. Each fine member is the U-operand
+        // geometry: when !plan_.active it is byte-for-byte its coarse twin (the
+        // operands are tiled at the same count as the grid steps; fine_member()
+        // is the identity and leaves the inactive path untouched). When
+        // plan_.active the operands stay stored at the FINE (U) K count while
+        // SUMMA steps over the COARSE (T) count k_, so the fine members are
+        // rebuilt from the FINE k (k_fine_) -- these drive the in-step U-block
+        // gather in get_col/get_row. The slab/end sizes use left/right.size()
+        // (already the fine operand size) regardless. fine_member() still fires
+        // the plan-active counter to anchor the inactive path.
         left_fine_slab_size_(fine_member(plan, left.size() / nh)),
         left_fine_start_local_(
-            fine_member(plan, proc_grid_.rank_row() * k)),
+            fine_member(plan, proc_grid_.rank_row() * k_fine_)),
         left_fine_end_(fine_member(plan, left.size() / nh)),
         left_fine_stride_local_(
-            fine_member(plan, proc_grid.proc_rows() * k)),
+            fine_member(plan, proc_grid.proc_rows() * k_fine_)),
         right_fine_slab_size_(fine_member(plan, right.size() / nh)),
         right_fine_stride_local_(
             fine_member(plan, proc_grid.proc_cols()))

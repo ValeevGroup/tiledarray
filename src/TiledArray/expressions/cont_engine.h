@@ -578,6 +578,33 @@ class ContEngine : public BinaryEngine<Derived> {
     }
   }
 
+  /// \return the COARSE SUMMA-K tile count (number of T contracted tiles)
+  /// when the retile plan is active, else the fine (U) count \p k_fine. For an
+  /// active plan the coarse count is the product over the SUMMA-K role axes of
+  /// the number of T tiles on each (\c AxisNest::groups.size()), since each T
+  /// tile spans a contiguous group of fine U tiles. For the K-collapse case
+  /// (all U K-tiles gathered into one T tile) this is 1. Inactive plans return
+  /// \p k_fine unchanged so the stock SUMMA step count is byte-for-byte intact.
+  size_type coarse_K_(size_type k_fine) const {
+    if (!plan_.active) return k_fine;
+    // The active inbound-coarsen path gathers fine U operand tiles in
+    // get_col/get_row but the SUMMA broadcast (bcast_col/bcast_row) still keys
+    // and roots on the COARSE K geometry; at np>1 those no longer match the
+    // fine-gathered futures, so the result would be silently wrong. Until the
+    // np>1 operand-locality + bcast reconciliation lands, reject an active
+    // .retile() above world size 1. This check is SYMMETRIC across ranks (every
+    // rank sees the same plan_.active and world size), so it throws
+    // collectively. TA_EXCEPTION (not TA_ASSERT): .retile() is user-reachable
+    // and this must survive Release.
+    if (world_->size() > 1)
+      TA_EXCEPTION(
+          "in-SUMMA two-trange retile (.retile) is currently supported only at "
+          "MPI world size 1; np>1 active support is not yet implemented");
+    size_type kc = 1ul;
+    for (const auto& ax : plan_.summaK) kc *= ax.groups.size();
+    return kc;
+  }
+
   /// Initialize result tensor distribution
 
   /// This function will initialize the world and process map for the result
@@ -719,9 +746,14 @@ class ContEngine : public BinaryEngine<Derived> {
     typename left_type::dist_eval_type left = left_.make_dist_eval();
     typename right_type::dist_eval_type right = right_.make_dist_eval();
 
+    // When the retile plan is active the SUMMA steps over the COARSE (T) K
+    // tile count; the operands remain stored/distributed at the FINE (U) K
+    // count (the pmaps above are keyed to K_), so the fine count is threaded
+    // separately to drive the in-step U-block gather. Inactive => both == K_.
     std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
-        left, right, *world_, trange_, shape_, pmap_, perm_, op_, K_,
-        proc_grid_, /*nh=*/1ul, /*proc_h=*/1ul, /*proc_h_stride=*/0ul, plan_);
+        left, right, *world_, trange_, shape_, pmap_, perm_, op_, coarse_K_(K_),
+        proc_grid_, /*nh=*/1ul, /*proc_h=*/1ul, /*proc_h_stride=*/0ul, plan_,
+        /*k_fine=*/K_);
 
     return dist_eval_type(pimpl);
   }
@@ -1131,10 +1163,13 @@ class ContEngine : public BinaryEngine<Derived> {
     typename right_type::dist_eval_type right = right_.make_dist_eval();
 
     if (!general_repermute_) {
+      // Active plan => SUMMA steps over the COARSE (T) K count while operands
+      // stay at the FINE (U) K count (pmaps keyed to K_); thread the fine
+      // count separately for the in-step U-block gather. Inactive => K_ == K_.
       std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
           left, right, *world_, trange_, shape_, pmap_, perm_,
-          batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_,
-          proc_h_, proc_h_stride_, plan_);
+          batched_op_type(op_, n_fused_modes_), coarse_K_(K_), proc_grid_,
+          n_slabs_, proc_h_, proc_h_stride_, plan_, /*k_fine=*/K_);
       return dist_eval_type(pimpl);
     }
 
@@ -1163,8 +1198,9 @@ class ContEngine : public BinaryEngine<Derived> {
                              proc_h_stride_);
     std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
         left, right, *world_, canonical_trange, canonical_shape, canonical_pmap,
-        BipartitePermutation{}, batched_op_type(op_, n_fused_modes_), K_,
-        proc_grid_, n_slabs_, proc_h_, proc_h_stride_, plan_);
+        BipartitePermutation{}, batched_op_type(op_, n_fused_modes_),
+        coarse_K_(K_), proc_grid_, n_slabs_, proc_h_, proc_h_stride_, plan_,
+        /*k_fine=*/K_);
     dist_eval_type canonical(pimpl);
 
     typedef TiledArray::detail::UnaryEvalImpl<

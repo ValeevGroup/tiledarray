@@ -506,6 +506,85 @@ BOOST_AUTO_TEST_CASE(retile_hadamard_reject) {
       TA::Exception);
 }
 
+// ---------------------------------------------------------------------------
+// inbound K-coarsen for a ce+e ToT contraction.
+//
+// C(i1,i2,j1,j2;a,b) = A(i1,i2,k;a) * B(j1,j2,k;b) with the OUTER contracted
+// index k finely tiled in U (4 K-tiles); a .retile() collapses K to ONE tile.
+// The externals (M={i1,i2}, N={j1,j2}) stay Identity. The retiled result must
+// match the no-retile result (< 1e-9), the plan must be active, the strided
+// ce_e DGEMM must fire (the packed coarse K-block rides ONE fat GEMM per
+// (m,n)), and the per-coarse-cell gather hook must report the fine K width.
+//
+// np=1 ONLY (this suite is @serial): the gather is local on a single rank, so
+// the operand-locality question at np>1 is deferred to a later phase.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(retile_coarsen_k_ce_e) {
+  auto& w = TA::get_default_world();
+  // U: K finely tiled into 4 tiles of width 2 over [0,8); externals 2 tiles.
+  auto t = tr1(4, 2);
+  auto kU = tr1(8, 2);            // 4 K-tiles
+  auto kT = tr1(8, 8);           // collapse to 1 K-tile
+  const std::size_t k_fine = 4;  // # of U K-tiles per coarse K-cell
+
+  ArrayToT1 A0 = make_arena1(w, TA::TiledRange{t, t, kU}, TA::Range{3});
+  ArrayToT1 B0 = make_arena1(w, TA::TiledRange{t, t, kU}, TA::Range{5});
+  OwnArr1 A0o = make_own1(w, TA::TiledRange{t, t, kU}, TA::Range{3});
+  OwnArr1 B0o = make_own1(w, TA::TiledRange{t, t, kU}, TA::Range{5});
+  w.gop.fence();
+
+  // Oracle: no-retile ce_e on the owning twin (independent ground truth) and
+  // on the arena twin.
+  OwnArr1 ref =
+      TA::einsum(A0o("i1,i2,k;a"), B0o("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  ArrayToT1 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_ref, ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+  TA::detail::g_summa_gather_block_count.store(0);
+  TA::detail::g_summa_plan_active_calls.store(0);
+#endif
+
+  // Active: collapse K to a single tile. Externals stay Identity.
+  ArrayToT1 C_coarsen;
+  C_coarsen("i1,i2,j1,j2;a,b") =
+      (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+          .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t}, /*K=*/{kT});
+  w.gop.fence();
+
+  // Values match the no-retile oracle.
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_coarsen, C_ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // The plan was active.
+  std::size_t active = TA::detail::g_summa_plan_active_calls.load();
+  w.gop.sum(&active, 1);
+  BOOST_CHECK_GT(active, std::size_t{0});
+
+  // The strided ce_e DGEMM fired (one fat GEMM per (m,n) over the packed K).
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_e_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+
+  // The gather hook accumulates the number of FINE U K-tiles packed across
+  // every coarse-cell gather. Each pack (one per local M-row in get_col, one
+  // per local N-col in get_row) gathers exactly the fine K-block width k_fine.
+  // With M = 2x2 = 4 grid rows and N = 2x2 = 4 grid cols at np=1, there are
+  // (M + N) = 8 packs over the single coarse K-cell, so the total is
+  // (M + N) * k_fine = 8 * 4 = 32. The invariant the hook proves: the gather
+  // is a multiple of k_fine (every coarse cell packs the full fine block), and
+  // the per-cell width is k_fine.
+  const std::size_t M = 4, N = 4;  // i1*i2, j1*j2 grid extents
+  std::size_t gathered = TA::detail::g_summa_gather_block_count.load();
+  w.gop.sum(&gathered, 1);
+  BOOST_CHECK_EQUAL(gathered, (M + N) * k_fine);
+  BOOST_CHECK_EQUAL(gathered % k_fine, std::size_t{0});
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 // ===========================================================================
@@ -710,6 +789,45 @@ BOOST_AUTO_TEST_CASE(retile_identity_ce_ce_dist) {
   BOOST_CHECK_EQUAL(array_max_reldiff2(C_self, C_ref), 0.0);
 
   BOOST_CHECK_EQUAL(plan_active_count(w), std::size_t{0});
+}
+
+// Guard: an ACTIVE .retile() (here a K-coarsen collapse) is currently supported
+// only at MPI world size 1. At np>1 the active inbound-coarsen path would gather
+// fine U operand tiles while the SUMMA broadcast still keys/roots on the coarse
+// K geometry, silently corrupting the result; the engine rejects it with a
+// collective TA::Exception (coarse_K_ in cont_engine.h, gated on
+// world.size()>1). At np=1 the same active K-coarsen must succeed. This suite
+// runs at both world sizes, so the assertion branches on the world size.
+BOOST_AUTO_TEST_CASE(retile_active_np_gt_1_rejects) {
+  auto& w = TA::get_default_world();
+  auto t = tr1d(4, 2);
+  auto kU = tr1d(8, 2);   // 4 fine U K-tiles
+  auto kT = tr1d(8, 8);   // collapse to 1 coarse K-tile (active plan)
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{t, t, kU}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{t, t, kU}, TA::Range{5});
+  w.gop.fence();
+
+  if (w.size() > 1) {
+    // The throw is symmetric (every rank evaluates plan_.active && size>1), so
+    // it is collective -- safe under BOOST_REQUIRE_THROW.
+    ArrayToT2 C;
+    BOOST_REQUIRE_THROW(
+        (C("i1,i2,j1,j2;a,b") =
+             (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                 .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t}, /*K=*/{kT})),
+        TA::Exception);
+  } else {
+    // np=1: the active K-coarsen must succeed and match the no-retile oracle.
+    ArrayToT2 C_ref =
+        TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+    w.gop.fence();
+    ArrayToT2 C;
+    C("i1,i2,j1,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                               .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t},
+                                       /*K=*/{kT});
+    w.gop.fence();
+    BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
