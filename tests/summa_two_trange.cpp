@@ -2398,4 +2398,169 @@ BOOST_AUTO_TEST_CASE(
 #endif
 }
 
+// ===========================================================================
+// Structurally-ABSENT SUMMA role on the active path (regression for the
+// empty-role pack-box bug).
+//
+// A contraction need not populate every SUMMA role. hce_ce is the canonical
+// example: C(h,i;a) = A(h,i,k;c) * B(h,k;a,c) has SUMMA-N = EMPTY (the right
+// operand contributes no OUTER external). The active two-trange path used to
+// inject a spurious degenerate axis into the operand pack box for an absent
+// role (append_role_t_box's empty-role branch), over-ranking the packed tile
+// vs the gathered fine tiles -> the strided kernel's shape check rejected it ->
+// the GEMM never fired and the result came back SILENTLY EMPTY. The fix makes
+// an absent role contribute NO pack-box axis (mirroring the guarded Hadamard
+// append), so the box rank equals the operand's outer rank.
+//
+// The ce_ce strided kernel rides an OUTER external (never the inner indices --
+// those are already the per-cell BLAS M/N/K): ce_ce_right rides the RIGHT outer
+// external (N), ce_ce_left rides the LEFT outer external (M); the variant is
+// fixed by which operand carries the inner external. So to also assert the fat
+// GEMM FIRES, each case is built like the real workload -- the inner external
+// sits on the operand whose PARTNER's outer external is present, riding the
+// present axis: absent-N rides the present M (ce_ce_left), absent-M rides the
+// present N (ce_ce_right). The strided fire counter is reset AFTER the oracle
+// so it measures the RETILE alone (not the oracle einsum's fires).
+BOOST_AUTO_TEST_CASE(retile_active_absent_N_coarsenHK_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+
+  auto hU = tr1d(8, 2);   // 4 fused H U-tiles
+  auto hT = tr1d(8, 4);   // coarsen H: 4 U -> 2 coarse slabs
+  auto i = tr1d(4, 2);    // 2 left-external M-tiles (PRESENT, ridden)
+  auto kU = tr1d(8, 4);   // 2 contracted K U-tiles
+  auto kT = tr1d(8, 8);   // coarsen K: 2 U K-tiles -> 1 coarse T K-tile
+  // A(h,i,k; c): M present (i), inner c=4 = pure contraction.
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{hU, i, kU}, TA::Range{4});
+  // B(h,k; a,c): NO right OUTER external => SUMMA-N structurally ABSENT; inner
+  // a=3 is the (right) inner external that rides into BLAS, c=4 contracted.
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{hU, kU}, TA::Range{3, 4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  // Oracle: the result carries NO N mode -> C(h,i;a).
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;c"), B0("h,k;a,c"), "h,i;a");
+  w.gop.fence();
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // Reset AFTER the oracle: measure the RETILE's strided fires only.
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+
+  // ACTIVE retile: H coarsened, M identity, N ABSENT (empty target == no axis),
+  // K coarsened. Exercises append_role_t_box's empty-N role path; the fat GEMM
+  // rides the present M external (ce_ce_left).
+  ArrayToT2 C;
+  C("h,i;a") = (A0("h,i,k;c") * B0("h,k;a,c"))
+                   .retile(/*H=*/{hT}, /*M=*/{i}, /*N=*/{}, /*K=*/{kT});
+  w.gop.fence();
+
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
+// Mirror of the absent-N case with the LEFT operand carrying no OUTER external,
+// so SUMMA-M is structurally absent: C(h,j;a) = A(h,k;a,c) * B(h,j,k;c). The
+// inner external a sits on the LEFT, so the fat GEMM rides the present N
+// external (ce_ce_right).
+BOOST_AUTO_TEST_CASE(retile_active_absent_M_coarsenHK_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+
+  auto hU = tr1d(8, 2);   // 4 fused H U-tiles
+  auto hT = tr1d(8, 4);   // coarsen H: 4 U -> 2 coarse slabs
+  auto j = tr1d(4, 2);    // 2 right-external N-tiles (PRESENT, ridden)
+  auto kU = tr1d(8, 4);   // 2 contracted K U-tiles
+  auto kT = tr1d(8, 8);   // coarsen K: 2 U K-tiles -> 1 coarse T K-tile
+  // A(h,k; a,c): NO left OUTER external => SUMMA-M structurally ABSENT; inner
+  // a=3 = (left) inner external that rides, c=4 contracted.
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{hU, kU}, TA::Range{3, 4});
+  // B(h,j,k; c): N present (j), inner c=4 = pure contraction.
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{hU, j, kU}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  // Oracle: the result carries NO M mode -> C(h,j;a).
+  ArrayToT2 C_ref = TA::einsum(A0("h,k;a,c"), B0("h,j,k;c"), "h,j;a");
+  w.gop.fence();
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // Reset AFTER the oracle: measure the RETILE's strided fires only.
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+
+  // ACTIVE retile: H coarsened, M ABSENT (empty target == no axis), N identity,
+  // K coarsened. Exercises append_role_t_box's empty-M role path; the fat GEMM
+  // rides the present N external (ce_ce_right).
+  ArrayToT2 C;
+  C("h,j;a") = (A0("h,k;a,c") * B0("h,j,k;c"))
+                   .retile(/*H=*/{hT}, /*M=*/{}, /*N=*/{j}, /*K=*/{kT});
+  w.gop.fence();
+
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
+// Absent SUMMA-N on the ce_e (inner OUTER-PRODUCT) kernel. Unlike ce_ce (which
+// rides an outer EXTERNAL), ce_e rides the outer CONTRACTION (K), which is
+// always present -- so ce_e fires regardless of an absent external (the absent
+// N is passed to the kernel as the degenerate extent 1, never the early-return
+// 0). Confirms the empty-role pack-box fix and ce_e's K-ride together.
+//   C(h,m;a,b) = A(h,m,k;a) * B(h,k;b)   (no inner contraction; N absent)
+BOOST_AUTO_TEST_CASE(retile_active_absent_N_coarsenHK_ce_e_dist) {
+  auto& w = TA::get_default_world();
+
+  auto hU = tr1d(8, 2);   // 4 fused H U-tiles
+  auto hT = tr1d(8, 4);   // coarsen H: 4 U -> 2 coarse slabs
+  auto m = tr1d(4, 2);    // 2 left-external M-tiles
+  auto kU = tr1d(8, 4);   // 2 contracted K U-tiles
+  auto kT = tr1d(8, 8);   // coarsen K: 2 U K-tiles -> 1 coarse T K-tile
+  // A(h,m,k; a): inner a (spectator -> result), NO inner contraction.
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{hU, m, kU}, TA::Range{3});
+  // B(h,k; b): NO right external => SUMMA-N absent; inner b (spectator).
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{hU, kU}, TA::Range{2});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  // Oracle: ce_e outer product, result carries NO N mode -> C(h,m;a,b).
+  ArrayToT2 C_ref = TA::einsum(A0("h,m,k;a"), B0("h,k;b"), "h,m;a,b");
+  w.gop.fence();
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);  // retile-only
+#endif
+
+  ArrayToT2 C;
+  C("h,m;a,b") = (A0("h,m,k;a") * B0("h,k;b"))
+                     .retile(/*H=*/{hT}, /*M=*/{m}, /*N=*/{}, /*K=*/{kT});
+  w.gop.fence();
+
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // ce_e rides the (present) outer contraction K, so it fires despite absent N.
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_e_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()

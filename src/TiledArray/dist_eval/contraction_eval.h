@@ -1438,14 +1438,19 @@ class Summa
       const std::vector<TiledRange1>& target,
       const std::vector<TiledRange1>& u_axes, ordinal_type coarse_idx,
       std::vector<std::size_t>& lo, std::vector<std::size_t>& up) const {
-    const auto u_ranges = coarse_axis_u_ranges(role, coarse_idx);
     if (role.empty()) {
-      // trivial single axis [coarse_idx, coarse_idx+1) -- but for a real
-      // operand axis this branch is unused (roles are non-empty here).
-      lo.push_back(static_cast<std::size_t>(u_ranges[0].first));
-      up.push_back(static_cast<std::size_t>(u_ranges[0].second));
+      // Structurally-absent SUMMA role: SUMMA-N when the right operand has no
+      // external (e.g. hce_ce: C(i1,i2,i3)=L(i1,i2,i3,i4)*R(i1,i2,i4), N=empty),
+      // or SUMMA-M when the left has none. The operand carries NO axis for an
+      // absent role, so the pack box must NOT carry one either -- append
+      // nothing, leaving the box rank equal to the operand's outer rank.
+      // (Mirrors the guarded Hadamard append, which already skips an empty H
+      // role.) Pushing a spurious [coarse_idx, coarse_idx+1) axis here would
+      // over-rank the box vs the gathered fine tiles, the strided kernel's
+      // shape check would reject it, and the result would be silently empty.
       return;
     }
+    const auto u_ranges = coarse_axis_u_ranges(role, coarse_idx);
     const std::size_t nax = role.size();
     // Decompose coarse_idx row-major over per-axis T-tile counts to recover the
     // per-axis T tile index (== coarse_axis_u_ranges' decomposition).
