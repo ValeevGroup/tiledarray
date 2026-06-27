@@ -975,6 +975,39 @@ class Summa
     return out;
   }
 
+  /// \return the per-Hadamard-axis half-open U-tile ranges covered by COARSE
+  /// slab \p coarse_slab (== step_h(s)). The operand U tranges lead with
+  /// `n_fused_()` Hadamard modes; this maps a coarse slab ordinal to the U H
+  /// tiles it spans, in H-axis order, so the operand gather can pin its leading
+  /// dims to the right slab. For IDENTITY-H (this subtask's scope) each axis
+  /// yields a single U tile `[idx, idx+1)` and the decomposition reproduces the
+  /// row-major slab base `step_h(s) * slab_size` that stock get_col/get_row use.
+  /// (COARSE-H -- several U fused tiles per coarse slab -- is; this returns
+  /// the covered U range either way, but the H-PACK that unions them is.)
+  /// nf == 0 yields an empty vector, so the gather is byte-for-byte the prior
+  /// (non-Hadamard) path.
+  std::vector<std::pair<ordinal_type, ordinal_type>> slab_u_h_ranges(
+      const ordinal_type coarse_slab) const {
+    if (plan_.hadamard.empty()) return {};
+    return coarse_axis_u_ranges(plan_.hadamard, coarse_slab);
+  }
+
+  /// \return the per-Hadamard-axis U-tile ranges for the FIRST (slab 0) fused
+  /// cell -- a single representative slab `[0,1)` per H axis. Used by the
+  /// slab-AGNOSTIC coarse cell-presence predicates (coarse_left/right_cell_
+  /// nonzero), which today answer "does coarse cell (i,k)/(k,j) cover a non-zero
+  /// U tile" for one representative slab. This keeps those predicates in-bounds
+  /// against the Hadamard-led operand trange while their per-slab sparse
+  /// semantics over nh_>1 are deferred to /. For a DENSE operand the
+  /// answer is slab-independent so slab 0 is exact; nf == 0 yields {} (the
+  /// prior non-Hadamard behavior, byte-for-byte).
+  std::vector<std::pair<ordinal_type, ordinal_type>> zeroth_slab_h_ranges()
+      const {
+    const std::size_t nf = plan_.hadamard.size();
+    std::vector<std::pair<ordinal_type, ordinal_type>> out(nf, {0ul, 1ul});
+    return out;
+  }
+
   /// Pack one coarse K-block: a `madness::TaskInterface` that depends
   /// on the variable-count set of FINE (U) operand futures, and on run() packs
   /// them into ONE single-page coarse tile via `arena_gather_block`, setting the
@@ -1357,21 +1390,38 @@ class Summa
     }
   }
 
+  /// \return the number of leading fused (Hadamard) outer modes -- the count of
+  /// H axes the operand/result tranges carry as their LEADING dimensions. Equals
+  /// `plan_.hadamard.size()` (the per-axis Hadamard role nest). The operand U
+  /// tranges are laid out [ H-axes..., M/K-axes..., K/N-axes... ] so every
+  /// role-U-axis slice and every gathered U-tile ordinal is offset past these
+  /// nf leading dims. nf == 0 for an ordinary (non-Hadamard) contraction, in
+  /// which case all of the H-aware logic below collapses to the prior behavior.
+  std::size_t n_fused_() const { return plan_.hadamard.size(); }
+
   /// Per-role U-axis TiledRange1 lists (the operand U tranges partitioned into
   /// roles), used by append_role_t_box's union branch. Computed from the
-  /// operand tranges + the role-axis counts in the plan.
+  /// operand tranges + the role-axis counts in the plan. The slices START at
+  /// nf == n_fused_() to skip the leading Hadamard (H) modes (left = [H,M,K],
+  /// right = [H,K,N]); nf == 0 recovers the prior offsets exactly.
+  std::vector<TiledRange1> u_axes_H_left() const {
+    return slice_u_axes(left_.trange(), 0ul, n_fused_());
+  }
+  std::vector<TiledRange1> u_axes_H_right() const {
+    return slice_u_axes(right_.trange(), 0ul, n_fused_());
+  }
   std::vector<TiledRange1> u_axes_M() const {
-    return slice_u_axes(left_.trange(), 0ul, plan_.summaM.size());
+    return slice_u_axes(left_.trange(), n_fused_(), plan_.summaM.size());
   }
   std::vector<TiledRange1> u_axes_K_left() const {
-    return slice_u_axes(left_.trange(), plan_.summaM.size(),
+    return slice_u_axes(left_.trange(), n_fused_() + plan_.summaM.size(),
                         plan_.summaK.size());
   }
   std::vector<TiledRange1> u_axes_K_right() const {
-    return slice_u_axes(right_.trange(), 0ul, plan_.summaK.size());
+    return slice_u_axes(right_.trange(), n_fused_(), plan_.summaK.size());
   }
   std::vector<TiledRange1> u_axes_N() const {
-    return slice_u_axes(right_.trange(), plan_.summaK.size(),
+    return slice_u_axes(right_.trange(), n_fused_() + plan_.summaK.size(),
                         plan_.summaN.size());
   }
   static std::vector<TiledRange1> slice_u_axes(const trange_type& tr,
@@ -1393,9 +1443,13 @@ class Summa
   void get_col_coarsen(const ordinal_type s,
                        std::vector<col_datum>& col) const {
     using left_eval = typename left_type::eval_type;
-    // The left U operand's outer dims are [M-axes..., K-axes...].
+    // The left U operand's outer dims are [H-axes..., M-axes..., K-axes...].
+    // The leading H ranges pin the gather to coarse slab step_h(s) (for
+    // identity-H, a single U fused tile per axis); this is the operand-side
+    // analogue of stock get_col's base = step_h(s) * left_slab_size_.
     const std::size_t nM = plan_.summaM.size();
     const std::size_t nK = plan_.summaK.size();
+    const auto hr = slab_u_h_ranges(step_h(s));
     const auto kr = coarse_axis_u_ranges(plan_.summaK, step_k(s));
     const bool refine =
         role_has_refine(plan_.summaM) || role_has_refine(plan_.summaK);
@@ -1431,14 +1485,16 @@ class Summa
       if (!is_owner_col) {
         // Non-owner column: emit an empty placeholder iff the owner would emit a
         // real one (i.e. the coarse cell has any non-zero covered U tile).
-        if (block_has_nonzero<left_eval>(left_, /*outer_lead=*/mr,
+        if (block_has_nonzero<left_eval>(left_, /*outer_h=*/hr,
+                                         /*outer_lead=*/mr,
                                          /*outer_tail=*/kr, nM, nK))
           col.emplace_back(r, Future<left_eval>());
         continue;
       }
       std::vector<Future<left_eval>> fine;
-      gather_operand_block<left_eval>(left_, /*outer_lead=*/mr, /*outer_tail=*/kr,
-                                      nM, nK, fine, left_fetch_cache_,
+      gather_operand_block<left_eval>(left_, /*outer_h=*/hr, /*outer_lead=*/mr,
+                                      /*outer_tail=*/kr, nM, nK, fine,
+                                      left_fetch_cache_,
                                       active_fetch_mutex_);
       if (fine.empty()) continue;
       // Full declared coarse outer footprint (identical for both branches):
@@ -1448,6 +1504,16 @@ class Summa
       // than shrinking the box, so the packed tile's outer volume equals the
       // declared Mo*nK the kernel's shape_ok requires.
       std::vector<std::size_t> lo, up;
+      // The gathered U tiles are full [H, M, K] outer tiles; the coarse outer
+      // box must carry the SAME leading H mode (the slab's fused tile span) so
+      // arena_gather_block can match each fine tile by its full outer index.
+      // For identity-H this H box is a single U fused tile. nf == 0 (no fused
+      // role) skips the H append entirely so the box stays at [M, K] exactly as
+      // before -- append_role_t_box must NOT be called with an empty role here
+      // (it would synthesize a spurious trivial axis).
+      if (!plan_.hadamard.empty())
+        append_role_t_box(plan_.hadamard, plan_.targetH, u_axes_H_left(),
+                          step_h(s), lo, up);
       append_role_t_box(plan_.summaM, plan_.targetM, uM, g_row, lo, up);
       append_role_t_box(plan_.summaK, plan_.targetK, uK, step_k(s), lo, up);
       if (refine) {
@@ -1468,19 +1534,25 @@ class Summa
   template <typename EvalTile, typename Arg>
   bool block_has_nonzero(
       Arg& arg,
+      const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_h,
       const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_lead,
       const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_tail,
       std::size_t n_lead, std::size_t n_tail) const {
     const auto& tr = arg.trange();
-    const std::size_t rank = n_lead + n_tail;
+    const std::size_t nf = outer_h.size();
+    const std::size_t rank = nf + n_lead + n_tail;
     std::vector<ordinal_type> lo(rank), hi(rank);
+    for (std::size_t h = 0; h < nf; ++h) {
+      lo[h] = outer_h[h].first;
+      hi[h] = outer_h[h].second;
+    }
     for (std::size_t a = 0; a < n_lead; ++a) {
-      lo[a] = outer_lead[a].first;
-      hi[a] = outer_lead[a].second;
+      lo[nf + a] = outer_lead[a].first;
+      hi[nf + a] = outer_lead[a].second;
     }
     for (std::size_t b = 0; b < n_tail; ++b) {
-      lo[n_lead + b] = outer_tail[b].first;
-      hi[n_lead + b] = outer_tail[b].second;
+      lo[nf + n_lead + b] = outer_tail[b].first;
+      hi[nf + n_lead + b] = outer_tail[b].second;
     }
     std::vector<ordinal_type> idx = lo;
     const auto& tiles = tr.tiles_range();
@@ -1510,8 +1582,12 @@ class Summa
   bool coarse_left_cell_nonzero(const ordinal_type i_coarse,
                                 const ordinal_type k_coarse) const {
     using left_eval = typename left_type::eval_type;
+    // Slab-agnostic presence probe: pin the leading H modes to slab 0 (exact
+    // for a DENSE operand; per-slab sparse-H semantics over nh_>1 are deferred
+    // to /). nf == 0 => empty H range => prior non-Hadamard behavior.
     return block_has_nonzero<left_eval>(
-        left_, coarse_axis_u_ranges(plan_.summaM, i_coarse),
+        left_, zeroth_slab_h_ranges(),
+        coarse_axis_u_ranges(plan_.summaM, i_coarse),
         coarse_axis_u_ranges(plan_.summaK, k_coarse), plan_.summaM.size(),
         plan_.summaK.size());
   }
@@ -1525,8 +1601,11 @@ class Summa
   bool coarse_right_cell_nonzero(const ordinal_type k_coarse,
                                  const ordinal_type j_coarse) const {
     using right_eval = typename right_type::eval_type;
+    // Slab-agnostic presence probe (see coarse_left_cell_nonzero): pin H to
+    // slab 0; exact for DENSE, per-slab sparse-H deferred to /.
     return block_has_nonzero<right_eval>(
-        right_, coarse_axis_u_ranges(plan_.summaK, k_coarse),
+        right_, zeroth_slab_h_ranges(),
+        coarse_axis_u_ranges(plan_.summaK, k_coarse),
         coarse_axis_u_ranges(plan_.summaN, j_coarse), plan_.summaK.size(),
         plan_.summaN.size());
   }
@@ -1585,6 +1664,7 @@ class Summa
   template <typename EvalTile, typename Arg>
   void gather_operand_block(
       Arg& arg,
+      const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_h,
       const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_lead,
       const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_tail,
       std::size_t n_lead, std::size_t n_tail,
@@ -1592,16 +1672,28 @@ class Summa
       std::map<ordinal_type, Future<EvalTile>>& fetch_cache,
       std::mutex& cache_mutex) const {
     const auto& tr = arg.trange();
-    const std::size_t rank = n_lead + n_tail;
+    // The operand U trange leads with nf == outer_h.size() Hadamard (slab)
+    // modes, then n_lead external modes, then n_tail contracted/external modes.
+    // The H ranges pin this gather to ONE coarse slab (for identity-H a single
+    // U fused tile per axis); their U-tile ordinals enter the full-trange
+    // ordinal so each gathered tile is implicitly offset by step_h * slab_size
+    // -- the same fine/U slab base stock get_col/get_row apply via
+    // step_h(s) * {left,right}_slab_size_.
+    const std::size_t nf = outer_h.size();
+    const std::size_t rank = nf + n_lead + n_tail;
     TA_ASSERT(tr.tiles_range().rank() == rank);
     std::vector<ordinal_type> lo(rank), hi(rank);
+    for (std::size_t h = 0; h < nf; ++h) {
+      lo[h] = outer_h[h].first;
+      hi[h] = outer_h[h].second;
+    }
     for (std::size_t a = 0; a < n_lead; ++a) {
-      lo[a] = outer_lead[a].first;
-      hi[a] = outer_lead[a].second;
+      lo[nf + a] = outer_lead[a].first;
+      hi[nf + a] = outer_lead[a].second;
     }
     for (std::size_t b = 0; b < n_tail; ++b) {
-      lo[n_lead + b] = outer_tail[b].first;
-      hi[n_lead + b] = outer_tail[b].second;
+      lo[nf + n_lead + b] = outer_tail[b].first;
+      hi[nf + n_lead + b] = outer_tail[b].second;
     }
     // Row-major Cartesian product over [lo, hi) per axis.
     std::vector<ordinal_type> idx = lo;
@@ -1675,8 +1767,12 @@ class Summa
     // lead with the U K sub-tiles (coarse K cell step_k(s)) and trail with the
     // U N sub-tiles (plan_.summaN groups for coarse N-col c), packed into ONE
     // single-page coarse tile tagged with `c`. np=1 only.
+    // The right U operand leads with [H-axes...] (the slab/fused modes) before
+    // [K-axes..., N-axes...]; the H ranges pin the gather to coarse slab
+    // step_h(s), the right analogue of stock get_row's step_h(s)*right_slab_size_.
     const std::size_t nN = plan_.summaN.size();
     const std::size_t nK = plan_.summaK.size();
+    const auto hr = slab_u_h_ranges(step_h(s));
     const auto kr = coarse_axis_u_ranges(plan_.summaK, step_k(s));
     const bool refine =
         role_has_refine(plan_.summaK) || role_has_refine(plan_.summaN);
@@ -1704,13 +1800,14 @@ class Summa
           proc_grid_.rank_col() + c * proc_grid_.proc_cols();
       const auto nr = coarse_axis_u_ranges(plan_.summaN, g_col);
       if (!is_owner_row) {
-        if (block_has_nonzero<right_eval>(right_, /*outer_lead=*/kr,
+        if (block_has_nonzero<right_eval>(right_, /*outer_h=*/hr,
+                                          /*outer_lead=*/kr,
                                           /*outer_tail=*/nr, nK, nN))
           row.emplace_back(c, Future<right_eval>());
         continue;
       }
       std::vector<Future<right_eval>> fine;
-      gather_operand_block<right_eval>(right_, /*outer_lead=*/kr,
+      gather_operand_block<right_eval>(right_, /*outer_h=*/hr, /*outer_lead=*/kr,
                                        /*outer_tail=*/nr, nK, nN, fine,
                                        right_fetch_cache_, active_fetch_mutex_);
       if (fine.empty()) continue;
@@ -1719,6 +1816,14 @@ class Summa
       // become holes), keeping the packed tile's outer volume == declared so
       // the kernel's shape_ok holds. See get_col_coarsen for the rationale.
       std::vector<std::size_t> lo, up;
+      // The gathered U tiles are full [H, K, N] outer tiles; lead the coarse
+      // box with the slab's fused H mode so arena_gather_block matches each fine
+      // tile by its full outer index (identity-H => a single U fused tile; nf ==
+      // 0 leaves the box at [K, N]). Skip the empty-role append (see
+      // get_col_coarsen) which would otherwise synthesize a spurious axis.
+      if (!plan_.hadamard.empty())
+        append_role_t_box(plan_.hadamard, plan_.targetH, u_axes_H_right(),
+                          step_h(s), lo, up);
       append_role_t_box(plan_.summaK, plan_.targetK, uK, step_k(s), lo, up);
       append_role_t_box(plan_.summaN, plan_.targetN, uN, g_col, lo, up);
       if (refine) {

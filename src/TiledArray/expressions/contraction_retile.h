@@ -299,27 +299,42 @@ inline RetilePlan make_retile_plan(const TiledRange& left_U,
                                    unsigned int n_fused) {
   RetilePlan plan;
 
-  // Partition the user operand axes into roles via the GemmHelper. The leading
-  // n_fused outer modes are Hadamard (shared by both operands); the remaining
-  // left-outer modes are M, the remaining right-outer modes are N, and the
-  // contracted (inner) modes are K (taken from the left operand's inner range).
+  // Partition the user operand axes into roles. The partition is POSITIONAL
+  // over the FULL (unfolded) operand tranges, exactly as make_trange_general
+  // (cont_engine.h) lays them out:
+  //   left_U  = [ H: 0 .. nf) [ M: nf .. left_rank-nc) [ K: left_rank-nc .. left_rank)
+  //   right_U = [ H: 0 .. nf) [ K: nf .. nf+nc)        [ N: nf+nc .. right_rank)
+  // where nf = n_fused leading Hadamard modes (shared by both operands), nc =
+  // the contracted-rank count, and the M/N externals fill the middle/tail.
+  //
+  // gh (op_.gemm_helper()) is the FOLDED, fused-mode-STRIPPED outer helper
+  // (cont_engine.h builds op_ with outer_size(...) - nh): its outer/inner
+  // ranges count only the M / K dims and START AT 0 -- they do NOT carry the
+  // leading nf H modes that the tranges physically do. So gh is consulted ONLY
+  // for its contracted-rank COUNT (num_contract_ranks), never as a trange
+  // index. The leading nf H modes are then peeled explicitly off the full
+  // tranges and the M/N/K positions are read with the +nf offset baked in.
+  //
+  // At nf == 0 this partition is byte-identical to the historical
+  // helper-bounds partition for a canonical (NoTranspose-outer) layout:
+  //   M = [0, left_rank-nc) == left_outer; K = [left_rank-nc, left_rank) ==
+  //   left_inner; N = [nc, right_rank) == right_outer. make_trange_general
+  //   indexes the tranges positionally too, so the positional roles ARE the
+  //   authoritative ones the rest of the engine sees.
   std::vector<TiledRange1> hU, mU, nU, kU;
   const unsigned int nf = n_fused;
+  const unsigned int nc = gh.num_contract_ranks();
+  const unsigned int left_rank = static_cast<unsigned int>(left_U.rank());
+  const unsigned int right_rank = static_cast<unsigned int>(right_U.rank());
+  TA_ASSERT(left_rank >= nf + nc);
+  TA_ASSERT(right_rank >= nf + nc);
 
-  for (unsigned int i = gh.left_outer_begin(); i < gh.left_outer_end(); ++i) {
-    if (i < gh.left_outer_begin() + nf)
-      hU.push_back(left_U.dim(i));
-    else
-      mU.push_back(left_U.dim(i));
-  }
-  for (unsigned int i = gh.right_outer_begin(); i < gh.right_outer_end(); ++i) {
-    // the leading nf right-outer modes mirror the left Hadamard modes; skip
-    // them (already captured from the left operand).
-    if (i < gh.right_outer_begin() + nf) continue;
-    nU.push_back(right_U.dim(i));
-  }
-  for (unsigned int i = gh.left_inner_begin(); i < gh.left_inner_end(); ++i)
+  for (unsigned int i = 0u; i < nf; ++i) hU.push_back(left_U.dim(i));
+  for (unsigned int i = nf; i + nc < left_rank; ++i) mU.push_back(left_U.dim(i));
+  for (unsigned int i = left_rank - nc; i < left_rank; ++i)
     kU.push_back(left_U.dim(i));
+  for (unsigned int i = nf + nc; i < right_rank; ++i)
+    nU.push_back(right_U.dim(i));
 
   plan.hadamard = detail::retile_role_axes(hU, targetH);
   plan.summaM = detail::retile_role_axes(mU, targetM);
@@ -350,8 +365,16 @@ inline RetilePlan make_retile_plan(const TiledRange& left_U,
     plan.ride_on_M = true;
   }
 
-  // Result axes for the ordinal map, in U-result row-major order:
-  // Hadamard ++ M ++ N. Record per-axis T and U tile extents.
+  // Result axes for the ordinal map, in U-result row-major order over the
+  // PER-SLAB (M ++ N) result grid -- the Hadamard (H) axes are DELIBERATELY
+  // EXCLUDED. The SUMMA result reduce-task / carve loop iterates H as the OUTER
+  // slab loop and applies the H slab offset separately via slab_u_base
+  // (contraction_eval.h finalize_active / initialize_active): u_result_ordinals
+  // maps a SLAB-LOCAL coarse (M,N) cell to its slab-local U result tiles, then
+  // slab_u_base = slab_ord(h) * (u_vol / nh_) shifts them onto the right slab.
+  // Including H here would double-count the slab (its extent would consume the
+  // slab-local M*N cell ordinal's leading digit while slab_u_base also adds the
+  // slab). nf == 0 leaves this identical (plan.hadamard is empty anyway).
   auto append_result = [&plan](const std::vector<AxisNest>& role_nest,
                                const std::vector<TiledRange1>& role_U,
                                const std::vector<TiledRange1>& role_target) {
@@ -368,7 +391,6 @@ inline RetilePlan make_retile_plan(const TiledRange& left_U,
       plan.result_t_extent.push_back(t_ext);
     }
   };
-  append_result(plan.hadamard, hU, targetH);
   append_result(plan.summaM, mU, targetM);
   append_result(plan.summaN, nU, targetN);
 

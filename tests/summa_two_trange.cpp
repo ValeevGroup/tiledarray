@@ -1587,4 +1587,189 @@ BOOST_AUTO_TEST_CASE(retile_active_sparse_coarsen_m_deadcol_ce_ce_dist) {
       [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
 }
 
+// ===========================================================================
+// arena Hadamard (fused-outer) ToT contraction harness + an
+// inactive-plan stock anchor at nh_>1.
+//
+// This is the FIRST test exercising the general/Hadamard SUMMA path with
+// n_slabs_ > 1 (a fused outer axis with more than one U tile). All prior
+// active-retile cases had nh_==1 (a single fused slab). The contraction
+//   C("h,i,j;a") = A("h,i,k;a,c") * B("h,j,k;c")
+// has a leading FUSED outer mode h (the b-style index from
+// general_product.cpp::expression_general_product_tot_inner_hadamard), outer
+// contracted k, outer-external i (left ride) / j (right), and an INNER
+// contraction over c (a rides to the result) -- so the per-cell kernel is the
+// ce_ce strided DGEMM (g_strided_dgemm_ce_ce_{left,right}). The fused h axis
+// has 2 U tiles, so n_slabs_ == 2 and the SUMMA general path runs 2 slabs.
+//
+// What this anchor proves TODAY (stock path, nh_>1):
+//   * the no-retile general product C = A*B is correct vs the einsum oracle;
+//   * a `.retile()` with EMPTY targets is bit-for-bit identical to no-retile
+//     (an inactive plan must not perturb the stock SUMMA path);
+//   * the ce_ce strided DGEMM fires on the fused (nh_>1) contraction;
+//   * the plan-active counter reads 0 (no active retile code path ran).
+//
+// What this anchor deliberately does NOT do: drive an ACTIVE retile plan at
+// nh_>1 (e.g. coarsen K or H with explicit per-role targets). That path is
+// BROKEN at plan construction today and is the subject of /c/d.
+// See the investigation note immediately below for the exact failure.
+//
+// ---------------------------------------------------------------------------
+// INVESTIGATION (, report-only -- characterization of the active-plan gap;
+// NOT a committed failing test):
+//
+// Giving this SAME Hadamard contraction any NON-EMPTY .retile() target vector
+// (identity-via-U, coarsen-K, OR coarsen-H -- all behave identically) throws at
+// plan construction, BEFORE any SUMMA work:
+//
+//
+//   TA_ASSERT failed: targets.size() == U_axes.size()
+//
+// Root cause: make_retile_plan partitions the FULL
+// operand trange (left_.trange(), 3 outer dims here: h,i,k) using the bounds of
+// op_.gemm_helper() -- but that helper is the FOLDED, fused-mode-STRIPPED outer
+// helper - nh). For
+// nf=1 the folded helper has left_rank=2, left_outer=[0,1), left_inner=[1,2).
+// The partition loop reads left_U.dim(0)=h into hU
+// (because 0 < left_outer_begin()+nf == 1) and then STOPS at left_outer_end()==1
+// -- so the real M external left_U.dim(1)=i is never visited and mU is empty.
+// Likewise nU is empty. retile_role_axes then asserts targetM.size()(==1) ==
+// mU.size()(==0) and throws. With nf==0 (all prior active cases) the folded and
+// full helpers coincide and the partition is correct; the mismatch surfaces
+// only for nf>0. Fixing this dimension-offset (so make_retile_plan accounts for
+// the nh leading fused modes that the trange carries but the folded helper does
+// not) is exactly 's first job.
+// ===========================================================================
+BOOST_AUTO_TEST_CASE(retile_identity_hadamard_ce_ce_nh_gt_1_dist) {
+  auto& w = TA::get_default_world();
+  auto h = tr1d(4, 2);   // 2 fused H tiles  => n_slabs_ == 2 (nh_>1)
+  auto i = tr1d(4, 2);   // 2 left-external M-tiles
+  auto j = tr1d(4, 2);   // 2 right-external N-tiles
+  auto kk = tr1d(8, 4);  // 2 contracted K-tiles
+  // A(h,i,k; a,c): inner a=3 spectator (rides), c=4 contracted.
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i, kk}, TA::Range{3, 4});
+  // B(h,j,k; c): inner c=4 contracted.
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, kk}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+
+  // No-retile reference: same inputs, Hadamard general product over fused h.
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "h,i,j;a");
+  w.gop.fence();
+
+  // .retile() with EMPTY targets -> inactive plan -> bit-for-bit identical to
+  // the no-retile stock SUMMA path, at np=1 AND np=2, with n_slabs_ == 2.
+  ArrayToT2 C;
+  C("h,i,j;a") =
+      (A0("h,i,k;a,c") * B0("h,j,k;c")).retile(/*H=*/{}, /*M=*/{}, /*N=*/{},
+                                               /*K=*/{});
+  w.gop.fence();
+
+  // Result trange equals the no-retile (U) trange; values match the oracle.
+  // (Tolerance, not bit-for-bit: at np=2 the 2-slab x 2-K-tile SUMMA reduction
+  // may accumulate the contracted axis in a different order than the no-retile
+  // path, differing at the last ULP -- numerically identical, not byte-equal.)
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  // Inactive plan: the plan-active counter must read 0 (no active path ran).
+  // This is the load-bearing inactive-plan invariant -- the EMPTY .retile()
+  // must not engage any active retile code path on a nh_>1 contraction.
+  BOOST_CHECK_EQUAL(plan_active_count(w), std::size_t{0});
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // The ce_ce strided DGEMM fired on the fused (nh_>1) contraction.
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
+// ===========================================================================
+// FIRST ACTIVE retile plan on a fused (nh_>1) Hadamard contraction.
+//
+// Same contraction as the anchor -- C("h,i,j;a") = A("h,i,k;a,c") *
+// B("h,j,k;c") -- but now driven by an ACTIVE .retile():
+//   * H IDENTITY  (targetH == the U h tiling): the fused axis is NOT coarsened
+// (coarse H is a separate case); n_slabs_ stays U-derived == the U H tile count.
+//   * K COARSENED (targetK coarser than the U k tiling): the 2 U K-tiles
+//     collapse into 1 coarse SUMMA K-tile, so the SUMMA runs 1 coarse K-step
+//     per slab while the operands stay tiled at the fine (U) K count.
+//   * M / N externals IDENTITY (targetM/N == the U i/j tilings).
+//
+// This is the green gate for 's two fixes:
+//   (1) make_retile_plan now partitions the FULL [H,M,K]/[H,K,N] operand
+//       tranges with an explicit nf offset (the folded helper gave empty M/N
+//       and threw at plan construction for ANY non-empty target when nf>0);
+//   (2) get_col_coarsen / get_row_coarsen now pin the operand gather to the
+//       coarse slab step_h(s) (the leading H mode), so slab h==1 gathers slab
+//       1's U tiles, not slab 0's.
+//
+// Oracle = no-retile einsum on the SAME inputs; result must match (<1e-9), the
+// plan-active counter must be > 0 (an active path ran), and the ce_ce strided
+// DGEMM must fire (> 0).
+//
+// NP SCOPING (binding): the np>1 COARSE distribution is NOT yet implemented --
+// init_distribution_general (cont_engine.h) is still U-derived (no plan_.active
+// branch, no coarse operand/result pmaps). Driving this ACTIVE retile at np>1
+// therefore HANGS: the coarse SUMMA step count desyncs from the U-derived
+// operand/result placement, so a reduce task waits forever on a contribution
+// that never lands on its owner. The ENTIRE active body is consequently guarded
+// to world.size()==1; at np>1 the case is a no-op (this suite is unlabeled so
+// it still ENTERS at np=2, it just does not exercise the active path).
+// drop the world.size()==1 guard once init_distribution_general is
+// coarse-aware (T-derived n_slabs_/proc_h_ + coarse operand/result pmaps).
+BOOST_AUTO_TEST_CASE(retile_active_hadamard_identityH_coarsenK_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  // green gate is np=1 only; the np>1 active path is (it would hang
+  // today). Skip the active body entirely at np>1.
+  if (w.size() != 1) return;
+
+  auto h = tr1d(4, 2);   // 2 fused H tiles  => n_slabs_ == 2 (nh_>1)
+  auto i = tr1d(4, 2);   // 2 left-external M-tiles
+  auto j = tr1d(4, 2);   // 2 right-external N-tiles
+  auto kU = tr1d(8, 4);  // 2 contracted K U-tiles
+  auto kT = tr1d(8, 8);  // coarsen K: 2 U K-tiles -> 1 coarse T K-tile
+  // A(h,i,k; a,c): inner a=3 spectator (rides), c=4 contracted.
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i, kU}, TA::Range{3, 4});
+  // B(h,j,k; c): inner c=4 contracted.
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, kU}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+
+  // No-retile reference: same inputs, Hadamard general product over fused h.
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "h,i,j;a");
+  w.gop.fence();
+
+  // ACTIVE retile: H identity (== U h), externals identity (== U i/j), K
+  // coarsened (kT coarser than kU). Active because the K role is non-identity.
+  ArrayToT2 C;
+  C("h,i,j;a") = (A0("h,i,k;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{h}, /*M=*/{i}, /*N=*/{j}, /*K=*/{kT});
+  w.gop.fence();
+
+  // Result trange equals the no-retile (U) trange; values match the oracle.
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  // np=1 green gate: an active retile path ran on the nh_>1 contraction ...
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // ... and the ce_ce strided DGEMM fired on the coarse-K cells.
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()
