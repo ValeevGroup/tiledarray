@@ -147,9 +147,17 @@ add_feature_info(TENSOR_MEM_PROFILE TA_TENSOR_MEM_PROFILE "instrumented profilin
 option(TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED "Turn on TA_ASSERT that no mutable operations occur on TA::{Tensor,Tile} objects that share data" OFF)
 add_feature_info(TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED TA_TENSOR_ASSERT_NO_MUTABLE_OPS_WHILE_SHARED "TA_ASSERT that no mutable operations occur on TA::{Tensor,Tile} objects that share data")
 
+# Default ON under BUILD_TESTING: the strided-DGEMM/retile unit tests reference
+# the witness counters unconditionally, so a test build needs them compiled in.
+# add_compile_definitions is global, so the library and ta_test stay ODR-consistent.
+if (BUILD_TESTING)
+  set(_ta_strided_dgemm_count_default ON)
+else()
+  set(_ta_strided_dgemm_count_default OFF)
+endif()
 option(TA_STRIDED_DGEMM_COUNT
        "Compile-in atomic counters that witness strided-DGEMM firing (tests/benches)"
-       OFF)
+       ${_ta_strided_dgemm_count_default})
 if (TA_STRIDED_DGEMM_COUNT)
   add_compile_definitions(TA_STRIDED_DGEMM_COUNT)
 endif()

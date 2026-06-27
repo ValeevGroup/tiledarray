@@ -37,6 +37,7 @@
 #include <TiledArray/type_traits.h>
 
 #include <TiledArray/tensor/arena_retile.h>
+#include <TiledArray/tensor/dense_retile.h>
 #include <TiledArray/tensor/arena_tensor.h>
 #include <TiledArray/tensor/type_traits.h>
 
@@ -1154,8 +1155,18 @@ class Summa
         nbatch = static_cast<std::size_t>(t.nbatch());
         break;
       }
-      result_.set(TiledArray::detail::arena_gather_block<EvalTile>(
-          fine, coarse_outer_, nbatch));
+      // Dispatch by operand tile family. Arena-ToT operand -> single-page arena
+      // pack; plain dense operand (the mixed path) -> contiguous block scatter.
+      // The branch keeps arena_gather_block from instantiating on a plain tile
+      // (its static_assert requires an arena-backed inner cell).
+      if constexpr (TiledArray::detail::is_tensor_helper<EvalTile>::value &&
+                    TiledArray::is_arena_tensor_v<typename EvalTile::value_type>) {
+        result_.set(TiledArray::detail::arena_gather_block<EvalTile>(
+            fine, coarse_outer_, nbatch));
+      } else {
+        result_.set(TiledArray::detail::dense_gather_block<EvalTile>(
+            fine, coarse_outer_, nbatch));
+      }
     }
   };  // class PackBlockTask
 
@@ -1214,33 +1225,42 @@ class Summa
     const Future<EvalTile>& result() const { return result_; }
 
     void run(const madness::TaskThreadEnv&) override {
-      TA_ASSERT(!fine_.empty());
-      std::size_t nbatch = 1ul;
-      // Carve each covering U tile to its intersection with the T box. On the
-      // refined axis the U tile is larger; on identity axes the intersection
-      // equals the U tile's own footprint. The carved sub-views all lie inside
-      // t_box, so arena_gather_block lays them down as ONE single-page tile.
-      std::vector<EvalTile> subs;
-      subs.reserve(fine_.size());
-      for (auto& f : fine_) {
-        EvalTile u = f.get();
-        if (u.empty()) continue;
-        nbatch = static_cast<std::size_t>(u.nbatch());
-        const Range inter = intersect_range_(u.range(), t_box_);
-        if (inter.volume() == 0ul) continue;
-        if (inter == u.range()) {
-          subs.push_back(u);
-        } else {
-          // zero-copy outer sub-view of u restricted to the T box.
-          auto v = TiledArray::detail::arena_carve_block<EvalTile>(
-              u, std::vector<Range>{inter}, /*view=*/true);
-          TA_ASSERT(v.size() == 1ul);
-          subs.push_back(std::move(v.front()));
+      // Dense-operand REFINE is deferred (coarsen/identity only). The guard also
+      // keeps arena_carve_block from instantiating on a plain tile.
+      if constexpr (TiledArray::detail::is_tensor_helper<EvalTile>::value &&
+                    TiledArray::is_arena_tensor_v<typename EvalTile::value_type>) {
+        TA_ASSERT(!fine_.empty());
+        std::size_t nbatch = 1ul;
+        // Carve each covering U tile to its intersection with the T box. On the
+        // refined axis the U tile is larger; on identity axes the intersection
+        // equals the U tile's own footprint. The carved sub-views all lie inside
+        // t_box, so arena_gather_block lays them down as ONE single-page tile.
+        std::vector<EvalTile> subs;
+        subs.reserve(fine_.size());
+        for (auto& f : fine_) {
+          EvalTile u = f.get();
+          if (u.empty()) continue;
+          nbatch = static_cast<std::size_t>(u.nbatch());
+          const Range inter = intersect_range_(u.range(), t_box_);
+          if (inter.volume() == 0ul) continue;
+          if (inter == u.range()) {
+            subs.push_back(u);
+          } else {
+            // zero-copy outer sub-view of u restricted to the T box.
+            auto v = TiledArray::detail::arena_carve_block<EvalTile>(
+                u, std::vector<Range>{inter}, /*view=*/true);
+            TA_ASSERT(v.size() == 1ul);
+            subs.push_back(std::move(v.front()));
+          }
         }
+        TA_ASSERT(!subs.empty());
+        result_.set(TiledArray::detail::arena_gather_block<EvalTile>(
+            subs, t_box_, nbatch));
+      } else {
+        TA_EXCEPTION(
+            "mixed retile: REFINE of a plain (dense) operand is not supported "
+            "(coarsen/identity only)");
       }
-      TA_ASSERT(!subs.empty());
-      result_.set(TiledArray::detail::arena_gather_block<EvalTile>(subs, t_box_,
-                                                                   nbatch));
     }
   };  // class CarvePackTask
 
@@ -1417,8 +1437,10 @@ class Summa
   /// \param[in] s The SUMMA step (slab * k_ + column index)
   /// \param[out] col The column vector that will hold the tiles
   void get_col(const ordinal_type s, std::vector<col_datum>& col) const {
-    using left_eval = typename left_type::eval_type;
-    if constexpr (is_arena_tot_v<left_eval>) {
+    // Gate on the RESULT value_type, not left_eval, so a plain-left (T*ToT)
+    // mixed contraction also engages the coarse gather. pack_fine_block
+    // dispatches arena vs dense by left_eval internally.
+    if constexpr (is_arena_tot_v<value_type>) {
       if (plan_.active) {
         get_col_coarsen(s, col);
         return;
@@ -1840,8 +1862,9 @@ class Summa
   /// \param[in] s The SUMMA step (slab * k_ + row index)
   /// \param[out] row The row vector that will hold the tiles
   void get_row(const ordinal_type s, std::vector<row_datum>& row) const {
-    using right_eval = typename right_type::eval_type;
-    if constexpr (is_arena_tot_v<right_eval>) {
+    // Gate on the RESULT value_type so a plain-right (ToT*T) mixed contraction
+    // also engages the coarse gather; dispatch by right_eval inside.
+    if constexpr (is_arena_tot_v<value_type>) {
       if (plan_.active) {
         get_row_coarsen(s, row);
         return;
@@ -2082,14 +2105,12 @@ class Summa
     // the coarse left column and broadcast it exactly as the normal step path
     // does (identical key/group), keeping the coarse-keyed bcast consistent
     // across ranks. At np=1 the row group is size 1 so bcast_col is a no-op
-    // (matches the stock do_broadcast guard). GATE on the LEFT operand eval type
-    // (like get_col), NOT value_type: get_col_coarsen instantiates the arena
-    // gather/carve, which only compiles when the LEFT operand is arena-ToT. A
-    // mixed (plain-left x arena-ToT-result) contraction has value_type arena but
-    // a non-arena left_eval, so a value_type gate would wrongly instantiate
-    // arena_carve_block<plain> and fail the static_assert.
-    using left_eval = typename left_type::eval_type;
-    if constexpr (is_arena_tot_v<left_eval>) {
+    // (matches the stock do_broadcast guard). GATE on the RESULT value_type:
+    // get_col_coarsen packs via pack_fine_block, which dispatches arena vs
+    // dense by the LEFT operand eval type internally -- so a value_type gate is
+    // safe even when the left operand is plain (mixed plain-left x arena-ToT
+    // result); the dense branch never instantiates arena_carve_block<plain>.
+    if constexpr (is_arena_tot_v<value_type>) {
       if (plan_.active) {
         for (s = next_step(s); s < end; s = next_step(s + 1ul)) {
           const ordinal_type k = step_k(s);
@@ -2162,11 +2183,12 @@ class Summa
     // Active two-trange path: mirror of bcast_col_range_task -- gather+pack the
     // coarse right row (get_row_coarsen) and broadcast via bcast_row (identical
     // coarse key/group as the normal step path). np=1 => group size 1 => no-op.
-    // GATE on the RIGHT operand eval type (like get_row), NOT value_type:
-    // get_row_coarsen instantiates the arena gather/carve, which only compiles
-    // when the RIGHT operand is arena-ToT (see bcast_col_range_task).
-    using right_eval = typename right_type::eval_type;
-    if constexpr (is_arena_tot_v<right_eval>) {
+    // GATE on the RESULT value_type: get_row_coarsen packs via pack_fine_block,
+    // which dispatches arena vs dense by the RIGHT operand eval type internally
+    // -- so a value_type gate is safe even when the right operand is plain
+    // (mixed arena-ToT x plain-right result); the dense branch never
+    // instantiates arena_carve_block<plain>.
+    if constexpr (is_arena_tot_v<value_type>) {
       if (plan_.active) {
         for (s = next_step(s); s < end; s = next_step(s + 1ul)) {
           const ordinal_type k = step_k(s);

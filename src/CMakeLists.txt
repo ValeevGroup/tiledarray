@@ -110,6 +110,8 @@ TiledArray/expressions/binary_expr.h
 TiledArray/expressions/blk_tsr_engine.h
 TiledArray/expressions/blk_tsr_expr.h
 TiledArray/expressions/cont_engine.h
+TiledArray/expressions/contraction_retile.h
+TiledArray/expressions/mixed_retile_config.h
 TiledArray/expressions/expr.h
 TiledArray/expressions/expr_engine.h
 TiledArray/expressions/expr_trace.h
@@ -156,7 +158,13 @@ TiledArray/symm/irrep.h
 TiledArray/symm/permutation.h
 TiledArray/symm/permutation_group.h
 TiledArray/symm/representation.h
+TiledArray/tensor/arena.h
+TiledArray/tensor/arena_einsum.h
+TiledArray/tensor/arena_kernels.h
+TiledArray/tensor/arena_retile.h
+TiledArray/tensor/arena_tensor.h
 TiledArray/tensor/complex.h
+TiledArray/tensor/dense_retile.h
 TiledArray/tensor/kernels.h
 TiledArray/tensor/operators.h
 TiledArray/tensor/permute.h

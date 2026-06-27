@@ -30,6 +30,7 @@
 #include <TiledArray/dist_eval/unary_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/expressions/contraction_retile.h>
+#include <TiledArray/expressions/mixed_retile_config.h>
 #include <TiledArray/expressions/permopt.h>
 #include <TiledArray/pmap/slabbed_pmap.h>
 #include <TiledArray/pmap/user_pmap.h>
@@ -138,6 +139,38 @@ class ContEngine : public BinaryEngine<Derived> {
       TiledArray::detail::is_tensor_of_tensor_v<left_tile_type,
                                                 right_tile_type> &&
       !TiledArray::detail::is_tensor_of_tensor_v<result_tile_type>;
+
+  // -- Mixed (plain x arena-ToT -> arena-ToT) auto-retile detection ----------
+  // Compile-time tile-family predicates mirroring the SUMMA trait at
+  // dist_eval/contraction_eval.h (is_arena_tot_v): an arena-backed ToT outer
+  // tile is any TA::Tensor<...> whose inner cell type is an ArenaTensor; a plain
+  // tensor tile is any TA::Tensor<...> that is NOT a tensor-of-tensor. The
+  // env-gated auto-retile (maybe_make_retile_plan_) only compiles in for the
+  // mixed shape, so every non-mixed instantiation is a strict no-op.
+  template <typename Tile>
+  static constexpr bool is_arena_tot_tile_v =
+      TiledArray::detail::is_tensor_helper<Tile>::value &&
+      TiledArray::is_arena_tensor_v<typename Tile::value_type>;
+
+  template <typename Tile>
+  static constexpr bool is_plain_tensor_tile_v =
+      TiledArray::detail::is_tensor_helper<Tile>::value &&
+      !TiledArray::detail::is_tensor_of_tensor_v<Tile>;
+
+  /// True iff the result is an arena-backed ToT and exactly one operand is plain
+  /// dense while the other is arena-ToT -- the only shape the env-gated
+  /// auto-retile coarsens. Pure-plain contractions (the MPQC default path) have
+  /// a non-arena result and so are never mixed: the retile path stays compiled
+  /// out and uninstantiated for them.
+  static constexpr bool is_mixed_ =
+      is_arena_tot_tile_v<value_type> &&
+      ((is_plain_tensor_tile_v<left_tile_type> &&
+        is_arena_tot_tile_v<right_tile_type>) ||
+       (is_arena_tot_tile_v<left_tile_type> &&
+        is_plain_tensor_tile_v<right_tile_type>));
+  /// When mixed, whether the PLAIN operand is the LEFT argument (so its external
+  /// lives on SUMMA role M); else the plain operand is RIGHT (role N).
+  static constexpr bool left_is_plain_ = is_plain_tensor_tile_v<left_tile_type>;
 
   std::function<void(result_tile_element_type&, const left_tile_element_type&,
                      const right_tile_element_type&)>
@@ -561,6 +594,50 @@ class ContEngine : public BinaryEngine<Derived> {
   /// fused-mode count. An identity target (or one coinciding with U) yields an
   /// inactive plan. The plan is consumed by later phases; in this phase it is
   /// only stored and threaded to the Summa ctor.
+  /// Synthesize coarse retile targets for the mixed (plain x arena-ToT ->
+  /// arena-ToT) shape with the env-gated auto-retile. Collapse the PLAIN
+  /// operand's external -- role M when the plain operand is LEFT, role N when it
+  /// is RIGHT -- and the contracted (K) axis toward the element sizes in
+  /// detail::mixed_retile_config (0 => single tile / full collapse). The fused
+  /// (H) axes and the arena-ToT operand's external (the other of M/N) are left
+  /// EMPTY, i.e. kept intact at U. The role axes are extracted by the SAME
+  /// positional H/M/N/K partition that make_retile_plan consults (nf leading
+  /// fused modes; the last nc left axes are K; the remaining left axes are M;
+  /// the right axes past nf+nc are N), so the synthesized targets are in
+  /// canonical H/M/N/K space -- identical to what a .retile() caller supplies.
+  /// This reproduces the verified mixed_T_x_ToT_coarsen_MK (plain left ->
+  /// coarsen M+K) and mixed_ToT_x_T_coarsen_NK (plain right -> coarsen N+K)
+  /// target strategy.
+  void synthesize_mixed_targets_(bool left_is_plain,
+                                 const math::GemmHelper& outer_gh,
+                                 std::vector<TiledRange1>& tH,
+                                 std::vector<TiledRange1>& tM,
+                                 std::vector<TiledRange1>& tN,
+                                 std::vector<TiledRange1>& tK) {
+    (void)tH;  // H stays at U (empty target)
+    const TiledRange& left_U = left_.trange();
+    const TiledRange& right_U = right_.trange();
+    const unsigned int nf = this->n_fused_modes_;
+    const unsigned int nc = outer_gh.num_contract_ranks();
+    const unsigned int left_rank = static_cast<unsigned int>(left_U.rank());
+    const unsigned int right_rank = static_cast<unsigned int>(right_U.rank());
+    const std::size_t ext_target =
+        detail::mixed_retile_config.plain_external_target;
+    const std::size_t k_target = detail::mixed_retile_config.contracted_target;
+    if (left_is_plain) {
+      // plain operand is LEFT => its external is role M (left outer axes).
+      for (unsigned int i = nf; i + nc < left_rank; ++i)
+        tM.push_back(coarsen_tr1(left_U.dim(i), ext_target));
+    } else {
+      // plain operand is RIGHT => its external is role N (right outer axes).
+      for (unsigned int i = nf + nc; i < right_rank; ++i)
+        tN.push_back(coarsen_tr1(right_U.dim(i), ext_target));
+    }
+    // K (contracted) axes are the last nc axes of the left operand.
+    for (unsigned int i = left_rank - nc; i < left_rank; ++i)
+      tK.push_back(coarsen_tr1(left_U.dim(i), k_target));
+  }
+
   void maybe_make_retile_plan_() {
     // ORDERING (permute-then-retile): when an operand annotation is non-canonical
     // the binary engine physically permutes it into canonical NoTranspose layout
@@ -571,11 +648,22 @@ class ContEngine : public BinaryEngine<Derived> {
     // RESULT permutation is the mirror image: contract in canonical layout, then
     // re-permute the (already carved) result tiles in-rank (make_dist_eval_general
     // / GeneralRepermuteOp + make_repermuted_result_pmap).
-    if (!(ExprEngine_::override_ptr_ &&
-          ExprEngine_::override_ptr_->contraction_target.present))
-      return;
+    const bool explicit_target =
+        ExprEngine_::override_ptr_ &&
+        ExprEngine_::override_ptr_->contraction_target.present;
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      const auto& ct = ExprEngine_::override_ptr_->contraction_target;
+      // Decide whether we will retile AT ALL before building any helper: an
+      // explicit .retile() target, or the mixed auto-retile gate being on. Only
+      // then is the INNER contract-reduce helper constructed -- its GemmHelper
+      // ctor asserts GEMM rank parity, which a NON-contraction inner product
+      // (inner Hadamard, fused broadcast, no-externals general product) does NOT
+      // satisfy. Building it unconditionally for every ToT contraction would
+      // wrongly throw for those; the stock (no-retile) path must stay inert.
+      bool do_retile = explicit_target;
+      if constexpr (is_mixed_)
+        do_retile = do_retile || detail::mixed_auto_retile_enabled();
+      if (!do_retile) return;  // stock SUMMA: plan_ stays inactive
+
       // OUTER (SUMMA-level) role-partition helper, as already built into op_.
       const math::GemmHelper& outer_gh = op_.gemm_helper();
       // INNER (per-tile contract-reduce) helper: same construction as
@@ -586,15 +674,33 @@ class ContEngine : public BinaryEngine<Derived> {
           to_cblas_op(this->right_inner_permtype_),
           inner_size(this->indices_), inner_size(this->left_indices_),
           inner_size(this->right_indices_));
-      plan_ = make_retile_plan(left_.trange(), right_.trange(), ct.targetH,
-                               ct.targetM, ct.targetN, ct.targetK, outer_gh,
-                               inner_gh, this->n_fused_modes_);
+      if (explicit_target) {
+        // Explicit .retile() target: unchanged behavior.
+        const auto& ct = ExprEngine_::override_ptr_->contraction_target;
+        plan_ = make_retile_plan(left_.trange(), right_.trange(), ct.targetH,
+                                 ct.targetM, ct.targetN, ct.targetK, outer_gh,
+                                 inner_gh, this->n_fused_modes_);
+        return;
+      }
+      // No explicit target, gate on, mixed shape: synthesize coarse targets and
+      // build the plan. The coarse gather (arena_gather_block) always lays the
+      // operand down as one single-page tile, so the strided scale-GEMM is
+      // eligible without any extra compaction step (see arena_outer_init's
+      // arena_assert_single_page).
+      if constexpr (is_mixed_) {
+        std::vector<TiledRange1> tH, tM, tN, tK;
+        synthesize_mixed_targets_(left_is_plain_, outer_gh, tH, tM, tN, tK);
+        plan_ = make_retile_plan(left_.trange(), right_.trange(), tH, tM, tN, tK,
+                                 outer_gh, inner_gh, this->n_fused_modes_);
+      }
+      return;
     } else {
       // a .retile() target only makes sense for nested (ToT) contractions;
       // for plain-tensor contractions there is no two-trange retile to derive.
-      TA_EXCEPTION(
-          "MultExpr::retile() is only supported for tensor-of-tensor "
-          "contractions");
+      if (explicit_target)
+        TA_EXCEPTION(
+            "MultExpr::retile() is only supported for tensor-of-tensor "
+            "contractions");
     }
   }
 

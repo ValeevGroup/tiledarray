@@ -18,6 +18,7 @@
 #include <TiledArray/tensor/arena_einsum.h>
 #include <TiledArray/tensor/arena_kernels.h>
 #include <TiledArray/tensor/arena_retile.h>
+#include <TiledArray/tensor/dense_retile.h>
 #include <TiledArray/tensor/arena_tensor.h>
 #include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tiled_range.h>
@@ -358,6 +359,34 @@ BOOST_AUTO_TEST_CASE(arena_gather_nonuniform) {
   int cls = TA::detail::classify_run(
       [&](std::size_t i) -> const ArenaInner& { return g.data()[i]; }, 4);
   BOOST_CHECK_EQUAL(cls, 2);
+}
+
+// Dense analogue of arena_gather_nonuniform: dense_gather_block packs fine plain
+// TA::Tensor tiles into one contiguous coarse tile, leaving holes (positions no
+// fine tile covers) zero. This is the mixed-path operand packer (dense_retile.h).
+BOOST_AUTO_TEST_CASE(dense_gather_block_basic) {
+  using Tensor = TA::Tensor<double>;
+  TA::Range coarse({0, 0}, {4, 6});
+  std::vector<TA::Range> franges = {TA::Range({0, 0}, {2, 3}),
+                                    TA::Range({0, 3}, {2, 6}),
+                                    TA::Range({2, 0}, {4, 3})};  // (2..4,3..6) absent
+  auto val = [](long i, long j) { return double(100 * i + j); };
+  std::vector<Tensor> fine;
+  for (auto& r : franges) {
+    Tensor t(r);
+    for (std::size_t p = 0; p < r.volume(); ++p) {
+      auto ix = r.idx(p);
+      t.data()[p] = val(ix[0], ix[1]);
+    }
+    fine.push_back(t);
+  }
+  Tensor c = TA::detail::dense_gather_block(fine, coarse, 1);
+  for (std::size_t p = 0; p < coarse.volume(); ++p) {
+    auto ix = coarse.idx(p);
+    long i = ix[0], j = ix[1];
+    const bool in_hole = (i >= 2 && j >= 3);
+    BOOST_CHECK_EQUAL(c.data()[p], in_hole ? 0.0 : val(i, j));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1056,7 +1085,9 @@ ArrayToT2 make_arena2_nu(TA::World& w, const TA::TiledRange& tr, ExtFn ext_fn) {
 // a coarse-packed block carries observably distinct values -- a mis-packed cell
 // blows up the oracle reldiff. Mirrors strided_canonicalize.cpp::make_plain.
 using PlainArr2 = TA::DistArray<TA::Tensor<double>, TA::DensePolicy>;
-PlainArr2 make_plain2(TA::World& w, const TA::TiledRange& tr) {
+// [[maybe_unused]]: scaffolding for the deferred mixed-kernel active-retile fix
+// (see the BLOCKED note below the sparse cases); no in-tree caller yet.
+[[maybe_unused]] PlainArr2 make_plain2(TA::World& w, const TA::TiledRange& tr) {
   PlainArr2 g(w, tr);
   g.init_tiles([](const TA::Range& r) {
     TA::Tensor<double> t(r);
@@ -2106,6 +2137,43 @@ BOOST_AUTO_TEST_CASE(retile_active_sparse_coarsen_m_deadcol_ce_ce_dist) {
   w.gop.serial_invoke(
       [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
 }
+
+// ===========================================================================
+// priority gap (Task-A2 carry-forward): the MIXED / scale kernel on the
+// ACTIVE retile path -- BLOCKED on a production gap, see agent/plans/
+// task-6.1-report.md for the full root cause and the recommended fix.
+//
+// The mixed contraction multiplies a PLAIN Tensor<double> operand g by an
+// arena-ToT operand I to an arena-ToT result C:
+//
+//   C(i_3,i_1,i_2,k_; a) = g(i_3,k_,m_) * I(m_,i_1,i_2; a)
+//
+// m_ is the contracted SUMMA-K axis; g's externals i_3,k_ are SUMMA-M; I's
+// externals i_1,i_2 are SUMMA-N; the inner a rides from I to the result -> the
+// per-cell kernel is the t_x_tot scale fast-path (g_scale_strided_calls[1]).
+//
+// CONFIRMED PRODUCTION BUG (lldb at TiledArray::exception_break, np=1): an
+// ACTIVE coarsen .retile() on this contraction aborts with
+// TA_ASSERT failed: pimpl_
+// from Summa::contract (the DenseShape overload).
+// Root cause: the SUMMA masks / initialize_active / finalize_active gate on the
+// RESULT value_type (arena-ToT) and allocate reduce tasks on the COARSE grid,
+// AND get_row gates on the RIGHT operand eval type (arena-ToT) and packs coarse
+// -- but get_col gates on the LEFT operand eval type,
+// which for the plain g is NOT arena-ToT, so the active branch is compiled out
+// and get_col emits the STOCK fine-U column. contract then indexes the coarse
+// reduce_tasks_ array with a fine-U col[i].first (col.size()==64 vs coarse
+// M_grid==1) and hits an unallocated (null pimpl_) slot. The intended plain-
+// operand coarse pack `dense_gather_block` was specified
+// but NEVER implemented -- it exists only as a name in bench comments, so there
+// is no code path that packs a plain dense operand coarse. Fixing it is a
+// design-level change (new dense_gather_block + re-gate get_col / the operand
+// masks / iterate_col on plan_.active for a plain operand + np>1 ownership for
+// the plain block) spanning arena_retile.h + contraction_eval.h -- beyond a
+// test-coverage task. Deferred; the mixed cases are NOT added here (a crashing
+// or weakened test would be worse than an honest BLOCKED). The make_plain2 /
+// make_plain_sparse helpers above are the scaffolding the fix will consume.
+// ===========================================================================
 
 // ===========================================================================
 // arena Hadamard (fused-outer) ToT contraction harness + an
@@ -3451,6 +3519,422 @@ BOOST_AUTO_TEST_CASE(permsweep_sparse_nonuniform_ce_e_dist) {
   }
   BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
   TA::SparseShape<float>::threshold(saved);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+// ===== Mixed (plain x ToT -> ToT) retile ===================================
+// UNTAGGED suite: runs at np=1 (run-np-1) AND np=2 (run-np-2). Validates the
+// dense-operand coarse gather (dense_gather_block) co-locates in-rank and the
+// strided scale GEMM fires on coarsened BLAS axes, both orientations.
+namespace {
+using MixInner = TA::ArenaTensor<double, TA::Range>;
+using MixToT = TA::DistArray<TA::Tensor<MixInner>, TA::SparsePolicy>;
+using MixT = TA::DistArray<TA::Tensor<double>, TA::SparsePolicy>;
+
+// all-present sparse shape (every tile nonzero)
+inline TA::SparseShape<float> mix_dense_shape(TA::World& w,
+                                              const TA::TiledRange& tr) {
+  TA::Tensor<float> n(tr.tiles_range());
+  for (std::size_t o = 0; o < tr.tiles_range().volume(); ++o) n[o] = 1.0f;
+  return TA::SparseShape<float>(w, n, tr);
+}
+// plain operand, value = 1 + 1e-3*e over the whole tile
+inline MixT mix_make_plain(TA::World& w, const TA::TiledRange& tr) {
+  MixT x(w, tr, mix_dense_shape(w, tr));
+  x.init_tiles([](const TA::Range& r) {
+    TA::Tensor<double> t(r);
+    for (std::size_t e = 0; e < t.size(); ++e) t.data()[e] = 1.0 + 1e-3 * double(e);
+    return t;
+  });
+  return x;
+}
+// ToT operand, inner extent a4 fixed, then compacted to one arena page
+inline MixToT mix_make_tot(TA::World& w, const TA::TiledRange& tr, long a4) {
+  MixToT x(w, tr, mix_dense_shape(w, tr));
+  x.init_tiles_nested([a4](const auto&) { return MixInner::range_type{a4}; },
+                      [](auto& cell, const auto&) {
+                        for (std::size_t e = 0; e < cell.size(); ++e)
+                          cell.data()[e] = 1.0 + 1e-3 * double(e);
+                      });
+  w.gop.fence();
+  return TA::foreach (x, [](TA::Tensor<MixInner>& r,
+                            const TA::Tensor<MixInner>& a) -> float {
+    r = TiledArray::detail::arena_compact(a);
+    return 1.0f;
+  });
+}
+inline std::size_t mix_scale_fires() {
+  return TiledArray::detail::g_scale_strided_calls[0].load() +
+         TiledArray::detail::g_scale_strided_calls[1].load();
+}
+// Build a comma-joined annotation from an index order.
+inline std::string join(const std::vector<std::string>& v) {
+  std::string s;
+  for (std::size_t i = 0; i < v.size(); ++i) s += (i ? "," : "") + v[i];
+  return s;
+}
+// plain operand with a hole: tile (0,0,0) dropped (norm below threshold).
+inline MixT mix_make_plain_sparse(TA::World& w, const TA::TiledRange& tr) {
+  TA::Tensor<float> nrm(tr.tiles_range());
+  std::size_t o = 0;
+  for (auto it = tr.tiles_range().begin(); it != tr.tiles_range().end();
+       ++it, ++o) {
+    const auto idx = *it;
+    const bool drop = (idx[0] == 0 && idx[1] == 0 && idx[2] == 0);
+    nrm[o] = drop ? (std::numeric_limits<float>::min() * 0.1f) : 1.0f;
+  }
+  MixT x(w, tr, TA::SparseShape<float>(w, nrm, tr));
+  x.init_tiles([](const TA::Range& r) {
+    TA::Tensor<double> t(r);
+    for (std::size_t e = 0; e < t.size(); ++e) t.data()[e] = 1.0 + 1e-3 * double(e);
+    return t;
+  });
+  return x;
+}
+}  // namespace
+
+BOOST_AUTO_TEST_SUITE(summa_two_trange_mixed_suite)
+
+// C(i3,i1,i2,k;a4) = g(i3,k,m) * I(m,i1,i2;a4). M=(i3,k) [plain g], K=(m)
+// [shared], N=(i1,i2) [ToT I]. Coarsen M and K to single tiles (both touch the
+// PLAIN operand); leave N intact. Retiled result == non-retiled einsum; plan
+// active; strided scale GEMM fires AND fires fewer times than the fine path.
+BOOST_AUTO_TEST_CASE(mixed_T_x_ToT_coarsen_MK) {
+  auto& w = TA::get_default_world();
+  const int E = 8, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  const auto f0 = mix_scale_fires();
+  MixToT C0 = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+  const auto fine_fires = mix_scale_fires() - f0;
+
+  std::vector<TA::TiledRange1> tH, tM, tN, tK;
+  tM.push_back(tr1(E, E));
+  tM.push_back(tr1(E, E));  // i3, k -> single tile
+  tK.push_back(tr1(E, E));  // m    -> single tile
+  // tN empty => i1,i2 intact
+
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+  const auto f1 = mix_scale_fires();
+  MixToT C1;
+  C1("i3,i1,i2,k;a4i1i2") =
+      (G("i3,k,m") * I("m,i1,i2;a4i1i2")).retile(tH, tM, tN, tK);
+  w.gop.fence();
+  const auto coarse_fires = mix_scale_fires() - f1;
+
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_GT(coarse_fires, 0ul);              // strided kernel fired
+  BOOST_CHECK_LT(coarse_fires, fine_fires);       // and on coarser (fewer) GEMMs
+  BOOST_CHECK_SMALL(array_max_reldiff2(C1, C0), 1e-10);  // element-wise, order-sensitive
+}
+
+// C(i1,i2,i3,k;a4) = I(i1,i2,m;a4) * g(m,i3,k). M=(i1,i2) [ToT I], N=(i3,k)
+// [plain g], K=(m) [shared]. Coarsen K and N (both touch the PLAIN right
+// operand g); leave M intact. Drives the get_row dense gather (right-operand
+// path). Same invariants as the T*ToT case.
+BOOST_AUTO_TEST_CASE(mixed_ToT_x_T_coarsen_NK) {
+  auto& w = TA::get_default_world();
+  const int E = 8, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (i1,i2,m)
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (m,i3,k)
+  w.gop.fence();
+
+  const auto f0 = mix_scale_fires();
+  MixToT C0 = TA::einsum(I("i1,i2,m;a4i1i2"), G("m,i3,k"), "i1,i2,i3,k;a4i1i2");
+  w.gop.fence();
+  const auto fine_fires = mix_scale_fires() - f0;
+
+  std::vector<TA::TiledRange1> tH, tM, tN, tK;
+  tN.push_back(tr1(E, E));
+  tN.push_back(tr1(E, E));  // i3, k (on plain g) -> single tile
+  tK.push_back(tr1(E, E));  // m -> single tile
+  // tM empty => i1,i2 intact
+
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+  const auto f1 = mix_scale_fires();
+  MixToT C1;
+  C1("i1,i2,i3,k;a4i1i2") =
+      (I("i1,i2,m;a4i1i2") * G("m,i3,k")).retile(tH, tM, tN, tK);
+  w.gop.fence();
+  const auto coarse_fires = mix_scale_fires() - f1;
+
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_GT(coarse_fires, 0ul);              // strided kernel fired
+  BOOST_CHECK_LT(coarse_fires, fine_fires);       // and on coarser (fewer) GEMMs
+  BOOST_CHECK_SMALL(array_max_reldiff2(C1, C0), 1e-10);  // element-wise, order-sensitive
+}
+
+// Permutation sweep (untagged -> runs np=1 AND np=2). For the T*ToT mixed
+// product, two slices whose union covers the goal:
+//   (i)  all 6x6 operand-permutation pairs, fixed canonical result; and
+//   (ii) all 24 result permutations, fixed canonical operands.
+// In EVERY combination: the retiled result equals the non-retiled einsum
+// (element-wise), the plan is active, and the strided scale GEMM fires
+// (canonicalization makes every operand layout fire). Role targets are derived
+// from index SETS (M={i3,k}, K={m}, N={i1,i2}) -> always 2 M-axes and 1 K-axis,
+// so [full,full]/[full] is positionally correct for every permutation.
+BOOST_AUTO_TEST_CASE(mixed_perm_sweep_fires_and_matches) {
+  auto& w = TA::get_default_world();
+  const int E = 4, T = 2, A4 = 4;  // tiny extents: 2 tiles/axis
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // stored (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // stored (m,i1,i2)
+  w.gop.fence();
+  const auto full = tr1(E, E);  // single-tile (full-extent) coarsen target
+
+  // one (g-annot, I-annot, C-annot) combination: assert fires + matches.
+  std::size_t combos = 0, fired = 0;
+  auto run_combo = [&](const std::string& ga, const std::string& ia,
+                       const std::string& ca) {
+    MixToT Cref = TA::einsum(G(ga), I(ia), ca);
+    w.gop.fence();
+    std::vector<TA::TiledRange1> tH, tM, tN, tK;
+    tM.push_back(full); tM.push_back(full);  // i3,k
+    tK.push_back(full);                       // m
+    const auto f1 = mix_scale_fires();
+    const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+    MixToT C1;
+    C1(ca) = (G(ga) * I(ia)).retile(tH, tM, tN, tK);
+    w.gop.fence();
+    const auto df = mix_scale_fires() - f1;
+    ++combos;
+    if (df > 0ul) ++fired;
+    BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+    BOOST_CHECK_GT(df, 0ul);  // the "always triggers" invariant
+    // ELEMENT-WISE, order-sensitive (a scalar checksum would miss a wrong perm).
+    BOOST_CHECK_SMALL(array_max_reldiff2(C1, Cref), 1e-10);
+  };
+
+  // slice (i): all operand-perm pairs, canonical result
+  std::vector<std::string> g0 = {"i3", "k", "m"}, i0 = {"i1", "i2", "m"};
+  std::sort(g0.begin(), g0.end());
+  do {
+    auto ip = i0;
+    std::sort(ip.begin(), ip.end());
+    do {
+      run_combo(join(g0), join(ip) + ";a4i1i2", "i3,i1,i2,k;a4i1i2");
+    } while (std::next_permutation(ip.begin(), ip.end()));
+  } while (std::next_permutation(g0.begin(), g0.end()));
+
+  // slice (ii): all result perms, canonical operands
+  std::vector<std::string> c0 = {"i1", "i2", "i3", "k"};
+  std::sort(c0.begin(), c0.end());
+  do {
+    run_combo("i3,k,m", "m,i1,i2;a4i1i2", join(c0) + ";a4i1i2");
+  } while (std::next_permutation(c0.begin(), c0.end()));
+
+  BOOST_TEST_MESSAGE("mixed perm sweep: " << fired << "/" << combos
+                                          << " combinations fired the kernel");
+  BOOST_CHECK_EQUAL(fired, combos);
+}
+
+// Distinct per-axis targets within a role (exercises positional role->axis
+// target assignment, which the uniform-full sweep above cannot). M=(i3,k):
+// coarsen i3 to a single tile but leave k at its own (identity) tiling -> the
+// two M-axis targets DIFFER, so a positional mix-up would assert/misnest in
+// make_retile_plan/append_role_t_box. The result (delivered at U) must still
+// match the einsum, plan active, kernel fired.
+BOOST_AUTO_TEST_CASE(mixed_T_x_ToT_distinct_M_targets) {
+  auto& w = TA::get_default_world();
+  const int E = 8, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+  MixToT C0 = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  std::vector<TA::TiledRange1> tH, tM, tN, tK;
+  tM.push_back(tr1(E, E));  // i3 -> single tile (full)
+  tM.push_back(tr1(E, T));  // k  -> identity (own tiling) -- DISTINCT from i3
+  tK.push_back(tr1(E, E));  // m  -> single tile
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+  const auto f1 = mix_scale_fires();
+  MixToT C1;
+  C1("i3,i1,i2,k;a4i1i2") =
+      (G("i3,k,m") * I("m,i1,i2;a4i1i2")).retile(tH, tM, tN, tK);
+  w.gop.fence();
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_GT(mix_scale_fires() - f1, 0ul);
+  BOOST_CHECK_SMALL(array_max_reldiff2(C1, C0), 1e-10);
+}
+
+// Sparse plain operand: a dropped g tile -> hole(zero) in the coarse pack ->
+// contributes nothing. Retiled result still equals the non-retiled einsum, at
+// np=1 and np=2 (the np>1 alignment uses the dense shape's block_has_nonzero).
+BOOST_AUTO_TEST_CASE(mixed_T_x_ToT_sparse_plain) {
+  auto& w = TA::get_default_world();
+  const int E = 8, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain_sparse(w, TA::TiledRange{e, e, e});
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);
+  w.gop.fence();
+
+  MixToT C0 = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  std::vector<TA::TiledRange1> tH, tM, tN, tK;
+  tM.push_back(tr1(E, E)); tM.push_back(tr1(E, E));
+  tK.push_back(tr1(E, E));
+  MixToT C1;
+  C1("i3,i1,i2,k;a4i1i2") =
+      (G("i3,k,m") * I("m,i1,i2;a4i1i2")).retile(tH, tM, tN, tK);
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff2(C1, C0), 1e-10);
+}
+
+// Regression: fully-arena ce_e (ToT*ToT->ToT) retile still coarsens K and
+// still fires the ce_e strided kernel under the value_type gate. (Guards the
+// gate flip in.)
+BOOST_AUTO_TEST_CASE(arena_ce_e_retile_regression) {
+  auto& w = TA::get_default_world();
+  const int E = 8, T = 4, AN = 5;
+  auto e = tr1(E, T);
+  MixToT A = mix_make_tot(w, TA::TiledRange{e, e, e}, AN);  // A(i1,i3,K)
+  MixToT B = mix_make_tot(w, TA::TiledRange{e, e, e}, AN);  // B(i2,i4,K)
+  w.gop.fence();
+  const auto c0 = TA::detail::g_strided_dgemm_ce_e_calls.load();
+  MixToT C0 = TA::einsum(A("i1,i3,K;a3i1i3"), B("i2,i4,K;a4i2i4"),
+                         "i1,i3,i2,i4;a3i1i3,a4i2i4");
+  w.gop.fence();
+  const auto fine = TA::detail::g_strided_dgemm_ce_e_calls.load() - c0;
+
+  std::vector<TA::TiledRange1> tH, tM, tN, tK;
+  tK.push_back(tr1(E, E));  // coarsen K -> 1 tile
+  const auto c1 = TA::detail::g_strided_dgemm_ce_e_calls.load();
+  MixToT C1;
+  C1("i1,i3,i2,i4;a3i1i3,a4i2i4") =
+      (A("i1,i3,K;a3i1i3") * B("i2,i4,K;a4i2i4")).retile(tH, tM, tN, tK);
+  w.gop.fence();
+  const auto coarse = TA::detail::g_strided_dgemm_ce_e_calls.load() - c1;
+  BOOST_CHECK_GT(coarse, 0ul);
+  BOOST_CHECK_LT(coarse, fine);
+  BOOST_CHECK_SMALL(array_max_reldiff2(C1, C0), 1e-10);
+}
+
+// ===== Env-gated mixed auto-retile (TA_SUMMA_AUTO_RETILE) ===================
+// These cases drive the PRODUCTION path: a bare TA::einsum(...) (no .retile())
+// that, when the gate is on, auto-coarsens the plain operand's external + K
+// inside ContEngine::maybe_make_retile_plan_. The gate is flipped in-process
+// via the settable mixed_auto_retile() accessor; each case restores the prior
+// value (RAII) so it leaks no state to later tests.
+namespace {
+// RAII guard for the in-process auto-retile gate; restores the prior value.
+struct MixedGateGuard {
+  bool& flag;
+  bool prev;
+  explicit MixedGateGuard(bool on)
+      : flag(TiledArray::expressions::detail::mixed_auto_retile()),
+        prev(flag) {
+    flag = on;
+  }
+  ~MixedGateGuard() { flag = prev; }
+};
+}  // namespace
+
+// Gate OFF: a bare TA::einsum(...) (no .retile()) must be a STRICT no-op --
+// plan never activates (g_summa_plan_active_calls delta == 0) and the result
+// matches a plain einsum reference. Byte-for-byte identical to pre-gate TA.
+BOOST_AUTO_TEST_CASE(mixed_auto_retile_off_is_noop) {
+  auto& w = TA::get_default_world();
+  MixedGateGuard guard(false);  // gate OFF
+  const int E = 8, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  // reference (gate off): plain einsum, no auto-retile.
+  MixToT Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  const auto p0 = TiledArray::detail::g_summa_plan_active_calls.load();
+  MixToT Coff = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  // strict no-op: the retile plan never activates with the gate off.
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_plan_active_calls.load() - p0,
+                    0ul);
+  BOOST_CHECK_SMALL(array_max_reldiff2(Coff, Cref), 1e-10);
+}
+
+// Gate ON, plain-LEFT (T*ToT): the bare einsum auto-coarsens M+K (mirrors
+// mixed_T_x_ToT_coarsen_MK but with NO .retile()). Plan activates, the strided
+// scale GEMM fires on coarser/fewer GEMMs than the fine path, result matches.
+BOOST_AUTO_TEST_CASE(mixed_auto_retile_on_T_x_ToT) {
+  auto& w = TA::get_default_world();
+  const int E = 8, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  // fine reference + fine fire-count: gate OFF.
+  MixToT Cfine;
+  std::size_t fine_fires = 0;
+  {
+    MixedGateGuard off(false);
+    const auto f0 = mix_scale_fires();
+    Cfine = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+    w.gop.fence();
+    fine_fires = mix_scale_fires() - f0;
+  }
+
+  // auto path: gate ON, SAME bare einsum (no .retile()).
+  MixedGateGuard on(true);
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+  const auto f1 = mix_scale_fires();
+  MixToT Cauto =
+      TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+  const auto coarse_fires = mix_scale_fires() - f1;
+
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_GT(coarse_fires, 0ul);          // strided kernel fired
+  BOOST_CHECK_LT(coarse_fires, fine_fires);   // on coarser (fewer) GEMMs
+  BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cfine), 1e-10);
+}
+
+// Gate ON, plain-RIGHT (ToT*T): the bare einsum auto-coarsens N+K (mirrors
+// mixed_ToT_x_T_coarsen_NK but with NO .retile()). Drives the right-operand
+// (get_row) dense gather. Same invariants.
+BOOST_AUTO_TEST_CASE(mixed_auto_retile_on_ToT_x_T) {
+  auto& w = TA::get_default_world();
+  const int E = 8, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (i1,i2,m)
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (m,i3,k)
+  w.gop.fence();
+
+  MixToT Cfine;
+  std::size_t fine_fires = 0;
+  {
+    MixedGateGuard off(false);
+    const auto f0 = mix_scale_fires();
+    Cfine = TA::einsum(I("i1,i2,m;a4i1i2"), G("m,i3,k"), "i1,i2,i3,k;a4i1i2");
+    w.gop.fence();
+    fine_fires = mix_scale_fires() - f0;
+  }
+
+  MixedGateGuard on(true);
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+  const auto f1 = mix_scale_fires();
+  MixToT Cauto =
+      TA::einsum(I("i1,i2,m;a4i1i2"), G("m,i3,k"), "i1,i2,i3,k;a4i1i2");
+  w.gop.fence();
+  const auto coarse_fires = mix_scale_fires() - f1;
+
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_GT(coarse_fires, 0ul);
+  BOOST_CHECK_LT(coarse_fires, fine_fires);
+  BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cfine), 1e-10);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

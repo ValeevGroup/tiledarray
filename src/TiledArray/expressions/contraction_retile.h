@@ -34,6 +34,7 @@
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/tiled_range1.h>
 
+#include <array>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -268,6 +269,39 @@ inline std::vector<std::size_t> RetilePlan::u_result_ordinals(
     out.swap(next);
   }
   return out;
+}
+
+/// Coarsen a single-axis tiling \c U toward a target tile size (in elements):
+/// merge consecutive U tiles until each merged tile is at least \c target
+/// elements wide, always landing on an existing U boundary (the nesting
+/// requirement enforced by make_retile_plan). Semantics:
+///   - \c target == 0 OR \c target >= the axis extent => collapse to a SINGLE
+///     tile spanning the full extent (the maximal-coarsen / "full collapse"
+///     used by the env-gated mixed auto-retile, mixed_retile_config.h);
+///   - a degenerate \c U (already a single tile, i.e. <= 1 tile) => returned
+///     unchanged;
+///   - otherwise greedily merge runs >= \c target.
+/// Pure geometry (no World). Hoisted from the strided-gemm benches so the
+/// engine and the benches share one definition.
+inline TiledRange1 coarsen_tr1(const TiledRange1& U, std::size_t target) {
+  const std::vector<std::size_t> hm = detail::retile_hashmarks(U);
+  if (hm.size() <= 2) return U;  // empty or already a single tile
+  const std::size_t extent = hm.back() - hm.front();
+  if (target == 0 || target >= extent) {  // collapse to a single tile
+    std::array<std::size_t, 2> b{hm.front(), hm.back()};
+    return TiledRange1(b.begin(), b.end());
+  }
+  std::vector<std::size_t> b;
+  b.push_back(hm.front());
+  std::size_t run_lo = hm.front();
+  for (std::size_t i = 1; i < hm.size(); ++i) {
+    const std::size_t mark = hm[i];
+    if (mark - run_lo >= target || i + 1 == hm.size()) {
+      b.push_back(mark);
+      run_lo = mark;
+    }
+  }
+  return TiledRange1(b.begin(), b.end());
 }
 
 /// Derive the nesting plan for a contraction whose user operands are tiled by
