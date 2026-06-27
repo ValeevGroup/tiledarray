@@ -170,7 +170,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
 
   /// Set tensor value
 
-  /// This will store \c value at ordinal index \c i . Typically, this
+  /// This will store \c value at ordinal index \c i. Typically, this
   /// function should be called by a task function.
   /// \param i The index in the result space where value will be stored
   /// \param value The value to be stored at index \c i
@@ -185,7 +185,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
 
   /// Set tensor value with a future
 
-  /// This will store \c value at ordinal index \c i . Typically, this
+  /// This will store \c value at ordinal index \c i. Typically, this
   /// function should be called by a task function.
   /// \param i The index in the result space where value will be stored
   /// \param f The future value to be stored at index \c i
@@ -322,7 +322,7 @@ class DistEval {
 
   /// Copy constructor
 
-  /// Create a shallow copy of \c other .
+  /// Create a shallow copy of \c other.
   /// \param other The object to be copied.
   DistEval(const DistEval_& other) : pimpl_(other.pimpl_) {}
 

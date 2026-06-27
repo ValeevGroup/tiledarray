@@ -77,7 +77,7 @@ inline auto make_tile_contract_op(const IndexList& left_indices,
     //        TA_ASSERT(!all_indices.empty());
     //        btas::DEFAULT::index<std::int64_t> result;
     //        result.reserve(indices.size());
-    //        for (const auto& idx : indices) {
+    //        for (const auto& idx: indices) {
     //          auto pos = std::find(all_indices.begin(), all_indices.end(),
     //          idx) -
     //                     all_indices.begin();
@@ -190,10 +190,10 @@ struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result>> {
 
 /// This implements any expression encoded with the multiplication operator.
 /// This includes Hadamard product, e.g.
-/// \code (c("i,j")=)a("i,j")*b("i,j") \endcode ,
-/// and pure contractions, e.g. \code (c("i,j")=)a("i,k")*b("k,j") \endcode .
+/// \code (c("i,j")=)a("i,j")*b("i,j") \endcode,
+/// and pure contractions, e.g. \code (c("i,j")=)a("i,k")*b("k,j") \endcode.
 /// \internal mixed Hadamard-contraction case, e.g.
-/// \code c("i,j,l")=a("i,l,k")*b("j,l,k") \endcode ,
+/// \code c("i,j,l")=a("i,l,k")*b("j,l,k") \endcode,
 /// is not supported since
 /// this requires that the result labels are assigned by user (currently they
 /// are computed by this engine)

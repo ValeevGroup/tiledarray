@@ -1498,7 +1498,7 @@ BOOST_AUTO_TEST_CASE(hce_e_contraction_arena_matches_owning) {
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
 
-// Regime A (NO outer-external index): outer h,i = Hadamard (both operands +
+// (NO outer-external index): outer h,i = Hadamard (both operands +
 // result), outer k = contracted (both operands, NOT in result), inner a1
 // (left-only) x a2 (right-only) => inner OUTER-PRODUCT. h folds to nbatch=2,
 // k is multi-tile {2,3}. The arena (view) path must match the owning path.
@@ -1640,7 +1640,7 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_arena_matches_owning) {
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
 
-// Task 3.1 differential: on EXACTLY the same arena inputs, the strided reroute
+// differential: on EXACTLY the same arena inputs, the strided reroute
 // and the legacy per-cell path must produce identical results. Builds ONE
 // (a,b) arena pair (same construction as regime_a_hce_e_arena_matches_owning),
 // runs the SAME einsum twice flipping regime_a_strided_disabled(), and compares
@@ -1754,7 +1754,7 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_strided_equals_percell) {
   BOOST_CHECK_EQUAL(elements_compared, static_cast<std::size_t>(H * I) * P * Q);
 }
 
-// Task 3.3 Step 1: non-canonical result inner order (a2,a1 instead of a1,a2).
+// Step 1: non-canonical result inner order (a2,a1 instead of a1,a2).
 // Identical operands/fills to regime_a_hce_e_arena_matches_owning, but the
 // result inner is reversed, firing the result inner-permute hoist (do_perm.C)
 // inside the strided path. Arena and owning both go through the same DSL, so
@@ -1950,7 +1950,7 @@ BOOST_AUTO_TEST_CASE(hce_e_uses_strided_path) {
   BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
 }
 
-// Regime A (hc+e) firing witness: same shape/fill as
+// (hc+e) firing witness: same shape/fill as
 // regime_a_hce_e_arena_matches_owning; the within-tile contraction over k must
 // be routed through the strided ce+e core (counter > 0).
 BOOST_AUTO_TEST_CASE(regime_a_hce_e_uses_strided_path) {

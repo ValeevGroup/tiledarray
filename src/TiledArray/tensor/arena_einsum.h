@@ -262,9 +262,9 @@ inline void phase_stop(std::atomic<std::uint64_t>& acc,
 /// ---------------------------------------------------------------------------
 /// Why did a ce+ce run fall back to scalar GEMV? Diagnose the rejected run by
 /// re-walking it (gate order: presence -> uniform size -> constant stride).
-///   1 = absent   : a cell in the run is missing (sparsity / screened out)
+///   1 = absent: a cell in the run is missing (sparsity / screened out)
 ///   2 = nonuniform: present, but inner-cell sizes differ along the run
-///   3 = stride    : present + uniform, but cells are NOT at a constant
+///   3 = stride: present + uniform, but cells are NOT at a constant
 ///                   page-jump-free stride (the strided-DGEMM precondition)
 ///   0 = run looks clean (so the rejection came from the OTHER operand run)
 inline std::atomic<std::uint64_t> g_fall_runs_ce_ce{0};
@@ -1242,7 +1242,7 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
         }
         phase_stop(g_check_ns_ce_e, _check_t0);
         if (clean) {
-          // C(P x Q) += factor * Lmat(P x K) . Rmat^T... realized as
+          // C(P x Q) += factor * Lmat(P x K). Rmat^T... realized as
           // gemm(Transpose, NoTranspose): A=K x P slab, B=K x Q slab.
           {
             ScopedShapedGemmTimer _gt(g_gemm_ns_ce_e, g_gemm_calls_ce_e,
@@ -1531,7 +1531,7 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
           const std::size_t Mseg = end - mu;
           const long ldR = (Mseg > 1) ? sR : Q;
           const long ldC = (Mseg > 1) ? sC : P;
-          // C(Mseg x P) += factor * R̃(Mseg x Q) · op(L) ; contract a_4(=Q).
+          // C(Mseg x P) += factor * R̃(Mseg x Q) · op(L); contract a_4(=Q).
           // op(L) is (a4,a1)=Q x P: canonical L is P x Q used transposed
           // (transb=T, ldb=Q); a matrix_transpose left inner is already Q x P,
           // fed transb=N with ldb=P (zero-copy). Threaded identically per
@@ -1547,7 +1547,7 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
                 /*K=*/static_cast<integer>(Q), factor,
                 /*A=*/rstart, /*lda=*/static_cast<integer>(ldR),
                 /*B=*/Lk,
-                /*ldb=*/static_cast<integer>(left_inner_transposed ? P : Q),
+                /*ldb=*/static_cast<integer>(left_inner_transposed ? P: Q),
                 /*beta=*/1.0,
                 /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
           }
@@ -1767,7 +1767,7 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
           const std::size_t Mseg = end - m;
           const long ldA = (Mseg > 1) ? sA : Q;
           const long ldC = (Mseg > 1) ? sC : P;
-          // C(Mseg x P) += factor * L_tilde(Mseg x Q) . op(R) ; contract a4(=Q).
+          // C(Mseg x P) += factor * L_tilde(Mseg x Q). op(R); contract a4(=Q).
           // op(R) is (a4,b1)=Q x P: canonical R is Q x P used directly
           // (transb=N, ldb=P); a matrix_transpose right inner is stored
           // (b1,a4)=P x Q, fed transb=T with ldb=Q (zero-copy). Threaded
@@ -1783,7 +1783,7 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
                 /*K=*/static_cast<integer>(Q), factor,
                 /*A=*/lstart, /*lda=*/static_cast<integer>(ldA),
                 /*B=*/Rk,
-                /*ldb=*/static_cast<integer>(right_inner_transposed ? Q : P),
+                /*ldb=*/static_cast<integer>(right_inner_transposed ? Q: P),
                 /*beta=*/1.0,
                 /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
           }

@@ -99,8 +99,8 @@ To clone_or_cast(From&& f) {
 /// on by the SAME env var TA_GEMM_TIMING=1 (single master switch); takes no
 /// clock samples and touches no atomics when unset (zero production overhead).
 /// Two regimes are tracked separately:
-///   [0] tot_x_t : left ToT x plain scalar, "m,k;a * k,n -> m,n;a" (per-row m)
-///   [1] t_x_tot : plain scalar x right ToT, "m,k * k,n;a -> m,n;a" (per-col n)
+///   [0] tot_x_t: left ToT x plain scalar, "m,k;a * k,n -> m,n;a" (per-row m)
+///   [1] t_x_tot: plain scalar x right ToT, "m,k * k,n;a -> m,n;a" (per-col n)
 /// Per-regime totals print to stderr at process exit.
 inline bool scale_gemm_timing_enabled() {
   static const bool enabled = [] {
@@ -473,7 +473,7 @@ class Tensor {
   /// copy constructor
 
   /// \param[in] other an object to copy data from
-  /// \post `*this` is a shallow copy of \p other ,
+  /// \post `*this` is a shallow copy of \p other,
   /// i.e. `*this == other && this->data()==other.data()`
   Tensor(const Tensor& other)
       : range_(other.range_), nbatch_(other.nbatch_), data_(other.data_) {
@@ -700,7 +700,7 @@ class Tensor {
   /// \tparam T1 A tensor type
   /// \tparam Op A unary callable
   /// \param other The tensor argument
-  /// \param op Unary operation that can be invoked on elements of \p other ;
+  /// \param op Unary operation that can be invoked on elements of \p other;
   ///        if it is not, it will be "threaded" over \p other via `tensor_op`
   template <typename T1, typename Op,
             typename std::enable_if_t<
@@ -899,7 +899,7 @@ class Tensor {
   /// copy assignment operator
 
   /// \param[in] other an object to copy data from
-  /// \post `*this` is a shallow copy of \p other ,
+  /// \post `*this` is a shallow copy of \p other,
   /// i.e. `*this == other && this->data()==other.data()`
   Tensor& operator=(const Tensor& other) {
 #ifdef TA_TENSOR_MEM_TRACE
@@ -982,7 +982,7 @@ class Tensor {
 
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
-  /// \return Const reference to the element at position \c ord .
+  /// \return Const reference to the element at position \c ord.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
   /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
@@ -1003,7 +1003,7 @@ class Tensor {
 
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
-  /// \return Reference to the element at position \c ord .
+  /// \return Reference to the element at position \c ord.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
   /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
@@ -1024,7 +1024,7 @@ class Tensor {
 
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
-  /// \return Const reference to the element at position \c ord .
+  /// \return Const reference to the element at position \c ord.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
   /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
@@ -1040,7 +1040,7 @@ class Tensor {
 
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
-  /// \return Reference to the element at position \c ord .
+  /// \return Reference to the element at position \c ord.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
   /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
@@ -1056,7 +1056,7 @@ class Tensor {
 
   /// \tparam Index An integral range type
   /// \param[in] i an index
-  /// \return Const reference to the element at position \c i .
+  /// \return Const reference to the element at position \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <typename Index,
@@ -1073,7 +1073,7 @@ class Tensor {
 
   /// \tparam Index An integral range type
   /// \param[in] i an index
-  /// \return Reference to the element at position \c i .
+  /// \return Reference to the element at position \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <typename Index,
@@ -1090,7 +1090,7 @@ class Tensor {
 
   /// \tparam Integer An integral type
   /// \param[in] i an index
-  /// \return Const reference to the element at position \c i .
+  /// \return Const reference to the element at position \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <typename Integer,
@@ -1107,7 +1107,7 @@ class Tensor {
 
   /// \tparam Integer An integral type
   /// \param[in] i an index
-  /// \return Reference to the element at position \c i .
+  /// \return Reference to the element at position \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <typename Integer,
@@ -1124,7 +1124,7 @@ class Tensor {
 
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
-  /// \return Const reference to the element at position \c ord .
+  /// \return Const reference to the element at position \c ord.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
   /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
@@ -1145,7 +1145,7 @@ class Tensor {
 
   /// \tparam Ordinal an integer type that represents an ordinal
   /// \param[in] ord an ordinal index
-  /// \return Reference to the element at position \c ord .
+  /// \return Reference to the element at position \c ord.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p ord is
   /// included in the range, and `nbatch()==1`
   template <typename Ordinal,
@@ -1166,7 +1166,7 @@ class Tensor {
 
   /// \tparam Index An integral range type
   /// \param[in] i an index
-  /// \return Const reference to the element at position \c i .
+  /// \return Const reference to the element at position \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <typename Index,
@@ -1183,7 +1183,7 @@ class Tensor {
 
   /// \tparam Index An integral range type
   /// \param[in] i an index
-  /// \return Reference to the element at position \c i .
+  /// \return Reference to the element at position \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <typename Index,
@@ -1200,7 +1200,7 @@ class Tensor {
 
   /// \tparam Integer An integral type
   /// \param[in] i an index
-  /// \return Const reference to the element at position \c i .
+  /// \return Const reference to the element at position \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <typename Integer,
@@ -1217,7 +1217,7 @@ class Tensor {
 
   /// \tparam Integer An integral type
   /// \param[in] i an index
-  /// \return Reference to the element at position \c i .
+  /// \return Reference to the element at position \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <typename Integer,
@@ -1233,9 +1233,9 @@ class Tensor {
   /// Const element accessor
 
   /// \tparam Index an integral list ( see TiledArray::detail::is_integral_list
-  /// )
+  ///)
   /// \param[in] i an index \return Const reference to the element at position
-  /// \c i .
+  /// \c i.
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <
@@ -1261,9 +1261,8 @@ class Tensor {
   /// Element accessor
 
   /// \tparam Index an integral list ( see TiledArray::detail::is_integral_list
-  /// )
+  ///)
   /// \param[in] i an index \return Reference to the element at position \c i
-  /// .
   /// \note This asserts (using TA_ASSERT) that this is not empty, \p i is
   /// included in the range, and `nbatch()==1`
   template <
@@ -1374,7 +1373,7 @@ class Tensor {
 
   /// \return \c true if this tensor contains no
   ///         data, otherwise \c false.
-  /// \note Empty Tensor is defaul_ish_ , i.e. it is *equal* to
+  /// \note Empty Tensor is defaul_ish_, i.e. it is *equal* to
   ///       a default-constructed Tensor
   ///       (`this->empty()` is equivalent to `*this == Tensor{}`),
   ///       but is not identical
@@ -1593,7 +1592,7 @@ class Tensor {
   /// @}
 
   // clang-format off
-  /// Constructs a view of the block defined by its \p bounds .
+  /// Constructs a view of the block defined by its \p bounds.
 
   /// Examples of using this:
   /// \code
@@ -1618,7 +1617,7 @@ class Tensor {
   ///   auto tview3 = t.block(ranges::views::zip(lobounds, upbounds));
   ///   assert(tview0 == tview3);
   /// \endcode
-  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
+  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v)
   /// \param bounds The block bounds
   /// \return a {const,mutable} view of the block defined by its \p bounds
   /// \throw TiledArray::Exception When the size of \p lower_bound is not
@@ -1645,7 +1644,7 @@ class Tensor {
   /// @}
 
   // clang-format off
-  /// Constructs a view of the block defined by its \p bounds .
+  /// Constructs a view of the block defined by its \p bounds.
 
   /// Examples of using this:
   /// \code
@@ -1677,7 +1676,7 @@ class Tensor {
   /// @}
 
   // clang-format off
-  /// Constructs a view of the block defined by a TiledArray::Range .
+  /// Constructs a view of the block defined by a TiledArray::Range.
 
   /// Examples of using this:
   /// \code
@@ -1686,7 +1685,7 @@ class Tensor {
   ///
   ///   auto tview = t.block(TiledArray::Range(lobounds, upbounds));
   /// \endcode
-  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
+  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v)
   /// \param bounds The block bounds
   /// \return a {const,mutable} view of the block defined by its \p bounds
   /// \throw TiledArray::Exception When the size of \p lower_bound is not
@@ -3714,10 +3713,10 @@ class Tensor {
 
   /// Perform an element-wise reduction of the data by
   /// executing <tt>join_op(result, reduce_op(*this[i]))</tt> for each
-  /// \c i in the index range of \c this . \c result is initialized to \c
-  /// identity . If HAVE_INTEL_TBB is defined, and this is a contiguous tensor,
+  /// \c i in the index range of \c this. \c result is initialized to \c
+  /// identity. If HAVE_INTEL_TBB is defined, and this is a contiguous tensor,
   /// the reduction will be executed in an undefined order, otherwise will
-  /// execute in the order of increasing \c i .
+  /// execute in the order of increasing \c i.
   /// \tparam ReduceOp The reduction operation type
   /// \tparam JoinOp The join operation type
   /// \tparam T a type that can be used as argument to ReduceOp
@@ -3737,10 +3736,10 @@ class Tensor {
 
   /// Perform an element-wise binary reduction of the data of \c this and \c
   /// other by executing <tt>join_op(result, reduce_op(*this[i], other[i]))</tt>
-  /// for each \c i in the index range of \c this . \c result is initialized to
-  /// \c identity . If HAVE_INTEL_TBB is defined, and this is a contiguous
+  /// for each \c i in the index range of \c this. \c result is initialized to
+  /// \c identity. If HAVE_INTEL_TBB is defined, and this is a contiguous
   /// tensor, the reduction will be executed in an undefined order, otherwise
-  /// will execute in the order of increasing \c i .
+  /// will execute in the order of increasing \c i.
   /// \tparam Right The right-hand argument tensor type
   /// \tparam ReduceOp The reduction operation type
   /// \tparam JoinOp The join operation type

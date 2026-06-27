@@ -257,7 +257,7 @@ BOOST_AUTO_TEST_CASE(ce_e_ragged_cell_still_correct_inline) {
   for (std::size_t o = 0; o < L.range().volume(); ++o)
     for (std::size_t e = 0; e < L.data()[o].size(); ++e) L.data()[o].data()[e] = 1.0 + e;
   Outer R = make_filled(TA::Range{N, K}, [&](std::size_t){return TA::Range{Q};}, 2.0);
-  // result cell sizes: (0,0) -> 3*Q ; (1,0) -> only well-defined when P uniform;
+  // result cell sizes: (0,0) -> 3*Q; (1,0) -> only well-defined when P uniform;
   // for the ragged row use P from k=0 (=3) so the fallback's pp*qq guard holds.
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{M, N}, 1, [&](std::size_t o){ return TA::Range{3, Q}; });
@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(ce_e_fires_clean_path) {
 }
 #endif
 
-// Regime-A hc+e calling convention: M=N=1, K=vol, kernel-nbatch == Hadamard
+// hc+e calling convention: M=N=1, K=vol, kernel-nbatch == Hadamard
 // batch. Result tile is (Range{batch}, nbatch=1); presented to the kernel as
 // (Range{1}, nbatch=batch) via a storage-aliasing reshape. Two operand
 // "tiles" accumulate into the SAME result with beta=1 (cross-tile reduction).
@@ -431,7 +431,7 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_two_tiles) {
 #ifdef TA_STRIDED_DGEMM_COUNT
   TA::detail::g_strided_dgemm_ce_e_calls.store(0);
 #endif
-  // Regime-A call: present C as (Range{1}, nbatch=NB), M=N=1, K=vol, per tile.
+  // call: present C as (Range{1}, nbatch=NB), M=N=1, K=vol, per tile.
   auto cview = C.reshape(TA::Range{1}, NB);
   TA::detail::arena_strided_dgemm_ce_e(cview, L0, R0, /*M=*/std::size_t{1},
                                        /*N=*/std::size_t{1}, /*K=*/VOL0,
@@ -465,7 +465,7 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_two_tiles) {
 #endif
 }
 
-// Task 3.2 (tile-level fallback): regime-A hc+e convention (M=N=1, K=vol>1)
+// (tile-level fallback): regime-A hc+e convention (M=N=1, K=vol>1)
 // with a RAGGED left operand so the kernel's clean-check rejects and the
 // inline per-k fallback runs for the (single) result cell.
 //
@@ -532,7 +532,7 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_scattered_falls_back) {
   // correctness of the fallback is.
 }
 
-// Task 3.3 Step 2a: VOL=1 edge -> K=1, a single rank-1 outer product per batch.
+// Step 2a: VOL=1 edge -> K=1, a single rank-1 outer product per batch.
 // One operand tile (one strided call). Hand reference + (count build) exactly
 // NB DGEMMs (one per batch, one tile, clean).
 BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_vol1) {
@@ -577,7 +577,7 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_vol1) {
 #endif
 }
 
-// Task 3.3 Step 2b: P=1 and Q=1 inner-extent edges -> the rank-1 outer product
+// Step 2b: P=1 and Q=1 inner-extent edges -> the rank-1 outer product
 // degenerates to a scalar*scalar per k. Two operand tiles (like R1), cross-tile
 // beta=1; (count build) == 2*NB DGEMMs (one per tile per batch, all clean).
 BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_p1_q1) {
