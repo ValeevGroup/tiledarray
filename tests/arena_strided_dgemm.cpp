@@ -41,6 +41,43 @@ std::vector<double> ref_ce_e(const Outer& L, const Outer& R, std::size_t m,
   return c;
 }
 
+// Sparsity-aware reference for arena_strided_dgemm_ce_e in canonical orientation
+// (left_op=NoTranspose: L outer (m,k) m slow, k fast; right_op=Transpose: R
+// outer (n,k) n slow, k fast). Per the kernel: result cell C[b,m,n] (size P*Q,
+// row-major p*Q+q) accumulates the rank-1 outer product over every present,
+// size-matched k:
+//   C[m,n](p,q) = factor * sum_{k: present & sized} L[m,k](p) * R[n,k](q),
+// skipping any k where L[m,k] or R[n,k] is absent, or where L[m,k].size()!=P or
+// R[n,k].size()!=Q (the kernel's per-k size guard). out[(b*M+m)*N+n] holds the
+// length-(P*Q) expected vector; an empty vector means the cell got no
+// contribution (a hole stays absent; a present cell stays at its zero-init).
+std::vector<std::vector<double>> ref_ce_e_sparse(
+    const Outer& L, const Outer& R, std::size_t M, std::size_t N,
+    std::size_t K, std::size_t P, std::size_t Q, double factor,
+    std::size_t nbatch = 1) {
+  std::vector<std::vector<double>> out(nbatch * M * N);
+  for (std::size_t b = 0; b < nbatch; ++b)
+    for (std::size_t m = 0; m < M; ++m)
+      for (std::size_t n = 0; n < N; ++n) {
+        std::vector<double> c(P * Q, 0.0);
+        bool any = false;
+        for (std::size_t k = 0; k < K; ++k) {
+          const Inner& lk = L.data()[b * M * K + m * K + k];
+          const Inner& rk = R.data()[b * N * K + n * K + k];
+          if (!lk || !rk) continue;
+          if (lk.size() != P || rk.size() != Q) continue;  // per-k size guard
+          const double* lp = lk.data();
+          const double* rp = rk.data();
+          for (std::size_t p = 0; p < P; ++p)
+            for (std::size_t q = 0; q < Q; ++q)
+              c[p * Q + q] += factor * lp[p] * rp[q];
+          any = true;
+        }
+        out[(b * M + m) * N + n] = any ? c : std::vector<double>{};
+      }
+  return out;
+}
+
 // C[mu](a1) = factor * sum_k sum_{a4} L[k](a1,a4) * R[mu,k](a4)
 // L outer {nK} inner {P,Q}; R outer {Mmu,nK} (mu slow, k fast) inner {Q};
 // C outer {Mmu} inner {P}.  (Mo==1 reference.)
@@ -1106,6 +1143,32 @@ void check_ce_ce(const Outer& C, const std::vector<std::vector<double>>& ref,
       }
 }
 
+// ce+e analogue of check_ce_ce: each result cell C[b,m,n] is a length-(P*Q)
+// vector. A present reference vector must match to 1e-12; an empty reference
+// means no contribution -- a hole stays absent, a present cell stays zero.
+// ordinal of C[b,m,n] = (b*M+m)*N + n.
+void check_ce_e(const Outer& C, const std::vector<std::vector<double>>& ref,
+                std::size_t nbatch, std::size_t M, std::size_t N,
+                std::size_t P, std::size_t Q) {
+  for (std::size_t b = 0; b < nbatch; ++b)
+    for (std::size_t m = 0; m < M; ++m)
+      for (std::size_t n = 0; n < N; ++n) {
+        const std::size_t ord = (b * M + m) * N + n;
+        const Inner& cell = C.data()[ord];
+        const std::vector<double>& want = ref[ord];
+        if (want.empty()) {
+          if (cell)
+            for (std::size_t e = 0; e < cell.size(); ++e)
+              BOOST_CHECK_SMALL(cell.data()[e], 1e-12);
+          continue;
+        }
+        BOOST_REQUIRE(bool(cell));
+        BOOST_REQUIRE_EQUAL(cell.size(), P * Q);
+        for (std::size_t e = 0; e < P * Q; ++e)
+          BOOST_CHECK_CLOSE(cell.data()[e], want[e], 1e-12);
+      }
+}
+
 // Zero-fill the present cells of an already-built result tile (the kernel
 // accumulates with beta=1, so C must start at zero).
 void zero_result(Outer& C, std::size_t ncells) {
@@ -2107,6 +2170,231 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_killswitch_matches_left) {
     for (std::size_t a1 = 0; a1 < Cs.data()[o].size(); ++a1)
       BOOST_CHECK_CLOSE(Cs.data()[o].data()[a1], Cp.data()[o].data()[a1], 1e-12);
   }
+}
+
+// ===========================================================================
+// Per-k SEGMENTED strided-DGEMM tests for the ce+e kernel (E1-E5). The kernel
+// now walks the contracted axis K of each result cell (m,n) and emits ONE GEMM
+// per maximal contiguous run of present, size-matched, uniformly-strided k
+// cells (riding the run into BLAS K, beta=1 across segments), skipping holes;
+// a genuine size mismatch at one k drops just that k to the inline rank-1 path.
+// A hole anywhere in the k-run used to collapse the WHOLE cell to per-cell
+// rank-1; these tests pin that holey runs still ride strided GEMMs and stay
+// exact. Canonical orientation (left_op=NoTranspose L outer (m,k); right_op=
+// Transpose R outer (n,k), n slow k fast), matching ref_ce_e/ref_ce_e_sparse.
+// ===========================================================================
+
+// E1 (crux): a hole at k=1 on BOTH operands (K=4) splits each (m,n) k-run into
+// segments {0} and {2,3} -> per-k segmentation still fires strided GEMMs for the
+// present segments instead of dropping the whole cell to rank-1. Result equals
+// the per-cell reference (skipping the hole); under TA_STRIDED_DGEMM_COUNT the
+// fire count == 2 segments per (m,n) (NOT zero, i.e. no whole-cell fallback).
+BOOST_AUTO_TEST_CASE(ce_e_seg_holey_k_run_fires_and_is_correct) {
+  namespace blas = TA::math::blas;
+  const std::size_t M = 2, N = 1, K = 4, P = 3, Q = 4;
+  // L outer (M,K) ord=m*K+k; hole at every (m,k=1). R outer (N,K) ord=n*K+k;
+  // hole at every (n,k=1). The shared hole at k=1 is a clean skip on both sides.
+  auto lhole = [&](std::size_t o) { return (o % K) == 1; };
+  auto rhole = [&](std::size_t o) { return (o % K) == 1; };
+  Outer L = make_sparse(TA::Range{M, K}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, lhole, 1.0);
+  Outer R = make_sparse(TA::Range{N, K}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, N}, 1, [&](std::size_t){ return TA::Range{P, Q}; });
+  zero_result(C, M * N);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                       blas::Transpose, 1.0);
+  auto ref = ref_ce_e_sparse(L, R, M, N, K, P, Q, 1.0);
+  check_ce_e(C, ref, 1, M, N, P, Q);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // k=1 hole splits each (m,n) into segments {0} and {2,3} => 2 strided GEMMs
+  // per cell, none reverting to a whole-cell rank-1 fallback. M*N cells => 4.
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+                    std::size_t{2} * M * N);
+#endif
+}
+
+// E2 (no regression): a fully-dense k-run yields exactly ONE full-K segment per
+// (m,n) == today's single clean GEMM. Pins both correctness and the one-GEMM-per
+// -cell firing count, multi-batch.
+BOOST_AUTO_TEST_CASE(ce_e_seg_dense_one_gemm_per_cell) {
+  namespace blas = TA::math::blas;
+  const std::size_t M = 2, N = 3, K = 4, P = 3, Q = 4, NB = 2;
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, K}, NB, [&](std::size_t){ return TA::Range{P}; });
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{N, K}, NB, [&](std::size_t){ return TA::Range{Q}; });
+  for (std::size_t o = 0; o < NB * M * K; ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  for (std::size_t o = 0; o < NB * N * K; ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, N}, NB, [&](std::size_t){ return TA::Range{P, Q}; });
+  zero_result(C, NB * M * N);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                       blas::Transpose, 1.0);
+  auto ref = ref_ce_e_sparse(L, R, M, N, K, P, Q, 1.0, NB);
+  check_ce_e(C, ref, NB, M, N, P, Q);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // dense -> exactly one full-run segment per (b,m,n).
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(), NB * M * N);
+#endif
+}
+
+// E3: size mismatch at ONE k -- L[m,k=2] has inner size P+1 (others P). That k
+// cannot join a P-segment, so the walker drops it to the inline rank-1 path
+// (where the size guard P+1 != P*Q/Q makes it contribute nothing), while the
+// rest of the k-run (k=0,1,3) still rides strided GEMMs. Segments per (m,n):
+// {0,1} then a mismatch at k=2 then {3} => 2 strided GEMMs per cell.
+BOOST_AUTO_TEST_CASE(ce_e_seg_size_mismatch_at_one_k) {
+  namespace blas = TA::math::blas;
+  const std::size_t M = 2, N = 1, K = 4, P = 3, Q = 4;
+  // L[m,k=2] (ord m*K+2) ragged size P+1; everything else uniform.
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, K}, 1, [&](std::size_t o) {
+        return ((o % K) == 2) ? TA::Range{P + 1} : TA::Range{P};
+      });
+  for (std::size_t o = 0; o < L.range().volume(); ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  Outer R = make_filled(TA::Range{N, K},
+                        [&](std::size_t){ return TA::Range{Q}; }, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, N}, 1, [&](std::size_t){ return TA::Range{P, Q}; });
+  zero_result(C, M * N);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                       blas::Transpose, 1.0);
+  // Reference: skip k=2 (size P+1 != P). ref_ce_e_sparse applies the same per-k
+  // size guard (L[m,k].size()!=P -> skipped).
+  auto ref = ref_ce_e_sparse(L, R, M, N, K, P, Q, 1.0);
+  check_ce_e(C, ref, 1, M, N, P, Q);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // k=2 is the lone rank-1 (contributes nothing); the strided segments are
+  // {0,1} and {3} => 2 per (m,n).
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+                    std::size_t{2} * M * N);
+#endif
+}
+
+// E4: holes that leave a single present k (k-run = one present segment of K=1)
+// with all other k absent on both operands -> one M=P,N=Q,K=1 GEMM per (m,n).
+// Pins the Kseg==1 (rank-1-via-GEMM) segment path and that the firing count is
+// the segment count, not zero. holes at k in {0,2,3}; present only k=1.
+BOOST_AUTO_TEST_CASE(ce_e_seg_single_present_k) {
+  namespace blas = TA::math::blas;
+  const std::size_t M = 1, N = 2, K = 4, P = 3, Q = 4;
+  auto lhole = [&](std::size_t o) { return (o % K) != 1; };
+  auto rhole = [&](std::size_t o) { return (o % K) != 1; };
+  Outer L = make_sparse(TA::Range{M, K}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, lhole, 1.0);
+  Outer R = make_sparse(TA::Range{N, K}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, N}, 1, [&](std::size_t){ return TA::Range{P, Q}; });
+  zero_result(C, M * N);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                       blas::Transpose, 1.0);
+  auto ref = ref_ce_e_sparse(L, R, M, N, K, P, Q, 1.0);
+  check_ce_e(C, ref, 1, M, N, P, Q);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // exactly one present k => one Kseg=1 GEMM per (m,n).
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+                    std::size_t{1} * M * N);
+#endif
+}
+
+// E5: holey k-run with a non-unit factor (the T9 analogue for ce+e). Hole at
+// k=2 on both operands (K=5) -> segments {0,1} and {3,4}; factor=2.5 must scale
+// every present-k contribution. 2 strided GEMMs per (m,n).
+BOOST_AUTO_TEST_CASE(ce_e_seg_holey_applies_factor) {
+  namespace blas = TA::math::blas;
+  const std::size_t M = 2, N = 2, K = 5, P = 3, Q = 4;
+  const double factor = 2.5;
+  auto lhole = [&](std::size_t o) { return (o % K) == 2; };
+  auto rhole = [&](std::size_t o) { return (o % K) == 2; };
+  Outer L = make_sparse(TA::Range{M, K}, 1,
+                        [&](std::size_t){ return TA::Range{P}; }, lhole, 1.0);
+  Outer R = make_sparse(TA::Range{N, K}, 1,
+                        [&](std::size_t){ return TA::Range{Q}; }, rhole, 2.0);
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, N}, 1, [&](std::size_t){ return TA::Range{P, Q}; });
+  zero_result(C, M * N);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                       blas::Transpose, factor);
+  auto ref = ref_ce_e_sparse(L, R, M, N, K, P, Q, factor);
+  check_ce_e(C, ref, 1, M, N, P, Q);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // k=2 hole splits into {0,1} and {3,4} => 2 strided GEMMs per (m,n).
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+                    std::size_t{2} * M * N);
+#endif
+}
+
+// E6: product-preserving but TRANSPOSED inner shape at one k (the percell_k
+// shape-guard regression). Dominant cell shape is (P,Q)=(2,3); the result cell
+// has size P*Q=6 (factorable). One k (k=1) carries L[m,1] of size Q=3 and
+// R[n,1] of size P=2, so L.size()*R.size() == 3*2 == 6 == P*Q (the OLD volume
+// guard `Cc.size()==pp*qq` would ACCEPT it) yet (3,2) != (P,Q)=(2,3). The
+// segment walker and ref_ce_e_sparse both SKIP that k (shape mismatch), so the
+// fixed percell_k must contribute NOTHING for k=1 (the SHAPE guard). Pre-fix
+// (volume guard) this k accumulated a transposed 3x2 outer product into the 2x3
+// cell with a c[p*qq+q] layout -> a silent wrong number. K=3, segments {0} and
+// {2} => 2 strided GEMMs per (m,n); k=1 is the lone rank-1 (now a no-op).
+BOOST_AUTO_TEST_CASE(ce_e_seg_transposed_shape_at_one_k_skipped) {
+  namespace blas = TA::math::blas;
+  const std::size_t M = 2, N = 2, K = 3, P = 2, Q = 3;
+  // L[m,k]: size P, except L[m,k=1] has size Q (the transposed bad k).
+  Outer L = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, K}, 1, [&](std::size_t o) {
+        return ((o % K) == 1) ? TA::Range{Q} : TA::Range{P};
+      });
+  for (std::size_t o = 0; o < L.range().volume(); ++o)
+    for (std::size_t e = 0; e < L.data()[o].size(); ++e)
+      L.data()[o].data()[e] = 1.0 + 0.01 * o + e;
+  // R[n,k]: size Q, except R[n,k=1] has size P (the transposed bad k).
+  Outer R = TA::detail::arena_outer_init<Outer>(
+      TA::Range{N, K}, 1, [&](std::size_t o) {
+        return ((o % K) == 1) ? TA::Range{P} : TA::Range{Q};
+      });
+  for (std::size_t o = 0; o < R.range().volume(); ++o)
+    for (std::size_t e = 0; e < R.data()[o].size(); ++e)
+      R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
+  Outer C = TA::detail::arena_outer_init<Outer>(
+      TA::Range{M, N}, 1, [&](std::size_t){ return TA::Range{P, Q}; });
+  zero_result(C, M * N);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                       blas::Transpose, 1.0);
+  // Reference SKIPS k=1 (L[m,1].size()==Q!=P, R[n,1].size()==P!=Q): only k=0,2
+  // (each (P,Q)-shaped) contribute. The fixed kernel must match this; the
+  // pre-fix volume-guarded percell_k would add k=1's transposed outer product.
+  auto ref = ref_ce_e_sparse(L, R, M, N, K, P, Q, 1.0);
+  check_ce_e(C, ref, 1, M, N, P, Q);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // segments {0} and {2}; k=1 is the lone rank-1 (no-op) => 2 GEMMs per (m,n).
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+                    std::size_t{2} * M * N);
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

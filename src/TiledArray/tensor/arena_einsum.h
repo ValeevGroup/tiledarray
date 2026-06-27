@@ -1212,54 +1212,71 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
       for (std::size_t n = 0; n < N; ++n) {
         auto& Cc = cc[cbase + m * N + n];
         if (!Cc) continue;
+        // Per-k SEGMENT walker (replaces the old all-or-nothing clean gate).
+        // The contracted axis K rides into BLAS K. For this result cell (m,n),
+        // walk k and emit ONE GEMM per maximal contiguous run of present,
+        // size-matched (L[m,k].size==P, R[k,n].size==Q), uniformly-strided
+        // (constant inter-k stride ldA on L, ldB on R) k cells; beta=1
+        // accumulates across segments. Skip absent (hole) k. A genuine size
+        // mismatch at a given k drops just THAT k to the inline rank-1 path
+        // (each k touched exactly once -> no double count). A fully-dense
+        // k-run yields exactly ONE full-K segment == the old clean GEMM
+        // (T1 regression: byte-equivalent result and one GEMM per (m,n)).
         const auto _check_t0 = phase_start();
-        const auto& l0 = lc[lbase + a_off(m, 0)];
-        const auto& r0 = rc[rbase + b_off(0, n)];
-        long P = l0 ? static_cast<long>(l0.size()) : -1;
-        long Q = r0 ? static_cast<long>(r0.size()) : -1;
-        bool clean = (P > 0 && Q > 0 && static_cast<long>(Cc.size()) == P * Q);
-        // presence-first: verify every k-cell present + uniform size BEFORE
-        // any .data() pointer subtraction.
-        for (std::size_t k = 0; clean && k < K; ++k) {
+        // Discover P from the first present L[m,k] and Q from the first present
+        // R[k,n] (the run's leading k may be a hole). The result cell fixes P*Q.
+        long P = -1, Q = -1;
+        for (std::size_t k = 0; k < K; ++k) {
           const auto& lk = lc[lbase + a_off(m, k)];
+          if (lk) {
+            P = static_cast<long>(lk.size());
+            break;
+          }
+        }
+        for (std::size_t k = 0; k < K; ++k) {
           const auto& rk = rc[rbase + b_off(k, n)];
-          if (!lk || static_cast<long>(lk.size()) != P) clean = false;
-          else if (!rk || static_cast<long>(rk.size()) != Q) clean = false;
-        }
-        long ldA = P, ldB = Q;
-        if (clean && K > 1) {
-          ldA = static_cast<long>(lc[lbase + a_off(m, 1)].data() - l0.data());
-          ldB = static_cast<long>(rc[rbase + b_off(1, n)].data() - r0.data());
-          if (ldA < P || ldB < Q) clean = false;
-          for (std::size_t k = 0; clean && k < K; ++k) {
-            if (lc[lbase + a_off(m, k)].data() !=
-                l0.data() + static_cast<std::ptrdiff_t>(k) * ldA)
-              clean = false;
-            else if (rc[rbase + b_off(k, n)].data() !=
-                     r0.data() + static_cast<std::ptrdiff_t>(k) * ldB)
-              clean = false;
+          if (rk) {
+            Q = static_cast<long>(rk.size());
+            break;
           }
         }
+        const bool factorable =
+            (P > 0 && Q > 0 && static_cast<long>(Cc.size()) == P * Q);
         phase_stop(g_check_ns_ce_e, _check_t0);
-        if (clean) {
-          // C(P x Q) += factor * Lmat(P x K). Rmat^T... realized as
-          // gemm(Transpose, NoTranspose): A=K x P slab, B=K x Q slab.
-          {
-            ScopedShapedGemmTimer _gt(g_gemm_ns_ce_e, g_gemm_calls_ce_e,
-                                      g_ce_e_shapes, P, Q, K);
-            blas::gemm(blas::Transpose, blas::NoTranspose,
-                       /*M=*/static_cast<integer>(P),
-                       /*N=*/static_cast<integer>(Q),
-                       /*K=*/static_cast<integer>(K), factor,
-                       /*A=*/l0.data(), /*lda=*/static_cast<integer>(ldA),
-                       /*B=*/r0.data(), /*ldb=*/static_cast<integer>(ldB),
-                       /*beta=*/1.0,
-                       /*C=*/Cc.data(), /*ldc=*/static_cast<integer>(Q));
-          }
-#ifdef TA_STRIDED_DGEMM_COUNT
-          g_strided_dgemm_ce_e_calls.fetch_add(1, std::memory_order_relaxed);
-#endif
-        } else {
+
+        double* c = Cc.data();
+        // Per-k rank-1 outer product into THIS cell (the legacy per-cell path):
+        // the route for a genuine size mismatch at a single k. Math identical to
+        // the segment GEMM, restricted to one k. Counted as fallback FLOPs.
+        std::uint64_t _fl = 0;
+        auto percell_k = [&](const typename LeftOuter::value_type& lk,
+                             const typename RightOuter::value_type& rk) {
+          // SHAPE guard (not a volume check): a k contributes iff its operand
+          // cells match the cell's dominant (P x Q) shape. This keeps the
+          // inline rank-1 fallback consistent with the segment walker and the
+          // per-cell reference -- a product-preserving but transposed k
+          // (lk.size()==Q, rk.size()==P, so lk.size()*rk.size()==P*Q but
+          // (lk.size(),rk.size()) != (P,Q)) is SKIPPED, not accumulated into
+          // the P x Q result cell with a transposed (p*qq+q) layout.
+          const std::size_t pp = lk.size(), qq = rk.size();
+          if (static_cast<long>(pp) != P || static_cast<long>(qq) != Q) return;
+          // OOB safety for the !factorable arm (where Cc.size() may differ from
+          // P*Q): only write a P x Q slab into a cell that can hold it. In the
+          // segment-walk arm factorable is true so Cc.size()==P*Q already.
+          if (static_cast<long>(Cc.size()) != P * Q) return;
+          const double* lp = lk.data();
+          const double* rp = rk.data();
+          _fl += 2ull * pp * qq;
+          for (std::size_t p = 0; p < pp; ++p)
+            for (std::size_t q = 0; q < qq; ++q)
+              c[p * qq + q] += factor * lp[p] * rp[q];
+        };
+
+        if (!factorable) {
+          // The result shape cannot be cleanly factored into (P x Q) operand
+          // slabs (e.g. operands entirely absent, or a residual size mismatch
+          // at every present k). Route the whole cell to the per-k rank-1 path
+          // (each present, size-matched k once). Counted as fallback.
           ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_e);
           if (gemm_timing_enabled()) {
             int why = classify_run(
@@ -1277,25 +1294,85 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
             }
             record_ce_e_fallback(why);
           }
-          // inline per-k rank-1 fallback for THIS cell (computed once)
-          double* c = Cc.data();
-          std::uint64_t _fl = 0;
           for (std::size_t k = 0; k < K; ++k) {
             const auto& lk = lc[lbase + a_off(m, k)];
             const auto& rk = rc[rbase + b_off(k, n)];
             if (!lk || !rk) continue;
-            const std::size_t pp = lk.size(), qq = rk.size();
-            if (static_cast<long>(Cc.size()) != static_cast<long>(pp * qq))
-              continue;
-            const double* lp = lk.data();
-            const double* rp = rk.data();
-            _fl += 2ull * pp * qq;
-            for (std::size_t p = 0; p < pp; ++p)
-              for (std::size_t q = 0; q < qq; ++q)
-                c[p * qq + q] += factor * lp[p] * rp[q];
+            percell_k(lk, rk);
           }
           if (gemm_timing_enabled())
             g_fall_flops_ce_e.fetch_add(_fl, std::memory_order_relaxed);
+          continue;
+        }
+
+        // Segment walk over k. Each emitted segment GEMM is a (P x Q) result
+        // accumulated over Kseg contracted cells, riding the inter-k slab
+        // strides ldA/ldB (zero-copy). A size-mismatched present k goes to the
+        // inline rank-1 path for that k only.
+        std::size_t k = 0;
+        while (k < K) {
+          const auto& lk = lc[lbase + a_off(m, k)];
+          const auto& rk = rc[rbase + b_off(k, n)];
+          if (!lk || !rk) {  // absent k: skip (beta=1, no contribution)
+            ++k;
+            continue;
+          }
+          if (static_cast<long>(lk.size()) != P ||
+              static_cast<long>(rk.size()) != Q) {
+            // genuine size mismatch at this k: rank-1 inline for THIS k only.
+            ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_e);
+            if (gemm_timing_enabled()) record_ce_e_fallback(/*nonuniform=*/2);
+            percell_k(lk, rk);
+            if (gemm_timing_enabled())
+              g_fall_flops_ce_e.fetch_add(_fl, std::memory_order_relaxed);
+            _fl = 0;
+            ++k;
+            continue;
+          }
+          // Start a segment at k; recompute strides locally from the segment's
+          // leading cells (never reuse a run-wide stale stride).
+          const double* l0 = lk.data();  // segment K-run base on L, stride ldA
+          const double* r0 = rk.data();  // segment K-run base on R, stride ldB
+          std::size_t end = k + 1;
+          long ldA = P, ldB = Q;
+          while (end < K) {
+            const auto& lke = lc[lbase + a_off(m, end)];
+            const auto& rke = rc[rbase + b_off(end, n)];
+            if (!lke || !rke) break;
+            if (static_cast<long>(lke.size()) != P ||
+                static_cast<long>(rke.size()) != Q)
+              break;
+            const long dA = static_cast<long>(lke.data() - l0);
+            const long dB = static_cast<long>(rke.data() - r0);
+            const long off = static_cast<long>(end - k);
+            if (off == 1) {
+              ldA = dA;
+              ldB = dB;
+              if (ldA < P || ldB < Q) break;  // page-jump / overlap
+            } else if (dA != off * ldA || dB != off * ldB) {
+              break;
+            }
+            ++end;
+          }
+          const std::size_t Kseg = end - k;
+          // C(P x Q) += factor * Lmat(P x Kseg). Rmat(Kseg x Q), realized as
+          // gemm(Transpose, NoTranspose): A=Kseg x P slab, B=Kseg x Q slab.
+          {
+            ScopedShapedGemmTimer _gt(g_gemm_ns_ce_e, g_gemm_calls_ce_e,
+                                      g_ce_e_shapes, P, Q, Kseg);
+            blas::gemm(blas::Transpose, blas::NoTranspose,
+                       /*M=*/static_cast<integer>(P),
+                       /*N=*/static_cast<integer>(Q),
+                       /*K=*/static_cast<integer>(Kseg), factor,
+                       /*A=*/l0, /*lda=*/static_cast<integer>(ldA),
+                       /*B=*/r0, /*ldb=*/static_cast<integer>(ldB),
+                       /*beta=*/1.0,
+                       /*C=*/c, /*ldc=*/static_cast<integer>(Q));
+          }
+#ifdef TA_STRIDED_DGEMM_COUNT
+          g_strided_dgemm_ce_e_calls.fetch_add(1, std::memory_order_relaxed);
+#endif
+          k = end;
         }
       }
     }
