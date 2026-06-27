@@ -1002,11 +1002,16 @@ class Summa
   /// slab \p coarse_slab (== step_h(s)). The operand U tranges lead with
   /// `n_fused_()` Hadamard modes; this maps a coarse slab ordinal to the U H
   /// tiles it spans, in H-axis order, so the operand gather can pin its leading
-  /// dims to the right slab. For IDENTITY-H (this subtask's scope) each axis
-  /// yields a single U tile `[idx, idx+1)` and the decomposition reproduces the
-  /// row-major slab base `step_h(s) * slab_size` that stock get_col/get_row use.
-  /// (COARSE-H -- several U fused tiles per coarse slab -- is; this returns
-  /// the covered U range either way, but the H-PACK that unions them is.)
+  /// dims to the right slab. For IDENTITY-H each axis yields a single U tile
+  /// `[idx, idx+1)` and the decomposition reproduces the row-major slab base
+  /// `step_h(s) * slab_size` that stock get_col/get_row use. For COARSEN-H
+  /// the coarse slab spans SEVERAL U fused tiles; this returns their full
+  /// `[first_uh, last_uh)` range, and the operand gather (gather_operand_block,
+  /// enumerating these H ranges as the LEADING outer dims) together with the box
+  /// (append_role_t_box(plan_.hadamard,...), unioning the covered U fused
+  /// element extents) PACK them along the leading fused axis into one
+  /// coarse-extent single-page tile -- so BatchedContractReduce batches over the
+  /// widened fused_volume.
   /// nf == 0 yields an empty vector, so the gather is byte-for-byte the prior
   /// (non-Hadamard) path.
   std::vector<std::pair<ordinal_type, ordinal_type>> slab_u_h_ranges(
@@ -1028,6 +1033,63 @@ class Summa
       const {
     const std::size_t nf = plan_.hadamard.size();
     std::vector<std::pair<ordinal_type, ordinal_type>> out(nf, {0ul, 1ul});
+    return out;
+  }
+
+  /// \return the number of FINE (U) fused (Hadamard) tiles -- the count of U H
+  /// slabs the operand/result arrays are physically tiled into, derived from the
+  /// plan's Hadamard role nest (each axis's U tile count == max group upper
+  /// bound; the product over axes). This DIFFERS from nh_ (the COARSE SUMMA slab
+  /// count) exactly when the H axis is coarsened: a coarse slab then spans
+  /// n_slabs_u_() / nh_ U fused tiles. For identity-H every group is [u,u+1) so
+  /// the product == nh_; for an empty Hadamard role (nf == 0, ordinary
+  /// contraction) the product is 1 == nh_. Used by the COARSEN-H result carve to
+  /// recover the U result tile ordinals a coarse slab covers (the result is
+  /// delivered at U, so its H tiling stays fine). np=1 scope.
+  ordinal_type n_slabs_u_() const {
+    ordinal_type nu = 1ul;
+    for (const auto& ax : plan_.hadamard) {
+      ordinal_type axu = 0ul;
+      for (const auto& g : ax.groups)
+        axu = std::max<ordinal_type>(axu, static_cast<ordinal_type>(g.second));
+      nu *= (axu ? axu : 1ul);
+    }
+    return nu;
+  }
+
+  /// \return the FINE (U) fused-tile ordinals (row-major over the H axes)
+  /// covered by COARSE slab \p coarse_slab. A coarse slab spans a contiguous
+  /// block of U fused tiles; this enumerates them so the result carve can split
+  /// the coarse slab's result page back into ITS U fused result tiles (one per
+  /// covered U fused tile, each combined with the slab-local M/N result cell).
+  /// For identity-H each coarse slab is exactly one U fused tile, so this returns
+  /// the singleton {coarse_slab} and the carve reduces to the prior per-slab
+  /// placement. SINGLE H axis is the COARSEN-H scope; the multi-H
+  /// row-major flatten is a flagged carry-forward (mirrors step_h's single-H
+  /// flattening). nf == 0 yields {coarse_slab} (the ordinary path).
+  std::vector<ordinal_type> coarse_slab_u_fused_ordinals(
+      const ordinal_type coarse_slab) const {
+    if (plan_.hadamard.empty()) return {coarse_slab};
+    const auto hr = coarse_axis_u_ranges(plan_.hadamard, coarse_slab);
+    // Cartesian product over the H axes' covered U ranges, row-major (the same
+    // layout the U result trange and slab base use).
+    std::vector<ordinal_type> axu_ext(plan_.hadamard.size());
+    for (std::size_t a = 0; a < plan_.hadamard.size(); ++a) {
+      ordinal_type axu = 0ul;
+      for (const auto& g : plan_.hadamard[a].groups)
+        axu = std::max<ordinal_type>(axu, static_cast<ordinal_type>(g.second));
+      axu_ext[a] = axu ? axu : 1ul;
+    }
+    std::vector<ordinal_type> out{0ul};
+    for (std::size_t a = 0; a < hr.size(); ++a) {
+      const ordinal_type ext = axu_ext[a];
+      std::vector<ordinal_type> next;
+      next.reserve(out.size() * (hr[a].second - hr[a].first));
+      for (ordinal_type base : out)
+        for (ordinal_type u = hr[a].first; u < hr[a].second; ++u)
+          next.push_back(base * ext + u);
+      out.swap(next);
+    }
     return out;
   }
 
@@ -2343,15 +2405,19 @@ class Summa
       // SET (one notify per set_tile). On the active two-trange path each U
       // result tile is SET EXACTLY once -- by a coarsen carve (one cell -> many
       // U), a 1:1 placement, or a refine MERGE (many cells -> one U). The
-      // expected set count is therefore the number of DISTINCT covered U result
-      // tiles per slab. Summing u_result_ordinals sizes per cell would
-      // DOUBLE-count under a result-axis refine (several cells share a U), so
-      // dedupe distinct U ordinals. Inactive => 1:1 => equals the stock n.
+      // expected set count per COARSE slab is the number of DISTINCT covered
+      // M/N result cells (u_count) times the number of U FUSED tiles that coarse
+      // slab covers (n_slabs_u / nh_ -- > 1 only under COARSEN-H, where the
+      // coarse slab's result page carves into several U fused result tiles).
+      // Summing u_result_ordinals sizes per cell would DOUBLE-count under a
+      // result-axis refine (several cells share a U), so dedupe distinct M/N
+      // ordinals. Inactive / identity-H => n_slabs_u == nh_ => 1:1 => equals the
+      // stock n.
       if constexpr (is_arena_tot_v<value_type>) {
         if (plan_.active) {
           const ordinal_type local_size = proc_grid_.local_size();
           std::vector<unsigned char> seen(
-              this->trange().tiles_range().volume() / nh_, 0u);
+              this->trange().tiles_range().volume() / n_slabs_u_(), 0u);
           ordinal_type u_count = 0ul;
           for (ordinal_type cell = 0ul; cell < local_size; ++cell)
             for (std::size_t u : plan_.u_result_ordinals(
@@ -2360,7 +2426,8 @@ class Summa
                 seen[u] = 1u;
                 ++u_count;
               }
-          return my_slabs_ * u_count;
+          const ordinal_type u_fused_per_coarse_slab = n_slabs_u_() / nh_;
+          return my_slabs_ * u_fused_per_coarse_slab * u_count;
         }
       }
 
@@ -2405,21 +2472,28 @@ class Summa
     std::allocator<ReducePairTask<op_type>> alloc;
     reduce_tasks_ = alloc.allocate(n_alloc);
 
+    // Per-U-fused-tile result block size: the U result trange is laid out
+    // [H-fused..., M..., N...] row-major, so each U fused tile owns a contiguous
+    // block of (u_vol / n_slabs_u) M*N result tiles. For IDENTITY-H n_slabs_u ==
+    // nh_ and a coarse slab covers exactly one U fused tile (the prior
+    // slab_u_base = h * (u_vol/nh_) behavior). For COARSEN-H a coarse slab spans
+    // n_slabs_u / nh_ U fused tiles; each contributes its own per-U base
+    // uh * per_u_mn, so the carve splits the coarse slab's result page back into
+    // ALL its U fused result tiles.
+    const ordinal_type n_slabs_u = n_slabs_u_();
+    const ordinal_type per_u_mn =
+        this->trange().tiles_range().volume() / n_slabs_u;
     ordinal_type tile_count = 0ul;
     ReducePairTask<op_type>* MADNESS_RESTRICT reduce_task = reduce_tasks_;
     for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
-      // The U result tiles for GLOBAL slab h occupy the GLOBAL ordinal range
-      // [h * (u_vol / nh_), (h+1) * (u_vol / nh_)). The reduce-task /
-      // result-owner layout already indexes by GLOBAL h (slab_base =
-      // h * result_slab_size_ at finalize/initialize; result_tile_owner uses
-      // slab = source_index / result_slab_size_), so the result base MUST be
-      // global h -- NOT the group-local slab_ord(h). At proc_h_ == 1 the two
-      // coincide; at proc_h_ > 1 a non-zero group would otherwise set U result
-      // tiles at slab-0 ordinals it does not own (set/notify imbalance ->
-      // deadlock). The OPERAND-side bases (slab_ord(step_h(s)) * local_size in
-      // contract()) are correctly group-local and stay as-is.
-      const ordinal_type slab_u_base =
-          h * (this->trange().tiles_range().volume() / nh_);
+      // The U fused tiles covered by COARSE slab h (identity-H: just {h}). The
+      // reduce-task / result-owner layout indexes by GLOBAL coarse h; the U
+      // result ordinals it covers are uh * per_u_mn + (slab-local M/N cell) over
+      // every covered U fused tile uh. (The OPERAND-side bases slab_ord(step_h)
+      // are group-local and stay as-is; np=1 scope for coarse-H so proc_h_ == 1
+      // and slab_ord(h) == h.)
+      const std::vector<ordinal_type> u_fused =
+          coarse_slab_u_fused_ordinals(h);
       // Per-slab set of distinct fine-nonzero U ordinals seen so far (each is
       // SET exactly once). A U covered by several cells (refine-result)
       // increments the count only on first sight.
@@ -2430,17 +2504,21 @@ class Summa
         const ordinal_type global_cell = coarse_cell_global_ordinal(cell);
         const ordinal_type i_coarse = global_cell / n_cols;
         const ordinal_type j_coarse = global_cell % n_cols;
-        // SET count: distinct fine-nonzero U result tiles this cell covers (the
-        // carve / merge emits exactly these). DECOUPLED from liveness.
+        // SET count: distinct fine-nonzero U result tiles this cell covers over
+        // EVERY covered U fused tile (the carve / merge emits exactly these).
+        // DECOUPLED from liveness.
         const std::vector<std::size_t> u_ord_local =
             plan_.u_result_ordinals(static_cast<std::size_t>(global_cell));
-        for (std::size_t u : u_ord_local) {
-          const ordinal_type u_ord =
-              static_cast<ordinal_type>(u) + slab_u_base;
-          if (shape.is_zero(u_ord)) continue;
-          if (!seen[u_ord]) {
-            seen[u_ord] = 1u;
-            ++tile_count;  // distinct fine-nonzero U tile == one set_tile
+        for (ordinal_type uh : u_fused) {
+          const ordinal_type slab_u_base = uh * per_u_mn;
+          for (std::size_t u : u_ord_local) {
+            const ordinal_type u_ord =
+                static_cast<ordinal_type>(u) + slab_u_base;
+            if (shape.is_zero(u_ord)) continue;
+            if (!seen[u_ord]) {
+              seen[u_ord] = 1u;
+              ++tile_count;  // distinct fine-nonzero U tile == one set_tile
+            }
           }
         }
         // LIVENESS: the coarse gemm product, NOT the fine U result coverage.
@@ -2645,24 +2723,31 @@ class Summa
     const ordinal_type n_alloc = my_slabs_ * local_size;
     const ordinal_type n_cols = proc_grid_.cols();
     const ordinal_type u_vol = this->trange().tiles_range().volume();
+    // Per-U-fused-tile result block size (see initialize_active): the U result
+    // trange is [H-fused..., M..., N...] row-major, so each U fused tile owns a
+    // contiguous block of (u_vol / n_slabs_u) M*N result tiles. A coarse slab
+    // covers n_slabs_u / nh_ U fused tiles (== 1 for identity-H).
+    const ordinal_type n_slabs_u = n_slabs_u_();
+    const ordinal_type per_u_mn = u_vol / n_slabs_u;
     // Track exact-once placement over the U result trange.
     std::vector<unsigned char> written(u_vol, 0u);
     ordinal_type consumed = 0ul;
 
     ReducePairTask<op_type>* reduce_task = reduce_tasks_;
     for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
-      // GLOBAL slab base (see initialize_active for the full rationale): the U
-      // result tiles for GLOBAL slab h live at GLOBAL ordinals
-      // [h * (u_vol / nh_), (h+1) * (u_vol / nh_)), matching the reduce-task /
-      // result-owner layout (slab_base = h * result_slab_size_;
-      // result_tile_owner's slab = source_index / result_slab_size_). At
-      // proc_h_ > 1 the group-local slab_ord(h) would alias every group's tiles
-      // onto slab 0's ordinals -> the set/notify imbalance the hang.
-      const ordinal_type slab_u_base = h * (u_vol / nh_);
+      // The U fused tiles covered by COARSE slab h (see initialize_active). For
+      // identity-H this is {h}; for COARSEN-H it is the contiguous block of U
+      // fused tiles the coarse slab spans. The reduce-task / result-owner layout
+      // indexes by GLOBAL coarse h; each covered U fused tile uh contributes its
+      // own U result base uh * per_u_mn, so a coarse slab's single result page
+      // carves into ALL its U fused result tiles. (np=1 scope => proc_h_ == 1 =>
+      // slab_ord(h) == h; the operand-side bases stay group-local.)
+      const std::vector<ordinal_type> u_fused =
+          coarse_slab_u_fused_ordinals(h);
 
       // Pass 1: per cell, submit the page future and collect its covered,
-      // non-zero U ordinals (slab-local). Build, per U ordinal, the list of
-      // contributing cell pages and the count of cells covering it.
+      // non-zero U ordinals (over every covered U fused tile). Build, per U
+      // ordinal, the list of contributing cell pages and the cover count.
       struct CellInfo {
         Future<value_type> page;
         std::vector<ordinal_type> u_ords;  // covered non-zero U (this slab)
@@ -2695,12 +2780,15 @@ class Summa
         if (live) {
           const std::vector<std::size_t> u_ord_local =
               plan_.u_result_ordinals(static_cast<std::size_t>(global_cell));
-          u_ords.reserve(u_ord_local.size());
-          for (std::size_t u : u_ord_local) {
-            const ordinal_type u_ord =
-                static_cast<ordinal_type>(u) + slab_u_base;
-            if (shape.is_zero(u_ord)) continue;
-            u_ords.push_back(u_ord);
+          u_ords.reserve(u_ord_local.size() * u_fused.size());
+          for (ordinal_type uh : u_fused) {
+            const ordinal_type slab_u_base = uh * per_u_mn;
+            for (std::size_t u : u_ord_local) {
+              const ordinal_type u_ord =
+                  static_cast<ordinal_type>(u) + slab_u_base;
+              if (shape.is_zero(u_ord)) continue;
+              u_ords.push_back(u_ord);
+            }
           }
         }
 

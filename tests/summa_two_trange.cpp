@@ -1852,4 +1852,110 @@ BOOST_AUTO_TEST_CASE(retile_active_hadamard_ride_single_tile_grouped_ce_ce_dist)
 #endif
 }
 
+// ===========================================================================
+// H-AXIS COARSEN core (np=1). The Hadamard (fused, leading-outer)
+// axis is itself COARSENED -- the hard coupled core. Mechanically this is the
+// Task-3 M-axis coarsen applied to the LEADING fused axis: a coarse slab covers
+// a contiguous range of U fused tiles, the operand pack gathers them along the
+// leading fused axis into ONE single-page tile whose fused outer extent = the
+// union of the covered U fused extents (so BatchedContractReduce, which batches
+// over fused_volume(tile.range()) == the product of the leading nfused-mode
+// EXTENTS, automatically widens each batched-GEMM call), and the result carve
+// splits the coarse slab's result tile back into its U fused tiles.
+//
+// -- coarsen-H ONLY (M/N/K identity): isolates the H mechanics.
+// C("h,i,j;a") = A("h,i,k;a,c") * B("h,j,k;c"). 4 U fused tiles -> 1 coarse H
+// slab. n_slabs_ goes from 4 (U) to 1 (coarse), so the whole H axis batches in
+// ONE slab. Oracle = no-retile einsum on the SAME inputs (< 1e-9), plan active,
+// ce_ce strided DGEMM fired. SCOPE: np=1 (the coarse-H np=2 distribution is
+//); the dist suite runs np=1 and np=2, so the active coarse-H path is
+// guarded to np=1 here -- at np>1 this case is skipped (no assertion) so the
+// np=2 regression stays green.
+BOOST_AUTO_TEST_CASE(retile_active_hadamard_coarsenH_only_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  if (w.size() > 1) return; // coarse-H np>1 is; np=1 only here.
+
+  auto hU = tr1d(8, 2);   // 4 fused H U-tiles  => n_slabs_ == 4 (nh_>1)
+  auto hT = tr1d(8, 8);   // coarsen H: 4 U fused tiles -> 1 coarse H slab
+  auto i = tr1d(4, 2);    // 2 left-external M-tiles
+  auto j = tr1d(4, 2);    // 2 right-external N-tiles
+  auto kk = tr1d(8, 4);   // 2 contracted K-tiles
+  // A(h,i,k; a,c): inner a=3 spectator (rides), c=4 contracted.
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{hU, i, kk}, TA::Range{3, 4});
+  // B(h,j,k; c): inner c=4 contracted.
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{hU, j, kk}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "h,i,j;a");
+  w.gop.fence();
+
+  // ACTIVE retile: H coarsened (4 U -> 1 T), externals/K identity.
+  ArrayToT2 C;
+  C("h,i,j;a") = (A0("h,i,k;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{hT}, /*M=*/{i}, /*N=*/{j}, /*K=*/{kk});
+  w.gop.fence();
+
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
+// -- coarsen-H + coarse-K (the coupled core). Same contraction; H
+// coarsened (4 U fused -> 2 coarse slabs, each covering 2 U fused tiles) AND K
+// coarsened (2 U K-tiles -> 1 coarse K-tile). Exercises the partial H coarsen
+// (n_slabs_ == 2, not 1) together with the coarse-K pack, so a coarse slab maps
+// to >1 U fused tile and the carve must split the coarse slab tile back into
+// both of its U fused result tiles. Oracle < 1e-9, plan active, ce_ce fired.
+// SCOPE: np=1 (for np=2).
+BOOST_AUTO_TEST_CASE(retile_active_hadamard_coarsenHK_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  if (w.size() > 1) return; // coarse-H np>1 is; np=1 only here.
+
+  auto hU = tr1d(8, 2);   // 4 fused H U-tiles
+  auto hT = tr1d(8, 4);   // coarsen H: 4 U -> 2 coarse slabs (each covers 2 U)
+  auto i = tr1d(4, 2);    // 2 left-external M-tiles
+  auto j = tr1d(4, 2);    // 2 right-external N-tiles
+  auto kU = tr1d(8, 4);   // 2 contracted K U-tiles
+  auto kT = tr1d(8, 8);   // coarsen K: 2 U K-tiles -> 1 coarse T K-tile
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{hU, i, kU}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{hU, j, kU}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "h,i,j;a");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("h,i,j;a") = (A0("h,i,k;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{hT}, /*M=*/{i}, /*N=*/{j}, /*K=*/{kT});
+  w.gop.fence();
+
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()

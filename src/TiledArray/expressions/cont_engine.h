@@ -648,6 +648,30 @@ class ContEngine : public BinaryEngine<Derived> {
     return nc;
   }
 
+  /// \return the COARSE Hadamard (fused) slab count (number of T fused tiles =
+  /// SUMMA slabs n_slabs_/nh_) when the retile plan is active, else the fine (U)
+  /// count \p h_fine. The coarse count is the product over the Hadamard role
+  /// axes of the number of T tiles on each (\c AxisNest::groups.size()), since
+  /// each coarse fused tile spans a contiguous group of fine U fused tiles. For
+  /// IDENTITY-H this equals the U count (no regression); for COARSEN-H it is
+  /// FEWER slabs
+  /// because BatchedContractReduce batches over fused_volume(tile.range()) ==
+  /// the product of the leading nfused-mode EXTENTS of the operand tile, the
+  /// coarse-extent operand tile (gathered by get_col/get_row_coarsen along the
+  /// leading fused axis, append_role_t_box(plan_.hadamard,...)) makes each
+  /// batched-GEMM call process the WIDER batch automatically. Coarsening H is
+  /// therefore both a distribution change (fewer slabs) AND an operand PACK
+  /// along the fused outer axis. Inactive plans return \p h_fine unchanged so
+  /// the stock SUMMA slab count is byte-for-byte intact. np=1 only for an
+  /// active COARSEN-H plan (the coarse-H np>1 distribution is handled separately).
+  size_type coarse_H_(size_type h_fine) const {
+    if (!plan_.active) return h_fine;
+    reject_refine_at_np_gt_1_();
+    size_type hc = 1ul;
+    for (const auto& ax : plan_.hadamard) hc *= ax.groups.size();
+    return hc;
+  }
+
   // == np>1 COARSEN/identity operand+result distribution on the COARSE T-grid ==
   //
   // At np>1 the SUMMA broadcast keys/roots on the COARSE (T) proc_grid_, while
@@ -1284,11 +1308,43 @@ class ContEngine : public BinaryEngine<Derived> {
     const auto* MADNESS_RESTRICT const right_element_size =
         right_.trange().elements_range().extent_data();
 
-    // Compute the slab count and the fused sizes of the per-slab contraction
+    // Compute the slab count and the fused sizes of the per-slab contraction.
+    // n_slabs_ is the SUMMA slab count (== nh_ in the Summa). When the retile
+    // plan is ACTIVE it is the COARSE Hadamard tile count (coarse_H_): a coarse
+    // fused tile spans a contiguous group of fine U fused tiles, so coarsening H
+    // yields FEWER, fatter slabs;
+    // the per-slab batch is then WIDENED
+    // by the operand H-pack (get_col/get_row_coarsen gather the covered U fused
+    // tiles along the leading fused axis into one coarse-extent tile, which
+    // BatchedContractReduce batches over via fused_volume == the leading
+    // nfused-mode EXTENTS), so the coarse slab count and the fat operand tile
+    // are two halves of the SAME coarsen. For IDENTITY-H coarse_H_ == the U
+    // count (no change); INACTIVE plans keep the U-derived count byte-for-byte.
     size_type M = 1ul, m = 1ul, N = 1ul, n = 1ul;
-    n_slabs_ = 1ul;
+    // n_slabs_u = the FINE (U) fused-tile count == how many H slabs the operand
+    // and result arrays are physically tiled into; n_slabs_ (== nh_ in Summa) =
+    // the COARSE SUMMA slab count. They diverge only under an active COARSEN-H
+    // plan. The OPERAND/RESULT distribution (SlabbedPmap replication) must use
+    // the U count because the arrays carry U-H tiles; the SUMMA grid / step /
+    // reduce-task geometry uses the coarse count. Inactive / identity-H =>
+    // n_slabs_ == n_slabs_u, byte-for-byte stock.
+    size_type n_slabs_u = 1ul;
     K_ = 1ul;
-    for (unsigned int i = 0u; i < nh; ++i) n_slabs_ *= left_tiles_size[i];
+    for (unsigned int i = 0u; i < nh; ++i) n_slabs_u *= left_tiles_size[i];
+    n_slabs_ = coarse_H_(n_slabs_u);
+    // COARSEN-H is np=1 scope. When the COARSE fused count is
+    // strictly fewer than the U fused count the SUMMA slab axis no longer maps
+    // 1:1 onto the U storage slabs, so the proc_h_ slab grouping / U-replicated
+    // SlabbedPmap composition at np>1 is not yet implemented.
+    // Reject it loudly at np>1 (symmetric across ranks => collective throw),
+    // exactly as refine is rejected; identity-H (n_slabs_ == n_slabs_u) is
+    // unaffected and the np>1 identity-H path stays byte-for-byte stock.
+    if (plan_.active && world->size() > 1 && n_slabs_ < n_slabs_u)
+      TA_EXCEPTION(
+          "in-SUMMA two-trange retile (.retile) with a COARSEN Hadamard (H) "
+          "axis is currently supported only at MPI world size 1; np>1 coarse-H "
+          "support is not yet implemented (identity-H coarsen is supported at "
+          "np>1)");
     for (unsigned int i = nh; i < nh + neA; ++i) {
       M *= left_tiles_size[i];
       m *= left_element_size[i];
@@ -1301,13 +1357,15 @@ class ContEngine : public BinaryEngine<Derived> {
     }
 
     // corner case: zero-volume result ... easier to skip proc_grid_
-    // construction alltogether
-    if (M == 0 || N == 0 || n_slabs_ == 0) {
+    // construction alltogether. The result array is tiled at the U fused count,
+    // so its default pmap spans n_slabs_u * M * N (an active COARSEN-H plan does
+    // not shrink the result tile count -- the result is delivered at U).
+    if (M == 0 || N == 0 || n_slabs_u == 0) {
       left_.init_distribution(world, {});
       right_.init_distribution(world, {});
       ExprEngine_::init_distribution(
           world,
-          (pmap ? pmap : policy::default_pmap(*world, n_slabs_ * M * N)));
+          (pmap ? pmap : policy::default_pmap(*world, n_slabs_u * M * N)));
     } else {
       // Choose the process-grid extent proc_h_ along the slab (h) axis of
       // the 3-d grid: ranks beyond one-per-result-tile are useless to a
@@ -1329,10 +1387,17 @@ class ContEngine : public BinaryEngine<Derived> {
       // the element extents (m,n) stay the total U element counts (retiling
       // does not change the element space). So the 2-d cap and the per-slab
       // ProcGrid below must both use coarse M/N. Inactive plans keep the stock
-      // U grid byte-for-byte (coarse_M_/coarse_N_ are the identity then). H is
-      // identity on this subtask, so n_slabs_/proc_h_/proc_h_stride_
-      // stay U-derived; only the per-slab external grid is coarsened. (Coarse-H
-      // -- a T-derived n_slabs_ -- is.)
+      // U grid byte-for-byte (coarse_M_/coarse_N_ are the identity then).
+      // COARSEN-H: n_slabs_ (== nh_) is now the COARSE fused-tile count
+      // (coarse_H_), so the proc_h_ slab heuristic spreads ranks over the COARSE
+      // slabs. The operand/result SlabbedPmap replication, however, uses
+      // n_slabs_u (the U fused-tile count) because the arrays carry U-H tiles --
+      // SUMMA iterates coarse slabs while the storage stays at U. Identity-H =>
+      // n_slabs_ == n_slabs_u (byte-for-byte the prior behavior).
+      // The coarse-H np>1 distribution (proc_h_ over coarse slabs composed with
+      // a U-replicated SlabbedPmap) is deferred; COARSEN-H is
+      // np=1 scope here (rejected for refine at np>1 above, and the coarse-H
+      // np>1 path is not yet exercised).
       const size_type M_grid = coarse_M_(M);
       const size_type N_grid = coarse_N_(N);
       const size_type P = world->size();
@@ -1363,7 +1428,9 @@ class ContEngine : public BinaryEngine<Derived> {
           proc_grid_ = TiledArray::detail::ProcGrid(*world, M_grid, N_grid, m, n);
           const size_type K_coarse = coarse_K_(K_);
           // left U layout = [H-axes..., M-axes..., K-axes...]; phase rows =
-          // M_grid, cols = K_coarse; skip the nh leading H modes.
+          // M_grid, cols = K_coarse; skip the nh leading H modes. The
+          // SlabbedPmap replicates over n_slabs_u (U fused-tile count) -- the
+          // operand carries U-H tiles -- NOT the coarse n_slabs_.
           auto left_phase = proc_grid_.make_row_phase_pmap(K_coarse);
           left_.init_distribution(
               world, std::make_shared<TiledArray::detail::SlabbedPmap>(
@@ -1371,7 +1438,7 @@ class ContEngine : public BinaryEngine<Derived> {
                          make_operand_coarse_pmap(*world, left_.trange(),
                                                   plan_.summaM, plan_.summaK,
                                                   left_phase, K_coarse, nh),
-                         n_slabs_));
+                         n_slabs_u));
           // right U layout = [H-axes..., K-axes..., N-axes...]; phase rows =
           // K_coarse, cols = N_grid; skip the nh leading H modes.
           auto right_phase = proc_grid_.make_col_phase_pmap(K_coarse);
@@ -1381,14 +1448,14 @@ class ContEngine : public BinaryEngine<Derived> {
                          make_operand_coarse_pmap(*world, right_.trange(),
                                                   plan_.summaK, plan_.summaN,
                                                   right_phase, N_grid, nh),
-                         n_slabs_));
+                         n_slabs_u));
 
           if (!pmap)
             pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
                 *world,
                 make_result_coarse_pmap(*world, trange_, proc_grid_.make_pmap(),
                                         N_grid, nh),
-                n_slabs_);
+                n_slabs_u);
           ExprEngine_::init_distribution(world, pmap);
         } else {
           // Inactive: stock per-slab U grid over the whole world (M_grid==M,
