@@ -562,6 +562,15 @@ class ContEngine : public BinaryEngine<Derived> {
   /// inactive plan. The plan is consumed by later phases; in this phase it is
   /// only stored and threaded to the Summa ctor.
   void maybe_make_retile_plan_() {
+    // ORDERING (permute-then-retile): when an operand annotation is non-canonical
+    // the binary engine physically permutes it into canonical NoTranspose layout
+    // BEFORE this plan is built (canonicalization commit e439c747). The plan and
+    // the coarse pack/gather therefore operate in canonical contraction-role
+    // (H/M/N/K) space; retiling a still-permuted operand would force role<->axis
+    // remapping and a permute of fat coarse tiles -- strictly more work. The
+    // RESULT permutation is the mirror image: contract in canonical layout, then
+    // re-permute the (already carved) result tiles in-rank (make_dist_eval_general
+    // / GeneralRepermuteOp + make_repermuted_result_pmap).
     if (!(ExprEngine_::override_ptr_ &&
           ExprEngine_::override_ptr_->contraction_target.present))
       return;
@@ -867,6 +876,56 @@ class ContEngine : public BinaryEngine<Derived> {
         });
   }
 
+  /// Build the (target-layout) result pmap for a general_repermute_ product
+  /// that CO-LOCATES each target tile with its canonical source. The general
+  /// product is evaluated in CANONICAL layout by the inner Summa, then a
+  /// streaming UnaryEvalImpl<GeneralRepermuteOp> permutes each tile and
+  /// set_tile()s it to the target ordinal; making the target tile's owner equal
+  /// to its canonical source's owner keeps that push in-rank. It also fixes a
+  /// correctness bug: make_result_coarse_pmap assumes CANONICAL [H][M][N] axis
+  /// order, so it cannot be applied to the PERMUTED target trange directly (the
+  /// role axis-maps misalign and index out of bounds). Here \p canonical_pmap
+  /// is the (correctly-ordered) coarse result pmap built on \p canonical_tr; for
+  /// each target ordinal t we run its coordinate back through \p outer_perm.inv()
+  /// to the canonical coordinate and adopt that canonical tile's owner. Since
+  /// trange_ == outer_perm * canonical_tr, applying .inv() yields the true
+  /// canonical source coordinate, whose per-axis extents match exactly -- so the
+  /// canonical ordinal is always in range (the .inv() direction is load-bearing
+  /// for that bound; passing the forward perm could index out of range for a
+  /// non-involutive permutation). The map is placement-only: set_tile(t) and
+  /// find(t) route through the SAME pmap, so the .inv() direction only affects
+  /// communication locality, never values.
+  std::shared_ptr<const pmap_interface> make_repermuted_result_pmap(
+      World& world, const trange_type& target_tr,
+      const trange_type& canonical_tr,
+      const std::shared_ptr<const pmap_interface>& canonical_pmap,
+      const Permutation& outer_perm) const {
+    const auto& tgt_tiles = target_tr.tiles_range();
+    const auto& can_tiles = canonical_tr.tiles_range();
+    const std::size_t vol = tgt_tiles.volume();
+    const Permutation inv = outer_perm.inv();
+    std::vector<ProcessID> owners(vol);
+    for (std::size_t t = 0; t < vol; ++t) {
+      const auto tgt_idx = tgt_tiles.idx(t);  // target coordinate
+      // NB: Range::idx returns an svector; Permutation::operator* needs a
+      // std::vector overload -> copy explicitly.
+      std::vector<std::size_t> ci(tgt_idx.begin(), tgt_idx.end());
+      std::vector<std::size_t> can_idx = inv * ci;  // back to canonical coord
+      const std::size_t s = can_tiles.ordinal(can_idx);
+      owners[t] = static_cast<ProcessID>(canonical_pmap->owner(s));
+    }
+    std::size_t local = 0;
+    const std::size_t me = world.rank();
+    for (auto o : owners)
+      if (static_cast<std::size_t>(o) == me) ++local;
+    auto owners_ptr =
+        std::make_shared<std::vector<ProcessID>>(std::move(owners));
+    return std::make_shared<TiledArray::detail::UserPmap>(
+        world, vol, local, [owners_ptr](std::size_t t) -> std::size_t {
+          return static_cast<std::size_t>((*owners_ptr)[t]);
+        });
+  }
+
   /// Initialize result tensor distribution
 
   /// This function will initialize the world and process map for the result
@@ -948,9 +1007,28 @@ class ContEngine : public BinaryEngine<Derived> {
                                             plan_.summaK, plan_.summaN,
                                             right_phase, N_grid));
 
-        if (!pmap)
-          pmap = make_result_coarse_pmap(*world, trange_, proc_grid_.make_pmap(),
-                                         N_grid);
+        if (!pmap) {
+          const auto outer_perm = outer(perm_);
+          if (!outer_perm.is_identity()) {
+            // trange_ is the PERMUTED target layout; make_result_coarse_pmap
+            // assumes canonical [M][N] role order, and -- more importantly --
+            // the active retile delivers each U result tile by a LOCAL set_tile
+            // from the rank that owns its covering coarse T-cell (arena ToT
+            // tiles are not serialized, so a cross-rank set would hang). Build
+            // the coarse result pmap on the CANONICAL trange and route each
+            // target tile to its canonical source's owner, so a permuted result
+            // whose U tiles scatter across the role boundary still lands every
+            // carve sub-tile in-rank. Mirrors the general_repermute_ path.
+            const auto canonical_tr = ContEngine_::make_trange();
+            auto canonical_pmap = make_result_coarse_pmap(
+                *world, canonical_tr, proc_grid_.make_pmap(), N_grid);
+            pmap = make_repermuted_result_pmap(*world, trange_, canonical_tr,
+                                               canonical_pmap, outer_perm);
+          } else {
+            pmap = make_result_coarse_pmap(*world, trange_,
+                                           proc_grid_.make_pmap(), N_grid);
+          }
+        }
         ExprEngine_::init_distribution(world, pmap);
       } else {
         // Inactive: stock U grid (M_grid==M, N_grid==N so u_grid IS proc_grid_).
@@ -1498,12 +1576,31 @@ class ContEngine : public BinaryEngine<Derived> {
                                                   right_phase, N_grid, nh),
                          n_slabs_u));
 
-          if (!pmap)
-            pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-                *world,
-                make_result_coarse_pmap(*world, trange_, proc_grid_.make_pmap(),
-                                        N_grid, nh),
-                n_slabs_u);
+          if (!pmap) {
+            if (general_repermute_) {
+              // trange_ is the PERMUTED target layout; make_result_coarse_pmap
+              // assumes canonical [H][M][N] axis order, so build the coarse
+              // result pmap on the CANONICAL trange (correct role order, no
+              // out-of-bounds role-map index) and route each target tile to its
+              // canonical source's owner. This both fixes the permuted-target
+              // crash and co-locates the streaming re-permute push in-rank.
+              const auto canonical_tr = make_trange_general();
+              auto canonical_pmap =
+                  std::make_shared<TiledArray::detail::SlabbedPmap>(
+                      *world,
+                      make_result_coarse_pmap(*world, canonical_tr,
+                                              proc_grid_.make_pmap(), N_grid, nh),
+                      n_slabs_u);
+              pmap = make_repermuted_result_pmap(*world, trange_, canonical_tr,
+                                                 canonical_pmap, outer(perm_));
+            } else {
+              pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+                  *world,
+                  make_result_coarse_pmap(*world, trange_,
+                                          proc_grid_.make_pmap(), N_grid, nh),
+                  n_slabs_u);
+            }
+          }
           ExprEngine_::init_distribution(world, pmap);
         } else {
           // Inactive: stock per-slab U grid over the whole world (M_grid==M,
@@ -1592,12 +1689,29 @@ class ContEngine : public BinaryEngine<Derived> {
                          n_slabs_u, proc_h_, proc_h_stride_,
                          u_per_coarse_slab));
 
-          if (!pmap)
-            pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-                *world,
-                make_result_coarse_pmap(*world, trange_, proc_grid_.make_pmap(),
-                                        N_grid, nh),
-                n_slabs_u, proc_h_, proc_h_stride_, u_per_coarse_slab);
+          if (!pmap) {
+            if (general_repermute_) {
+              // See the proc_h_==1 branch: the PERMUTED target trange cannot go
+              // through make_result_coarse_pmap (canonical-order assumption);
+              // build the grouped coarse result pmap on the CANONICAL trange and
+              // co-locate each target tile with its canonical source.
+              const auto canonical_tr = make_trange_general();
+              auto canonical_pmap =
+                  std::make_shared<TiledArray::detail::SlabbedPmap>(
+                      *world,
+                      make_result_coarse_pmap(*world, canonical_tr,
+                                              proc_grid_.make_pmap(), N_grid, nh),
+                      n_slabs_u, proc_h_, proc_h_stride_, u_per_coarse_slab);
+              pmap = make_repermuted_result_pmap(*world, trange_, canonical_tr,
+                                                 canonical_pmap, outer(perm_));
+            } else {
+              pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
+                  *world,
+                  make_result_coarse_pmap(*world, trange_,
+                                          proc_grid_.make_pmap(), N_grid, nh),
+                  n_slabs_u, proc_h_, proc_h_stride_, u_per_coarse_slab);
+            }
+          }
           ExprEngine_::init_distribution(world, pmap);
         } else {
           // Inactive: stock group-local per-slab U grid (M_grid==M, N_grid==N,
@@ -1700,13 +1814,31 @@ class ContEngine : public BinaryEngine<Derived> {
     // COARSEN-H plan it groups U slabs by their covering coarse slab via
     // u_per_coarse_slab = n_slabs_u_ / n_slabs_ (mirrors the non-repermute
     // result pmap above so the carve's owner is consistent).
+    // The inner Summa delivers its result at the FINE (U) canonical_trange, so
+    // its per-slab base pmap must map every FINE U external tile to the owner of
+    // its covering COARSE cell -- exactly what the non-repermute active branches
+    // do via make_result_coarse_pmap (init_distribution_general, the active
+    // branches). A bare proc_grid_.make_pmap() base is COARSE-sized
+    // (coarse_M*coarse_N), so SlabbedPmap.size() = coarse * n_slabs_u !=
+    // canonical_trange.volume() = fine * n_slabs_u, which trips the TensorImpl
+    // ctor size assert and, in Release, deadlocks at np>1.
+    // For an INACTIVE plan coarse == fine so proc_grid_.make_pmap() is already
+    // U-sized; keep it (make_result_coarse_pmap requires an active plan's
+    // summaM/summaN roles). proc_grid_.cols() == N_grid (the coarse N tile
+    // count); n_fused_modes_ == nh (the leading fused modes to skip).
+    auto canonical_base =
+        plan_.active
+            ? make_result_coarse_pmap(*world_, canonical_trange,
+                                      proc_grid_.make_pmap(), proc_grid_.cols(),
+                                      n_fused_modes_)
+            : proc_grid_.make_pmap();
     auto canonical_pmap =
         proc_h_ == 1ul
             ? std::make_shared<TiledArray::detail::SlabbedPmap>(
-                  *world_, proc_grid_.make_pmap(), n_slabs_u_)
+                  *world_, canonical_base, n_slabs_u_)
             : std::make_shared<TiledArray::detail::SlabbedPmap>(
-                  *world_, proc_grid_.make_pmap(), n_slabs_u_, proc_h_,
-                  proc_h_stride_, n_slabs_u_ / n_slabs_);
+                  *world_, canonical_base, n_slabs_u_, proc_h_, proc_h_stride_,
+                  n_slabs_u_ / n_slabs_);
     std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
         left, right, *world_, canonical_trange, canonical_shape, canonical_pmap,
         BipartitePermutation{}, batched_op_type(op_, n_fused_modes_),

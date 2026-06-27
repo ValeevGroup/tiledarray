@@ -28,7 +28,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <limits>
+#include <random>
+#include <string>
 #include <vector>
 
 namespace TA = TiledArray;
@@ -1021,6 +1025,32 @@ OwnArr2 make_own2(TA::World& w, const TA::TiledRange& tr,
   return x;
 }
 
+// NON-UNIFORM inner-extent ToT operand: the inner cell Range varies with the
+// outer index (the defining ToT property). ext_fn(outer_idx) -> inner Range.
+// All captures are by value / synchronous (arena_outer_init's range callback
+// runs inside this task), so there is no deferred-task dangling-capture risk.
+template <typename ExtFn>
+ArrayToT2 make_arena2_nu(TA::World& w, const TA::TiledRange& tr, ExtFn ext_fn) {
+  ArrayToT2 x(w, tr);
+  x.init_tiles([ext_fn](const TA::Range& t_outer) {
+    ArenaOuter2 t = TA::detail::arena_outer_init<ArenaOuter2>(
+        t_outer, 1, [&t_outer, &ext_fn](std::size_t ord) {
+          const auto oix = t_outer.idx(ord);
+          std::vector<std::size_t> v(oix.begin(), oix.end());
+          return ext_fn(v);
+        });
+    std::size_t o = 0;
+    for (const auto& idx : t_outer) {
+      ArenaInner2& c = t.data()[o++];
+      if (!c) continue;
+      const double s = outer_seed2(idx);
+      for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = cell_val2(s, e);
+    }
+    return t;
+  });
+  return x;
+}
+
 // Plain dense (non-ToT) DistArray for the MIXED kernel's plain ride operand g.
 // Filled by ABSOLUTE element coordinate (outer_seed2 over the element index) so
 // a coarse-packed block carries observably distinct values -- a mis-packed cell
@@ -1110,6 +1140,32 @@ ArrayToTSparse make_arena_sparse(TA::World& w, const TA::TiledRange& tr,
   x.init_tiles([inner](const TA::Range& t_outer) {
     ArenaOuter2 t = TA::detail::arena_outer_init<ArenaOuter2>(
         t_outer, 1, [inner](std::size_t) { return inner; });
+    std::size_t o = 0;
+    for (const auto& idx : t_outer) {
+      ArenaInner2& c = t.data()[o++];
+      if (!c) continue;
+      const double s = outer_seed2(idx);
+      for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = cell_val2(s, e);
+    }
+    return t;
+  });
+  return x;
+}
+
+// Sparse + NON-UNIFORM inner extents combined (the bench's exact domain): outer
+// sparsity from is_zero, inner cell Range from ext_fn(outer_idx). All captures
+// value/synchronous (no deferred-task dangling).
+template <typename IsZero, typename ExtFn>
+ArrayToTSparse make_arena_sparse_nu(TA::World& w, const TA::TiledRange& tr,
+                                    IsZero is_zero, ExtFn ext_fn) {
+  ArrayToTSparse x(w, tr, sparse_shape_from(tr, is_zero));
+  x.init_tiles([ext_fn](const TA::Range& t_outer) {
+    ArenaOuter2 t = TA::detail::arena_outer_init<ArenaOuter2>(
+        t_outer, 1, [&t_outer, &ext_fn](std::size_t ord) {
+          const auto oix = t_outer.idx(ord);
+          std::vector<std::size_t> v(oix.begin(), oix.end());
+          return ext_fn(v);
+        });
     std::size_t o = 0;
     for (const auto& idx : t_outer) {
       ArenaInner2& c = t.data()[o++];
@@ -1418,6 +1474,109 @@ BOOST_AUTO_TEST_CASE(retile_coarsen_m_ce_e_dist) {
   w.gop.sum(&fires, 1);
   BOOST_CHECK_GT(fires, std::size_t{0});
 #endif
+}
+
+// Permuted-result ACTIVE carve, NO Hadamard (non-general path): M={i1,i2},
+// N={j1,j2}, K coarsened (active). The requested output i1,j1,i2,j2 INTERLEAVES
+// M and N -> crosses the role boundary with >=2 axes per role, the exact shape
+// that crashed the carve (agent/findings/2026-06-26-multiretile-permuted-carve-*).
+// Result axes stay identity (only K coarsens) -> the 1:1 carve. Oracle = stock
+// einsum; match < 1e-9, plan active. Runs np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_permuted_carve_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto i1 = tr1d(4, 2), i2 = tr1d(4, 2);   // 2 M-axes, 2 U tiles each
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2);   // 2 N-axes, 2 U tiles each
+  auto kU = tr1d(8, 2);                    // 4 fine U K-tiles
+  auto kT = tr1d(8, 8);                    // coarsen K: 4 U -> 1 T (active)
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{i1, i2, kU}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{j1, j2, kU}, TA::Range{5});
+  w.gop.fence();
+  reset_plan_active_count();
+
+  // cross-boundary permuted output: i1 (M), j1 (N), i2 (M), j2 (N).
+  ArrayToT2 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,j1,i2,j2;a,b");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,j1,i2,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                             .retile(/*H=*/{}, /*M=*/{i1, i2}, /*N=*/{j1, j2},
+                                     /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// Permuted-result ACTIVE carve where a RESULT axis also coarsens (>1 U tiles per
+// coarse page): M={i1,i2} with i1 coarsened (4 U -> 1 T), N={j1,j2}; output
+// i1,j1,i2,j2 crosses the role boundary. Exercises the general (subdividing)
+// carve in the permuted layout, not just the 1:1 case. Oracle = stock einsum;
+// match < 1e-9, plan active. Runs np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_permuted_carve_coarsenM_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto i1U = tr1d(8, 2);   // 4 U M-tiles on i1
+  auto i2 = tr1d(4, 2);    // 2 U tiles
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2);
+  auto kk = tr1d(4, 4);    // single K tile
+  auto i1T = tr1d(8, 8);   // coarsen i1: 4 U -> 1 T (a coarse page covers 4 U M-tiles)
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{i1U, i2, kk}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{j1, j2, kk}, TA::Range{5});
+  w.gop.fence();
+  reset_plan_active_count();
+
+  ArrayToT2 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,j1,i2,j2;a,b");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,j1,i2,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                             .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1, j2},
+                                     /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// Permuted-result ACTIVE retile where a RESULT axis REFINES (target finer than
+// the U operand on a result axis) -> the outbound MERGE path (MergeSetTask), not
+// the carve. M={i1,i2}, N={j1,j2} with j1 refined (1 U tile [0,4) -> 2 T tiles);
+// output i1,j1,i2,j2 crosses the role boundary. Exercises the MergeSetTask
+// reconciliation alongside the carve fix. Active refine is rejected at np>1, so:
+// np=1 -> oracle einsum match < 1e-9, plan active; np>1 -> REQUIRE_THROW.
+BOOST_AUTO_TEST_CASE(retile_active_permuted_refine_n_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto i1 = tr1d(4, 2), i2 = tr1d(4, 2);  // 2 M-axes
+  auto j1U = tr1d(4, 4);                   // ONE U N-tile [0,4) on j1
+  auto j1T = tr1d(4, 2);                   // REFINE j1 -> 2 T tiles of width 2
+  auto j2 = tr1d(4, 2);                    // 2 N-tiles on j2
+  auto kk = tr1d(4, 4);                    // single K tile
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{i1, i2, kk}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{j1U, j2, kk}, TA::Range{5});
+  w.gop.fence();
+  reset_plan_active_count();
+
+  if (w.size() > 1) {
+    ArrayToT2 C;
+    BOOST_REQUIRE_THROW(
+        (C("i1,j1,i2,j2;a,b") =
+             (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                 .retile(/*H=*/{}, /*M=*/{i1, i2}, /*N=*/{j1T, j2}, /*K=*/{kk})),
+        TA::Exception);
+  } else {
+    ArrayToT2 C_ref =
+        TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,j1,i2,j2;a,b");
+    w.gop.fence();
+    ArrayToT2 C;
+    C("i1,j1,i2,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                               .retile(/*H=*/{}, /*M=*/{i1, i2}, /*N=*/{j1T, j2},
+                                       /*K=*/{kk});
+    w.gop.fence();
+    BOOST_CHECK(C.trange() == C_ref.trange());
+    BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+    BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+  }
 }
 
 // gap-fill: ce+ce COARSEN COMBO (M ride + K together), Dense. The
@@ -2213,6 +2372,136 @@ BOOST_AUTO_TEST_CASE(retile_active_hadamard_ride_single_tile_grouped_ce_ce_dist)
 #endif
 }
 
+// Result-PERMUTATION on the ACTIVE retile path (the coupling gap). Same shapes
+// as retile_active_hadamard_ride_single_tile_grouped_ce_ce_dist, but the result
+// is requested in a PERMUTED outer layout (j,i,h) vs the canonical (h,i,j). The
+// engine evaluates the contraction in canonical layout via an inner Summa, then
+// re-permutes per tile (UnaryEvalImpl<GeneralRepermuteOp>). Under the active
+// coarsen-M/N ride-single plan the inner Summa carries the FINE U canonical
+// trange while its result pmap must map every FINE U tile to its covering COARSE
+// cell's owner -- the coupling fixes. Oracle = no-retile einsum into the
+// SAME permuted layout. Must match < 1e-9 and terminate at np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_hadamard_permuted_result_ride_single_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+
+  auto h = tr1d(4, 2);    // 2 fused H tiles
+  auto i = tr1d(4, 2);    // 2 left-external M U-tiles ...
+  auto iT = tr1d(4, 4);   // ... coarsened to ONE coarse M tile
+  auto j = tr1d(4, 2);    // 2 right-external N U-tiles ...
+  auto jT = tr1d(4, 4);   // ... coarsened to ONE coarse N tile
+  auto kU = tr1d(8, 4);   // 2 contracted K U-tiles
+  auto kT = tr1d(8, 8);   // coarsen K: 2 U K-tiles -> 1 coarse T K-tile
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i, kU}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, kU}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  // Oracle: no-retile einsum into the PERMUTED (j,i,h) outer layout.
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "j,i,h;a");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("j,i,h;a") = (A0("h,i,k;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{h}, /*M=*/{iT}, /*N=*/{jT}, /*K=*/{kT});
+  w.gop.fence();
+
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// Permuted result + coarsen M ride AND K together (ce+ce), Hadamard h fused.
+// Exercises the coarse-M carve and coarse-K step geometry together under a
+// result permutation. Oracle = no-retile einsum into the permuted layout.
+BOOST_AUTO_TEST_CASE(retile_active_hadamard_permuted_result_coarsen_mk_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  auto h = tr1d(4, 2);    // 2 fused H tiles
+  auto i = tr1d(8, 2);    // 4 left-external M U-tiles ...
+  auto iT = tr1d(8, 8);   // ... coarsened to ONE coarse M tile
+  auto j = tr1d(4, 2);    // 2 right-external N U-tiles (identity)
+  auto kU = tr1d(8, 2);   // 4 contracted K U-tiles ...
+  auto kT = tr1d(8, 8);   // ... coarsened to ONE coarse K tile
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i, kU}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, kU}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "j,i,h;a");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("j,i,h;a") = (A0("h,i,k;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{h}, /*M=*/{iT}, /*N=*/{j}, /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// Permuted result on the ce+e kernel (no inner contraction index shared beyond
+// the contracted k; spectator inner a rides). Canonical result (h,i,j1,j2);
+// request the permuted (j2,j1,i,h). Coarsen the left-external M ride + K.
+BOOST_AUTO_TEST_CASE(retile_active_hadamard_permuted_result_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto h = tr1d(4, 2);    // 2 fused H tiles
+  auto i = tr1d(8, 2);    // 4 left-external M U-tiles ...
+  auto iT = tr1d(8, 8);   // ... coarsened to ONE coarse M tile
+  auto j = tr1d(4, 2);    // 2 right-external tiles per N axis (identity)
+  auto kU = tr1d(8, 2);   // 4 contracted K U-tiles ...
+  auto kT = tr1d(8, 8);   // ... coarsened to ONE coarse K tile
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i, kU}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, j, kU}, TA::Range{5});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToT2 C_ref =
+      TA::einsum(A0("h,i,k;a"), B0("h,j1,j2,k;b"), "j2,j1,i,h;a,b");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("j2,j1,i,h;a,b") = (A0("h,i,k;a") * B0("h,j1,j2,k;b"))
+                           .retile(/*H=*/{h}, /*M=*/{iT}, /*N=*/{j, j},
+                                   /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// REQUIRED: NON-INVOLUTIVE result permutation (3-cycle). Canonical (h,i,j)
+// requested as (i,j,h): target[0]=i=canon[1], [1]=j=canon[2], [2]=h=canon[0].
+// Guards the ENGINE's value-permutation direction (GeneralRepermuteOp / perm_):
+// an inverted VALUE-permute corrupts element placement, which an involution
+// (swap/reversal) and the bench `absum` would both miss but this 3-cycle
+// catches. NOTE: it does NOT guard make_repermuted_result_pmap's .inv()
+// (placement-only / perf -- see). Permutation-sensitive, np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_hadamard_permuted_result_3cycle_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  auto h = tr1d(4, 2);
+  auto i = tr1d(4, 2);
+  auto iT = tr1d(4, 4);
+  auto j = tr1d(4, 2);
+  auto jT = tr1d(4, 4);
+  auto kU = tr1d(8, 4);
+  auto kT = tr1d(8, 8);
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i, kU}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, kU}, TA::Range{4});
+  w.gop.fence();
+  reset_plan_active_count();
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "i,j,h;a");
+  w.gop.fence();
+  ArrayToT2 C;
+  C("i,j,h;a") = (A0("h,i,k;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{h}, /*M=*/{iT}, /*N=*/{jT}, /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
 // ===========================================================================
 // H-AXIS COARSEN core (np=1). The Hadamard (fused, leading-outer)
 // axis is itself COARSENED -- the hard coupled core. Mechanically this is the
@@ -2561,6 +2850,607 @@ BOOST_AUTO_TEST_CASE(retile_active_absent_N_coarsenHK_ce_e_dist) {
   w.gop.sum(&fires, 1);
   BOOST_CHECK_GT(fires, std::size_t{0});
 #endif
+}
+
+// Operand permutation (canonicalization commit e439c747) composed with an
+// ACTIVE retile. The left operand is annotated non-canonically (k leads the
+// externals: "h,k,i") so the engine physically permutes it to canonical
+// NoTranspose layout BEFORE the coarsen pack runs (permute-then-retile). Result
+// is requested in canonical order, so this isolates the OPERAND permute path
+// from the result-permute path. Must match the no-retile oracle at np=1/2.
+BOOST_AUTO_TEST_CASE(retile_active_operand_permuted_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  auto h = tr1d(4, 2);    // 2 fused H tiles
+  auto i = tr1d(8, 2);    // 4 left-external M U-tiles ...
+  auto iT = tr1d(8, 8);   // ... coarsened to ONE coarse M tile
+  auto j = tr1d(4, 2);    // 2 right-external N U-tiles (identity)
+  auto kU = tr1d(8, 2);   // 4 contracted K U-tiles ...
+  auto kT = tr1d(8, 8);   // ... coarsened to ONE coarse K tile
+  // Left stored as (h,k,i): k (contracted) precedes i (external) -> non-canonical
+  // operand layout -> engine inserts a physical operand permute to (h,i,k).
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, kU, i}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, kU}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToT2 C_ref = TA::einsum(A0("h,k,i;a,c"), B0("h,j,k;c"), "h,i,j;a");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("h,i,j;a") = (A0("h,k,i;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{h}, /*M=*/{iT}, /*N=*/{j}, /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// ===========================================================================
+// PERMSWEEP: exhaustive cross-product verification of the active two-trange
+// retile SUMMA path for ToT contractions. For each ALLOWED coarsen-only retile
+// target STRUCTURE (subset lattice over the 6 role axes {H, M1, M2, N1, N2, K},
+// 64 structures incl. the all-identity inactive plan) and for EVERY permutation
+// of the n=5 outer result indices {h,i1,i2,j1,j2} (120 perms via
+// std::next_permutation), compare the active-retile result against the stock
+// einsum oracle into the SAME permuted layout. Catches asserts / hangs / wrong
+// values that single-permutation, single-structure tests miss.
+//
+//   ce_ce:  A("h,i1,i2,k;a,c") * B("h,j1,j2,k;c")  -> outer {h,i1,i2,j1,j2}; a
+//           (inner) rides, c contracted.
+//   ce_e:  A("h,i1,i2,k;a")   * B("h,j1,j2,k;b")  -> outer {h,i1,i2,j1,j2};
+//           inner a/b both ride (no shared inner contraction).
+//
+// Coarsening = collapse the operand's 2-tile axis to ONE tile (the only coarsen
+// factor available at 2 tiles). H is kept a SINGLE uniform dense axis, so every
+// structure (incl. H-coarsen combined with M/N/K) is np>1-ALLOWED; no structure
+// is expected to throw for these shapes. A hang reveals itself as a "trying"
+// line with no matching "ok"; flush after every line.
+//
+// PERMSWEEP_MODE env: "prio" (DEFAULT) = the prioritized subset {identity,
+// each single role alone, all-roles} = 8 structures (fast CI smoke; ~100x120
+// points/run); "full" = the exhaustive 64-structure coarsen subset lattice
+// (~7680 points/run, ~100s). The full sweep is opt-in so the committed
+// regression stays CI-light while remaining exhaustively runnable on demand
+// (PERMSWEEP_MODE=full). The full sweep was validated ALL-PASS at np=1 and
+// np=2 for both kernels (see agent/.../permsweep-report.md).
+namespace {
+inline std::string permsweep_join(const std::vector<std::string>& v,
+                                  const char* sep) {
+  std::string s;
+  for (std::size_t i = 0; i < v.size(); ++i) {
+    if (i) s += sep;
+    s += v[i];
+  }
+  return s;
+}
+// Enumerate the structure bitmasks to run, honoring PERMSWEEP_MODE.
+inline std::vector<unsigned> permsweep_masks() {
+  const char* m = std::getenv("PERMSWEEP_MODE");
+  const bool full = (m && std::string(m) == "full");
+  std::vector<unsigned> out;
+  if (!full) {
+    out.push_back(0u);                                        // identity
+    for (unsigned b = 0; b < 6; ++b) out.push_back(1u << b);  // singles
+    out.push_back(0x3Fu);                                     // all roles
+  } else {
+    for (unsigned mask = 0; mask < 64u; ++mask) out.push_back(mask);
+  }
+  return out;
+}
+inline std::string permsweep_struct_label(unsigned mask) {
+  if (mask == 0) return "identity";
+  static const char* names[6] = {"H", "M1", "M2", "N1", "N2", "K"};
+  std::vector<std::string> on;
+  for (unsigned b = 0; b < 6; ++b)
+    if (mask & (1u << b)) on.emplace_back(names[b]);
+  return permsweep_join(on, "+");
+}
+inline bool permsweep_full_mode() {
+  const char* m = std::getenv("PERMSWEEP_MODE");
+  return m && std::string(m) == "full";
+}
+
+// Two-fused (h1,h2 hadamard) permutation generality for a single kernel,
+// parameterized by the per-operand inner annotations. A0/B0 are the canonical
+// operands over outer (h1,h2,<A-ext>,<B-ext>,k). Runs four ADDITIVE sweeps:
+//   - result layout (6! = 720): permute the 6 result modes; oracle = the
+//     canonical result permute-assigned into the same order.
+//   - A layout (5! = 120): present A in each physical order via
+//     permute-assignment; contract with canonical B into the canonical result.
+//   - B layout (5! = 120): symmetric.
+//   - random joint sample (A,B,result all permuted): a bounded fixed-seed
+//     sample (identical on every rank) guarding residual cross-term risk.
+// PERMSWEEP_MODE=full runs every permutation + 256 joint samples; the default
+// strides the large loops down (~24 each) + 16 joint so committed CI stays
+// light while the exhaustive sweep stays runnable on demand. The full sweep was
+// validated ALL-PASS at np=1 and np=2 for both kernels.
+inline void run_two_hadamard_sweep(TA::World& w, const ArrayToT2& A0,
+                                   const ArrayToT2& B0, const char* a_inner,
+                                   const char* b_inner, const char* c_inner,
+                                   const char* label) {
+  const bool root = (w.rank() == 0);
+  const bool full = permsweep_full_mode();
+  const std::string Aann = std::string("h1,h2,i1,i2,k") + a_inner;
+  const std::string Bann = std::string("h1,h2,j1,j2,k") + b_inner;
+  const std::vector<std::string> Cmodes0{"h1", "h2", "i1", "i2", "j1", "j2"};
+  const std::string canonC = permsweep_join(Cmodes0, ",") + c_inner;
+
+  ArrayToT2 C_canon = TA::einsum(A0(Aann), B0(Bann), canonC);
+  w.gop.fence();
+  BOOST_REQUIRE_GT(C_canon.trange().tiles_range().volume(), 0u);
+
+  std::size_t checks = 0;
+  auto note = [&](const char* phase, const std::string& s) {
+    if (root) {
+      std::fprintf(stderr, "[2HAD] %s %s %s\n", label, phase, s.c_str());
+      std::fflush(stderr);
+    }
+  };
+
+  // ---- result-layout sweep (6!) ----
+  {
+    std::vector<std::string> base = Cmodes0;
+    std::sort(base.begin(), base.end());
+    std::size_t idx = 0;
+    const std::size_t stride = full ? 1u : 30u;  // 720 -> ~24
+    do {
+      if ((idx++ % stride) != 0) continue;
+      const std::string res = permsweep_join(base, ",") + c_inner;
+      note("result", res);
+      ArrayToT2 C = TA::einsum(A0(Aann), B0(Bann), res);
+      w.gop.fence();
+      ArrayToT2 C_oracle;
+      C_oracle(res) = C_canon(canonC);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_oracle.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff2(C, C_oracle), 1e-9);
+      ++checks;
+    } while (std::next_permutation(base.begin(), base.end()));
+  }
+
+  // ---- A-layout sweep (5!) ----
+  {
+    std::vector<std::string> Am{"h1", "h2", "i1", "i2", "k"};
+    std::sort(Am.begin(), Am.end());
+    std::size_t idx = 0;
+    const std::size_t stride = full ? 1u : 5u;  // 120 -> 24
+    do {
+      if ((idx++ % stride) != 0) continue;
+      const std::string aperm = permsweep_join(Am, ",") + a_inner;
+      note("A", aperm);
+      ArrayToT2 A_sig;
+      A_sig(aperm) = A0(Aann);
+      w.gop.fence();
+      ArrayToT2 C = TA::einsum(A_sig(aperm), B0(Bann), canonC);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_canon.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff2(C, C_canon), 1e-9);
+      ++checks;
+    } while (std::next_permutation(Am.begin(), Am.end()));
+  }
+
+  // ---- B-layout sweep (5!) ----
+  {
+    std::vector<std::string> Bm{"h1", "h2", "j1", "j2", "k"};
+    std::sort(Bm.begin(), Bm.end());
+    std::size_t idx = 0;
+    const std::size_t stride = full ? 1u : 5u;  // 120 -> 24
+    do {
+      if ((idx++ % stride) != 0) continue;
+      const std::string bperm = permsweep_join(Bm, ",") + b_inner;
+      note("B", bperm);
+      ArrayToT2 B_sig;
+      B_sig(bperm) = B0(Bann);
+      w.gop.fence();
+      ArrayToT2 C = TA::einsum(A0(Aann), B_sig(bperm), canonC);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_canon.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff2(C, C_canon), 1e-9);
+      ++checks;
+    } while (std::next_permutation(Bm.begin(), Bm.end()));
+  }
+
+  // ---- random joint sample (A,B,result all permuted) ----
+  {
+    std::mt19937 rng(20260626u);  // fixed seed => identical sequence per rank
+    const std::size_t N = full ? 256u : 16u;
+    std::vector<std::string> Am{"h1", "h2", "i1", "i2", "k"};
+    std::vector<std::string> Bm{"h1", "h2", "j1", "j2", "k"};
+    std::vector<std::string> Cm = Cmodes0;
+    for (std::size_t s = 0; s < N; ++s) {
+      std::shuffle(Am.begin(), Am.end(), rng);
+      std::shuffle(Bm.begin(), Bm.end(), rng);
+      std::shuffle(Cm.begin(), Cm.end(), rng);
+      const std::string aperm = permsweep_join(Am, ",") + a_inner;
+      const std::string bperm = permsweep_join(Bm, ",") + b_inner;
+      const std::string res = permsweep_join(Cm, ",") + c_inner;
+      note("joint", aperm + " * " + bperm + " -> " + res);
+      ArrayToT2 A_sig, B_sig;
+      A_sig(aperm) = A0(Aann);
+      B_sig(bperm) = B0(Bann);
+      w.gop.fence();
+      ArrayToT2 C = TA::einsum(A_sig(aperm), B_sig(bperm), res);
+      w.gop.fence();
+      ArrayToT2 C_oracle;
+      C_oracle(res) = C_canon(canonC);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_oracle.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff2(C, C_oracle), 1e-9);
+      ++checks;
+    }
+  }
+
+  BOOST_CHECK_GT(checks, std::size_t{0});
+  if (root)
+    std::fprintf(stderr, "[2HAD] %s done: %zu checks (full=%d)\n", label, checks,
+                 static_cast<int>(full));
+}
+}  // namespace
+
+// ce_ce kernel: inner a rides, inner c contracted. n=5 outer -> 120 perms.
+BOOST_AUTO_TEST_CASE(permsweep_all_perms_all_structs_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  const bool root = (w.rank() == 0);
+
+  // Fine (U) operand tilings.
+  auto h = tr1d(4, 2), i1 = tr1d(4, 2), i2 = tr1d(4, 2);
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2), kU = tr1d(8, 4);
+  // Coarse (collapse-to-1) targets.
+  auto hT = tr1d(4, 4), i1T = tr1d(4, 4), i2T = tr1d(4, 4);
+  auto j1T = tr1d(4, 4), j2T = tr1d(4, 4), kT = tr1d(8, 8);
+
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i1, i2, kU}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j1, j2, kU}, TA::Range{4});
+  w.gop.fence();
+  reset_plan_active_count();
+
+  for (unsigned mask : permsweep_masks()) {
+    const std::string slabel = permsweep_struct_label(mask);
+    std::vector<TA::TiledRange1> Hv{(mask & 1u) ? hT : h};
+    std::vector<TA::TiledRange1> Mv{(mask & 2u) ? i1T : i1,
+                                    (mask & 4u) ? i2T : i2};
+    std::vector<TA::TiledRange1> Nv{(mask & 8u) ? j1T : j1,
+                                    (mask & 16u) ? j2T : j2};
+    std::vector<TA::TiledRange1> Kv{(mask & 32u) ? kT : kU};
+
+    std::vector<std::string> base{"h", "i1", "i2", "j1", "j2"};
+    std::sort(base.begin(), base.end());
+    do {
+      const std::string outer = permsweep_join(base, ",");
+      const std::string res = outer + ";a";
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP] ce_ce struct=%s trying %s\n",
+                     slabel.c_str(), outer.c_str());
+        std::fflush(stderr);
+      }
+      ArrayToT2 C_ref =
+          TA::einsum(A0("h,i1,i2,k;a,c"), B0("h,j1,j2,k;c"), res);
+      w.gop.fence();
+      ArrayToT2 C;
+      C(res) = (A0("h,i1,i2,k;a,c") * B0("h,j1,j2,k;c")).retile(Hv, Mv, Nv, Kv);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_ref.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP] ce_ce struct=%s ok %s\n",
+                     slabel.c_str(), outer.c_str());
+        std::fflush(stderr);
+      }
+    } while (std::next_permutation(base.begin(), base.end()));
+  }
+  // Active path must have fired at least once across the active structures.
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// ce_e kernel: inner a/b both ride (no shared inner contraction). 120 perms.
+BOOST_AUTO_TEST_CASE(permsweep_all_perms_all_structs_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  const bool root = (w.rank() == 0);
+
+  auto h = tr1d(4, 2), i1 = tr1d(4, 2), i2 = tr1d(4, 2);
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2), kU = tr1d(8, 4);
+  auto hT = tr1d(4, 4), i1T = tr1d(4, 4), i2T = tr1d(4, 4);
+  auto j1T = tr1d(4, 4), j2T = tr1d(4, 4), kT = tr1d(8, 8);
+
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i1, i2, kU}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j1, j2, kU}, TA::Range{5});
+  w.gop.fence();
+  reset_plan_active_count();
+
+  for (unsigned mask : permsweep_masks()) {
+    const std::string slabel = permsweep_struct_label(mask);
+    std::vector<TA::TiledRange1> Hv{(mask & 1u) ? hT : h};
+    std::vector<TA::TiledRange1> Mv{(mask & 2u) ? i1T : i1,
+                                    (mask & 4u) ? i2T : i2};
+    std::vector<TA::TiledRange1> Nv{(mask & 8u) ? j1T : j1,
+                                    (mask & 16u) ? j2T : j2};
+    std::vector<TA::TiledRange1> Kv{(mask & 32u) ? kT : kU};
+
+    std::vector<std::string> base{"h", "i1", "i2", "j1", "j2"};
+    std::sort(base.begin(), base.end());
+    do {
+      const std::string outer = permsweep_join(base, ",");
+      const std::string res = outer + ";a,b";
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP] ce_e struct=%s trying %s\n",
+                     slabel.c_str(), outer.c_str());
+        std::fflush(stderr);
+      }
+      ArrayToT2 C_ref = TA::einsum(A0("h,i1,i2,k;a"), B0("h,j1,j2,k;b"), res);
+      w.gop.fence();
+      ArrayToT2 C;
+      C(res) = (A0("h,i1,i2,k;a") * B0("h,j1,j2,k;b")).retile(Hv, Mv, Nv, Kv);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_ref.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP] ce_e struct=%s ok %s\n",
+                     slabel.c_str(), outer.c_str());
+        std::fflush(stderr);
+      }
+    } while (std::next_permutation(base.begin(), base.end()));
+  }
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// ===========================================================================
+// MULTI-HADAMARD permutation generality (h1,h2 both fused). Hadamard indices do
+// NOT enter the strided DGEMM (they are batch/parallelization axes the kernel
+// rides over) and are NOT retileable, so this is a PURE result/operand layout
+// permutation concern -- orthogonal to the retile-structure sweep above. The
+// engine permutes A into canonical, B into canonical, and the result out of
+// canonical as three INDEPENDENT steps, so additive single-variable sweeps
+// (A alone, B alone, result alone) fully exercise permutation handling; a
+// bounded random joint sample guards residual cross-term risk. Oracle = stock
+// einsum; operand-layout variants are built by permute-assignment (reorders the
+// canonical values; make_arena2's seed is order-dependent so a fresh build in a
+// permuted trange would NOT be the same logical tensor). np=1 AND np=2.
+//
+// ce_ce kernel (inner a rides on A, inner c contracted): two fused indices.
+BOOST_AUTO_TEST_CASE(permsweep_two_hadamard_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  auto h1 = tr1d(4, 2), h2 = tr1d(4, 2), i1 = tr1d(4, 2), i2 = tr1d(4, 2);
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2), kU = tr1d(8, 4);
+  ArrayToT2 A0 =
+      make_arena2(w, TA::TiledRange{h1, h2, i1, i2, kU}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h1, h2, j1, j2, kU}, TA::Range{4});
+  w.gop.fence();
+  run_two_hadamard_sweep(w, A0, B0, ";a,c", ";c", ";a", "ce_ce");
+}
+
+// ce_e kernel (inner a/b both ride, no shared inner contraction): two fused.
+BOOST_AUTO_TEST_CASE(permsweep_two_hadamard_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto h1 = tr1d(4, 2), h2 = tr1d(4, 2), i1 = tr1d(4, 2), i2 = tr1d(4, 2);
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2), kU = tr1d(8, 4);
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h1, h2, i1, i2, kU}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h1, h2, j1, j2, kU}, TA::Range{5});
+  w.gop.fence();
+  run_two_hadamard_sweep(w, A0, B0, ";a", ";b", ";a,b", "ce_e");
+}
+
+// NON-UNIFORM inner extents (the defining ToT property) through active retile +
+// result permutation -- the axis the uniform permsweep above does NOT cover and
+// the only structural difference left between the (clean) test harness and the
+// bench. Inner extents depend ONLY on the non-contracted (external/fused) outer
+// indices so the K-fold contraction stays well-defined. Oracle = stock einsum
+// into the SAME permuted layout; array_max_reldiff2 is position-sensitive. All
+// 120 outer permutations x {identity, K-coarsen}, np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(permsweep_nonuniform_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  const bool root = (w.rank() == 0);
+  auto h = tr1d(4, 2), i1 = tr1d(4, 2), i2 = tr1d(4, 2);
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2), kU = tr1d(8, 4);
+  auto kT = tr1d(8, 8);  // coarsen K (the contracted outer) to a single tile
+  // a rides on A, keyed by A's external (h,i1,i2) -- NOT k; b rides on B,
+  // keyed by (h,j1,j2). Extents vary 2..4, so cells have differing sizes.
+  auto a_ext = [](const std::vector<std::size_t>& x) {
+    return TA::Range{long(2 + (x[0] + x[1] + x[2]) % 3)};
+  };
+  auto b_ext = [](const std::vector<std::size_t>& x) {
+    return TA::Range{long(2 + (2 * x[0] + x[1] + 3 * x[2]) % 3)};
+  };
+  ArrayToT2 A0 = make_arena2_nu(w, TA::TiledRange{h, i1, i2, kU}, a_ext);
+  ArrayToT2 B0 = make_arena2_nu(w, TA::TiledRange{h, j1, j2, kU}, b_ext);
+  w.gop.fence();
+  reset_plan_active_count();
+  for (unsigned mask : {0u, 32u}) {  // identity and K-coarsen
+    std::vector<TA::TiledRange1> Hv{h}, Mv{i1, i2}, Nv{j1, j2};
+    std::vector<TA::TiledRange1> Kv{(mask & 32u) ? kT : kU};
+    std::vector<std::string> base{"h", "i1", "i2", "j1", "j2"};
+    std::sort(base.begin(), base.end());
+    do {
+      const std::string outer = permsweep_join(base, ",");
+      const std::string res = outer + ";a,b";
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP-NU] ce_e mask=%u trying %s\n", mask,
+                     outer.c_str());
+        std::fflush(stderr);
+      }
+      ArrayToT2 C_ref = TA::einsum(A0("h,i1,i2,k;a"), B0("h,j1,j2,k;b"), res);
+      w.gop.fence();
+      ArrayToT2 C;
+      C(res) = (A0("h,i1,i2,k;a") * B0("h,j1,j2,k;b")).retile(Hv, Mv, Nv, Kv);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_ref.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP-NU] ce_e mask=%u ok %s\n", mask,
+                     outer.c_str());
+        std::fflush(stderr);
+      }
+    } while (std::next_permutation(base.begin(), base.end()));
+  }
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// ce_ce non-uniform: rider a varies with (h,i1,i2); the CONTRACTED inner c is
+// kept uniform (width 4) so the inner GEMM stays well-defined. 120 perms x
+// {identity, K-coarsen}, np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(permsweep_nonuniform_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  const bool root = (w.rank() == 0);
+  auto h = tr1d(4, 2), i1 = tr1d(4, 2), i2 = tr1d(4, 2);
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2), kU = tr1d(8, 4);
+  auto kT = tr1d(8, 8);
+  auto a_ext = [](const std::vector<std::size_t>& x) {
+    return TA::Range{long(2 + (x[0] + x[1] + x[2]) % 3), 4l};  // {a(var), c=4}
+  };
+  auto c_ext = [](const std::vector<std::size_t>&) {
+    return TA::Range{4l};  // {c=4} only
+  };
+  ArrayToT2 A0 = make_arena2_nu(w, TA::TiledRange{h, i1, i2, kU}, a_ext);
+  ArrayToT2 B0 = make_arena2_nu(w, TA::TiledRange{h, j1, j2, kU}, c_ext);
+  w.gop.fence();
+  reset_plan_active_count();
+  for (unsigned mask : {0u, 32u}) {
+    std::vector<TA::TiledRange1> Hv{h}, Mv{i1, i2}, Nv{j1, j2};
+    std::vector<TA::TiledRange1> Kv{(mask & 32u) ? kT : kU};
+    std::vector<std::string> base{"h", "i1", "i2", "j1", "j2"};
+    std::sort(base.begin(), base.end());
+    do {
+      const std::string outer = permsweep_join(base, ",");
+      const std::string res = outer + ";a";
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP-NU] ce_ce mask=%u trying %s\n", mask,
+                     outer.c_str());
+        std::fflush(stderr);
+      }
+      ArrayToT2 C_ref =
+          TA::einsum(A0("h,i1,i2,k;a,c"), B0("h,j1,j2,k;c"), res);
+      w.gop.fence();
+      ArrayToT2 C;
+      C(res) =
+          (A0("h,i1,i2,k;a,c") * B0("h,j1,j2,k;c")).retile(Hv, Mv, Nv, Kv);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_ref.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP-NU] ce_ce mask=%u ok %s\n", mask,
+                     outer.c_str());
+        std::fflush(stderr);
+      }
+    } while (std::next_permutation(base.begin(), base.end()));
+  }
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// SPARSE permuted-result retile sweep. The bench (which crashed/mis-computed)
+// and the pre-existing csv_like failure are BOTH SparsePolicy + result-permute;
+// every clean test above is DensePolicy, so this closes that coverage gap with
+// a clean harness. Outer-tile sparsity (a subset of outer tiles absent), uniform
+// inner, K-coarsen retile, all 120 outer permutations, np=1 AND np=2. Oracle =
+// stock einsum into the SAME permuted layout; array_max_reldiff_sparse is
+// tile-index-matched (permutation-sensitive) and flags present-on-one-side tiles.
+BOOST_AUTO_TEST_CASE(permsweep_sparse_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  const bool root = (w.rank() == 0);
+  const float saved = TA::SparseShape<float>::threshold();
+  TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  auto h = tr1d(4, 2), i1 = tr1d(4, 2), i2 = tr1d(4, 2);
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2), kU = tr1d(8, 4);
+  auto kT = tr1d(8, 8);
+  auto azero = [](const auto& x) {
+    return ((x[0] + x[1] + x[2] + x[3]) % 4) == 0;  // ~25% of A outer absent
+  };
+  auto bzero = [](const auto& x) {
+    return ((x[0] + x[1] + x[2] + x[3]) % 5) == 0;  // ~20% of B outer absent
+  };
+  ArrayToTSparse A0 =
+      make_arena_sparse(w, TA::TiledRange{h, i1, i2, kU}, TA::Range{3}, azero);
+  ArrayToTSparse B0 =
+      make_arena_sparse(w, TA::TiledRange{h, j1, j2, kU}, TA::Range{5}, bzero);
+  w.gop.fence();
+  reset_plan_active_count();
+  for (unsigned mask : {0u, 32u}) {
+    std::vector<TA::TiledRange1> Hv{h}, Mv{i1, i2}, Nv{j1, j2};
+    std::vector<TA::TiledRange1> Kv{(mask & 32u) ? kT : kU};
+    std::vector<std::string> base{"h", "i1", "i2", "j1", "j2"};
+    std::sort(base.begin(), base.end());
+    do {
+      const std::string outer = permsweep_join(base, ",");
+      const std::string res = outer + ";a,b";
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP-SP] ce_e mask=%u trying %s\n", mask,
+                     outer.c_str());
+        std::fflush(stderr);
+      }
+      ArrayToTSparse C_ref =
+          TA::einsum(A0("h,i1,i2,k;a"), B0("h,j1,j2,k;b"), res);
+      w.gop.fence();
+      ArrayToTSparse C;
+      C(res) = (A0("h,i1,i2,k;a") * B0("h,j1,j2,k;b")).retile(Hv, Mv, Nv, Kv);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_ref.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff_sparse(C, C_ref), 1e-9);
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP-SP] ce_e mask=%u ok %s\n", mask,
+                     outer.c_str());
+        std::fflush(stderr);
+      }
+    } while (std::next_permutation(base.begin(), base.end()));
+  }
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+  TA::SparseShape<float>::threshold(saved);
+}
+
+// SPARSE + NON-UNIFORM combined -- the bench's exact domain (the bench that
+// crashed). If THIS clean harness passes, the engine's retile+repermute is
+// exonerated on every axis the bench combines, isolating the bench's own
+// machinery as the corruption source. K-coarsen, all 120 perms, np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(permsweep_sparse_nonuniform_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  const bool root = (w.rank() == 0);
+  const float saved = TA::SparseShape<float>::threshold();
+  TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  auto h = tr1d(4, 2), i1 = tr1d(4, 2), i2 = tr1d(4, 2);
+  auto j1 = tr1d(4, 2), j2 = tr1d(4, 2), kU = tr1d(8, 4);
+  auto kT = tr1d(8, 8);
+  auto azero = [](const auto& x) { return ((x[0] + x[1] + x[2] + x[3]) % 4) == 0; };
+  auto bzero = [](const auto& x) { return ((x[0] + x[1] + x[2] + x[3]) % 5) == 0; };
+  auto a_ext = [](const std::vector<std::size_t>& x) {
+    return TA::Range{long(2 + (x[0] + x[1] + x[2]) % 3)};  // rider, keyed by ext
+  };
+  auto b_ext = [](const std::vector<std::size_t>& x) {
+    return TA::Range{long(2 + (2 * x[0] + x[1] + 3 * x[2]) % 3)};
+  };
+  ArrayToTSparse A0 =
+      make_arena_sparse_nu(w, TA::TiledRange{h, i1, i2, kU}, azero, a_ext);
+  ArrayToTSparse B0 =
+      make_arena_sparse_nu(w, TA::TiledRange{h, j1, j2, kU}, bzero, b_ext);
+  w.gop.fence();
+  reset_plan_active_count();
+  for (unsigned mask : {0u, 32u}) {
+    std::vector<TA::TiledRange1> Hv{h}, Mv{i1, i2}, Nv{j1, j2};
+    std::vector<TA::TiledRange1> Kv{(mask & 32u) ? kT : kU};
+    std::vector<std::string> base{"h", "i1", "i2", "j1", "j2"};
+    std::sort(base.begin(), base.end());
+    do {
+      const std::string outer = permsweep_join(base, ",");
+      const std::string res = outer + ";a,b";
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP-SPNU] ce_e mask=%u trying %s\n", mask,
+                     outer.c_str());
+        std::fflush(stderr);
+      }
+      ArrayToTSparse C_ref =
+          TA::einsum(A0("h,i1,i2,k;a"), B0("h,j1,j2,k;b"), res);
+      w.gop.fence();
+      ArrayToTSparse C;
+      C(res) = (A0("h,i1,i2,k;a") * B0("h,j1,j2,k;b")).retile(Hv, Mv, Nv, Kv);
+      w.gop.fence();
+      BOOST_CHECK(C.trange() == C_ref.trange());
+      BOOST_CHECK_SMALL(array_max_reldiff_sparse(C, C_ref), 1e-9);
+      if (root) {
+        std::fprintf(stderr, "[PERMSWEEP-SPNU] ce_e mask=%u ok %s\n", mask,
+                     outer.c_str());
+        std::fflush(stderr);
+      }
+    } while (std::next_permutation(base.begin(), base.end()));
+  }
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+  TA::SparseShape<float>::threshold(saved);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

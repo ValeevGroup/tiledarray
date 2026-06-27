@@ -1321,6 +1321,10 @@ class Summa
         owner_->set_tile(u_ords_[0], page);
         return;
       }
+      // Zero-copy sub-views sharing the coarse page's arena slab. The result
+      // pmap co-locates every covered U tile on this (the producing) rank, so
+      // each set_tile below is a LOCAL placement -- a view never has to be
+      // serialized cross-rank (which it could not survive).
       auto subs = TiledArray::detail::arena_carve_block<EvalTile>(
           page, u_ranges_, /*view=*/true);
       TA_ASSERT(subs.size() == u_ords_.size());
@@ -2519,15 +2523,11 @@ class Summa
   /// SET exactly once, whether by a coarsen carve (one cell -> many U), a 1:1
   /// placement, or a refine MERGE (many cells -> one U); counting per covered
   /// (cell,U) pair would DOUBLE-count under a result-axis refine, so the count
-  /// dedupes distinct fine-nonzero U ordinals per slab. Canonical (no
-  /// permutation) only.
+  /// dedupes distinct fine-nonzero U ordinals per slab. A permuted result order
+  /// is handled by mapping each role-order U ordinal through
+  /// perm_index_to_target (see below); the count is permutation-invariant.
   template <typename Shape>
   ordinal_type initialize_active(const Shape& shape) {
-    if (DistEvalImpl_::perm_index_to_target(0) != 0)
-      TA_EXCEPTION(
-          "in-SUMMA two-trange retile: result permutation is not yet supported "
-          "on the active (coarsen) path");
-
     const ordinal_type local_size = proc_grid_.local_size();
     const ordinal_type n_alloc = my_slabs_ * local_size;
     const ordinal_type n_cols = proc_grid_.cols();
@@ -2574,8 +2574,14 @@ class Summa
         for (ordinal_type uh : u_fused) {
           const ordinal_type slab_u_base = uh * per_u_mn;
           for (std::size_t u : u_ord_local) {
-            const ordinal_type u_ord =
-                static_cast<ordinal_type>(u) + slab_u_base;
+            // u_result_ordinals emits ordinals in the CANONICAL role order
+            // (summaM ++ summaN); map each through the result permutation so it
+            // indexes the actual (permuted) target trange -- the same space the
+            // shape, seen[], and the eventual set_tile use. Identity perm =>
+            // no-op (this is the count twin of finalize_active's Pass 1 mapping;
+            // both must agree for the count-invariant).
+            const ordinal_type u_ord = DistEvalImpl_::perm_index_to_target(
+                static_cast<ordinal_type>(u) + slab_u_base);
             if (shape.is_zero(u_ord)) continue;
             if (!seen[u_ord]) {
               seen[u_ord] = 1u;
@@ -2786,17 +2792,13 @@ class Summa
   /// COUNT INVARIANT: every reduce task allocated is consumed (destroyed, and
   /// submitted iff live) here -- consumed == n_alloc -- and every distinct
   /// fine-nonzero U result tile is SET EXACTLY once (== the count
-  /// initialize_active returned). Both checked with TA_EXCEPTION. Canonical (no
-  /// permutation) only.
+  /// initialize_active returned). Both checked with TA_EXCEPTION. A permuted
+  /// result order is handled by mapping each role-order U ordinal through
+  /// perm_index_to_target before it indexes the (permuted) target trange; the
+  /// coarse page is already delivered in target layout, so no page data
+  /// permute is needed.
   template <typename Shape>
   void finalize_active(const Shape& shape) {
-    // Reject a permutation on the active path (outer-index permutation
-    // composition is deferred; canonical order is assumed at np=1).
-    if (DistEvalImpl_::perm_index_to_target(0) != 0)
-      TA_EXCEPTION(
-          "in-SUMMA two-trange retile: result permutation is not yet supported "
-          "on the active (coarsen) path");
-
     const ordinal_type local_size = proc_grid_.local_size();
     const ordinal_type n_alloc = my_slabs_ * local_size;
     const ordinal_type n_cols = proc_grid_.cols();
@@ -2862,8 +2864,16 @@ class Summa
           for (ordinal_type uh : u_fused) {
             const ordinal_type slab_u_base = uh * per_u_mn;
             for (std::size_t u : u_ord_local) {
-              const ordinal_type u_ord =
-                  static_cast<ordinal_type>(u) + slab_u_base;
+              // u_result_ordinals emits CANONICAL role-order ordinals; map each
+              // through the result permutation to the actual (permuted) target
+              // trange. The coarse result page is already delivered in target
+              // layout, so the corrected ordinal is exactly the U tile whose
+              // target box equals (1:1) or sub-tiles (carve/merge) the page's
+              // own range -- no page data permute is needed. Identity perm =>
+              // no-op (every currently-green path is byte-identical). This is
+              // the load-bearing fix for cross-role-boundary permuted output.
+              const ordinal_type u_ord = DistEvalImpl_::perm_index_to_target(
+                  static_cast<ordinal_type>(u) + slab_u_base);
               if (shape.is_zero(u_ord)) continue;
               u_ords.push_back(u_ord);
             }
@@ -2893,8 +2903,9 @@ class Summa
               for (ordinal_type uh : u_fused) {
                 const ordinal_type slab_u_base = uh * per_u_mn;
                 for (std::size_t u : u_ord_local) {
-                  const ordinal_type u_ord =
-                      static_cast<ordinal_type>(u) + slab_u_base;
+                  // Map to the permuted target trange (same as the live path).
+                  const ordinal_type u_ord = DistEvalImpl_::perm_index_to_target(
+                      static_cast<ordinal_type>(u) + slab_u_base);
                   if (!shape.is_zero(u_ord))
                     std::fprintf(stderr,
                                  "[LEAK] rank=%d DEAD-cell covers FINE-NONZERO "
