@@ -25,6 +25,11 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/type_traits.h>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
+#include <typeinfo>
 #ifdef TILEDARRAY_HAS_DEVICE
 #include <TiledArray/device/device_task_fn.h>
 #include <TiledArray/external/device.h>
@@ -199,7 +204,26 @@ class DistEvalImpl : public TensorImpl<Policy>,
   }
 
   /// Tile set notification
-  void notify() override { set_counter_++; }
+  void notify() override {
+    set_counter_++;
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+    static const bool notify_trace = (std::getenv("TA_NOTIFY_TRACE") != nullptr);
+    if (notify_trace) {
+      const int tc = task_count_;
+      const int sc = set_counter_;
+      // A healthy evaluator touches each tile exactly task_count_ times, so
+      // set_counter_ never exceeds task_count_. An OVER-notify (the racy-hang
+      // root cause) is the moment it does. Log the +1 crossing once.
+      if (tc >= 0 && sc == tc + 1)
+        std::fprintf(stderr,
+                     "[NOTIFY-OVERSHOOT] rank=%d eval=%p set=%d task=%d "
+                     "type=%s\n",
+                     static_cast<int>(TensorImpl_::world().rank()),
+                     static_cast<const void*>(this), sc, tc,
+                     typeid(*this).name());
+    }
+#endif
+  }
 
   /// Wait for all tiles to be assigned
   void wait() const {
@@ -218,8 +242,39 @@ class DistEvalImpl : public TensorImpl<Policy>,
         abort();
       };
       try {
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+        static const bool wait_trace =
+            (std::getenv("TA_NOTIFY_TRACE") != nullptr);
+        if (wait_trace) {
+          const auto t0 = std::chrono::steady_clock::now();
+          auto dumped = std::make_shared<bool>(false);
+          TensorImpl_::world().await([this, task_count, t0, dumped]() {
+            if (this->set_counter_ == task_count) return true;
+            if (!*dumped) {
+              const auto el = std::chrono::duration_cast<std::chrono::seconds>(
+                                  std::chrono::steady_clock::now() - t0)
+                                  .count();
+              if (el > 12) {
+                *dumped = true;
+                std::fprintf(
+                    stderr,
+                    "[WAIT-STUCK] rank=%d this=%p set=%d task=%d type=%s\n",
+                    static_cast<int>(TensorImpl_::world().rank()),
+                    static_cast<const void*>(this),
+                    static_cast<int>(this->set_counter_), task_count,
+                    typeid(*this).name());
+              }
+            }
+            return false;
+          });
+        } else
+          TensorImpl_::world().await([this, task_count]() {
+            return this->set_counter_ == task_count;
+          });
+#else
         TensorImpl_::world().await(
             [this, task_count]() { return this->set_counter_ == task_count; });
+#endif
       } catch (TiledArray::Exception& e) {
         report_and_abort("TiledArray", e.what());
       } catch (madness::MadnessException& e) {

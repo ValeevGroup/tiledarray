@@ -21,6 +21,8 @@
 #define TILEDARRAY_DIST_EVAL_CONTRACTION_EVAL_H__INCLUDED
 
 #include <atomic>
+#include <cstdio>
+#include <cstdlib>
 #include <limits>
 #include <map>
 #include <mutex>
@@ -217,6 +219,13 @@ class Summa
               ///< (inactive) unless the engine threaded a user .retile()
               ///< target. Stored only in this phase; consumed by later phases.
               ///< When inactive the SUMMA behaves exactly as without a retile.
+  mutable ordinal_type active_init_set_count_ =
+      static_cast<ordinal_type>(-1);  ///< The SET count initialize_active
+              ///< computed (== the value internal_eval returns and eval()
+              ///< stores into task_count_). finalize_active runs as a task
+              ///< INSIDE internal_eval, before task_count_ is assigned, so it
+              ///< checks its written-tile count against THIS stash, not the
+              ///< not-yet-populated DistEvalImpl::task_count_ member.
 
   /// \return the world rank that owns result tile \p i: the within-group
   /// owner (from the group-local process grid) shifted by the world-rank
@@ -459,7 +468,7 @@ class Summa
       ordinal_type i_start, i_fence, i_stride;
       std::tie(i_start, i_fence, i_stride) = result_row_range(p);
       for (ordinal_type i = i_start; i < i_fence && !nz; i += i_stride)
-        nz = coarse_left_cell_nonzero(i, k);
+        nz = coarse_left_cell_nonzero(step_h(s), i, k);
       if (!nz) continue;
       proc_list[p] = proc_grid_.map_row(p);
       ++count;
@@ -493,7 +502,7 @@ class Summa
       ordinal_type j_start, j_fence, j_stride;
       std::tie(j_start, j_fence, j_stride) = result_col_range(p);
       for (ordinal_type j = j_start; j < j_fence && !nz; j += j_stride)
-        nz = coarse_right_cell_nonzero(k, j);
+        nz = coarse_right_cell_nonzero(step_h(s), k, j);
       if (!nz) continue;
       proc_list[p] = proc_grid_.map_col(p);
       ++count;
@@ -613,7 +622,7 @@ class Summa
         std::tie(i_start, i_fence, i_stride) = result_row_range(my_proc_row);
         for (ordinal_type i = i_start; i < i_fence; i += i_stride) {
           // ... such that the coarse left cell (M-row i, K-col k) is non-empty
-          if (coarse_left_cell_nonzero(i, k)) {
+          if (coarse_left_cell_nonzero(h, i, k)) {
             // ... the owner of the coarse left cell is always in the group ...
             const auto k_proc_col = k % nproc_cols;
             mask[k_proc_col] = true;
@@ -624,7 +633,7 @@ class Summa
                 std::tie(j_start, j_fence, j_stride) =
                     result_col_range(proc_col);
                 for (ordinal_type j = j_start; j < j_fence; j += j_stride) {
-                  if (coarse_result_cell_nonzero(i, j)) {
+                  if (coarse_result_cell_nonzero(h, i, j)) {
                     mask[proc_col] = true;
                     break;
                   }
@@ -722,7 +731,7 @@ class Summa
         std::tie(j_start, j_fence, j_stride) = result_col_range(my_proc_col);
         for (ordinal_type j = j_start; j < j_fence; j += j_stride) {
           // ... such that the coarse right cell (K-row k, N-col j) is non-empty
-          if (coarse_right_cell_nonzero(k, j)) {
+          if (coarse_right_cell_nonzero(h, k, j)) {
             // ... the owner of the coarse right cell is always in the group ...
             auto k_proc_row = k % nproc_rows;
             mask[k_proc_row] = true;
@@ -733,7 +742,7 @@ class Summa
                 std::tie(i_start, i_fence, i_stride) =
                     result_row_range(proc_row);
                 for (ordinal_type i = i_start; i < i_fence; i += i_stride) {
-                  if (coarse_result_cell_nonzero(i, j)) {
+                  if (coarse_result_cell_nonzero(h, i, j)) {
                     mask[proc_row] = true;
                     break;
                   }
@@ -1669,14 +1678,16 @@ class Summa
   /// fetch/notify). The single COARSE operand basis for all left-presence
   /// decisions (operand row mask, iterate_col, and -- via the coarse gemm
   /// product -- result liveness).
-  bool coarse_left_cell_nonzero(const ordinal_type i_coarse,
+  bool coarse_left_cell_nonzero(const ordinal_type h,
+                                const ordinal_type i_coarse,
                                 const ordinal_type k_coarse) const {
     using left_eval = typename left_type::eval_type;
-    // Slab-agnostic presence probe: pin the leading H modes to slab 0 (exact
-    // for a DENSE operand; per-slab sparse-H semantics over nh_>1 are deferred
-    // to /). nf == 0 => empty H range => prior non-Hadamard behavior.
+    // Per-slab presence probe: use the SAME per-slab H basis as the gather
+    // (slab_u_h_ranges(h)) so the presence/liveness decision for coarse slab h
+    // matches the tiles that step h actually contributes. nf == 0 => empty H
+    // range => prior non-Hadamard behavior.
     return block_has_nonzero<left_eval>(
-        left_, zeroth_slab_h_ranges(),
+        left_, slab_u_h_ranges(h),
         coarse_axis_u_ranges(plan_.summaM, i_coarse),
         coarse_axis_u_ranges(plan_.summaK, k_coarse), plan_.summaM.size(),
         plan_.summaK.size());
@@ -1688,13 +1699,14 @@ class Summa
   /// coarse_left_cell_nonzero. The single COARSE operand basis for all
   /// right-presence decisions (operand col mask, iterate_row, and -- via the
   /// coarse gemm product -- result liveness).
-  bool coarse_right_cell_nonzero(const ordinal_type k_coarse,
+  bool coarse_right_cell_nonzero(const ordinal_type h,
+                                 const ordinal_type k_coarse,
                                  const ordinal_type j_coarse) const {
     using right_eval = typename right_type::eval_type;
-    // Slab-agnostic presence probe (see coarse_left_cell_nonzero): pin H to
-    // slab 0; exact for DENSE, per-slab sparse-H deferred to /.
+    // Per-slab presence probe (see coarse_left_cell_nonzero): use the per-slab
+    // H basis slab_u_h_ranges(h) so presence matches what step h contributes.
     return block_has_nonzero<right_eval>(
-        right_, zeroth_slab_h_ranges(),
+        right_, slab_u_h_ranges(h),
         coarse_axis_u_ranges(plan_.summaK, k_coarse),
         coarse_axis_u_ranges(plan_.summaN, j_coarse), plan_.summaK.size(),
         plan_.summaN.size());
@@ -1720,11 +1732,12 @@ class Summa
   ///
   /// k_ is the COARSE K count under an active plan (== number of SUMMA inner
   /// steps per slab), so the scan ranges over [0, k_).
-  bool coarse_result_cell_nonzero(const ordinal_type i_coarse,
+  bool coarse_result_cell_nonzero(const ordinal_type h,
+                                  const ordinal_type i_coarse,
                                   const ordinal_type j_coarse) const {
     for (ordinal_type k = 0ul; k < k_; ++k)
-      if (coarse_left_cell_nonzero(i_coarse, k) &&
-          coarse_right_cell_nonzero(k, j_coarse))
+      if (coarse_left_cell_nonzero(h, i_coarse, k) &&
+          coarse_right_cell_nonzero(h, k, j_coarse))
         return true;
     return false;
   }
@@ -1960,6 +1973,26 @@ class Summa
 
       // Broadcast the tile
       const madness::DistributedID key(DistEvalImpl_::id(), index + key_offset);
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+      {
+        static const bool ta_bcast_pair_trace =
+            (std::getenv("TA_BCAST_PAIR_TRACE") != nullptr);
+        if (ta_bcast_pair_trace) {
+          const int myrank = TensorImpl_::world().rank();
+          const int root_world = group.world_rank(group_root);
+          std::fprintf(
+              stderr,
+              "[BCAST] rank=%d side=%s key2=%ld idx=%ld c=%ld root_world=%d "
+              "sender=%d gsize=%d members={",
+              myrank, (key_offset == 0ul ? "L" : "R"),
+              (long)(index + key_offset), (long)index, (long)it->first,
+              root_world, (int)(myrank == root_world), (int)group.size());
+          for (ProcessID gp = 0; gp < group.size(); ++gp)
+            std::fprintf(stderr, "%d ", group.world_rank(gp));
+          std::fprintf(stderr, "}\n");
+        }
+      }
+#endif
       TensorImpl_::world().gop.bcast(key, it->second, group_root, group);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
@@ -2137,6 +2170,21 @@ class Summa
             continue;
           std::vector<row_datum> row;
           get_row_coarsen(s, row);
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+          {
+            static const bool ta_rr_trace =
+                (std::getenv("TA_BCAST_PAIR_TRACE") != nullptr);
+            if (ta_rr_trace) {
+              const madness::Group cg = make_col_group(s);
+              std::fprintf(stderr,
+                           "[ROWRANGE] rank=%d ROOT-for k=%ld s=%ld "
+                           "row_empty=%d col_group_empty=%d col_group_size=%d\n",
+                           TensorImpl_::world().rank(), (long)k, (long)s,
+                           (int)row.empty(), (int)cg.empty(),
+                           (int)(cg.empty() ? 0 : cg.size()));
+            }
+          }
+#endif
           if (row.empty()) continue;
           const madness::Group col_group = make_col_group(s);
           if (!col_group.empty() && col_group.size() > 1)
@@ -2216,11 +2264,12 @@ class Summa
       if (plan_.active) {
         for (s = next_step(s); s < nsteps_; s = next_step(s + 1ul)) {
           const ordinal_type k = step_k(s);
+          const ordinal_type h = step_h(s);
           ordinal_type j_start, j_fence, j_stride;
           std::tie(j_start, j_fence, j_stride) =
               result_col_range(proc_grid_.rank_col());
           for (ordinal_type j = j_start; j < j_fence; j += j_stride)
-            if (coarse_right_cell_nonzero(k, j)) return s;
+            if (coarse_right_cell_nonzero(h, k, j)) return s;
         }
         return s;
       }
@@ -2259,11 +2308,12 @@ class Summa
       if (plan_.active) {
         for (s = next_step(s); s < nsteps_; s = next_step(s + 1ul)) {
           const ordinal_type k = step_k(s);
+          const ordinal_type h = step_h(s);
           ordinal_type i_start, i_fence, i_stride;
           std::tie(i_start, i_fence, i_stride) =
               result_row_range(proc_grid_.rank_row());
           for (ordinal_type i = i_start; i < i_fence; i += i_stride)
-            if (coarse_left_cell_nonzero(i, k)) return s;
+            if (coarse_left_cell_nonzero(h, i, k)) return s;
         }
         return s;
       }
@@ -2432,7 +2482,14 @@ class Summa
                 ++u_count;
               }
           const ordinal_type u_fused_per_coarse_slab = n_slabs_u_() / nh_;
-          return my_slabs_ * u_fused_per_coarse_slab * u_count;
+          // Stash the SET count for finalize_active's count-invariant assert.
+          // The DenseShape overload has its OWN active branch (the generic
+          // initialize_active is bypassed for a dense result), so it must stash
+          // active_init_set_count_ here too -- otherwise it stays at its -1
+          // sentinel and finalize_active's TA_ASSERT(n_set == ...) fires on a
+          // perfectly correct dense active-retile result.
+          active_init_set_count_ = my_slabs_ * u_fused_per_coarse_slab * u_count;
+          return active_init_set_count_;
         }
       }
 
@@ -2527,7 +2584,7 @@ class Summa
           }
         }
         // LIVENESS: the coarse gemm product, NOT the fine U result coverage.
-        if (coarse_result_cell_nonzero(i_coarse, j_coarse)) {
+        if (coarse_result_cell_nonzero(h, i_coarse, j_coarse)) {
           new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
                                                     ,
@@ -2539,6 +2596,22 @@ class Summa
         }
       }
     }
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+    {
+      static const bool ta_ic_trace =
+          (std::getenv("TA_BCAST_PAIR_TRACE") != nullptr);
+      if (ta_ic_trace)
+        std::fprintf(stderr,
+                     "[INIT-DONE] rank=%d task_count(set)=%ld n_alloc=%ld\n",
+                     TensorImpl_::world().rank(), (long)tile_count,
+                     (long)(my_slabs_ * local_size));
+    }
+#endif
+    // Stash the SET count for the finalize count-invariant check. eval() only
+    // assigns DistEvalImpl::task_count_ AFTER internal_eval() returns, but
+    // finalize_active runs as a task within internal_eval -- so it must compare
+    // against this stash, not the (still -1) task_count_ member.
+    active_init_set_count_ = tile_count;
     return tile_count;
   }
 
@@ -2779,7 +2852,7 @@ class Summa
         // product is the liveness predicate initialize_active used.
         const bool live =
             std::is_same_v<Shape, DenseShape> ||
-            coarse_result_cell_nonzero(i_coarse, j_coarse);
+            coarse_result_cell_nonzero(h, i_coarse, j_coarse);
 
         std::vector<ordinal_type> u_ords;
         if (live) {
@@ -2809,6 +2882,32 @@ class Summa
           cells[cell].u_ords = std::move(u_ords);
         } else {
           // Dead placeholder: destroy without submit; leave page/u_ords empty.
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+          {
+            static const bool ta_leak_trace =
+                (std::getenv("TA_BCAST_PAIR_TRACE") != nullptr);
+            if (ta_leak_trace) {
+              const std::vector<std::size_t> u_ord_local =
+                  plan_.u_result_ordinals(
+                      static_cast<std::size_t>(global_cell));
+              for (ordinal_type uh : u_fused) {
+                const ordinal_type slab_u_base = uh * per_u_mn;
+                for (std::size_t u : u_ord_local) {
+                  const ordinal_type u_ord =
+                      static_cast<ordinal_type>(u) + slab_u_base;
+                  if (!shape.is_zero(u_ord))
+                    std::fprintf(stderr,
+                                 "[LEAK] rank=%d DEAD-cell covers FINE-NONZERO "
+                                 "U: h=%ld cell=%ld i_coarse=%ld j_coarse=%ld "
+                                 "u_ord=%ld (counted in task_count, never set)\n",
+                                 TensorImpl_::world().rank(), (long)h,
+                                 (long)cell, (long)i_coarse, (long)j_coarse,
+                                 (long)u_ord);
+                }
+              }
+            }
+          }
+#endif
           reduce_task->~ReducePairTask<op_type>();
           ++consumed;
         }
@@ -2858,10 +2957,38 @@ class Summa
       }
     }
 
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+    {
+      static const bool ta_fd_trace =
+          (std::getenv("TA_BCAST_PAIR_TRACE") != nullptr);
+      if (ta_fd_trace) {
+        ordinal_type nwritten = 0ul;
+        for (ordinal_type u = 0ul; u < u_vol; ++u) nwritten += written[u];
+        std::fprintf(stderr,
+                     "[FINAL-DONE] rank=%d n_alloc=%ld consumed=%ld "
+                     "u_tiles_set=%ld\n",
+                     TensorImpl_::world().rank(), (long)n_alloc,
+                     (long)consumed, (long)nwritten);
+      }
+    }
+#endif
     if (consumed != n_alloc)
       TA_EXCEPTION(
           "in-SUMMA two-trange retile: reduce-task consume count != allocation "
           "count (count-invariant violation)");
+
+    // Count invariant: finalize must SET exactly as many result tiles as
+    // initialize_active counted (the value that becomes task_count_ / the
+    // set_counter_ target). A shortfall means some genuinely-nonzero result tile
+    // landed in a cell judged dead -> set_counter_ would never reach task_count_
+    // and wait() would hang. Fail loudly here (in Debug/test builds) instead of
+    // deadlocking later. Compare against the stash, not DistEvalImpl::task_count_
+    // -- that member is assigned only after internal_eval() returns, whereas
+    // finalize_active runs as a task within internal_eval (task_count_ is still
+    // -1 here).
+    ordinal_type n_set = 0ul;
+    for (ordinal_type u = 0ul; u < u_vol; ++u) n_set += written[u];
+    TA_ASSERT(n_set == active_init_set_count_);
 
     std::allocator<ReducePairTask<op_type>>().deallocate(reduce_tasks_, n_alloc);
   }
@@ -2933,6 +3060,15 @@ class Summa
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
     printf("finalize: start rank=%i\n", TensorImpl_::world().rank());
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+    {
+      static const bool ta_final_trace =
+          (std::getenv("TA_BCAST_PAIR_TRACE") != nullptr);
+      if (ta_final_trace)
+        std::fprintf(stderr, "[FINAL] rank=%d FinalizeTask STARTED\n",
+                     TensorImpl_::world().rank());
+    }
+#endif
 
     finalize(TensorImpl_::shape());
 
@@ -3223,6 +3359,20 @@ class Summa
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
       printf("step:  start rank=%i k=%lu\n", owner_->world().rank(), k);
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+      {
+        static const bool ta_step_trace =
+            (std::getenv("TA_BCAST_PAIR_TRACE") != nullptr);
+        if (ta_step_trace) {
+          std::fprintf(stderr,
+                       "[RUN] rank=%d k=%ld nsteps=%ld branch=%s "
+                       "has_finalize=%d\n",
+                       owner_->world().rank(), (long)k, (long)owner_->nsteps_,
+                       (k < owner_->nsteps_ ? "STEP" : "TERM"),
+                       (int)(finalize_task_ != nullptr));
+        }
+      }
+#endif
 
       if (k < owner_->nsteps_) {
         // Initialize next tail task and submit next task
@@ -3324,8 +3474,22 @@ class Summa
     /// Spawn task to construct process groups and get tiles.
     void iterate_task(ordinal_type k, const ordinal_type offset) {
       // Search for the next non-zero row and column
+      const ordinal_type k_in = k + offset;
       k = owner_->iterate_sparse(k + offset);
       k_.set(k);
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+      {
+        static const bool ta_iter_trace =
+            (std::getenv("TA_BCAST_PAIR_TRACE") != nullptr);
+        if (ta_iter_trace) {
+          std::fprintf(stderr,
+                       "[ITER] rank=%d in=%ld -> k=%ld nsteps=%ld "
+                       "will_inc_finalize=%d\n",
+                       owner_->world().rank(), (long)k_in, (long)k,
+                       (long)owner_->nsteps_, (int)(k < owner_->nsteps_));
+        }
+      }
+#endif
 
       if (k < owner_->nsteps_) {
         // NOTE: The order of task submissions is dependent on the order in
@@ -3493,6 +3657,21 @@ class Summa
     // 3-d grid (the np>=2 ride-single-tile optimum). See declaration above.
     if (plan_.active && proc_h_ > 1ul)
       g_summa_proc_h_grouped_calls.fetch_add(1, std::memory_order_relaxed);
+#endif
+#ifndef TILEDARRAY_DISABLE_NOTIFY_TRACE
+    static const bool grid_trace = (std::getenv("TA_GRID_TRACE") != nullptr);
+    if (grid_trace && plan_.active)
+      std::fprintf(stderr,
+                   "[GRID] rank=%d active=%d proc_rows=%lu proc_cols=%lu "
+                   "proc_h=%lu proc_h_stride=%lu nh=%lu local_size=%lu\n",
+                   static_cast<int>(TensorImpl_::world().rank()),
+                   static_cast<int>(plan_.active),
+                   static_cast<unsigned long>(proc_grid_.proc_rows()),
+                   static_cast<unsigned long>(proc_grid_.proc_cols()),
+                   static_cast<unsigned long>(proc_h_),
+                   static_cast<unsigned long>(proc_h_stride_),
+                   static_cast<unsigned long>(nh_),
+                   static_cast<unsigned long>(proc_grid_.local_size()));
 #endif
   }
 
