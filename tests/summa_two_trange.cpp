@@ -585,6 +585,80 @@ BOOST_AUTO_TEST_CASE(retile_coarsen_k_ce_e) {
 #endif
 }
 
+// ---------------------------------------------------------------------------
+// result-axis coarsen (SUMMA-M) for a ce+ce ToT
+// contraction. C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c). The SUMMA-M result
+// axis i1 is finely tiled in U; a .retile() coarsens it.
+//
+// This is the full ce_ce ride/M coarsen vertical slice: the engine builds a
+// COARSE process grid from the T M/N tile counts (coarse_M_/coarse_N_), the
+// left ride (M) operand U-block is gathered + packed into one coarse
+// tile, and finalize reconciles the coarse grid to the U result trange via
+// plan_.u_result_ordinals + arena_carve_block. Here the coarse grid is 2x2 (M
+// coarsened: i1 4 tiles->1, times i2 2 tiles = 2; N = j1 2 tiles, identity)
+// while the U result C(i1,i2,j1) is 4*2*2 = 16 tiles, so EACH coarse cell
+// covers 4 U result tiles and finalize_active genuinely carves 4 -> 16. The
+// reldiff<1e-9 over all 16 U tiles (a missing/mis-carved tile would blow it up)
+// is the witness that the >1-U-tile-per-cell carve is correct.
+//
+// np=1 ONLY (this suite is @serial; np>1 active is rejected at coarse_M/N/K_).
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(retile_coarsen_m_ce_ce) {
+  auto& w = TA::get_default_world();
+  // U: i1 finely tiled (4 tiles of width 2 over [0,8)); i2,j1 small; K is one
+  // tile. inner a=3 spectator, c=4 contracted on A; inner c=4 on B.
+  auto i1U = tr1(8, 2);  // 4 U M-tiles on the ride axis
+  auto i2 = tr1(4, 2);   // 2 tiles
+  auto j1 = tr1(4, 2);   // 2 tiles
+  auto kk = tr1(4, 4);   // single K tile
+  auto i1T = tr1(8, 8);  // coarsen i1 to ONE tile (covers all 4 U M-tiles)
+
+  ArrayToT1 A0 = make_arena1(w, TA::TiledRange{i1U, i2, kk}, TA::Range{3, 4});
+  ArrayToT1 B0 = make_arena1(w, TA::TiledRange{j1, kk}, TA::Range{4});
+  OwnArr1 A0o = make_own1(w, TA::TiledRange{i1U, i2, kk}, TA::Range{3, 4});
+  OwnArr1 B0o = make_own1(w, TA::TiledRange{j1, kk}, TA::Range{4});
+  w.gop.fence();
+
+  // Oracle: no-retile ce_ce on the owning twin (independent ground truth) and
+  // on the arena twin.
+  OwnArr1 ref = TA::einsum(A0o("i1,i2,k;a,c"), B0o("j1,k;c"), "i1,i2,j1;a");
+  ArrayToT1 C_ref =
+      TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_ref, ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+  TA::detail::g_summa_plan_active_calls.store(0);
+#endif
+
+  // Active: coarsen the SUMMA-M axis i1 to a single tile. i2,j1,K stay Identity.
+  ArrayToT1 C_coarsen;
+  C_coarsen("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+          .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1}, /*K=*/{kk});
+  w.gop.fence();
+
+  // L3: result trange is the no-retile (U) trange.
+  BOOST_CHECK(C_coarsen.trange() == C_ref.trange());
+
+  // Values match the no-retile oracle.
+  BOOST_CHECK_SMALL(array_max_reldiff1(C_coarsen, C_ref), 1e-9);
+
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t active = TA::detail::g_summa_plan_active_calls.load();
+  w.gop.sum(&active, 1);
+  BOOST_CHECK_GT(active, std::size_t{0});
+
+  // The strided ce_ce DGEMM (right or left arm) fired over the coarse M ride.
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 // ===========================================================================

@@ -736,6 +736,51 @@ class Summa
             static_cast<ordinal_type>(g[kc].second)};
   }
 
+  // -- result-axis (SUMMA-M/N) coarsen support ---------------------
+  //
+  // When a SUMMA-M (resp. -N) role axis coarsens, the contraction grid built by
+  // the engine is COARSE on that axis (proc_grid_.local_rows()/local_cols()
+  // iterate coarse cells), while operands are stored and the result delivered
+  // at U. A coarse grid row `mc` covers a contiguous BLOCK of U M-tiles
+  // (the Cartesian product of plan_.summaM[a].groups[...] over the M axes); the
+  // left operand's U M-block (composed with the U K-block) is gathered+packed
+  // into ONE single-page coarse tile so a single tile-GEMM rides the
+  // coarse M external (ce_ce ride_on_M) and produces the coarse-M result page,
+  // which finalize then carves into the U M-sub-tiles. np=1 only.
+
+  /// Decompose a coarse role-axis grid index \p coarse_idx (row-major over the
+  /// role's AxisNest list) into the per-U-axis half-open U-tile ranges
+  /// [first,last) it covers, in the role's axis order. Identity/Coarsen yield
+  /// the group's range (>= 1 U tile); an empty role yields a single trivial
+  /// axis [coarse_idx, coarse_idx+1).
+  std::vector<std::pair<ordinal_type, ordinal_type>> coarse_axis_u_ranges(
+      const std::vector<TiledArray::expressions::AxisNest>& role,
+      ordinal_type coarse_idx) const {
+    if (role.empty()) return {{coarse_idx, coarse_idx + 1}};
+    const std::size_t nax = role.size();
+    // Decompose coarse_idx row-major over the role's per-axis T-tile counts
+    // (== groups.size()).
+    std::vector<ordinal_type> t_idx(nax);
+    ordinal_type rem = coarse_idx;
+    for (std::size_t a = nax; a-- > 0;) {
+      const ordinal_type ext =
+          static_cast<ordinal_type>(role[a].groups.size());
+      t_idx[a] = ext ? (rem % ext) : 0;
+      rem = ext ? (rem / ext) : rem;
+    }
+    std::vector<std::pair<ordinal_type, ordinal_type>> out(nax);
+    for (std::size_t a = 0; a < nax; ++a) {
+      const auto& g = role[a].groups[t_idx[a]];
+      out[a] = {static_cast<ordinal_type>(g.first),
+                static_cast<ordinal_type>(g.second)};
+    }
+    return out;
+  }
+
+  /// Number of coarse result cells per slab on the COARSE grid (== reduce-task
+  /// layout count per slab). Equals proc_grid_.local_size() at np=1 (1x1 grid).
+  ordinal_type coarse_result_slab_size() const { return result_slab_size_; }
+
   /// Pack one coarse K-block: a `madness::TaskInterface` that depends
   /// on the variable-count set of FINE (U) operand futures, and on run() packs
   /// them into ONE single-page coarse tile via `arena_gather_block`, setting the
@@ -814,6 +859,68 @@ class Summa
     return result;
   }
 
+  /// Carve a coarse result page into its covered U result sub-tiles (
+  /// free direction) and place each via `set_tile`. A `madness::TaskInterface`
+  /// that depends on the coarse result future \p coarse and, on run(), carves
+  /// the coarse outer page into the U sub-tiles whose outer ranges are
+  /// `u_ranges` (view=true zero-copy sub-views aliasing the coarse arena slab),
+  /// then `set_tile(u_ords[i], sub[i])`. Used only when a SUMMA-M/N result axis
+  /// coarsens (one coarse cell covers >= 1 U result tile). np=1 only: the carve
+  /// is local; `set_tile` to a local owner is a no-send placement.
+  template <typename EvalTile>
+  class CarveSetTask : public madness::TaskInterface {
+   private:
+    Summa_* owner_;
+    Future<EvalTile> coarse_;
+    std::vector<ordinal_type> u_ords_;
+    std::vector<Range> u_ranges_;
+
+   public:
+    CarveSetTask(Summa_* owner, Future<EvalTile> coarse,
+                 std::vector<ordinal_type> u_ords, std::vector<Range> u_ranges)
+        : madness::TaskInterface(0, "CarveSetTask",
+                                 madness::TaskAttributes::hipri()),
+          owner_(owner),
+          coarse_(std::move(coarse)),
+          u_ords_(std::move(u_ords)),
+          u_ranges_(std::move(u_ranges)) {
+      if (!coarse_.probe()) {
+        madness::DependencyInterface::inc();
+        coarse_.register_callback(this);
+      }
+    }
+
+    void run(const madness::TaskThreadEnv&) override {
+      const EvalTile page = coarse_.get();
+      // Single covered tile and the page IS that tile (identity result axes):
+      // place directly (no carve), matching the stock 1:1 path's value exactly.
+      if (u_ranges_.size() == 1ul && page.range() == u_ranges_[0]) {
+        owner_->set_tile(u_ords_[0], page);
+        return;
+      }
+      auto subs = TiledArray::detail::arena_carve_block<EvalTile>(
+          page, u_ranges_, /*view=*/true);
+      TA_ASSERT(subs.size() == u_ords_.size());
+      for (std::size_t i = 0; i < subs.size(); ++i)
+        owner_->set_tile(u_ords_[i], subs[i]);
+    }
+  };  // class CarveSetTask
+
+  /// Schedule a CarveSetTask: carve the coarse result page \p coarse into the
+  /// U result sub-tiles \p u_ords (their outer ranges taken from the result U
+  /// trange) and place each. Only instantiated for arena ToT result tiles.
+  template <typename EvalTile>
+  void carve_and_set(Future<EvalTile> coarse,
+                     const std::vector<ordinal_type>& u_ords) {
+    std::vector<Range> u_ranges;
+    u_ranges.reserve(u_ords.size());
+    for (ordinal_type u : u_ords)
+      u_ranges.push_back(this->trange().tile(u));
+    auto* task = new CarveSetTask<EvalTile>(this, std::move(coarse), u_ords,
+                                            std::move(u_ranges));
+    TensorImpl_::world().taskq.add(task);
+  }
+
   /// Collect non-zero tiles from column \c k of slab \c h of \c left_
 
   /// \param[in] s The SUMMA step (slab * k_ + column index)
@@ -842,26 +949,70 @@ class Summa
   void get_col_coarsen(const ordinal_type s,
                        std::vector<col_datum>& col) const {
     using left_eval = typename left_type::eval_type;
-    const ordinal_type base = step_h(s) * left_fine_slab_size_;
-    const auto [kf_first, kf_last] = fine_k_range(step_k(s));
+    // The left U operand's outer dims are [M-axes..., K-axes...]. For coarse
+    // M-row `r` (a coarse grid row) gather the Cartesian product of the U M
+    // sub-tiles (plan_.summaM groups) and the U K sub-tiles (the coarse K cell
+    // step_k(s)), pack into ONE single-page coarse tile, tagged with
+    // `r` so `contract` indexes reduce tasks by coarse local row. np=1 only.
+    const std::size_t nM = plan_.summaM.size();
+    const std::size_t nK = plan_.summaK.size();
+    const auto kr = coarse_axis_u_ranges(plan_.summaK, step_k(s));
     const ordinal_type local_rows = proc_grid_.local_rows();
     col.reserve(local_rows);
-    // local M-row index r in [0, local_rows); fine left tile (r, kf) ordinal is
-    // base + left_fine_start_local_ + kf + r * left_fine_stride_local_.
     for (ordinal_type r = 0ul; r < local_rows; ++r) {
-      const ordinal_type row_base =
-          base + left_fine_start_local_ + r * left_fine_stride_local_;
+      const auto mr = coarse_axis_u_ranges(plan_.summaM, r);
       std::vector<Future<left_eval>> fine;
-      fine.reserve(kf_last - kf_first);
-      for (ordinal_type kf = kf_first; kf < kf_last; ++kf) {
-        const ordinal_type idx = row_base + kf;
-        if (left_.shape().is_zero(idx)) continue;
-        fine.emplace_back(get_tile(left_, idx));
-      }
+      gather_operand_block<left_eval>(left_, /*outer_lead=*/mr, /*outer_tail=*/kr,
+                                      nM, nK, fine);
       if (fine.empty()) continue;
       col.emplace_back(r, pack_fine_block<left_eval>(std::move(fine)));
     }
   }
+
+  /// Collect the U sub-tiles of an operand for one coarse cell. \p outer_lead /
+  /// \p outer_tail are the per-axis half-open U-tile ranges for the operand's
+  /// leading (external) outer axes and trailing (contracted/external) outer
+  /// axes; \p n_lead / \p n_tail are their axis counts (the operand's outer rank
+  /// is n_lead + n_tail). Enumerates the Cartesian product in operand outer
+  /// row-major order, computes each U tile ordinal from the operand's U trange,
+  /// and appends non-zero tiles' futures to \p fine.
+  template <typename EvalTile, typename Arg>
+  void gather_operand_block(
+      Arg& arg,
+      const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_lead,
+      const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_tail,
+      std::size_t n_lead, std::size_t n_tail,
+      std::vector<Future<EvalTile>>& fine) const {
+    const auto& tr = arg.trange();
+    const std::size_t rank = n_lead + n_tail;
+    TA_ASSERT(tr.tiles_range().rank() == rank);
+    std::vector<ordinal_type> lo(rank), hi(rank);
+    for (std::size_t a = 0; a < n_lead; ++a) {
+      lo[a] = outer_lead[a].first;
+      hi[a] = outer_lead[a].second;
+    }
+    for (std::size_t b = 0; b < n_tail; ++b) {
+      lo[n_lead + b] = outer_tail[b].first;
+      hi[n_lead + b] = outer_tail[b].second;
+    }
+    // Row-major Cartesian product over [lo, hi) per axis.
+    std::vector<ordinal_type> idx = lo;
+    const auto& tiles = tr.tiles_range();
+    bool done = false;
+    while (!done) {
+      const ordinal_type ord = static_cast<ordinal_type>(tiles.ordinal(idx));
+      if (!arg.shape().is_zero(ord)) fine.emplace_back(get_tile(arg, ord));
+      // increment idx (row-major, last axis fastest)
+      std::size_t a = rank;
+      while (a-- > 0) {
+        if (++idx[a] < hi[a]) break;
+        idx[a] = lo[a];
+        if (a == 0) done = true;
+      }
+      if (rank == 0) done = true;
+    }
+  }
+
 
   /// Collect non-zero tiles from row \c k of slab \c h of \c right_
 
@@ -895,20 +1046,22 @@ class Summa
   void get_row_coarsen(const ordinal_type s,
                        std::vector<row_datum>& row) const {
     using right_eval = typename right_type::eval_type;
-    const ordinal_type base = step_h(s) * right_fine_slab_size_;
-    const auto [kf_first, kf_last] = fine_k_range(step_k(s));
+    // The canonical SUMMA right operand is laid out [K-axes..., N-axes...]
+    // (contracted index leading, external trailing) -- confirmed by stock
+    // get_row, which indexes it as kf*cols + n (K-major). So the gather must
+    // lead with the U K sub-tiles (coarse K cell step_k(s)) and trail with the
+    // U N sub-tiles (plan_.summaN groups for coarse N-col c), packed into ONE
+    // single-page coarse tile tagged with `c`. np=1 only.
+    const std::size_t nN = plan_.summaN.size();
+    const std::size_t nK = plan_.summaK.size();
+    const auto kr = coarse_axis_u_ranges(plan_.summaK, step_k(s));
     const ordinal_type local_cols = proc_grid_.local_cols();
-    const ordinal_type col_origin = base + proc_grid_.rank_col();
     row.reserve(local_cols);
     for (ordinal_type c = 0ul; c < local_cols; ++c) {
-      const ordinal_type col_base = col_origin + c * right_fine_stride_local_;
+      const auto nr = coarse_axis_u_ranges(plan_.summaN, c);
       std::vector<Future<right_eval>> fine;
-      fine.reserve(kf_last - kf_first);
-      for (ordinal_type kf = kf_first; kf < kf_last; ++kf) {
-        const ordinal_type idx = col_base + kf * proc_grid_.cols();
-        if (right_.shape().is_zero(idx)) continue;
-        fine.emplace_back(get_tile(right_, idx));
-      }
+      gather_operand_block<right_eval>(right_, /*outer_lead=*/kr,
+                                       /*outer_tail=*/nr, nK, nN, fine);
       if (fine.empty()) continue;
       row.emplace_back(c, pack_fine_block<right_eval>(std::move(fine)));
     }
@@ -1302,8 +1455,72 @@ class Summa
         );
       }
 
+      // The DistEval task_count_ is the number of result tiles that will be
+      // SET (one notify per set_tile). On the active two-trange path each of
+      // the n coarse reduce tasks carves into >= 1 U result tile (dense => all
+      // covered tiles are written), so the expected set count is the total
+      // number of covered U result tiles, not the coarse-cell count n. Inactive
+      // => 1:1 => the U count equals n (byte-for-byte the stock return).
+      if constexpr (is_arena_tot_v<value_type>) {
+        if (plan_.active) {
+          ordinal_type u_count = 0ul;
+          const ordinal_type local_size = proc_grid_.local_size();
+          for (ordinal_type cell = 0ul; cell < local_size; ++cell)
+            u_count += static_cast<ordinal_type>(
+                plan_.u_result_ordinals(static_cast<std::size_t>(cell)).size());
+          return my_slabs_ * u_count;
+        }
+      }
+
       return n;
     }
+  }
+
+  /// Active two-trange initialize (np=1): allocate COARSE-grid-sized reduce
+  /// tasks in the SAME slab-major / coarse-cell order finalize_active consumes.
+  /// A coarse cell gets a live reduce task iff ANY covered U result tile is
+  /// non-zero (zero-skip on the U result shape, not the coarse grid); else an
+  /// empty placeholder task -- preserving the allocation FORM and the count
+  /// invariant. np=1 + canonical (no permutation) only.
+  template <typename Shape>
+  ordinal_type initialize_active(const Shape& shape) {
+    if (DistEvalImpl_::perm_index_to_target(0) != 0)
+      TA_EXCEPTION(
+          "in-SUMMA two-trange retile: result permutation is not yet supported "
+          "on the active (coarsen) path");
+
+    const ordinal_type local_size = proc_grid_.local_size();
+    const ordinal_type n_alloc = my_slabs_ * local_size;
+    std::allocator<ReducePairTask<op_type>> alloc;
+    reduce_tasks_ = alloc.allocate(n_alloc);
+
+    ordinal_type tile_count = 0ul;
+    ReducePairTask<op_type>* MADNESS_RESTRICT reduce_task = reduce_tasks_;
+    for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
+      const ordinal_type slab_u_base =
+          slab_ord(h) * (this->trange().tiles_range().volume() / nh_);
+      for (ordinal_type cell = 0ul; cell < local_size; ++cell, ++reduce_task) {
+        const std::vector<std::size_t> u_ord_local =
+            plan_.u_result_ordinals(static_cast<std::size_t>(cell));
+        ordinal_type cell_nonzero = 0ul;
+        for (std::size_t u : u_ord_local)
+          if (!shape.is_zero(static_cast<ordinal_type>(u) + slab_u_base))
+            ++cell_nonzero;
+        if (cell_nonzero > 0ul) {
+          new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
+                                                    ,
+                                                    nullptr, cell
+#endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
+          );
+          // task_count_ counts SET tiles: one per covered non-zero U tile.
+          tile_count += cell_nonzero;
+        } else {
+          new (reduce_task) ReducePairTask<op_type>();
+        }
+      }
+    }
+    return tile_count;
   }
 
   /// Initialize reduce tasks
@@ -1316,6 +1533,16 @@ class Summa
 
     // fast return if there is no work to do
     if (k_ == 0) return 0;
+
+    // Active two-trange retile (np=1): reduce tasks are COARSE-grid-sized; the
+    // zero-skip evaluates the U result shape per COVERED U tile (a coarse cell
+    // is non-zero iff ANY covered U tile is non-zero). Same allocation FORM as
+    // the stock path (my_slabs_ * local_size) but the per-cell live/empty
+    // decision uses u_result_ordinals so finalize_active's consume count
+    // matches exactly. Gated so the inactive loop below is byte-for-byte stock.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) return initialize_active(shape);
+    }
 
     // Allocate memory for the reduce pair tasks (one per local result tile
     // per slab of this rank's group).
@@ -1394,7 +1621,16 @@ class Summa
   // Finalize functions ----------------------------------------------------
 
   /// Set the result tiles, destroy reduce tasks, and destroy broadcast groups
-  void finalize(const DenseShape&) {
+  void finalize(const DenseShape& shape) {
+    // Active two-trange retile (np=1): the grid is COARSE; each reduce-task cell
+    // covers >= 1 U result tile, reconciled + carved here. Identity reduces to
+    // 1:1. Gated so the inactive path below is byte-for-byte the stock loop.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) {
+        finalize_active(shape);
+        return;
+      }
+    }
     // Initialize iteration variables
     const ordinal_type col_stride =  // The stride to iterate down a column
         proc_grid_.proc_rows() * proc_grid_.cols();
@@ -1429,9 +1665,84 @@ class Summa
         reduce_tasks_, my_slabs_ * proc_grid_.local_size());
   }
 
+  /// Active two-trange finalize (np=1): walk the COARSE reduce-task grid in
+  /// slab-major, row-major order (== the initialize() allocation order at
+  /// np=1), and for each coarse cell submit its result page and carve it into
+  /// the covered U result tiles via `plan_.u_result_ordinals`. COUNT INVARIANT:
+  /// the number of reduce tasks consumed here MUST equal the number allocated
+  /// (my_slabs_ * proc_grid_.local_size()), and every covered U result tile is
+  /// written EXACTLY once -- both checked with TA_EXCEPTION (a divergence is a
+  /// latent heap/alloc bug). np=1 + canonical (no permutation) only; a
+  /// permutation under an active plan is rejected (composition deferred).
+  template <typename Shape>
+  void finalize_active(const Shape& shape) {
+    // Reject a permutation on the active path (outer-index permutation
+    // composition is deferred; canonical order is assumed at np=1).
+    if (DistEvalImpl_::perm_index_to_target(0) != 0)
+      TA_EXCEPTION(
+          "in-SUMMA two-trange retile: result permutation is not yet supported "
+          "on the active (coarsen) path");
+
+    const ordinal_type local_size = proc_grid_.local_size();
+    const ordinal_type n_alloc = my_slabs_ * local_size;
+    // Track exact-once placement over the U result trange.
+    std::vector<unsigned char> written(this->trange().tiles_range().volume(),
+                                       0u);
+    ordinal_type consumed = 0ul;
+
+    ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+    for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
+      for (ordinal_type cell = 0ul; cell < local_size; ++cell, ++reduce_task) {
+        // slab-local coarse grid ordinal == cell (np=1: 1x1 proc grid, so the
+        // local cell index IS the slab-local coarse result-grid ordinal).
+        const std::vector<std::size_t> u_ord_local =
+            plan_.u_result_ordinals(static_cast<std::size_t>(cell));
+        // Add the slab offset into the U result trange. At nh_==1 (the active
+        // scope) slab_u_base is 0; kept general for clarity.
+        const ordinal_type slab_u_base =
+            slab_ord(h) * (this->trange().tiles_range().volume() / nh_);
+
+        // Collect the covered, non-zero U result ordinals.
+        std::vector<ordinal_type> u_ords;
+        u_ords.reserve(u_ord_local.size());
+        for (std::size_t u : u_ord_local) {
+          const ordinal_type u_ord =
+              static_cast<ordinal_type>(u) + slab_u_base;
+          if (shape.is_zero(u_ord)) continue;
+          if (written[u_ord])
+            TA_EXCEPTION(
+                "in-SUMMA two-trange retile: a U result tile would be written "
+                "more than once (count-invariant violation)");
+          written[u_ord] = 1u;
+          u_ords.push_back(u_ord);
+        }
+
+        if (!u_ords.empty())
+          carve_and_set<value_type>(reduce_task->submit(), u_ords);
+
+        reduce_task->~ReducePairTask<op_type>();
+        ++consumed;
+      }
+    }
+
+    if (consumed != n_alloc)
+      TA_EXCEPTION(
+          "in-SUMMA two-trange retile: reduce-task consume count != allocation "
+          "count (count-invariant violation)");
+
+    std::allocator<ReducePairTask<op_type>>().deallocate(reduce_tasks_, n_alloc);
+  }
+
   /// Set the result tiles and destroy reduce tasks
   template <typename Shape>
   void finalize(const Shape& shape) {
+    // Active two-trange retile (np=1): coarse grid -> carve into U result tiles.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) {
+        finalize_active(shape);
+        return;
+      }
+    }
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
     std::stringstream ss;
     ss << "    finalize rank=" << TensorImpl_::world().rank() << " tiles={ ";

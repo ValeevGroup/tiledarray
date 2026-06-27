@@ -605,6 +605,38 @@ class ContEngine : public BinaryEngine<Derived> {
     return kc;
   }
 
+  /// \return the COARSE SUMMA-M tile count (number of T result-row tiles) when
+  /// the retile plan is active, else the fine (U) count \p m_fine. The coarse
+  /// count is the product over the SUMMA-M role axes of the number of T tiles
+  /// on each (\c AxisNest::groups.size()). Inactive plans return \p m_fine
+  /// unchanged so the stock SUMMA grid is byte-for-byte intact. Like
+  /// \c coarse_K_, an active plan is np=1 only (the active result reconciliation
+  /// + ride gather are local on a single rank); np>1 active is rejected.
+  size_type coarse_M_(size_type m_fine) const {
+    if (!plan_.active) return m_fine;
+    if (world_->size() > 1)
+      TA_EXCEPTION(
+          "in-SUMMA two-trange retile (.retile) is currently supported only at "
+          "MPI world size 1; np>1 active support is not yet implemented");
+    size_type mc = 1ul;
+    for (const auto& ax : plan_.summaM) mc *= ax.groups.size();
+    return mc;
+  }
+
+  /// \return the COARSE SUMMA-N tile count (number of T result-col tiles) when
+  /// the retile plan is active, else the fine (U) count \p n_fine. Mirror of
+  /// \c coarse_M_ over the SUMMA-N role axes.
+  size_type coarse_N_(size_type n_fine) const {
+    if (!plan_.active) return n_fine;
+    if (world_->size() > 1)
+      TA_EXCEPTION(
+          "in-SUMMA two-trange retile (.retile) is currently supported only at "
+          "MPI world size 1; np>1 active support is not yet implemented");
+    size_type nc = 1ul;
+    for (const auto& ax : plan_.summaN) nc *= ax.groups.size();
+    return nc;
+  }
+
   /// Initialize result tensor distribution
 
   /// This function will initialize the world and process map for the result
@@ -650,15 +682,33 @@ class ContEngine : public BinaryEngine<Derived> {
           world, (pmap ? pmap : policy::default_pmap(*world, M * N)));
     } else {  // M!=0 && N!=0
 
-      // Construct the process grid.
-      proc_grid_ = TiledArray::detail::ProcGrid(*world, M, N, m, n);
+      // Construct the process grid. When the retile plan coarsens a result
+      // (SUMMA-M/N) axis, the contraction grid's TILE dimensions become the
+      // COARSE (T) M/N tile counts while the ELEMENT dimensions (m,n) stay the
+      // total U element counts (retiling does not change the element space).
+      // This makes proc_grid_.local_rows()/local_cols() iterate COARSE result
+      // cells; one coarse cell then covers several U result tiles, reconciled
+      // in Summa::initialize/finalize. Inactive plans keep the stock U grid
+      // byte-for-byte (coarse_M_/coarse_N_ are the identity then). The operand
+      // and result pmaps stay keyed to the U tile counts (operands are stored
+      // and the result delivered at U); at np=1 every pmap is rank-local, and
+      // an active plan at np>1 is rejected (coarse_M_/coarse_N_/coarse_K_).
+      const size_type M_grid = coarse_M_(M);
+      const size_type N_grid = coarse_N_(N);
+      proc_grid_ = TiledArray::detail::ProcGrid(*world, M_grid, N_grid, m, n);
+
+      // Operand/result distribution stays over the U tile space. When inactive
+      // M_grid==M and N_grid==N so this U grid IS proc_grid_ (stock behavior).
+      const TiledArray::detail::ProcGrid u_grid =
+          plan_.active ? TiledArray::detail::ProcGrid(*world, M, N, m, n)
+                       : proc_grid_;
 
       // Initialize children
-      left_.init_distribution(world, proc_grid_.make_row_phase_pmap(K_));
-      right_.init_distribution(world, proc_grid_.make_col_phase_pmap(K_));
+      left_.init_distribution(world, u_grid.make_row_phase_pmap(K_));
+      right_.init_distribution(world, u_grid.make_col_phase_pmap(K_));
 
       // Initialize the process map if not already defined
-      if (!pmap) pmap = proc_grid_.make_pmap();
+      if (!pmap) pmap = u_grid.make_pmap();
       ExprEngine_::init_distribution(world, pmap);
     }
   }
