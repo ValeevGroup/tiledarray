@@ -413,6 +413,78 @@ class Summa
         madness::DistributedID(DistEvalImpl_::id(), k + key_offset));
   }
 
+  /// Active-plan COLUMN broadcast group over process ROWS (left operand). Mirror
+  /// of make_group's membership logic but coarse-aware: process row p is in the
+  /// group iff some coarse M-row owned by p has a non-zero coarse left cell
+  /// (M-row, K-col k). The root process (p == k % proc_rows) is always included
+  /// even if its cells are zero. Group key == k + (s - k) (== make_col_group's
+  /// stock key) so the coarse-keyed broadcast / group membership stays
+  /// consistent across ranks. The stock make_group would scan the FINE left
+  /// shape with COARSE strides under an active plan and mis-prune membership.
+  madness::Group make_coarse_left_group(
+      const ordinal_type s, const ordinal_type k,
+      const std::vector<bool>& process_mask) const {
+    const ordinal_type max = proc_grid_.proc_rows();
+    std::vector<ProcessID> proc_list(max, -1);
+    ordinal_type root = k % max;
+    proc_list[root] = proc_grid_.map_row(root);
+    ordinal_type count = 1ul;
+    for (ordinal_type p = 0ul; p < max; ++p) {
+      if (proc_list[p] != -1 || !process_mask.at(p)) continue;
+      // any coarse M-row owned by process row p with a non-zero coarse left cell
+      bool nz = false;
+      ordinal_type i_start, i_fence, i_stride;
+      std::tie(i_start, i_fence, i_stride) = result_row_range(p);
+      for (ordinal_type i = i_start; i < i_fence && !nz; i += i_stride)
+        nz = coarse_left_cell_nonzero(i, k);
+      if (!nz) continue;
+      proc_list[p] = proc_grid_.map_row(p);
+      ++count;
+    }
+    for (ordinal_type x = 0ul, p = 0ul; x < count; ++p) {
+      if (proc_list[p] == -1) continue;
+      proc_list[x++] = proc_list[p];
+    }
+    proc_list.resize(count);
+    return madness::Group(
+        TensorImpl_::world(), proc_list,
+        madness::DistributedID(DistEvalImpl_::id(), k + (s - k)));
+  }
+
+  /// Active-plan ROW broadcast group over process COLS (right operand). Mirror
+  /// of make_coarse_left_group for the right operand: process col p is in the
+  /// group iff some coarse N-col owned by p has a non-zero coarse right cell
+  /// (K-row k, N-col). Group key == k + (s - k + nsteps_) (== make_row_group's
+  /// stock key, disjoint from the column groups' keys).
+  madness::Group make_coarse_right_group(
+      const ordinal_type s, const ordinal_type k,
+      const std::vector<bool>& process_mask) const {
+    const ordinal_type max = proc_grid_.proc_cols();
+    std::vector<ProcessID> proc_list(max, -1);
+    ordinal_type root = k % max;
+    proc_list[root] = proc_grid_.map_col(root);
+    ordinal_type count = 1ul;
+    for (ordinal_type p = 0ul; p < max; ++p) {
+      if (proc_list[p] != -1 || !process_mask.at(p)) continue;
+      bool nz = false;
+      ordinal_type j_start, j_fence, j_stride;
+      std::tie(j_start, j_fence, j_stride) = result_col_range(p);
+      for (ordinal_type j = j_start; j < j_fence && !nz; j += j_stride)
+        nz = coarse_right_cell_nonzero(k, j);
+      if (!nz) continue;
+      proc_list[p] = proc_grid_.map_col(p);
+      ++count;
+    }
+    for (ordinal_type x = 0ul, p = 0ul; x < count; ++p) {
+      if (proc_list[p] == -1) continue;
+      proc_list[x++] = proc_list[p];
+    }
+    proc_list.resize(count);
+    return madness::Group(
+        TensorImpl_::world(), proc_list,
+        madness::DistributedID(DistEvalImpl_::id(), k + (s - k + nsteps_)));
+  }
+
   /// Row process group factory function
 
   /// \param s The SUMMA step (= slab index * k_ + broadcast group index)
@@ -420,25 +492,34 @@ class Summa
   madness::Group make_row_group(const ordinal_type s) const {
     const ordinal_type h = step_h(s);
     const ordinal_type k = step_k(s);
-    // Construct the sparse broadcast group
-    const ordinal_type right_begin_k =
-        h * right_slab_size_ + k * proc_grid_.cols();
-    const ordinal_type right_end_k = right_begin_k + proc_grid_.cols();
     // make the row mask; using the same mask for all tiles avoids having to
     // compute mask for every tile and use of masked broadcasts
     auto result_row_mask_k = make_row_mask(h, k);
 
     // return empty group if I am not in this group, otherwise make a group
+    if (!result_row_mask_k[proc_grid_.rank_col()]) return madness::Group();
+
+    // Active two-trange path: the RIGHT operand is stored at FINE U tiling while
+    // the broadcast groups key on the COARSE grid, so group membership is
+    // "process column p holds a non-zero coarse right cell (K-row k, some coarse
+    // N-col owned by p)" -- a coarse predicate, not the raw fine-shape scan that
+    // make_group would do with coarse strides. Same group key (s - k + nsteps_)
+    // so the coarse-keyed broadcast stays consistent across ranks.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) return make_coarse_right_group(s, k, result_row_mask_k);
+    }
+
+    // Construct the sparse broadcast group
     // N.B. group key = s + nsteps_ (unique across (h,k) and distinct from the
     // column groups' keys), root flag = k (the within-slab cyclic owner)
-    if (result_row_mask_k[proc_grid_.rank_col()])
-      return make_group(right_.shape(), result_row_mask_k, right_begin_k,
-                        right_end_k, right_stride_, proc_grid_.proc_cols(), k,
-                        s - k + nsteps_, [&](const ProcGrid::size_type col) {
-                          return proc_grid_.map_col(col);
-                        });
-    else
-      return madness::Group();
+    const ordinal_type right_begin_k =
+        h * right_slab_size_ + k * proc_grid_.cols();
+    const ordinal_type right_end_k = right_begin_k + proc_grid_.cols();
+    return make_group(right_.shape(), result_row_mask_k, right_begin_k,
+                      right_end_k, right_stride_, proc_grid_.proc_cols(), k,
+                      s - k + nsteps_, [&](const ProcGrid::size_type col) {
+                        return proc_grid_.map_col(col);
+                      });
   }
 
   /// Column process group factory function
@@ -453,15 +534,22 @@ class Summa
     auto result_col_mask_k = make_col_mask(h, k);
 
     // return empty group if I am not in this group, otherwise make a group
+    if (!result_col_mask_k[proc_grid_.rank_row()]) return madness::Group();
+
+    // Active two-trange path: LEFT operand stored at FINE U while groups key on
+    // the COARSE grid -- membership is "process row p holds a non-zero coarse
+    // left cell (some coarse M-row owned by p, K-col k)". Same group key (s - k)
+    // as the stock path so the coarse broadcast is consistent across ranks.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) return make_coarse_left_group(s, k, result_col_mask_k);
+    }
+
     // N.B. group key = s (unique across (h,k)), root flag = k
-    if (result_col_mask_k[proc_grid_.rank_row()])
-      return make_group(
-          left_.shape(), result_col_mask_k, h * left_slab_size_ + k,
-          h * left_slab_size_ + left_end_, left_stride_, proc_grid_.proc_rows(),
-          k, s - k,
-          [&](const ordinal_type row) { return proc_grid_.map_row(row); });
-    else
-      return madness::Group();
+    return make_group(
+        left_.shape(), result_col_mask_k, h * left_slab_size_ + k,
+        h * left_slab_size_ + left_end_, left_stride_, proc_grid_.proc_rows(),
+        k, s - k,
+        [&](const ordinal_type row) { return proc_grid_.map_row(row); });
   }
 
   /// Makes the row result mask
@@ -484,6 +572,47 @@ class Summa
 
     // if result is dense, include all processors
     if (result_shape.is_dense()) return std::vector<bool>(nproc_cols, true);
+
+    // Active two-trange path: i / k are COARSE cell indices but the operand /
+    // result shapes are stored at the FINE U tiling. Decide every presence
+    // question on the SINGLE coarse basis: a coarse left cell is non-empty iff
+    // it covers a non-zero U left tile (coarse_left_cell_nonzero), and a coarse
+    // RESULT cell is non-empty iff the COARSE GEMM PRODUCT is non-zero
+    // (coarse_result_cell_nonzero) -- NOT "any covered U result tile non-zero"
+    // (that fine-U rule disagrees with the coarse operand steps and strands
+    // contributions on null reduce tasks). Raw coarse ordinals against the U
+    // shape would mis-prune; this branch replaces the stock loop below. Gated so
+    // the inactive path stays byte-for-byte stock.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) {
+        std::vector<bool> mask(nproc_cols, false);
+        ordinal_type i_start, i_fence, i_stride;
+        std::tie(i_start, i_fence, i_stride) = result_row_range(my_proc_row);
+        for (ordinal_type i = i_start; i < i_fence; i += i_stride) {
+          // ... such that the coarse left cell (M-row i, K-col k) is non-empty
+          if (coarse_left_cell_nonzero(i, k)) {
+            // ... the owner of the coarse left cell is always in the group ...
+            const auto k_proc_col = k % nproc_cols;
+            mask[k_proc_col] = true;
+            for (ordinal_type proc_col = 0; proc_col != nproc_cols;
+                 ++proc_col) {
+              if (proc_col != k_proc_col) {
+                ordinal_type j_start, j_fence, j_stride;
+                std::tie(j_start, j_fence, j_stride) =
+                    result_col_range(proc_col);
+                for (ordinal_type j = j_start; j < j_fence; j += j_stride) {
+                  if (coarse_result_cell_nonzero(i, j)) {
+                    mask[proc_col] = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+        return mask;
+      }
+    }
 
     // initialize the mask
     std::vector<bool> mask(nproc_cols, false);
@@ -555,6 +684,44 @@ class Summa
 
     // if result is dense, include all processors
     if (result_shape.is_dense()) return std::vector<bool>(nproc_rows, true);
+
+    // Active two-trange path: j / k are COARSE cell indices but the operand /
+    // result shapes are stored at FINE U tiling. Same single-coarse-basis rule
+    // as make_row_mask: a coarse right cell is non-empty iff it covers a
+    // non-zero U right tile (coarse_right_cell_nonzero), and a coarse RESULT
+    // cell is non-empty iff the COARSE GEMM PRODUCT is non-zero
+    // (coarse_result_cell_nonzero) -- never the fine-U-result-shape rule. Gated
+    // so the inactive loop below is byte-for-byte the stock path.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) {
+        std::vector<bool> mask(nproc_rows, false);
+        ordinal_type j_start, j_fence, j_stride;
+        std::tie(j_start, j_fence, j_stride) = result_col_range(my_proc_col);
+        for (ordinal_type j = j_start; j < j_fence; j += j_stride) {
+          // ... such that the coarse right cell (K-row k, N-col j) is non-empty
+          if (coarse_right_cell_nonzero(k, j)) {
+            // ... the owner of the coarse right cell is always in the group ...
+            auto k_proc_row = k % nproc_rows;
+            mask[k_proc_row] = true;
+            for (ordinal_type proc_row = 0; proc_row != nproc_rows;
+                 ++proc_row) {
+              if (proc_row != k_proc_row) {
+                ordinal_type i_start, i_fence, i_stride;
+                std::tie(i_start, i_fence, i_stride) =
+                    result_row_range(proc_row);
+                for (ordinal_type i = i_start; i < i_fence; i += i_stride) {
+                  if (coarse_result_cell_nonzero(i, j)) {
+                    mask[proc_row] = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+        return mask;
+      }
+    }
 
     // initialize the mask
     std::vector<bool> mask(nproc_rows, false);
@@ -814,19 +981,26 @@ class Summa
   /// result future. A bespoke task is used (rather than the variadic
   /// `taskq.add`) because madness's `Future<std::vector<Future<T>>>` dependency
   /// holder is non-copyable/non-movable and so cannot be a `TaskFn` argument.
-  /// The fine cells share outer (M/N) bounds and partition the K axis, so the
-  /// merged outer range is the elementwise min-lobound / max-upbound box.
+  /// The coarse outer box is the FULL declared footprint \p coarse_outer
+  /// (computed by the caller via `append_role_t_box`, identical to the refine
+  /// branch); outer positions not covered by any present U tile are laid down as
+  /// holes (null cells -- `arena_gather_block` handles them, the kernels skip
+  /// them). Packing into the full footprint -- rather than the min/max box of
+  /// the PRESENT fine tiles -- is what keeps a sparse coarse tile's outer volume
+  /// equal to the declared `Mo*nK` so the kernel's `shape_ok` invariant holds.
   template <typename EvalTile>
   class PackBlockTask : public madness::TaskInterface {
    private:
     std::vector<Future<EvalTile>> fine_;  ///< the fine K-block operand futures
+    Range coarse_outer_;                  ///< the FULL declared coarse outer box
     Future<EvalTile> result_;             ///< the packed coarse tile
 
    public:
-    PackBlockTask(std::vector<Future<EvalTile>> fine)
+    PackBlockTask(std::vector<Future<EvalTile>> fine, Range coarse_outer)
         : madness::TaskInterface(0, "PackBlockTask",
                                  madness::TaskAttributes::hipri()),
           fine_(std::move(fine)),
+          coarse_outer_(std::move(coarse_outer)),
           result_() {
       // Register each not-yet-ready fine future as a dependency.
       for (auto& f : fine_) {
@@ -844,43 +1018,37 @@ class Summa
       std::vector<EvalTile> fine;
       fine.reserve(fine_.size());
       for (auto& f : fine_) fine.push_back(f.get());
-      const unsigned int rank = fine.front().range().rank();
-      std::vector<std::size_t> lo(rank), up(rank);
-      for (unsigned int d = 0; d < rank; ++d) {
-        lo[d] = static_cast<std::size_t>(fine.front().range().lobound_data()[d]);
-        up[d] = static_cast<std::size_t>(fine.front().range().upbound_data()[d]);
-      }
+      // nbatch is discovered from the first non-empty fine tile (all share it);
+      // the outer box is the explicit FULL footprint, NOT the min/max of present
+      // tiles -- absent positions become holes.
       std::size_t nbatch = 1ul;
       for (const auto& t : fine) {
         if (t.empty()) continue;
         nbatch = static_cast<std::size_t>(t.nbatch());
-        const auto* tl = t.range().lobound_data();
-        const auto* tu = t.range().upbound_data();
-        for (unsigned int d = 0; d < rank; ++d) {
-          lo[d] = std::min<std::size_t>(lo[d], static_cast<std::size_t>(tl[d]));
-          up[d] = std::max<std::size_t>(up[d], static_cast<std::size_t>(tu[d]));
-        }
+        break;
       }
-      const Range coarse_outer(lo, up);
       result_.set(TiledArray::detail::arena_gather_block<EvalTile>(
-          fine, coarse_outer, nbatch));
+          fine, coarse_outer_, nbatch));
     }
   };  // class PackBlockTask
 
   /// Gather + pack the FINE (U) operand tiles in \p fine_futs (the contiguous
-  /// K-block for one coarse external cell) into ONE single-page coarse tile,
-  /// returning a future to it. Only instantiated for arena ToT tiles;
-  /// the caller gates on `is_arena_tot_v` so the non-arena branch is never
-  /// reached.
+  /// K-block for one coarse external cell) into ONE single-page coarse tile at
+  /// the FULL declared outer footprint \p coarse_outer, returning a future to it
+  /// \p coarse_outer is the same box the refine branch computes via
+  /// `append_role_t_box`; absent U positions inside it are left as holes (null
+  /// cells). Only instantiated for arena ToT tiles; the caller gates on
+  /// `is_arena_tot_v` so the non-arena branch is never reached.
   template <typename EvalTile>
-  Future<EvalTile> pack_fine_block(
-      std::vector<Future<EvalTile>> fine_futs) const {
+  Future<EvalTile> pack_fine_block(std::vector<Future<EvalTile>> fine_futs,
+                                   Range coarse_outer) const {
     TA_ASSERT(!fine_futs.empty());
 #ifdef TA_STRIDED_DGEMM_COUNT
     g_summa_gather_block_count.fetch_add(fine_futs.size(),
                                          std::memory_order_relaxed);
 #endif
-    auto* task = new PackBlockTask<EvalTile>(std::move(fine_futs));
+    auto* task = new PackBlockTask<EvalTile>(std::move(fine_futs),
+                                             std::move(coarse_outer));
     Future<EvalTile> result = task->result();
     TensorImpl_::world().taskq.add(task);
     return result;
@@ -1273,14 +1441,21 @@ class Summa
                                       nM, nK, fine, left_fetch_cache_,
                                       active_fetch_mutex_);
       if (fine.empty()) continue;
+      // Full declared coarse outer footprint (identical for both branches):
+      // the union of the covered U tiles on Coarsen/Identity axes and the T
+      // tile's own range on a Refine axis. The COARSEN branch packs into this
+      // full box too -- absent U positions become holes (null cells) rather
+      // than shrinking the box, so the packed tile's outer volume equals the
+      // declared Mo*nK the kernel's shape_ok requires.
+      std::vector<std::size_t> lo, up;
+      append_role_t_box(plan_.summaM, plan_.targetM, uM, g_row, lo, up);
+      append_role_t_box(plan_.summaK, plan_.targetK, uK, step_k(s), lo, up);
       if (refine) {
-        std::vector<std::size_t> lo, up;
-        append_role_t_box(plan_.summaM, plan_.targetM, uM, g_row, lo, up);
-        append_role_t_box(plan_.summaK, plan_.targetK, uK, step_k(s), lo, up);
         col.emplace_back(r, carve_pack_fine_block<left_eval>(
                                 std::move(fine), Range(lo, up)));
       } else {
-        col.emplace_back(r, pack_fine_block<left_eval>(std::move(fine)));
+        col.emplace_back(
+            r, pack_fine_block<left_eval>(std::move(fine), Range(lo, up)));
       }
     }
   }
@@ -1321,6 +1496,67 @@ class Summa
       }
       if (rank == 0) done = true;
     }
+    return false;
+  }
+
+  /// Active-plan sparse predicate: does the coarse LEFT cell (coarse M-row
+  /// \p i_coarse, coarse K-col \p k_coarse) cover ANY non-zero U left tile? The
+  /// left U operand outer layout is [M-axes..., K-axes...]; the cell maps to the
+  /// Cartesian product of the M-axes' U ranges (summaM at i_coarse) and the
+  /// K-axes' U ranges (summaK at k_coarse). Probes the FINE U shape only (no
+  /// fetch/notify). The single COARSE operand basis for all left-presence
+  /// decisions (operand row mask, iterate_col, and -- via the coarse gemm
+  /// product -- result liveness).
+  bool coarse_left_cell_nonzero(const ordinal_type i_coarse,
+                                const ordinal_type k_coarse) const {
+    using left_eval = typename left_type::eval_type;
+    return block_has_nonzero<left_eval>(
+        left_, coarse_axis_u_ranges(plan_.summaM, i_coarse),
+        coarse_axis_u_ranges(plan_.summaK, k_coarse), plan_.summaM.size(),
+        plan_.summaK.size());
+  }
+
+  /// Active-plan sparse predicate: does the coarse RIGHT cell (coarse K-row
+  /// \p k_coarse, coarse N-col \p j_coarse) cover ANY non-zero U right tile? The
+  /// right U operand outer layout is [K-axes..., N-axes...]. Mirror of
+  /// coarse_left_cell_nonzero. The single COARSE operand basis for all
+  /// right-presence decisions (operand col mask, iterate_row, and -- via the
+  /// coarse gemm product -- result liveness).
+  bool coarse_right_cell_nonzero(const ordinal_type k_coarse,
+                                 const ordinal_type j_coarse) const {
+    using right_eval = typename right_type::eval_type;
+    return block_has_nonzero<right_eval>(
+        right_, coarse_axis_u_ranges(plan_.summaK, k_coarse),
+        coarse_axis_u_ranges(plan_.summaN, j_coarse), plan_.summaK.size(),
+        plan_.summaN.size());
+  }
+
+  /// Active-plan sparse predicate: the COARSE GEMM PRODUCT. The coarse result
+  /// cell (coarse M-row \p i_coarse, coarse N-col \p j_coarse) is non-zero iff
+  /// some coarse K index \c k joins a non-zero coarse left cell (i_coarse, k)
+  /// with a non-zero coarse right cell (k, j_coarse) -- i.e.
+  ///   C_c = gemm(L_c, R_c),  C_c[i,j] != 0  <=>  exists k: L_c[i,k] && R_c[k,j].
+  ///
+  /// This is the SINGLE basis used for ALL result-presence decisions on the
+  /// active path: reduce-task liveness (initialize_active AND finalize_active,
+  /// with the IDENTICAL predicate) and the result test inside make_row_mask /
+  /// make_col_mask. It must NOT be the "any covered U result tile non-zero"
+  /// (fine U result shape) rule: under coarsening the coarse gemm product is
+  /// LOOSER than fine-covered-result presence (a coarse cell can be satisfied
+  /// cross-k by different fine cells -- coarse-present yet fine-absent), and a
+  /// mixed basis (fine liveness + coarse operand steps) lands a coarse-step
+  /// contribution on a null placeholder reduce task. Keeping every presence
+  /// decision on this one coarse basis makes the operand steps that ADD a
+  /// contribution and the reduce task that RECEIVES it agree exactly.
+  ///
+  /// k_ is the COARSE K count under an active plan (== number of SUMMA inner
+  /// steps per slab), so the scan ranges over [0, k_).
+  bool coarse_result_cell_nonzero(const ordinal_type i_coarse,
+                                  const ordinal_type j_coarse) const {
+    for (ordinal_type k = 0ul; k < k_; ++k)
+      if (coarse_left_cell_nonzero(i_coarse, k) &&
+          coarse_right_cell_nonzero(k, j_coarse))
+        return true;
     return false;
   }
 
@@ -1478,14 +1714,19 @@ class Summa
                                        /*outer_tail=*/nr, nK, nN, fine,
                                        right_fetch_cache_, active_fetch_mutex_);
       if (fine.empty()) continue;
+      // Full declared coarse outer footprint (identical for both branches);
+      // the COARSEN branch packs into this full box too (absent U positions
+      // become holes), keeping the packed tile's outer volume == declared so
+      // the kernel's shape_ok holds. See get_col_coarsen for the rationale.
+      std::vector<std::size_t> lo, up;
+      append_role_t_box(plan_.summaK, plan_.targetK, uK, step_k(s), lo, up);
+      append_role_t_box(plan_.summaN, plan_.targetN, uN, g_col, lo, up);
       if (refine) {
-        std::vector<std::size_t> lo, up;
-        append_role_t_box(plan_.summaK, plan_.targetK, uK, step_k(s), lo, up);
-        append_role_t_box(plan_.summaN, plan_.targetN, uN, g_col, lo, up);
         row.emplace_back(c, carve_pack_fine_block<right_eval>(
                                 std::move(fine), Range(lo, up)));
       } else {
-        row.emplace_back(c, pack_fine_block<right_eval>(std::move(fine)));
+        row.emplace_back(
+            c, pack_fine_block<right_eval>(std::move(fine), Range(lo, up)));
       }
     }
   }
@@ -1603,6 +1844,36 @@ class Summa
     // broadcast root (i.e. within-slab k congruent to rank_col mod Pcols)
     const ordinal_type Pcols = proc_grid_.proc_cols();
 
+    // Active two-trange path: the broadcast operand is the PACKED coarse left
+    // column (get_col_coarsen), not a raw U tile, and the coarse-aware row group
+    // / coarse keys come from bcast_col. For each skipped owner step, gather+pack
+    // the coarse left column and broadcast it exactly as the normal step path
+    // does (identical key/group), keeping the coarse-keyed bcast consistent
+    // across ranks. At np=1 the row group is size 1 so bcast_col is a no-op
+    // (matches the stock do_broadcast guard). GATE on the LEFT operand eval type
+    // (like get_col), NOT value_type: get_col_coarsen instantiates the arena
+    // gather/carve, which only compiles when the LEFT operand is arena-ToT. A
+    // mixed (plain-left x arena-ToT-result) contraction has value_type arena but
+    // a non-arena left_eval, so a value_type gate would wrongly instantiate
+    // arena_carve_block<plain> and fail the static_assert.
+    using left_eval = typename left_type::eval_type;
+    if constexpr (is_arena_tot_v<left_eval>) {
+      if (plan_.active) {
+        for (s = next_step(s); s < end; s = next_step(s + 1ul)) {
+          const ordinal_type k = step_k(s);
+          if (k % Pcols != static_cast<ordinal_type>(proc_grid_.rank_col()))
+            continue;
+          std::vector<col_datum> col;
+          get_col_coarsen(s, col);
+          if (col.empty()) continue;
+          const madness::Group row_group = make_row_group(s);
+          if (!row_group.empty() && row_group.size() > 1)
+            bcast_col(s, col, row_group);
+        }
+        return;
+      }
+    }
+
     for (s = next_step(s); s < end; s = next_step(s + 1ul)) {
       const ordinal_type k = step_k(s);
       if (k % Pcols != static_cast<ordinal_type>(proc_grid_.rank_col()))
@@ -1655,6 +1926,30 @@ class Summa
     // Iterate over the skipped steps for which this process row owns the
     // broadcast root (i.e. within-slab k congruent to rank_row mod Prows)
     const ordinal_type Prows = proc_grid_.proc_rows();
+
+    // Active two-trange path: mirror of bcast_col_range_task -- gather+pack the
+    // coarse right row (get_row_coarsen) and broadcast via bcast_row (identical
+    // coarse key/group as the normal step path). np=1 => group size 1 => no-op.
+    // GATE on the RIGHT operand eval type (like get_row), NOT value_type:
+    // get_row_coarsen instantiates the arena gather/carve, which only compiles
+    // when the RIGHT operand is arena-ToT (see bcast_col_range_task).
+    using right_eval = typename right_type::eval_type;
+    if constexpr (is_arena_tot_v<right_eval>) {
+      if (plan_.active) {
+        for (s = next_step(s); s < end; s = next_step(s + 1ul)) {
+          const ordinal_type k = step_k(s);
+          if (k % Prows != static_cast<ordinal_type>(proc_grid_.rank_row()))
+            continue;
+          std::vector<row_datum> row;
+          get_row_coarsen(s, row);
+          if (row.empty()) continue;
+          const madness::Group col_group = make_col_group(s);
+          if (!col_group.empty() && col_group.size() > 1)
+            bcast_row(s, row, col_group);
+        }
+        return;
+      }
+    }
 
     for (s = next_step(s); s < end; s = next_step(s + 1ul)) {
       const ordinal_type k = step_k(s);
@@ -1716,6 +2011,25 @@ class Summa
   /// \return The first step, greater than or equal to \c s with non-zero
   /// tiles, or \c nsteps_ if none is found.
   ordinal_type iterate_row(ordinal_type s) const {
+    // Active two-trange path: a coarse step s is non-empty iff some LOCAL coarse
+    // N-col of this rank has a non-zero covered U right tile in coarse K-cell
+    // step_k(s). Probe coarse_right_cell_nonzero per local coarse N-col (the
+    // COARSE strides/start members are inconsistent with the FINE U right shape
+    // under an active plan). Same coarse basis as make_col_mask. Gated so the
+    // inactive loop below is byte-for-byte stock.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) {
+        for (s = next_step(s); s < nsteps_; s = next_step(s + 1ul)) {
+          const ordinal_type k = step_k(s);
+          ordinal_type j_start, j_fence, j_stride;
+          std::tie(j_start, j_fence, j_stride) =
+              result_col_range(proc_grid_.rank_col());
+          for (ordinal_type j = j_start; j < j_fence; j += j_stride)
+            if (coarse_right_cell_nonzero(k, j)) return s;
+        }
+        return s;
+      }
+    }
     // Iterate over this rank's group's steps until a non-zero tile is found
     // or the end of the matrix is reached.
     for (s = next_step(s); s < nsteps_; s = next_step(s + 1ul)) {
@@ -1740,6 +2054,25 @@ class Summa
   /// \return The first step, greater than or equal to \c s, that contains
   /// a non-zero tile. If no non-zero tile is not found, return \c nsteps_.
   ordinal_type iterate_col(ordinal_type s) const {
+    // Active two-trange path: a coarse step s is non-empty iff some LOCAL coarse
+    // M-row of this rank has a non-zero covered U left tile in coarse K-cell
+    // step_k(s). Probe coarse_left_cell_nonzero per local coarse M-row (the
+    // COARSE stride/start members are inconsistent with the FINE U left shape
+    // under an active plan). Same coarse basis as make_row_mask. Gated so the
+    // inactive loop below is byte-for-byte stock.
+    if constexpr (is_arena_tot_v<value_type>) {
+      if (plan_.active) {
+        for (s = next_step(s); s < nsteps_; s = next_step(s + 1ul)) {
+          const ordinal_type k = step_k(s);
+          ordinal_type i_start, i_fence, i_stride;
+          std::tie(i_start, i_fence, i_stride) =
+              result_row_range(proc_grid_.rank_row());
+          for (ordinal_type i = i_start; i < i_fence; i += i_stride)
+            if (coarse_left_cell_nonzero(i, k)) return s;
+        }
+        return s;
+      }
+    }
     // Iterate over this rank's group's steps until a non-zero tile is found
     // or the end of the matrix is reached.
     for (s = next_step(s); s < nsteps_; s = next_step(s + 1ul)) {
@@ -1907,21 +2240,30 @@ class Summa
     }
   }
 
-  /// Active two-trange initialize (np=1): allocate COARSE-grid-sized reduce
-  /// tasks in the SAME slab-major / coarse-cell order finalize_active consumes.
-  /// A coarse cell gets a live reduce task iff ANY covered U result tile is
-  /// non-zero (zero-skip on the U result shape, not the coarse grid); else an
-  /// empty placeholder task -- preserving the allocation FORM and the count
-  /// invariant.
+  /// Active two-trange initialize: allocate COARSE-grid-sized reduce tasks in
+  /// the SAME slab-major / coarse-cell order finalize_active consumes.
   ///
-  /// COUNT INVARIANT: `task_count_` is the number of `set_tile` notifications
-  /// finalize_active will issue == the number of DISTINCT non-zero U result
-  /// tiles covered (each U tile is SET exactly once, whether by a coarsen carve
-  /// (one cell -> many U), a 1:1 placement, or a refine MERGE (many cells ->
-  /// one U)). Counting per covered (cell,U) pair would DOUBLE-count under a
-  /// result-axis refine (several cells map to the same U), so the count
-  /// dedupes distinct U ordinals per slab. np=1 + canonical (no permutation)
-  /// only.
+  /// LIVENESS (the crux): a coarse cell gets a LIVE reduce task iff the COARSE
+  /// GEMM PRODUCT is non-zero for it -- coarse_result_cell_nonzero(i_coarse,
+  /// j_coarse) == (exists coarse k: coarse_left_cell_nonzero(i,k) &&
+  /// coarse_right_cell_nonzero(k,j)). This is the SAME basis the operand masks /
+  /// iterate / the bcast steps use, so every step that ADDs a contribution to a
+  /// coarse cell finds a live ReducePairTask waiting (no add/submit on a null
+  /// placeholder pimpl_). finalize_active MUST recompute the IDENTICAL predicate
+  /// so the consumed/placeholder bookkeeping matches. A coarse cell can be
+  /// coarse-present yet cover ZERO fine-nonzero U result tiles (cross-k
+  /// spurious): it is still LIVE here (so its contributions land safely) and
+  /// finalize sets zero U tiles for it -- count-neutral.
+  ///
+  /// SET COUNT (decoupled from liveness): `task_count_` is the number of
+  /// `set_tile` notifications finalize_active will issue == the number of
+  /// DISTINCT fine-nonzero U result tiles covered (the carve only emits
+  /// fine-nonzero U; finalize filters with shape.is_zero(u_ord)). Each U tile is
+  /// SET exactly once, whether by a coarsen carve (one cell -> many U), a 1:1
+  /// placement, or a refine MERGE (many cells -> one U); counting per covered
+  /// (cell,U) pair would DOUBLE-count under a result-axis refine, so the count
+  /// dedupes distinct fine-nonzero U ordinals per slab. Canonical (no
+  /// permutation) only.
   template <typename Shape>
   ordinal_type initialize_active(const Shape& shape) {
     if (DistEvalImpl_::perm_index_to_target(0) != 0)
@@ -1931,6 +2273,7 @@ class Summa
 
     const ordinal_type local_size = proc_grid_.local_size();
     const ordinal_type n_alloc = my_slabs_ * local_size;
+    const ordinal_type n_cols = proc_grid_.cols();
     std::allocator<ReducePairTask<op_type>> alloc;
     reduce_tasks_ = alloc.allocate(n_alloc);
 
@@ -1939,27 +2282,31 @@ class Summa
     for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
       const ordinal_type slab_u_base =
           slab_ord(h) * (this->trange().tiles_range().volume() / nh_);
-      // Per-slab set of distinct non-zero U ordinals seen so far (each is SET
-      // exactly once). A U covered by several cells (refine-result) increments
-      // the count only on first sight.
+      // Per-slab set of distinct fine-nonzero U ordinals seen so far (each is
+      // SET exactly once). A U covered by several cells (refine-result)
+      // increments the count only on first sight.
       std::vector<unsigned char> seen(this->trange().tiles_range().volume(),
                                       0u);
       for (ordinal_type cell = 0ul; cell < local_size; ++cell, ++reduce_task) {
+        // Recover this cell's COARSE (i,j) grid index for the liveness test.
+        const ordinal_type global_cell = coarse_cell_global_ordinal(cell);
+        const ordinal_type i_coarse = global_cell / n_cols;
+        const ordinal_type j_coarse = global_cell % n_cols;
+        // SET count: distinct fine-nonzero U result tiles this cell covers (the
+        // carve / merge emits exactly these). DECOUPLED from liveness.
         const std::vector<std::size_t> u_ord_local =
-            plan_.u_result_ordinals(
-                static_cast<std::size_t>(coarse_cell_global_ordinal(cell)));
-        ordinal_type cell_nonzero = 0ul;
+            plan_.u_result_ordinals(static_cast<std::size_t>(global_cell));
         for (std::size_t u : u_ord_local) {
           const ordinal_type u_ord =
               static_cast<ordinal_type>(u) + slab_u_base;
           if (shape.is_zero(u_ord)) continue;
-          ++cell_nonzero;
           if (!seen[u_ord]) {
             seen[u_ord] = 1u;
-            ++tile_count;  // distinct non-zero U tile == one set_tile
+            ++tile_count;  // distinct fine-nonzero U tile == one set_tile
           }
         }
-        if (cell_nonzero > 0ul) {
+        // LIVENESS: the coarse gemm product, NOT the fine U result coverage.
+        if (coarse_result_cell_nonzero(i_coarse, j_coarse)) {
           new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
                                                     ,
@@ -2133,10 +2480,20 @@ class Summa
   /// A HYBRID cell that BOTH covers multiple U tiles AND shares a U tile with
   /// another cell is not implemented and rejected loudly (TA_EXCEPTION).
   ///
-  /// COUNT INVARIANT: every reduce task allocated is consumed (submitted +
-  /// destroyed) here, and every distinct non-zero U result tile is SET EXACTLY
-  /// once (== the count initialize_active returned). Both checked with
-  /// TA_EXCEPTION. np=1 + canonical (no permutation) only.
+  /// LIVENESS: a coarse cell is LIVE iff the COARSE GEMM PRODUCT is non-zero
+  /// (coarse_result_cell_nonzero), the IDENTICAL predicate initialize_active
+  /// used. Only LIVE cells are submitted (a dead placeholder has pimpl_ ==
+  /// nullptr and submit()'s TA_ASSERT(pimpl_) would crash -- crash #2). A LIVE
+  /// cell can be coarse-present yet fine-empty (cross-k spurious): it submits a
+  /// page of holes and contributes ZERO U tiles -- count-neutral. A dead cell
+  /// covers no fine-nonzero U (every fine-nonzero U result tile lives in a
+  /// coarse-gemm-nonzero cell), so skipping it loses no placement.
+  ///
+  /// COUNT INVARIANT: every reduce task allocated is consumed (destroyed, and
+  /// submitted iff live) here -- consumed == n_alloc -- and every distinct
+  /// fine-nonzero U result tile is SET EXACTLY once (== the count
+  /// initialize_active returned). Both checked with TA_EXCEPTION. Canonical (no
+  /// permutation) only.
   template <typename Shape>
   void finalize_active(const Shape& shape) {
     // Reject a permutation on the active path (outer-index permutation
@@ -2148,6 +2505,7 @@ class Summa
 
     const ordinal_type local_size = proc_grid_.local_size();
     const ordinal_type n_alloc = my_slabs_ * local_size;
+    const ordinal_type n_cols = proc_grid_.cols();
     const ordinal_type u_vol = this->trange().tiles_range().volume();
     // Track exact-once placement over the U result trange.
     std::vector<unsigned char> written(u_vol, 0u);
@@ -2170,26 +2528,53 @@ class Summa
       std::vector<std::vector<Future<value_type>>> u_contrib(u_vol);
 
       for (ordinal_type cell = 0ul; cell < local_size; ++cell, ++reduce_task) {
-        const std::vector<std::size_t> u_ord_local =
-            plan_.u_result_ordinals(
-                static_cast<std::size_t>(coarse_cell_global_ordinal(cell)));
+        // Recover this cell's COARSE (i,j) and recompute the IDENTICAL liveness
+        // predicate initialize_active used. A LIVE reduce task (coarse gemm
+        // product non-zero) has a valid pimpl_ and MUST be submitted; a dead
+        // placeholder (coarse-zero cell) has pimpl_ == nullptr -- submit() would
+        // TA_ASSERT(pimpl_) and crash (this was crash #2). A dead cell covers no
+        // fine-nonzero U (a fine-nonzero U result tile always lives in a
+        // coarse-gemm-nonzero cell), so it contributes nothing to placement; its
+        // destructor still runs and it still counts as consumed.
+        const ordinal_type global_cell = coarse_cell_global_ordinal(cell);
+        const ordinal_type i_coarse = global_cell / n_cols;
+        const ordinal_type j_coarse = global_cell % n_cols;
+        // A dense result allocates ALL reduce tasks LIVE (see
+        // initialize(const DenseShape&)), so the dense finalize must submit them
+        // all -- mirror that exactly. For a sparse result the coarse gemm
+        // product is the liveness predicate initialize_active used.
+        const bool live =
+            std::is_same_v<Shape, DenseShape> ||
+            coarse_result_cell_nonzero(i_coarse, j_coarse);
+
         std::vector<ordinal_type> u_ords;
-        u_ords.reserve(u_ord_local.size());
-        for (std::size_t u : u_ord_local) {
-          const ordinal_type u_ord =
-              static_cast<ordinal_type>(u) + slab_u_base;
-          if (shape.is_zero(u_ord)) continue;
-          u_ords.push_back(u_ord);
+        if (live) {
+          const std::vector<std::size_t> u_ord_local =
+              plan_.u_result_ordinals(static_cast<std::size_t>(global_cell));
+          u_ords.reserve(u_ord_local.size());
+          for (std::size_t u : u_ord_local) {
+            const ordinal_type u_ord =
+                static_cast<ordinal_type>(u) + slab_u_base;
+            if (shape.is_zero(u_ord)) continue;
+            u_ords.push_back(u_ord);
+          }
         }
-        Future<value_type> page = reduce_task->submit();
-        reduce_task->~ReducePairTask<op_type>();
-        ++consumed;
-        for (ordinal_type u_ord : u_ords) {
-          ++u_cover_count[u_ord];
-          u_contrib[u_ord].push_back(page);
+
+        if (live) {
+          Future<value_type> page = reduce_task->submit();
+          reduce_task->~ReducePairTask<op_type>();
+          ++consumed;
+          for (ordinal_type u_ord : u_ords) {
+            ++u_cover_count[u_ord];
+            u_contrib[u_ord].push_back(page);
+          }
+          cells[cell].page = std::move(page);
+          cells[cell].u_ords = std::move(u_ords);
+        } else {
+          // Dead placeholder: destroy without submit; leave page/u_ords empty.
+          reduce_task->~ReducePairTask<op_type>();
+          ++consumed;
         }
-        cells[cell].page = std::move(page);
-        cells[cell].u_ords = std::move(u_ords);
       }
 
       // Pass 2a: place each U tile that is MERGED (covered by >= 2 cells).

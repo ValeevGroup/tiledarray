@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <vector>
 
 namespace TA = TiledArray;
@@ -1065,6 +1066,84 @@ void reset_plan_active_count() {
   TA::detail::g_summa_plan_active_calls.store(0);
 #endif
 }
+
+// --- SparsePolicy arena-ToT harness ------------------------------
+// Mirrors make_arena2/make_own2 but on a SparsePolicy array whose SparseShape
+// zeros a chosen subset of OUTER tiles (the `is_zero(tile_outer_idx)` predicate
+// returns true for absent tiles). Only non-zero tiles are filled. The threshold
+// is std::numeric_limits<float>::min(), so any positive norm clears the bar.
+using ArrayToTSparse = TA::DistArray<ArenaOuter2, TA::SparsePolicy>;
+
+// Build a SparseShape over `tr` where `is_zero(tile_idx)` selects absent tiles.
+template <typename IsZero>
+TA::SparseShape<float> sparse_shape_from(const TA::TiledRange& tr,
+                                         IsZero is_zero) {
+  const auto& tiles = tr.tiles_range();
+  TA::Tensor<float> norms(tiles, 0.0f);
+  for (const auto& tidx : tiles) {
+    if (!is_zero(tidx))
+      norms[tiles.ordinal(tidx)] = 1.0f;  // present (unit per-element norm)
+  }
+  // do_not_scale=true: norms are taken as-is; exactly-zero tiles screen out.
+  return TA::SparseShape<float>(norms, tr, /*do_not_scale=*/true);
+}
+
+template <typename IsZero>
+ArrayToTSparse make_arena_sparse(TA::World& w, const TA::TiledRange& tr,
+                                 const TA::Range& inner, IsZero is_zero) {
+  ArrayToTSparse x(w, tr, sparse_shape_from(tr, is_zero));
+  x.init_tiles([inner](const TA::Range& t_outer) {
+    ArenaOuter2 t = TA::detail::arena_outer_init<ArenaOuter2>(
+        t_outer, 1, [inner](std::size_t) { return inner; });
+    std::size_t o = 0;
+    for (const auto& idx : t_outer) {
+      ArenaInner2& c = t.data()[o++];
+      if (!c) continue;
+      const double s = outer_seed2(idx);
+      for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = cell_val2(s, e);
+    }
+    return t;
+  });
+  return x;
+}
+
+// Sparse-aware max relative diff: a tile present in exactly one of A/B (zero in
+// the other) counts as a full mismatch, so the comparison cannot pass by both
+// sides happening to omit the same tile.
+template <typename ArrA, typename ArrB>
+double array_max_reldiff_sparse(const ArrA& A, const ArrB& B) {
+  double d = 0.0;
+  const auto& tiles = A.trange().tiles_range();
+  for (const auto& tidx : tiles) {
+    const bool az = A.is_zero(tidx);
+    const bool bz = B.is_zero(tidx);
+    if (az && bz) continue;
+    if (az != bz) {  // present on one side only
+      d = std::max(d, 1.0);
+      continue;
+    }
+    const auto a_tile = A.find(tidx).get();
+    const auto b_tile = B.find(tidx).get();
+    if (a_tile.size() != b_tile.size()) {
+      d = std::max(d, 1.0);
+      continue;
+    }
+    for (std::size_t o = 0; o < a_tile.size(); ++o) {
+      const auto& ac = a_tile[o];
+      const auto& bc = b_tile[o];
+      if (ac.size() != bc.size()) {
+        d = std::max(d, 1.0);
+        continue;
+      }
+      for (std::size_t e = 0; e < ac.size(); ++e) {
+        const double av = double(ac.data()[e]), bv = double(bc.data()[e]);
+        d = std::max(d, std::abs(av - bv) / std::max(1.0, std::abs(bv)));
+      }
+    }
+  }
+  A.world().gop.max(&d, 1);
+  return d;
+}
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(summa_two_trange_dist_suite)
@@ -1265,6 +1344,247 @@ BOOST_AUTO_TEST_CASE(retile_coarsen_m_ce_ce_dist) {
   BOOST_CHECK(C.trange() == C_ref.trange());
   BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
   BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// (crash #1): SparsePolicy arena-ToT ce_ce coarsen where a coarse cell
+// packs SOME absent U sub-tiles (holes) but NO whole coarse cell/step is zero --
+// isolating the full-footprint single-page pack from the A2 SUMMA-level liveness
+// bug. Coarsen the contracted SUMMA-K axis k (4 fine U K-tiles -> 1 coarse T
+// K-tile) and zero the BOUNDARY (last) U K-tile (k==3) on the LEFT operand only,
+// leaving the right operand fully dense. Pre-fix, `PackBlockTask::run` sizes the
+// packed left coarse tile's K box from the min/max of the PRESENT left U tiles,
+// so it shrinks to k in [0,6); the right coarse tile keeps the full k in [0,8).
+// The contraction kernel then sees a left K-extent that disagrees with the right
+// K-extent (Ko from each operand differs) -> `arena_strided_dgemm_ce_ce_right`'s
+// `shape_ok` TA_ASSERT fires (crash #1). Post-fix the left coarse tile is packed
+// at the full k in [0,8) with a HOLE at k==3 (a null cell the kernel skips), so
+// both operands agree and the result equals the oracle.
+//
+// The single coarse K-step still has present tiles on BOTH operands (left k=0..2
+// present, right dense), so no whole coarse cell/step is zero and the result is
+// fully dense -- no A2 (SUMMA-level liveness) involvement. Oracle = no-retile
+// einsum on the SAME sparse inputs. The shape is built collectively (identical
+// on every rank) so the pattern is rank-stable: runs at np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_sparse_coarsen_k_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  // Threshold so any positive tile norm clears the bar (binary sparsity).
+  // Save and restore the global default to avoid leaking into later tests.
+  const float saved_threshold = TA::SparseShape<float>::threshold();
+  w.gop.serial_invoke([] {
+    TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  });
+
+  auto i1 = tr1d(4, 2);   // 2 left-external M-tiles
+  auto i2 = tr1d(4, 2);   // 2 left-external M-tiles
+  auto j1 = tr1d(4, 2);   // 2 right-external N-tiles
+  auto kU = tr1d(8, 2);   // 4 fine U K-tiles (idx 0..3) on the contracted axis
+  auto kT = tr1d(8, 8);   // coarsen K to ONE T tile (covers all 4 U K-tiles)
+
+  // Left A(i1,i2,k): zero the boundary (last) U K-tile k==3 everywhere. The
+  // coarse K cell still packs k=0,1,2 (non-zero, step live); the missing
+  // boundary K tile is exactly what shrank the pre-fix box.
+  ArrayToTSparse A0 = make_arena_sparse(
+      w, TA::TiledRange{i1, i2, kU}, TA::Range{3, 4},
+      [](const auto& t) { return t[2] == 3; });
+  // Right B(j1,k): fully dense (full K extent, no holes).
+  ArrayToTSparse B0 = make_arena_sparse(w, TA::TiledRange{j1, kU},
+                                        TA::Range{4},
+                                        [](const auto&) { return false; });
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToTSparse C_ref =
+      TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  ArrayToTSparse C;
+  C("i1,i2,j1;a") = (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+                        .retile(/*H=*/{}, /*M=*/{i1, i2}, /*N=*/{j1},
+                                /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff_sparse(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+
+  w.gop.serial_invoke(
+      [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
+}
+
+// (crash #2, SUMMA-level liveness): SparsePolicy arena-ToT ce_ce that
+// coarsens the M ride axis i1 AND the multi-step contracted axis k, with a
+// WHOLE coarse K-step genuinely zero on BOTH operands. C(i1,i2,j1;a) =
+// A(i1,i2,k;a,c) * B(j1,k;c). i1 coarsens 4 U -> 2 T; k coarsens 4 U -> 2 coarse
+// K cells {k0,k1},{k2,k3}. Zeroing every U tile with k in {2,3} on BOTH operands
+// makes the SECOND coarse K step empty everywhere -- iterate_col/iterate_row must
+// skip it and the coarse masks must prune its processes. Only coarse K step 0
+// contributes, on the single coarse basis. Pre-A2 the fine-U-result liveness
+// disagreed with the coarse operand steps and stranded contributions on null
+// reduce tasks (pimpl_). Oracle = no-retile einsum on the same
+// sparse inputs; match < 1e-9, plan active, no hang, at np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_sparse_coarsen_mk_zerostep_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  const float saved_threshold = TA::SparseShape<float>::threshold();
+  w.gop.serial_invoke([] {
+    TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  });
+
+  auto i1U = tr1d(8, 2);  // 4 U M-tiles on the ride axis
+  auto i2 = tr1d(4, 2);   // 2 left-external M-tiles (identity)
+  auto j1 = tr1d(4, 2);   // 2 N-tiles
+  auto kU = tr1d(8, 2);   // 4 fine U K-tiles (idx 0..3)
+  auto i1T = tr1d(8, 4);  // coarsen i1: 4 U -> 2 T (each covers 2 U)
+  auto kT = tr1d(8, 4);   // coarsen k:  4 U -> 2 coarse K cells {k0,k1},{k2,k3}
+
+  // BOTH operands zero the entire second coarse K block (k in {2,3}); the second
+  // SUMMA step is then empty on every rank.
+  ArrayToTSparse A0 = make_arena_sparse(
+      w, TA::TiledRange{i1U, i2, kU}, TA::Range{3, 4},
+      [](const auto& t) { return t[2] >= 2; });
+  ArrayToTSparse B0 = make_arena_sparse(
+      w, TA::TiledRange{j1, kU}, TA::Range{4},
+      [](const auto& t) { return t[1] >= 2; });
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToTSparse C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  ArrayToTSparse C;
+  C("i1,i2,j1;a") = (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+                        .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1},
+                                /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff_sparse(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+
+  w.gop.serial_invoke(
+      [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
+}
+
+// (crash #2, liveness/SET-count decoupling): a scattered-sparse ce_ce
+// that produces a CROSS-K SPURIOUS coarse result cell -- coarse-present (the
+// coarse gemm product is non-zero) yet fine-absent (every covered fine U result
+// tile is zero). C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c) over ONE coarse K
+// cell {k0,k1} (kU = 2 U -> kT = 1 T). Pattern:
+//   - LEFT A present only at k==0 (zero k==1 everywhere).
+//   - RIGHT B for j1==0 present at k0 AND k1 (genuine); for j1==1 present ONLY at
+//     k1 (zero k0).
+// Then for the coarse result cell (M, j1==1): coarse_left present (via k0),
+// coarse_right present (via k1) => coarse_result_cell_nonzero == true (LIVE).
+// But the FINE result C[*, j1==1] = A[*,0]*B[1,0] + A[*,1]*B[1,1] =
+// present*absent + absent*present = 0 => the cell covers ZERO fine-nonzero U
+// result tiles. The cell must be LIVE (so its (holes) contributions land
+// safely), submitted+consumed, and SET zero U tiles -- count-neutral. The j1==0
+// column is genuine and non-zero. M is coarsened so the active path fires.
+// Oracle = no-retile einsum; match < 1e-9, plan active, no hang, np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_sparse_coarsen_m_crossk_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  const float saved_threshold = TA::SparseShape<float>::threshold();
+  w.gop.serial_invoke([] {
+    TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  });
+
+  auto i1U = tr1d(4, 2);  // 2 U M-tiles on the ride axis
+  auto i2 = tr1d(2, 1);   // 2 left-external M-tiles (identity)
+  auto j1 = tr1d(4, 2);   // 2 N-tiles (j1 == 0 genuine, j1 == 1 cross-k spurious)
+  auto kU = tr1d(4, 2);   // 2 fine U K-tiles (k0, k1)
+  auto i1T = tr1d(4, 4);  // coarsen i1: 2 U -> 1 T (covers both)
+  auto kT = tr1d(4, 4);   // coarsen k:  2 U -> 1 coarse K cell {k0, k1}
+
+  // LEFT A(i1,i2,k): present only at k==0.
+  ArrayToTSparse A0 = make_arena_sparse(
+      w, TA::TiledRange{i1U, i2, kU}, TA::Range{3, 4},
+      [](const auto& t) { return t[2] == 1; });
+  // RIGHT B(j1,k): j1==0 present at k0 & k1; j1==1 present only at k1 (zero k0).
+  ArrayToTSparse B0 = make_arena_sparse(
+      w, TA::TiledRange{j1, kU}, TA::Range{4},
+      [](const auto& t) { return t[0] == 1 && t[1] == 0; });
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToTSparse C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  ArrayToTSparse C;
+  C("i1,i2,j1;a") = (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+                        .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1},
+                                /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff_sparse(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+
+  w.gop.serial_invoke(
+      [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
+}
+
+// (crash #2, DEAD-placeholder path): the one A2 branch with no prior
+// coverage -- a coarse result cell where coarse_result_cell_nonzero == FALSE.
+// C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c). M ride axis i1 coarsened (active
+// path fires); N axis j1 has 2 tiles. The RIGHT operand B(j1,k) is zeroed for
+// the ENTIRE j1==1 column across ALL k, so coarse_right_cell_nonzero(k, j1==1)
+// is false for every coarse k => coarse_result_cell_nonzero(*, j1==1) == false
+// for every coarse M-row. Those (M, j1==1) coarse result cells are STRUCTURALLY
+// ABSENT (dead): initialize_active allocates them as NULL placeholder
+// ReducePairTasks (the `else { new placeholder }` branch), the sparse `contract`
+// add-guard `if (!reduce_tasks_[idx]) continue;` skips arming them, and
+// finalize_active CONSUMES them WITHOUT submit (the dead-cell `else` branch).
+// The j1==0 column stays fully present (left dense, right present) so the
+// contraction is non-trivial. Oracle = no-retile einsum on the SAME sparse
+// inputs (its j1==1 result tiles are likewise absent); match < 1e-9, plan
+// active, no hang, at np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_sparse_coarsen_m_deadcol_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  const float saved_threshold = TA::SparseShape<float>::threshold();
+  w.gop.serial_invoke([] {
+    TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  });
+
+  auto i1U = tr1d(8, 2);  // 4 U M-tiles on the ride axis
+  auto i2 = tr1d(4, 2);   // 2 left-external M-tiles (identity)
+  auto j1 = tr1d(4, 2);   // 2 N-tiles (j1 == 0 present, j1 == 1 dead column)
+  auto kU = tr1d(8, 2);   // 4 fine U K-tiles (idx 0..3)
+  auto i1T = tr1d(8, 4);  // coarsen i1: 4 U -> 2 T (each covers 2 U)
+  auto kT = tr1d(8, 4);   // coarsen k:  4 U -> 2 coarse K cells {k0,k1},{k2,k3}
+
+  // LEFT A(i1,i2,k): fully dense (every coarse left cell present).
+  ArrayToTSparse A0 = make_arena_sparse(
+      w, TA::TiledRange{i1U, i2, kU}, TA::Range{3, 4},
+      [](const auto&) { return false; });
+  // RIGHT B(j1,k): zero the ENTIRE j1==1 column across ALL k; j1==0 dense. This
+  // makes coarse_right_cell_nonzero(k, j1==1) false for every coarse k.
+  ArrayToTSparse B0 = make_arena_sparse(
+      w, TA::TiledRange{j1, kU}, TA::Range{4},
+      [](const auto& t) { return t[0] == 1; });
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToTSparse C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  ArrayToTSparse C;
+  C("i1,i2,j1;a") = (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+                        .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1},
+                                /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff_sparse(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+
+  // The whole j1==1 result column is structurally absent (a missing dead cell
+  // or a stray submitted page there would blow up the reldiff above; this is
+  // the explicit witness that the dead column carries no result tiles).
+  const auto& tiles = C.trange().tiles_range();
+  for (const auto& tidx : tiles)
+    if (tidx[2] == 1) BOOST_CHECK(C.is_zero(tidx));
+
+  w.gop.serial_invoke(
+      [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
 }
 
 BOOST_AUTO_TEST_SUITE_END()
