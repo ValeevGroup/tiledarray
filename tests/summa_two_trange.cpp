@@ -1021,6 +1021,21 @@ OwnArr2 make_own2(TA::World& w, const TA::TiledRange& tr,
   return x;
 }
 
+// Plain dense (non-ToT) DistArray for the MIXED kernel's plain ride operand g.
+// Filled by ABSOLUTE element coordinate (outer_seed2 over the element index) so
+// a coarse-packed block carries observably distinct values -- a mis-packed cell
+// blows up the oracle reldiff. Mirrors strided_canonicalize.cpp::make_plain.
+using PlainArr2 = TA::DistArray<TA::Tensor<double>, TA::DensePolicy>;
+PlainArr2 make_plain2(TA::World& w, const TA::TiledRange& tr) {
+  PlainArr2 g(w, tr);
+  g.init_tiles([](const TA::Range& r) {
+    TA::Tensor<double> t(r);
+    for (const auto& idx : r) t(idx) = 1.0 + 1e-2 * outer_seed2(idx);
+    return t;
+  });
+  return g;
+}
+
 template <typename ArrA, typename ArrB>
 double array_max_reldiff2(const ArrA& A, const ArrB& B) {
   double d = 0.0;
@@ -1105,6 +1120,22 @@ ArrayToTSparse make_arena_sparse(TA::World& w, const TA::TiledRange& tr,
     return t;
   });
   return x;
+}
+
+// SparsePolicy sibling of make_plain2 for the mixed whole-coarse-zero step
+// (the plain ride operand g must also be able to zero a coarse K block). Built
+// collectively from `is_zero(tile_idx)` -- the threshold is set by the caller.
+using PlainArrSparse = TA::DistArray<TA::Tensor<double>, TA::SparsePolicy>;
+template <typename IsZero>
+PlainArrSparse make_plain_sparse(TA::World& w, const TA::TiledRange& tr,
+                                 IsZero is_zero) {
+  PlainArrSparse g(w, tr, sparse_shape_from(tr, is_zero));
+  g.init_tiles([](const TA::Range& r) {
+    TA::Tensor<double> t(r);
+    for (const auto& idx : r) t(idx) = 1.0 + 1e-2 * outer_seed2(idx);
+    return t;
+  });
+  return g;
 }
 
 // Sparse-aware max relative diff: a tile present in exactly one of A/B (zero in
@@ -1344,6 +1375,336 @@ BOOST_AUTO_TEST_CASE(retile_coarsen_m_ce_ce_dist) {
   BOOST_CHECK(C.trange() == C_ref.trange());
   BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
   BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// gap-fill: ce+e RESULT-AXIS coarsen (the K-coarsen sibling
+// retile_coarsen_k_ce_e_dist only coarsens the contracted axis). Same ce+e
+// contraction C(i1,i2,j1,j2;a,b) = A(i1,i2,k;a) * B(j1,j2,k;b); here the SUMMA-M
+// left-external i1 (4 fine U tiles) coarsens to ONE coarse tile while i2,j1,j2,K
+// stay identity. A coarse M-cell now covers >1 U result tile, so finalize carves
+// the coarse grid back to the U result trange (the ce+e analogue of
+// retile_coarsen_m_ce_ce's >1-U-tile-per-cell carve). Oracle = no-retile einsum;
+// match < 1e-9, plan active, ce_e strided DGEMM fired. Runs np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_coarsen_m_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto i1U = tr1d(8, 2);  // 4 U M-tiles on the left-external ride axis
+  auto i2 = tr1d(4, 2);   // 2 tiles
+  auto j = tr1d(4, 2);    // 2 right-external tiles per axis
+  auto kk = tr1d(4, 4);   // single K tile
+  auto i1T = tr1d(8, 8);  // coarsen i1 to ONE tile (covers all 4 U M-tiles)
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{i1U, i2, kk}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{j, j, kk}, TA::Range{5});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+
+  ArrayToT2 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,i2,j1,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                             .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j, j},
+                                     /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_e_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
+// gap-fill: ce+ce COARSEN COMBO (M ride + K together), Dense. The
+// existing dense ce_ce cases coarsen M alone (retile_coarsen_m_ce_ce) or K is
+// only combined with M on the SPARSE zero-step path; this is the clean DENSE M+K
+// combo. C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c). The SUMMA-M ride i1
+// coarsens 4 U -> 1 T AND the contracted k coarsens 4 U -> 1 T, so the left ride
+// operand packs both a coarse M-block and a coarse K-block in one fat strided
+// GEMM. Oracle = no-retile einsum; match < 1e-9, plan active, ce_ce strided
+// DGEMM fired. Runs np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_coarsen_mk_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  auto i1U = tr1d(8, 2);  // 4 U M-tiles on the ride axis
+  auto i2 = tr1d(4, 2);   // 2 tiles
+  auto j1 = tr1d(4, 2);   // 2 tiles
+  auto kU = tr1d(8, 2);   // 4 fine U K-tiles on the contracted axis
+  auto i1T = tr1d(8, 8);  // coarsen i1: 4 U -> 1 T
+  auto kT = tr1d(8, 8);   // coarsen k:  4 U -> 1 T
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{i1U, i2, kU}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{j1, kU}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+
+  ArrayToT2 C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,i2,j1;a") = (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+                        .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1},
+                                /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
+// gap-fill: ce+e COARSEN-N (right-external result axis), Dense. The
+// existing ce+e coarsen cases coarsen K (retile_coarsen_k_ce_e_dist) or the
+// LEFT-external M ride (retile_coarsen_m_ce_e_dist); the SUMMA-N (right
+// external) axis was never coarsened ALONE. C(i1,i2,j1,j2;a,b) =
+// A(i1,i2,k;a) * B(j1,j2,k;b); here the right-external j1 (4 fine U tiles)
+// coarsens to ONE coarse tile while i1,i2,j2,K stay identity. A coarse N-cell
+// covers >1 U result tile, so finalize carves the coarse N grid back to the U
+// result trange (the N analogue of the M carve in retile_coarsen_m_ce_e_dist).
+// Oracle = no-retile einsum; match < 1e-9, plan active, ce_e strided DGEMM
+// fired. Runs np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_coarsen_n_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto i = tr1d(4, 2);    // 2 left-external M-tiles per axis
+  auto j1U = tr1d(8, 2);  // 4 U N-tiles on the right-external ride axis
+  auto j2 = tr1d(4, 2);   // 2 right-external tiles
+  auto kk = tr1d(4, 4);   // single K tile
+  auto j1T = tr1d(8, 8);  // coarsen j1 to ONE tile (covers all 4 U N-tiles)
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{i, i, kk}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{j1U, j2, kk}, TA::Range{5});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#endif
+
+  ArrayToT2 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,i2,j1,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                             .retile(/*H=*/{}, /*M=*/{i, i}, /*N=*/{j1T, j2},
+                                     /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_e_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
+// gap-fill: ce+ce COARSEN-N (right-external result axis), Dense. The
+// dense ce_ce cases coarsen the M ride (retile_coarsen_m_ce_ce_dist) or M+K
+// (retile_coarsen_mk_ce_ce_dist); the SUMMA-N right-external j1 was never
+// coarsened alone. C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c). j1 coarsens 4 U
+// -> 1 T while i1,i2,K stay identity. The right operand B(j1,k) packs a coarse
+// N-block; finalize carves the coarse N grid back to the U result trange.
+// Oracle = no-retile einsum; match < 1e-9, plan active, ce_ce strided DGEMM
+// fired. Runs np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_coarsen_n_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  auto i1 = tr1d(4, 2);   // 2 left-external M-tiles
+  auto i2 = tr1d(4, 2);   // 2 left-external M-tiles
+  auto j1U = tr1d(8, 2);  // 4 U N-tiles on the right-external ride axis
+  auto kk = tr1d(4, 4);   // single K tile
+  auto j1T = tr1d(8, 8);  // coarsen j1 to ONE tile (covers all 4 U N-tiles)
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{i1, i2, kk}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{j1U, kk}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#endif
+
+  ArrayToT2 C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,i2,j1;a") = (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+                        .retile(/*H=*/{}, /*M=*/{i1, i2}, /*N=*/{j1T},
+                                /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t fires = TA::detail::g_strided_dgemm_ce_ce_right_calls.load() +
+                      TA::detail::g_strided_dgemm_ce_ce_left_calls.load();
+  w.gop.sum(&fires, 1);
+  BOOST_CHECK_GT(fires, std::size_t{0});
+#endif
+}
+
+// gap-fill: SPARSE identity anchor (ce+e). The identity anchors so far
+// (retile_identity_ce_e_dist / retile_identity_ce_ce_dist) are all DensePolicy;
+// the SparsePolicy inactive-plan path -- a .retile() whose targets coincide with
+// the operands' own U tilings on a SparsePolicy array -- had no bit-for-bit
+// anchor. With some OUTER tiles screened out (the left operand zeros the k==1
+// U K-tile, the right operand stays dense), the inactive plan must take the
+// byte-for-byte STOCK SUMMA path: result EXACTLY equal (sparse reldiff == 0.0)
+// to the no-retile result AND plan_active_count == 0 (no active branch ran).
+// Shape built collectively => rank-stable, np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_identity_sparse_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  const float saved_threshold = TA::SparseShape<float>::threshold();
+  w.gop.serial_invoke([] {
+    TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  });
+
+  auto t = tr1d(4, 2);   // 2 external tiles per axis
+  auto kk = tr1d(4, 2);  // 2 K-tiles (idx 0,1)
+  // Left A(i1,i2,k): zero the k==1 U K-tile (a screened-out outer tile, so the
+  // sparse shape is non-trivial); right B fully dense.
+  ArrayToTSparse A0 = make_arena_sparse(
+      w, TA::TiledRange{t, t, kk}, TA::Range{3},
+      [](const auto& tidx) { return tidx[2] == 1; });
+  ArrayToTSparse B0 = make_arena_sparse(w, TA::TiledRange{t, t, kk},
+                                        TA::Range{5},
+                                        [](const auto&) { return false; });
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToTSparse C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+
+  // EMPTY targets -> inactive -> bit-for-bit stock.
+  ArrayToTSparse C_empty;
+  C_empty("i1,i2,j1,j2;a,b") =
+      (A0("i1,i2,k;a") * B0("j1,j2,k;b")).retile({}, {}, {}, {});
+  w.gop.fence();
+  BOOST_CHECK_EQUAL(array_max_reldiff_sparse(C_empty, C_ref), 0.0);
+
+  // own-U targets -> identity -> still bit-for-bit stock.
+  ArrayToTSparse C_self;
+  C_self("i1,i2,j1,j2;a,b") =
+      (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+          .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t}, /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK_EQUAL(array_max_reldiff_sparse(C_self, C_ref), 0.0);
+
+  BOOST_CHECK_EQUAL(plan_active_count(w), std::size_t{0});
+
+  w.gop.serial_invoke(
+      [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
+}
+
+// gap-fill: SPARSE identity anchor (ce+ce). DensePolicy ce_ce identity
+// is retile_identity_ce_ce_dist; this is its SparsePolicy sibling -- an inactive
+// .retile() (empty + own-U targets) on a sparse ce_ce contraction with screened
+// outer tiles must be byte-for-byte STOCK (reldiff == 0.0) and run no active
+// branch (plan_active_count == 0). C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c).
+// Built collectively => rank-stable, np=1 AND np=2.
+BOOST_AUTO_TEST_CASE(retile_identity_sparse_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  const float saved_threshold = TA::SparseShape<float>::threshold();
+  w.gop.serial_invoke([] {
+    TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  });
+
+  auto t = tr1d(4, 2);   // 2 external tiles per axis
+  auto kk = tr1d(4, 2);  // 2 K-tiles
+  // Left A zeros the k==1 U K-tile; right B fully dense.
+  ArrayToTSparse A0 = make_arena_sparse(
+      w, TA::TiledRange{t, t, kk}, TA::Range{3, 4},
+      [](const auto& tidx) { return tidx[2] == 1; });
+  ArrayToTSparse B0 = make_arena_sparse(w, TA::TiledRange{t, kk},
+                                        TA::Range{4},
+                                        [](const auto&) { return false; });
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToTSparse C_ref =
+      TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  ArrayToTSparse C_empty;
+  C_empty("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c")).retile({}, {}, {}, {});
+  w.gop.fence();
+  BOOST_CHECK_EQUAL(array_max_reldiff_sparse(C_empty, C_ref), 0.0);
+
+  ArrayToTSparse C_self;
+  C_self("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+          .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t}, /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK_EQUAL(array_max_reldiff_sparse(C_self, C_ref), 0.0);
+
+  BOOST_CHECK_EQUAL(plan_active_count(w), std::size_t{0});
+
+  w.gop.serial_invoke(
+      [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
+}
+
+// gap-fill: SPARSE ce+e coarsen-K (sparse ce+e had zero coverage; the
+// sparse cases so far are all ce_ce). C(i1,i2,j1,j2;a,b) = A(i1,i2,k;a)*B(.;b)
+// with the contracted k coarsened 4 U -> 1 T. The LEFT operand zeros the
+// boundary U K-tile (k==3) so the coarse K pack carries a HOLE (the A1
+// full-footprint single-page pack on the ce_e strided arm); the right operand
+// stays dense. The single coarse K-step is still live on both operands (left
+// k=0..2 present). Oracle = no-retile einsum on the SAME sparse inputs; match
+// < 1e-9, plan active, no hang. Shape built collectively => rank-stable, np=1
+// AND np=2.
+BOOST_AUTO_TEST_CASE(retile_active_sparse_coarsen_k_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  const float saved_threshold = TA::SparseShape<float>::threshold();
+  w.gop.serial_invoke([] {
+    TA::SparseShape<float>::threshold(std::numeric_limits<float>::min());
+  });
+
+  auto t = tr1d(4, 2);    // 2 external tiles per axis
+  auto kU = tr1d(8, 2);   // 4 fine U K-tiles (idx 0..3)
+  auto kT = tr1d(8, 8);   // coarsen K to ONE T tile (covers all 4 U K-tiles)
+
+  // Left A(i1,i2,k): zero the boundary U K-tile k==3 everywhere (coarse K cell
+  // still packs k=0,1,2 -> step live). Right B(j1,j2,k): fully dense.
+  ArrayToTSparse A0 = make_arena_sparse(
+      w, TA::TiledRange{t, t, kU}, TA::Range{3},
+      [](const auto& tidx) { return tidx[2] == 3; });
+  ArrayToTSparse B0 = make_arena_sparse(w, TA::TiledRange{t, t, kU},
+                                        TA::Range{5},
+                                        [](const auto&) { return false; });
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToTSparse C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+
+  ArrayToTSparse C;
+  C("i1,i2,j1,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                             .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t},
+                                     /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff_sparse(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+
+  w.gop.serial_invoke(
+      [saved_threshold] { TA::SparseShape<float>::threshold(saved_threshold); });
 }
 
 // (crash #1): SparsePolicy arena-ToT ce_ce coarsen where a coarse cell
