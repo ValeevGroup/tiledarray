@@ -10,6 +10,12 @@
 #include <TiledArray/expressions/contraction_retile.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/gemm_helper.h>
+#include <TiledArray/range.h>
+#include <TiledArray/tensor/arena_einsum.h>
+#include <TiledArray/tensor/arena_kernels.h>
+#include <TiledArray/tensor/arena_retile.h>
+#include <TiledArray/tensor/arena_tensor.h>
+#include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/tiled_range1.h>
 
@@ -184,6 +190,163 @@ BOOST_AUTO_TEST_CASE(plan_flags) {
   BOOST_CHECK_EQUAL(pc.ride_on_M, true);
   BOOST_CHECK_EQUAL(pc.k_is_blas_k, false);
   BOOST_CHECK_EQUAL(pc.ride_on_N, false);
+}
+
+// ---------------------------------------------------------------------------
+// Arena gather/carve helpers: arena_gather_block +
+// arena_carve_block on TA::Tensor<ArenaTensor<double>> tiles.
+// ---------------------------------------------------------------------------
+namespace {
+using ArenaInner = TA::ArenaTensor<double>;
+using ArenaOuter = TA::Tensor<ArenaInner>;
+using InnerRange = ArenaInner::range_type;  // btas::zb::RangeNd (rank-1 here)
+
+// Build a fine arena ToT outer tile over [lo, hi) (1-D outer), one batch, with
+// inner extent given per outer position by `ext(outer_idx)` and elements filled
+// `base + 1000*outer_idx + inner` so every gathered value is distinguishable.
+template <typename ExtFn>
+ArenaOuter make_fine(std::size_t lo, std::size_t hi, double base, ExtFn ext) {
+  TA::Range outer({lo}, {hi});
+  auto range_fn = [&](std::size_t ord) -> InnerRange {
+    auto idx = outer.idx(ord);
+    return InnerRange{long(ext(std::size_t(idx[0])))};
+  };
+  ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(outer, 1, range_fn);
+  for (std::size_t ord = 0; ord < outer.volume(); ++ord) {
+    auto idx = outer.idx(ord);
+    auto& cell = t.data()[ord];
+    if (cell.empty()) continue;
+    for (std::size_t i = 0; i < cell.size(); ++i)
+      cell.data()[i] = base + 1000.0 * double(idx[0]) + double(i);
+  }
+  return t;
+}
+
+// True iff every non-null cell of `t` lies in one contiguous, non-overlapping,
+// monotonically-increasing memory span -- the single-arena-page invariant
+// (proves the gather did not spill across pages / allocate per cell).
+bool single_page(const ArenaOuter& t) {
+  const double* prev_end = nullptr;
+  const std::size_t N = t.range().volume() * t.nbatch();
+  for (std::size_t ord = 0; ord < N; ++ord) {
+    const auto& c = t.data()[ord];
+    if (c.empty()) continue;
+    const double* p = c.data();
+    if (prev_end != nullptr && p < prev_end) return false;  // overlap/back-jump
+    prev_end = p + c.size();
+  }
+  return true;
+}
+}  // namespace
+
+// (a) uniform: equal inner extents over a coarse outer block -> gather is
+// single-page, constant stride (classifier clean), values == ordered
+// concatenation of fine cells. Carve back (view) reproduces each fine tile;
+// owning carve (view=false) is equal and independent of the coarse storage.
+BOOST_AUTO_TEST_CASE(arena_gather_uniform) {
+  const std::size_t E = 3;  // uniform inner extent
+  // Three fine tiles partitioning coarse outer [0,6): [0,2),[2,4),[4,6).
+  std::vector<ArenaOuter> fine;
+  fine.push_back(make_fine(0, 2, 1.0, [&](std::size_t) { return E; }));
+  fine.push_back(make_fine(2, 4, 2.0, [&](std::size_t) { return E; }));
+  fine.push_back(make_fine(4, 6, 3.0, [&](std::size_t) { return E; }));
+  TA::Range coarse_outer({0}, {6});
+
+  ArenaOuter g =
+      TA::detail::arena_gather_block<ArenaOuter>(fine, coarse_outer, 1);
+
+  // single-page + values == ordered concatenation of the fine cells.
+  BOOST_CHECK(single_page(g));
+  BOOST_REQUIRE_EQUAL(g.range().volume(), std::size_t{6});
+  for (std::size_t p = 0; p < 6; ++p) {
+    const std::size_t f = p / 2, lp = p % 2;
+    const auto& src = fine[f].data()[lp];
+    const auto& dst = g.data()[p];
+    BOOST_REQUIRE_EQUAL(dst.size(), src.size());
+    for (std::size_t i = 0; i < dst.size(); ++i)
+      BOOST_CHECK_EQUAL(dst.data()[i], src.data()[i]);
+  }
+
+  // constant stride / strided-eligible: the stride-run classifier is clean (0).
+  int cls = TA::detail::classify_run(
+      [&](std::size_t i) -> const ArenaInner& { return g.data()[i]; }, 6);
+  BOOST_CHECK_EQUAL(cls, 0);
+
+  // carve back to the original fine ranges (view = true): each carved sub-tile
+  // aliases the coarse storage and reproduces the original fine values.
+  std::vector<TA::Range> fine_ranges;
+  for (const auto& f : fine) fine_ranges.push_back(f.range());
+  auto carved = TA::detail::arena_carve_block<ArenaOuter>(g, fine_ranges,
+                                                          /*view=*/true);
+  BOOST_REQUIRE_EQUAL(carved.size(), fine.size());
+  for (std::size_t f = 0; f < fine.size(); ++f) {
+    BOOST_REQUIRE_EQUAL(carved[f].range().volume(), fine[f].range().volume());
+    for (std::size_t p = 0; p < fine[f].range().volume(); ++p) {
+      const auto& a = carved[f].data()[p];
+      const auto& b = fine[f].data()[p];
+      BOOST_REQUIRE_EQUAL(a.size(), b.size());
+      for (std::size_t i = 0; i < a.size(); ++i)
+        BOOST_CHECK_EQUAL(a.data()[i], b.data()[i]);
+    }
+    // view = true aliases the coarse slab (zero-copy).
+    BOOST_CHECK(carved[f].data()[0].data() ==
+                g.data()[f * 2].data());
+  }
+
+  // owning carve (view = false): equal values but independent storage -- a
+  // mutation of the carved copy must not touch the coarse tile.
+  auto owned = TA::detail::arena_carve_block<ArenaOuter>(g, fine_ranges,
+                                                         /*view=*/false);
+  BOOST_REQUIRE_EQUAL(owned.size(), fine.size());
+  BOOST_CHECK(single_page(owned[0]));
+  // independence: distinct storage from the coarse tile.
+  BOOST_CHECK(owned[0].data()[0].data() != g.data()[0].data());
+  const double before = g.data()[0].data()[0];
+  owned[0].data()[0].data()[0] += 12345.0;
+  BOOST_CHECK_EQUAL(g.data()[0].data()[0], before);
+  for (std::size_t p = 0; p < fine[0].range().volume(); ++p) {
+    const auto& a = owned[0].data()[p];
+    const auto& b = fine[0].data()[p];
+    for (std::size_t i = 0; i < a.size(); ++i) {
+      if (p == 0 && i == 0) continue;  // mutated above
+      BOOST_CHECK_EQUAL(a.data()[i], b.data()[i]);
+    }
+  }
+}
+
+// (b) non-uniform: differing inner extents along the strided axis -> gather is
+// still single-page with correct values, but the stride-run classifier reports
+// nonuniform (2) so the kernel knows to fall back per-cell rather than crash.
+BOOST_AUTO_TEST_CASE(arena_gather_nonuniform) {
+  // Fine tiles over coarse outer [0,4): [0,2),[2,4). Inner extent varies by
+  // outer position: 2,3,4,5 -> differing sizes along the gathered run.
+  auto ext = [](std::size_t i) { return i + 2; };
+  std::vector<ArenaOuter> fine;
+  fine.push_back(make_fine(0, 2, 1.0, ext));
+  fine.push_back(make_fine(2, 4, 2.0, ext));
+  TA::Range coarse_outer({0}, {4});
+
+  ArenaOuter g =
+      TA::detail::arena_gather_block<ArenaOuter>(fine, coarse_outer, 1);
+
+  // single-page + correct values despite the non-uniform extents.
+  BOOST_CHECK(single_page(g));
+  BOOST_REQUIRE_EQUAL(g.range().volume(), std::size_t{4});
+  for (std::size_t p = 0; p < 4; ++p) {
+    const std::size_t f = p / 2, lp = p % 2;
+    const auto& src = fine[f].data()[lp];
+    const auto& dst = g.data()[p];
+    BOOST_REQUIRE_EQUAL(dst.size(), src.size());
+    BOOST_CHECK_EQUAL(dst.size(), ext(p));
+    for (std::size_t i = 0; i < dst.size(); ++i)
+      BOOST_CHECK_EQUAL(dst.data()[i], src.data()[i]);
+  }
+
+  // The stride-run classifier flags this run as nonuniform (2): the kernel will
+  // fall back per-cell, not attempt strided DGEMM.
+  int cls = TA::detail::classify_run(
+      [&](std::size_t i) -> const ArenaInner& { return g.data()[i]; }, 4);
+  BOOST_CHECK_EQUAL(cls, 2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
