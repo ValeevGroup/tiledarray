@@ -507,3 +507,209 @@ BOOST_AUTO_TEST_CASE(retile_hadamard_reject) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// ===========================================================================
+// bit-for-bit identity anchor at np=1 AND np=2.
+//
+// This suite carries NO label macro (neither @serial nor @distributed), so it
+// is excluded by neither the run-np-1 filter (!@distributed) nor the run-np-2
+// filter (!@serial): it runs at BOTH world sizes. The serial-labelled suite
+// above runs only at np=1.
+//
+// The Summa ctor member split (fine=U / coarse=T) must be byte-identical to the
+// stock SUMMA path whenever the retile plan is inactive. Each case computes a
+// contraction with .retile() (empty + own-U identity targets, both inactive
+// plans) and asserts the result is EXACTLY equal (reldiff == 0.0) to the
+// no-retile path, at both np=1 and np=2. The identity anchor: the plan-active counter
+// (incremented only inside plan_.active branches) must read 0 -- proving no
+// active code path executed on the inactive runs.
+// ===========================================================================
+namespace {
+// Self-contained helpers (the suite above scopes its make_arena1/etc. inside
+// summa_two_trange_suite, so they are not visible here). 2-suffixed twins.
+TA::TiledRange1 tr1d(std::size_t n, std::size_t ts) {
+  if (ts == 0 || ts > n) ts = n;
+  std::vector<std::size_t> b;
+  for (std::size_t x = 0; x < n; x += ts) b.push_back(x);
+  b.push_back(n);
+  return TA::TiledRange1(b.begin(), b.end());
+}
+template <typename Index>
+double outer_seed2(const Index& oix) {
+  double seed = 0.0, f = 1.0;
+  for (auto c : oix) {
+    seed += double(c) * f;
+    f *= 31.0;
+  }
+  return seed;
+}
+inline double cell_val2(double outer_s, std::size_t e) {
+  return 1.0 + 1e-3 * double(e) + 1e-2 * outer_s;
+}
+
+using ArenaInner2 = TA::ArenaTensor<double, TA::Range>;
+using ArenaOuter2 = TA::Tensor<ArenaInner2>;
+using ArrayToT2 = TA::DistArray<ArenaOuter2, TA::DensePolicy>;
+using OwnInner2 = TA::Tensor<double>;
+using OwnOuter2 = TA::Tensor<OwnInner2>;
+using OwnArr2 = TA::DistArray<OwnOuter2, TA::DensePolicy>;
+
+ArrayToT2 make_arena2(TA::World& w, const TA::TiledRange& tr,
+                      const TA::Range& inner) {
+  ArrayToT2 x(w, tr);
+  x.init_tiles([inner](const TA::Range& t_outer) {
+    ArenaOuter2 t = TA::detail::arena_outer_init<ArenaOuter2>(
+        t_outer, 1, [inner](std::size_t) { return inner; });
+    std::size_t o = 0;
+    for (const auto& idx : t_outer) {
+      ArenaInner2& c = t.data()[o++];
+      if (!c) continue;
+      const double s = outer_seed2(idx);
+      for (std::size_t e = 0; e < c.size(); ++e) c.data()[e] = cell_val2(s, e);
+    }
+    return t;
+  });
+  return x;
+}
+OwnArr2 make_own2(TA::World& w, const TA::TiledRange& tr,
+                  const TA::Range& inner) {
+  OwnArr2 x(w, tr);
+  x.init_tiles([inner](const TA::Range& t_outer) {
+    OwnOuter2 t(t_outer);
+    std::size_t o = 0;
+    for (const auto& idx : t_outer) {
+      OwnInner2 cell(inner);
+      const double s = outer_seed2(idx);
+      for (std::size_t e = 0; e < cell.size(); ++e)
+        cell.data()[e] = cell_val2(s, e);
+      t.data()[o++] = cell;
+    }
+    return t;
+  });
+  return x;
+}
+
+template <typename ArrA, typename ArrB>
+double array_max_reldiff2(const ArrA& A, const ArrB& B) {
+  double d = 0.0;
+  for (auto it = A.begin(); it != A.end(); ++it) {
+    const auto a_tile = (*it).get();
+    if (a_tile.empty()) continue;
+    const auto b_tile = B.find(it.index()).get();
+    if (a_tile.size() != b_tile.size()) {
+      d = std::max(d, 1.0);
+      continue;
+    }
+    for (std::size_t o = 0; o < a_tile.size(); ++o) {
+      const auto& ac = a_tile[o];
+      const auto& bc = b_tile[o];
+      if (ac.size() != bc.size()) {
+        d = std::max(d, 1.0);
+        continue;
+      }
+      for (std::size_t e = 0; e < ac.size(); ++e) {
+        const double av = double(ac.data()[e]), bv = double(bc.data()[e]);
+        d = std::max(d, std::abs(av - bv) / std::max(1.0, std::abs(bv)));
+      }
+    }
+  }
+  A.world().gop.max(&d, 1);
+  return d;
+}
+
+// Read the plan-active counter, summed across ranks. Returns 0 when the
+// counter is compiled out (build-test defines TA_STRIDED_DGEMM_COUNT).
+std::size_t plan_active_count(TA::World& w) {
+#ifdef TA_STRIDED_DGEMM_COUNT
+  std::size_t c = TA::detail::g_summa_plan_active_calls.load();
+  w.gop.sum(&c, 1);
+  return c;
+#else
+  (void)w;
+  return 0;
+#endif
+}
+void reset_plan_active_count() {
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TA::detail::g_summa_plan_active_calls.store(0);
+#endif
+}
+}  // namespace
+
+BOOST_AUTO_TEST_SUITE(summa_two_trange_dist_suite)
+
+// ce+e: pure Contraction ToT x ToT (inner OUTER-product, no inner contraction).
+// C(i1,i2,j1,j2;a,b) = A(i1,i2,k;a) * B(j1,j2,k;b). Inactive .retile() (empty
+// and own-U targets) must be EXACTLY equal to the no-retile result, at np=1 and
+// np=2; the plan-active counter must read 0.
+BOOST_AUTO_TEST_CASE(retile_identity_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto t = tr1d(4, 2), kk = tr1d(4, 4);
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{t, t, kk}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{t, t, kk}, TA::Range{5});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  // no-retile reference.
+  ArrayToT2 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+
+  // .retile() with EMPTY targets -> plan inactive -> bit-for-bit identical.
+  ArrayToT2 C_empty;
+  C_empty("i1,i2,j1,j2;a,b") =
+      (A0("i1,i2,k;a") * B0("j1,j2,k;b")).retile({}, {}, {}, {});
+  w.gop.fence();
+  BOOST_CHECK_EQUAL(array_max_reldiff2(C_empty, C_ref), 0.0);
+
+  // .retile() with targets == the operands' own U tilings -> identity.
+  ArrayToT2 C_self;
+  C_self("i1,i2,j1,j2;a,b") =
+      (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+          .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t}, /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK_EQUAL(array_max_reldiff2(C_self, C_ref), 0.0);
+
+  // identity anchor: no active branch executed.
+  BOOST_CHECK_EQUAL(plan_active_count(w), std::size_t{0});
+}
+
+// ce+ce: ToT x ToT with an INNER contraction (the hce_ce-family shape, minus
+// the Hadamard modes to keep the np=2 grid simple). i1,i2 left externals; j1
+// right external; k outer-contracted; inner c contracted, inner a spectator.
+// C(i1,i2,j1;a) = A(i1,i2,k;a,c) * B(j1,k;c). Inactive .retile() (empty and
+// own-U targets) must be EXACTLY equal to the no-retile result, np=1 and np=2.
+BOOST_AUTO_TEST_CASE(retile_identity_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  auto t = tr1d(4, 2), kk = tr1d(4, 4);
+  // inner a=3 (spectator), c=4 (contracted) on A; inner c=4 on B.
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{t, t, kk}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{t, kk}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToT2 C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  // EMPTY targets -> inactive.
+  ArrayToT2 C_empty;
+  C_empty("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c")).retile({}, {}, {}, {});
+  w.gop.fence();
+  BOOST_CHECK_EQUAL(array_max_reldiff2(C_empty, C_ref), 0.0);
+
+  // own-U targets -> identity. M = {i1,i2} (left externals), N = {j1} (right
+  // external), K = {k} (outer-contracted).
+  ArrayToT2 C_self;
+  C_self("i1,i2,j1;a") =
+      (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+          .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t}, /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK_EQUAL(array_max_reldiff2(C_self, C_ref), 0.0);
+
+  BOOST_CHECK_EQUAL(plan_active_count(w), std::size_t{0});
+}
+
+BOOST_AUTO_TEST_SUITE_END()

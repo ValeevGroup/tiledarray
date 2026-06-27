@@ -41,6 +41,15 @@
 namespace TiledArray {
 namespace detail {
 
+#ifdef TA_STRIDED_DGEMM_COUNT
+/// identity anchor: incremented ONLY inside `plan_.active`
+/// branches of `Summa`. When a retile plan is inactive this MUST stay 0 --
+/// the unit tests assert that, proving the two-trange (fine/coarse) split
+/// introduced no active code path on the stock SUMMA path. gop.sum it across
+/// ranks for np-correctness.
+inline std::atomic<std::size_t> g_summa_plan_active_calls{0};
+#endif
+
 /// \brief Distributed contraction evaluator implementation
 
 /// \tparam Left The left-hand argument evaluator type
@@ -127,6 +136,29 @@ class Summa
   const ordinal_type right_stride_;  ///< Stride for right row iterators
   const ordinal_type
       right_stride_local_;  ///< stride for local right row iterators
+
+  // FINE family. Operand-access / broadcast constants derived from
+  // the U=user operand tranges -- the geometry of the tiles SUMMA actually
+  // gathers and broadcasts. The members above (left/right *slab_size_,
+  // *start_local_, *end_, *stride*) are the COARSE family, derived from the
+  // T=target process grid (proc_grid_ / k_ / nh_): the reduce-task / result
+  // placement geometry. They coincide today (operand-tile-count ==
+  // grid-tile-count) and let them diverge under an active plan_.
+  // INVARIANT: when !plan_.active each fine member EQUALS its coarse twin and
+  // equals the pre-split single value, byte-for-byte (see ctor init list).
+  const ordinal_type
+      left_fine_slab_size_;  ///< # of left U-tiles per slab (fine twin of
+                             ///< left_slab_size_)
+  const ordinal_type
+      left_fine_start_local_;       ///< fine twin of left_start_local_
+  const ordinal_type left_fine_end_;  ///< fine twin of left_end_
+  const ordinal_type
+      left_fine_stride_local_;  ///< fine twin of left_stride_local_
+  const ordinal_type
+      right_fine_slab_size_;  ///< # of right U-tiles per slab (fine twin of
+                              ///< right_slab_size_)
+  const ordinal_type
+      right_fine_stride_local_;  ///< fine twin of right_stride_local_
 
   // 3-d (h-grouped) grid information. The world's first
   // proc_h_ * proc_h_stride ranks are partitioned into proc_h_ contiguous
@@ -1774,7 +1806,23 @@ class Summa
         left_stride_(k),
         left_stride_local_(proc_grid.proc_rows() * k),
         right_stride_(1ul),
-        right_stride_local_(proc_grid.proc_cols())
+        right_stride_local_(proc_grid.proc_cols()),
+        // FINE family. Each fine member is its coarse twin's
+        // expression routed through fine_member(): when !plan_.active the helper
+        // is the identity, so the fine value is byte-for-byte the coarse value
+        // (and equals the pre-split single value). When plan_.active the helper
+        // fires the plan-active counter; the *value* is still the coarse expression in
+        // this phase (no divergence yet) -- substitute U-derived
+        // expressions on the active branch here.
+        left_fine_slab_size_(fine_member(plan, left.size() / nh)),
+        left_fine_start_local_(
+            fine_member(plan, proc_grid_.rank_row() * k)),
+        left_fine_end_(fine_member(plan, left.size() / nh)),
+        left_fine_stride_local_(
+            fine_member(plan, proc_grid.proc_rows() * k)),
+        right_fine_slab_size_(fine_member(plan, right.size() / nh)),
+        right_fine_stride_local_(
+            fine_member(plan, proc_grid.proc_cols()))
 #ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
         ,
         left_ntiles_used_(0),
@@ -1789,6 +1837,23 @@ class Summa
     TA_ASSERT(proc_h_ > 0);
     TA_ASSERT(proc_h_ == 1ul || proc_h_stride > 0ul);
     TA_ASSERT(proc_h_ <= nh_);
+  }
+
+  /// FINE-member binder. Returns the coarse-derived \p coarse_value
+  /// unchanged. When the retile \p plan is active this also fires the
+  /// identity-anchor counter, so the inactive (stock SUMMA) path is provably
+  /// untouched. will branch here on `plan.active` to substitute the
+  /// U-operand-derived fine value; this phase keeps fine == coarse so behavior
+  /// is byte-for-byte identical regardless of plan state.
+  static ordinal_type fine_member(
+      const TiledArray::expressions::RetilePlan& plan,
+      const ordinal_type coarse_value) {
+    if (plan.active) {
+#ifdef TA_STRIDED_DGEMM_COUNT
+      g_summa_plan_active_calls.fetch_add(1, std::memory_order_relaxed);
+#endif
+    }
+    return coarse_value;
   }
 
   /// \return this rank's group's first slab (== its group index), or
