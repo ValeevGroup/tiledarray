@@ -1143,14 +1143,13 @@ BOOST_AUTO_TEST_CASE(retile_identity_ce_ce_dist) {
   BOOST_CHECK_EQUAL(plan_active_count(w), std::size_t{0});
 }
 
-// Guard: an ACTIVE .retile() (here a K-coarsen collapse) is currently supported
-// only at MPI world size 1. At np>1 the active inbound-coarsen path would gather
-// fine U operand tiles while the SUMMA broadcast still keys/roots on the coarse
-// K geometry, silently corrupting the result; the engine rejects it with a
-// collective TA::Exception (coarse_K_ in cont_engine.h, gated on
-// world.size()>1). At np=1 the same active K-coarsen must succeed. This suite
-// runs at both world sizes, so the assertion branches on the world size.
-BOOST_AUTO_TEST_CASE(retile_active_np_gt_1_rejects) {
+// An ACTIVE COARSEN .retile() (here a K-coarsen collapse) must succeed and match
+// the no-retile oracle at BOTH np=1 and np>1. At np>1 the engine distributes the
+// operands and result on the COARSE T-grid (each U tile co-located on its
+// covering coarse cell's owner), so the in-step gather stays local and the
+// coarse-keyed broadcast is consistent. This suite runs at both world sizes; the
+// same assertion holds at each.
+BOOST_AUTO_TEST_CASE(retile_active_coarsen_np_gt_1_ok) {
   auto& w = TA::get_default_world();
   auto t = tr1d(4, 2);
   auto kU = tr1d(8, 2);   // 4 fine U K-tiles
@@ -1159,9 +1158,36 @@ BOOST_AUTO_TEST_CASE(retile_active_np_gt_1_rejects) {
   ArrayToT2 B0 = make_arena2(w, TA::TiledRange{t, t, kU}, TA::Range{5});
   w.gop.fence();
 
+  reset_plan_active_count();
+
+  ArrayToT2 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,i2,j1,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                             .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t},
+                                     /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// Guard: an ACTIVE .retile() that REFINES an axis is still rejected at np>1
+// (deferred). Here K is a single U tile refined into several T tiles. The throw
+// is symmetric across ranks (every rank evaluates plan_has_refine && size>1) so
+// it is collective -- safe under BOOST_REQUIRE_THROW. At np=1 the same refine
+// plan must succeed and match the oracle.
+BOOST_AUTO_TEST_CASE(retile_active_refine_np_gt_1_rejects) {
+  auto& w = TA::get_default_world();
+  auto t = tr1d(4, 2);
+  auto kU = tr1d(8, 8);   // ONE U K-tile [0,8)
+  auto kT = tr1d(8, 2);   // REFINE K -> 4 T tiles (active refine plan)
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{t, t, kU}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{t, t, kU}, TA::Range{5});
+  w.gop.fence();
+
   if (w.size() > 1) {
-    // The throw is symmetric (every rank evaluates plan_.active && size>1), so
-    // it is collective -- safe under BOOST_REQUIRE_THROW.
     ArrayToT2 C;
     BOOST_REQUIRE_THROW(
         (C("i1,i2,j1,j2;a,b") =
@@ -1169,7 +1195,6 @@ BOOST_AUTO_TEST_CASE(retile_active_np_gt_1_rejects) {
                  .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t}, /*K=*/{kT})),
         TA::Exception);
   } else {
-    // np=1: the active K-coarsen must succeed and match the no-retile oracle.
     ArrayToT2 C_ref =
         TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
     w.gop.fence();
@@ -1180,6 +1205,66 @@ BOOST_AUTO_TEST_CASE(retile_active_np_gt_1_rejects) {
     w.gop.fence();
     BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
   }
+}
+
+// Promoted coarsen-K (ce+e) case: runs at np=1 AND np=2 (unlabeled dist suite).
+// Mirror of summa_two_trange_suite/retile_coarsen_k_ce_e: collapse the 4 fine U
+// K-tiles to ONE coarse K-tile; result/operands at U. Oracle match < 1e-9 and
+// the plan was active. At np=2 this exercises the COARSE T-grid operand/result
+// distribution (each U tile on its covering coarse cell's owner).
+BOOST_AUTO_TEST_CASE(retile_coarsen_k_ce_e_dist) {
+  auto& w = TA::get_default_world();
+  auto t = tr1d(4, 2);
+  auto kU = tr1d(8, 2);   // 4 fine U K-tiles
+  auto kT = tr1d(8, 8);   // collapse to 1 coarse K-tile
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{t, t, kU}, TA::Range{3});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{t, t, kU}, TA::Range{5});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToT2 C_ref =
+      TA::einsum(A0("i1,i2,k;a"), B0("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,i2,j1,j2;a,b") = (A0("i1,i2,k;a") * B0("j1,j2,k;b"))
+                             .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t},
+                                     /*K=*/{kT});
+  w.gop.fence();
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
+}
+
+// Promoted coarsen-M (ce+ce) case: runs at np=1 AND np=2. Mirror of
+// summa_two_trange_suite/retile_coarsen_m_ce_ce: coarsen the SUMMA-M ride axis
+// i1 (4 U tiles -> 1 T tile). The coarse grid is COARSE on M while the U result
+// C(i1,i2,j1) has more tiles, so finalize carves coarse -> U. At np=2 each
+// coarse cell (and its covered U result tiles) lands on one owner.
+BOOST_AUTO_TEST_CASE(retile_coarsen_m_ce_ce_dist) {
+  auto& w = TA::get_default_world();
+  auto i1U = tr1d(8, 2);  // 4 U M-tiles on the ride axis
+  auto i2 = tr1d(4, 2);   // 2 tiles
+  auto j1 = tr1d(4, 2);   // 2 tiles
+  auto kk = tr1d(4, 4);   // single K tile
+  auto i1T = tr1d(8, 8);  // coarsen i1 to ONE tile (covers all 4 U M-tiles)
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{i1U, i2, kk}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{j1, kk}, TA::Range{4});
+  w.gop.fence();
+
+  reset_plan_active_count();
+
+  ArrayToT2 C_ref = TA::einsum(A0("i1,i2,k;a,c"), B0("j1,k;c"), "i1,i2,j1;a");
+  w.gop.fence();
+
+  ArrayToT2 C;
+  C("i1,i2,j1;a") = (A0("i1,i2,k;a,c") * B0("j1,k;c"))
+                        .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1},
+                                /*K=*/{kk});
+  w.gop.fence();
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+  BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
 }
 
 BOOST_AUTO_TEST_SUITE_END()

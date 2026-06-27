@@ -758,6 +758,27 @@ class Summa
   // coarse M external (ce_ce ride_on_M) and produces the coarse-M result page,
   // which finalize then carves into the U M-sub-tiles. np=1 only.
 
+  /// Map a LOCAL coarse-grid cell index \p cell in [0, proc_grid_.local_size())
+  /// to its GLOBAL coarse-grid ordinal (row-major over the M_grid x N_grid coarse
+  /// result grid). The reduce-task / contract local slot is `(r, c)` =
+  /// `(cell / local_cols, cell % local_cols)` in this rank's local grid
+  /// coordinates; the global cell is `(rank_row + r*proc_rows,
+  /// rank_col + c*proc_cols)` with global ordinal `row * cols + col`. At np=1
+  /// (one process row & col, rank 0) this reduces to the identity `cell`, so the
+  /// np=1 active path is unchanged. This is the LOCAL->GLOBAL mapping the active
+  /// result reconciliation needs so `plan_.u_result_ordinals(global_ord)` reads
+  /// the U tiles actually covered by THIS rank's coarse cells.
+  ordinal_type coarse_cell_global_ordinal(ordinal_type cell) const {
+    const ordinal_type local_cols = proc_grid_.local_cols();
+    const ordinal_type r = local_cols ? (cell / local_cols) : cell;
+    const ordinal_type c = local_cols ? (cell % local_cols) : 0;
+    const ordinal_type g_row =
+        proc_grid_.rank_row() + r * proc_grid_.proc_rows();
+    const ordinal_type g_col =
+        proc_grid_.rank_col() + c * proc_grid_.proc_cols();
+    return g_row * proc_grid_.cols() + g_col;
+  }
+
   /// Decompose a coarse role-axis grid index \p coarse_idx (row-major over the
   /// role's AxisNest list) into the per-U-axis half-open U-tile ranges
   /// [first,last) it covers, in the role's axis order. Identity/Coarsen yield
@@ -1214,12 +1235,39 @@ class Summa
     const auto uK = u_axes_K_left();
     const ordinal_type local_rows = proc_grid_.local_rows();
     col.reserve(local_rows);
+    // np>1 ownership gating (mirrors stock get_vector / get_col): a coarse cell's
+    // packed left tile is OWNED by the process column `step_k(s) % proc_cols`
+    // (the operand U tiles co-located there by the coarse-cell pmap in
+    // ContEngine::init_distribution). Only the owner column gathers+packs (its
+    // U tiles are local); every other column in the process row emits an EMPTY
+    // placeholder col_datum that bcast_col fills. The placeholder/real entries
+    // MUST align across the row group (same `r` tags, same count), so a coarse
+    // cell that has any non-zero covered U tile contributes a datum on EVERY
+    // rank, real on the owner and empty elsewhere. At np=1 there is one process
+    // column (proc_cols==1, rank_col==0) so is_owner is always true and this is
+    // identical to the previous behavior.
+    const bool is_owner_col =
+        (static_cast<ordinal_type>(step_k(s) % proc_grid_.proc_cols()) ==
+         static_cast<ordinal_type>(proc_grid_.rank_col()));
     // Dedupe U-tile fetches via the INSTANCE-wide cache (see
     // gather_operand_block): a refined M axis maps several rows to the same U
     // tile within this call, and a refined K axis re-touches a U K-tile across
     // SUMMA-K steps -- both must fetch each distinct U tile exactly once.
     for (ordinal_type r = 0ul; r < local_rows; ++r) {
-      const auto mr = coarse_axis_u_ranges(plan_.summaM, r);
+      // local grid row r -> GLOBAL coarse M-cell index (np=1: g_row == r). The
+      // gather/box read the GLOBAL coarse cell, but the col_datum is TAGGED with
+      // the LOCAL r (contract/bcast key off the local-grid slot).
+      const ordinal_type g_row =
+          proc_grid_.rank_row() + r * proc_grid_.proc_rows();
+      const auto mr = coarse_axis_u_ranges(plan_.summaM, g_row);
+      if (!is_owner_col) {
+        // Non-owner column: emit an empty placeholder iff the owner would emit a
+        // real one (i.e. the coarse cell has any non-zero covered U tile).
+        if (block_has_nonzero<left_eval>(left_, /*outer_lead=*/mr,
+                                         /*outer_tail=*/kr, nM, nK))
+          col.emplace_back(r, Future<left_eval>());
+        continue;
+      }
       std::vector<Future<left_eval>> fine;
       gather_operand_block<left_eval>(left_, /*outer_lead=*/mr, /*outer_tail=*/kr,
                                       nM, nK, fine, left_fetch_cache_,
@@ -1227,7 +1275,7 @@ class Summa
       if (fine.empty()) continue;
       if (refine) {
         std::vector<std::size_t> lo, up;
-        append_role_t_box(plan_.summaM, plan_.targetM, uM, r, lo, up);
+        append_role_t_box(plan_.summaM, plan_.targetM, uM, g_row, lo, up);
         append_role_t_box(plan_.summaK, plan_.targetK, uK, step_k(s), lo, up);
         col.emplace_back(r, carve_pack_fine_block<left_eval>(
                                 std::move(fine), Range(lo, up)));
@@ -1235,6 +1283,45 @@ class Summa
         col.emplace_back(r, pack_fine_block<left_eval>(std::move(fine)));
       }
     }
+  }
+
+  /// True iff the operand block (outer Cartesian product [outer_lead..) x
+  /// [outer_tail..)) covering one coarse cell has ANY non-zero U tile, WITHOUT
+  /// fetching (no get_tile, no notify). Mirrors gather_operand_block's
+  /// enumeration but only probes the shape. Used by the np>1 non-owner branch to
+  /// decide whether to emit an aligned empty placeholder.
+  template <typename EvalTile, typename Arg>
+  bool block_has_nonzero(
+      Arg& arg,
+      const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_lead,
+      const std::vector<std::pair<ordinal_type, ordinal_type>>& outer_tail,
+      std::size_t n_lead, std::size_t n_tail) const {
+    const auto& tr = arg.trange();
+    const std::size_t rank = n_lead + n_tail;
+    std::vector<ordinal_type> lo(rank), hi(rank);
+    for (std::size_t a = 0; a < n_lead; ++a) {
+      lo[a] = outer_lead[a].first;
+      hi[a] = outer_lead[a].second;
+    }
+    for (std::size_t b = 0; b < n_tail; ++b) {
+      lo[n_lead + b] = outer_tail[b].first;
+      hi[n_lead + b] = outer_tail[b].second;
+    }
+    std::vector<ordinal_type> idx = lo;
+    const auto& tiles = tr.tiles_range();
+    bool done = false;
+    while (!done) {
+      const ordinal_type ord = static_cast<ordinal_type>(tiles.ordinal(idx));
+      if (!arg.shape().is_zero(ord)) return true;
+      std::size_t a = rank;
+      while (a-- > 0) {
+        if (++idx[a] < hi[a]) break;
+        idx[a] = lo[a];
+        if (a == 0) done = true;
+      }
+      if (rank == 0) done = true;
+    }
+    return false;
   }
 
   /// Collect the U sub-tiles of an operand for one coarse cell. \p outer_lead /
@@ -1361,13 +1448,31 @@ class Summa
     const auto uN = u_axes_N();
     const ordinal_type local_cols = proc_grid_.local_cols();
     row.reserve(local_cols);
+    // np>1 ownership gating (mirror of get_col_coarsen): a coarse cell's packed
+    // right tile is OWNED by the process ROW `step_k(s) % proc_rows`. Only the
+    // owner row gathers+packs; other rows in the process column emit an aligned
+    // empty placeholder that bcast_row fills. np=1 => proc_rows==1, always owner.
+    const bool is_owner_row =
+        (static_cast<ordinal_type>(step_k(s) % proc_grid_.proc_rows()) ==
+         static_cast<ordinal_type>(proc_grid_.rank_row()));
     // Dedupe U-tile fetches via the INSTANCE-wide cache (see
     // gather_operand_block): a refined N axis maps several cols to the same U
     // tile within this call, and a refined K axis re-touches a U K-tile across
     // SUMMA-K steps -- fetch each distinct U tile once, else the lazy operand's
     // set_counter_ overshoots task_count_ and wait() hangs.
     for (ordinal_type c = 0ul; c < local_cols; ++c) {
-      const auto nr = coarse_axis_u_ranges(plan_.summaN, c);
+      // local grid col c -> GLOBAL coarse N-cell index (np=1: g_col == c). The
+      // gather/box read the GLOBAL coarse cell; the row_datum is TAGGED with the
+      // LOCAL c.
+      const ordinal_type g_col =
+          proc_grid_.rank_col() + c * proc_grid_.proc_cols();
+      const auto nr = coarse_axis_u_ranges(plan_.summaN, g_col);
+      if (!is_owner_row) {
+        if (block_has_nonzero<right_eval>(right_, /*outer_lead=*/kr,
+                                          /*outer_tail=*/nr, nK, nN))
+          row.emplace_back(c, Future<right_eval>());
+        continue;
+      }
       std::vector<Future<right_eval>> fine;
       gather_operand_block<right_eval>(right_, /*outer_lead=*/kr,
                                        /*outer_tail=*/nr, nK, nN, fine,
@@ -1376,7 +1481,7 @@ class Summa
       if (refine) {
         std::vector<std::size_t> lo, up;
         append_role_t_box(plan_.summaK, plan_.targetK, uK, step_k(s), lo, up);
-        append_role_t_box(plan_.summaN, plan_.targetN, uN, c, lo, up);
+        append_role_t_box(plan_.summaN, plan_.targetN, uN, g_col, lo, up);
         row.emplace_back(c, carve_pack_fine_block<right_eval>(
                                 std::move(fine), Range(lo, up)));
       } else {
@@ -1788,8 +1893,8 @@ class Summa
               this->trange().tiles_range().volume() / nh_, 0u);
           ordinal_type u_count = 0ul;
           for (ordinal_type cell = 0ul; cell < local_size; ++cell)
-            for (std::size_t u :
-                 plan_.u_result_ordinals(static_cast<std::size_t>(cell)))
+            for (std::size_t u : plan_.u_result_ordinals(
+                     static_cast<std::size_t>(coarse_cell_global_ordinal(cell))))
               if (!seen[u]) {
                 seen[u] = 1u;
                 ++u_count;
@@ -1841,7 +1946,8 @@ class Summa
                                       0u);
       for (ordinal_type cell = 0ul; cell < local_size; ++cell, ++reduce_task) {
         const std::vector<std::size_t> u_ord_local =
-            plan_.u_result_ordinals(static_cast<std::size_t>(cell));
+            plan_.u_result_ordinals(
+                static_cast<std::size_t>(coarse_cell_global_ordinal(cell)));
         ordinal_type cell_nonzero = 0ul;
         for (std::size_t u : u_ord_local) {
           const ordinal_type u_ord =
@@ -2065,7 +2171,8 @@ class Summa
 
       for (ordinal_type cell = 0ul; cell < local_size; ++cell, ++reduce_task) {
         const std::vector<std::size_t> u_ord_local =
-            plan_.u_result_ordinals(static_cast<std::size_t>(cell));
+            plan_.u_result_ordinals(
+                static_cast<std::size_t>(coarse_cell_global_ordinal(cell)));
         std::vector<ordinal_type> u_ords;
         u_ords.reserve(u_ord_local.size());
         for (std::size_t u : u_ord_local) {

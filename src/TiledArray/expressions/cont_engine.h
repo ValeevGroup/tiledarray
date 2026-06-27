@@ -32,6 +32,7 @@
 #include <TiledArray/expressions/contraction_retile.h>
 #include <TiledArray/expressions/permopt.h>
 #include <TiledArray/pmap/slabbed_pmap.h>
+#include <TiledArray/pmap/user_pmap.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/tensor/arena_einsum.h>
 #include <TiledArray/tensor/utility.h>
@@ -578,6 +579,34 @@ class ContEngine : public BinaryEngine<Derived> {
     }
   }
 
+  /// \return true iff the (active) retile plan has ANY Refine axis (T finer than
+  /// U) on any role (Hadamard, SUMMA-M/N/K). The COARSEN/identity active path is
+  /// supported at np>1 (operands+result are distributed on the COARSE T-grid so
+  /// each U tile is co-located with its covering coarse cell's owner); the
+  /// REFINE path at np>1 is deferred and stays rejected. This predicate is
+  /// SYMMETRIC across ranks (every rank evaluates the same plan_), so the
+  /// np>1-refine guard below throws collectively.
+  bool plan_has_refine_() const {
+    auto role_refines = [](const std::vector<expressions::AxisNest>& v) {
+      for (const auto& ax : v)
+        if (ax.dir == expressions::NestDir::Refine) return true;
+      return false;
+    };
+    return role_refines(plan_.hadamard) || role_refines(plan_.summaM) ||
+           role_refines(plan_.summaN) || role_refines(plan_.summaK);
+  }
+
+  /// Reject an active REFINE plan at MPI world size > 1 (deferred). Shared by
+  /// coarse_K_/M_/N_; symmetric across ranks => throws collectively. TA_EXCEPTION
+  /// (not TA_ASSERT): .retile() is user-reachable and this must survive Release.
+  void reject_refine_at_np_gt_1_() const {
+    if (world_->size() > 1 && plan_has_refine_())
+      TA_EXCEPTION(
+          "in-SUMMA two-trange retile (.retile) with a REFINE axis is currently "
+          "supported only at MPI world size 1; np>1 refine support is not yet "
+          "implemented (coarsen/identity is supported at np>1)");
+  }
+
   /// \return the COARSE SUMMA-K tile count (number of T contracted tiles)
   /// when the retile plan is active, else the fine (U) count \p k_fine. For an
   /// active plan the coarse count is the product over the SUMMA-K role axes of
@@ -587,19 +616,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \p k_fine unchanged so the stock SUMMA step count is byte-for-byte intact.
   size_type coarse_K_(size_type k_fine) const {
     if (!plan_.active) return k_fine;
-    // The active inbound-coarsen path gathers fine U operand tiles in
-    // get_col/get_row but the SUMMA broadcast (bcast_col/bcast_row) still keys
-    // and roots on the COARSE K geometry; at np>1 those no longer match the
-    // fine-gathered futures, so the result would be silently wrong. Until the
-    // np>1 operand-locality + bcast reconciliation lands, reject an active
-    // .retile() above world size 1. This check is SYMMETRIC across ranks (every
-    // rank sees the same plan_.active and world size), so it throws
-    // collectively. TA_EXCEPTION (not TA_ASSERT): .retile() is user-reachable
-    // and this must survive Release.
-    if (world_->size() > 1)
-      TA_EXCEPTION(
-          "in-SUMMA two-trange retile (.retile) is currently supported only at "
-          "MPI world size 1; np>1 active support is not yet implemented");
+    reject_refine_at_np_gt_1_();
     size_type kc = 1ul;
     for (const auto& ax : plan_.summaK) kc *= ax.groups.size();
     return kc;
@@ -614,10 +631,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// + ride gather are local on a single rank); np>1 active is rejected.
   size_type coarse_M_(size_type m_fine) const {
     if (!plan_.active) return m_fine;
-    if (world_->size() > 1)
-      TA_EXCEPTION(
-          "in-SUMMA two-trange retile (.retile) is currently supported only at "
-          "MPI world size 1; np>1 active support is not yet implemented");
+    reject_refine_at_np_gt_1_();
     size_type mc = 1ul;
     for (const auto& ax : plan_.summaM) mc *= ax.groups.size();
     return mc;
@@ -628,13 +642,167 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \c coarse_M_ over the SUMMA-N role axes.
   size_type coarse_N_(size_type n_fine) const {
     if (!plan_.active) return n_fine;
-    if (world_->size() > 1)
-      TA_EXCEPTION(
-          "in-SUMMA two-trange retile (.retile) is currently supported only at "
-          "MPI world size 1; np>1 active support is not yet implemented");
+    reject_refine_at_np_gt_1_();
     size_type nc = 1ul;
     for (const auto& ax : plan_.summaN) nc *= ax.groups.size();
     return nc;
+  }
+
+  // == np>1 COARSEN/identity operand+result distribution on the COARSE T-grid ==
+  //
+  // At np>1 the SUMMA broadcast keys/roots on the COARSE (T) proc_grid_, while
+  // operands are stored and the result delivered at the FINE (U) tiling. For the
+  // in-step gather to be local and the coarse-keyed broadcast to be consistent,
+  // every U tile must live on the rank that owns its covering coarse T-cell in
+  // the matching coarse phase pmap. The helpers below compose
+  //   owner(U_tile) = coarse_phase_pmap.owner( coarse_cell_ordinal(U_tile))
+  // by decomposing the U tile ordinal into per-axis U indices, mapping each U
+  // index to its covering T index via the plan's per-role AxisNest groups, and
+  // recomposing the coarse-cell ordinal in the layout the coarse phase pmap
+  // expects. COARSEN/identity only (refine is rejected at np>1 above); on an
+  // identity axis the U->T map is the identity so a pure-identity plan
+  // reproduces the stock owner exactly. At np=1 every owner is rank 0, so these
+  // are inert there.
+
+  /// Per-axis U->T lookup for axis \p a of \p role (length = # U tiles on a).
+  static std::vector<std::size_t> role_u_to_t_axis(
+      const std::vector<expressions::AxisNest>& role, std::size_t a) {
+    const auto& ax = role[a];
+    std::size_t n_u = 0;
+    for (const auto& g : ax.groups) n_u = std::max(n_u, g.second);
+    std::vector<std::size_t> u2t(n_u, 0);
+    for (std::size_t t = 0; t < ax.groups.size(); ++t)
+      for (std::size_t u = ax.groups[t].first; u < ax.groups[t].second; ++u)
+        u2t[u] = t;
+    return u2t;
+  }
+
+  /// Number of T tiles on axis \p a of \p role (== groups.size()).
+  static std::size_t role_t_extent(
+      const std::vector<expressions::AxisNest>& role, std::size_t a) {
+    return role[a].groups.size();
+  }
+
+  /// Compose the coarse-cell-owner pmap for an operand whose U outer trange is
+  /// laid out [lead-role axes..., tail-role axes...] (left: M then K; right: K
+  /// then N). \p coarse_phase is the matching coarse phase pmap (left:
+  /// make_row_phase_pmap(coarse_K); right: make_col_phase_pmap(coarse_N=cols)).
+  /// The coarse-cell ordinal is lead_t * tail_coarse + tail_t, matching the
+  /// CyclicPmap row-major (rows=lead_coarse, cols=tail_coarse) decode.
+  std::shared_ptr<const pmap_interface> make_operand_coarse_pmap(
+      World& world, const trange_type& u_tr,
+      const std::vector<expressions::AxisNest>& lead_role,
+      const std::vector<expressions::AxisNest>& tail_role,
+      const std::shared_ptr<Pmap>& coarse_phase,
+      std::size_t tail_coarse) const {
+    const auto& u_tiles = u_tr.tiles_range();
+    const std::size_t n_lead = lead_role.size();
+    const std::size_t n_tail = tail_role.size();
+    const std::size_t rank = n_lead + n_tail;
+    TA_ASSERT(u_tiles.rank() == rank);
+
+    // Precompute per-axis U->T lookups.
+    std::vector<std::vector<std::size_t>> lead_u2t(n_lead), tail_u2t(n_tail);
+    std::vector<std::size_t> lead_t_ext(n_lead), tail_t_ext(n_tail);
+    for (std::size_t a = 0; a < n_lead; ++a) {
+      lead_u2t[a] = role_u_to_t_axis(lead_role, a);
+      lead_t_ext[a] = role_t_extent(lead_role, a);
+    }
+    for (std::size_t b = 0; b < n_tail; ++b) {
+      tail_u2t[b] = role_u_to_t_axis(tail_role, b);
+      tail_t_ext[b] = role_t_extent(tail_role, b);
+    }
+
+    const std::size_t n_u_tiles = u_tiles.volume();
+    std::vector<ProcessID> owners(n_u_tiles);
+    const auto* extent = u_tiles.extent_data();
+    std::vector<std::size_t> idx(rank);
+    for (std::size_t ord = 0; ord < n_u_tiles; ++ord) {
+      // decompose ord row-major into per-axis U indices
+      std::size_t rem = ord;
+      for (std::size_t a = rank; a-- > 0;) {
+        const std::size_t e = static_cast<std::size_t>(extent[a]);
+        idx[a] = e ? (rem % e) : 0;
+        rem = e ? (rem / e) : rem;
+      }
+      // lead_t (row-major over lead T extents), tail_t (row-major over tail)
+      std::size_t lead_t = 0;
+      for (std::size_t a = 0; a < n_lead; ++a)
+        lead_t = lead_t * lead_t_ext[a] + lead_u2t[a][idx[a]];
+      std::size_t tail_t = 0;
+      for (std::size_t b = 0; b < n_tail; ++b)
+        tail_t = tail_t * tail_t_ext[b] + tail_u2t[b][idx[n_lead + b]];
+      const std::size_t cell = lead_t * tail_coarse + tail_t;
+      owners[ord] = static_cast<ProcessID>(coarse_phase->owner(cell));
+    }
+
+    std::size_t local = 0;
+    const std::size_t me = world.rank();
+    for (auto o : owners)
+      if (static_cast<std::size_t>(o) == me) ++local;
+    auto owners_ptr = std::make_shared<std::vector<ProcessID>>(std::move(owners));
+    return std::make_shared<TiledArray::detail::UserPmap>(
+        world, n_u_tiles, local,
+        [owners_ptr](std::size_t t) -> std::size_t {
+          return static_cast<std::size_t>((*owners_ptr)[t]);
+        });
+  }
+
+  /// Compose the coarse-cell-owner pmap for the RESULT whose U trange is laid
+  /// out [M-axes..., N-axes...] (no Hadamard on this path). The coarse result
+  /// grid (proc_grid_.make_pmap()) is CyclicPmap(rows=M_grid, cols=N_grid), so
+  /// the coarse-cell ordinal is mc * N_grid + nc.
+  std::shared_ptr<const pmap_interface> make_result_coarse_pmap(
+      World& world, const trange_type& u_tr,
+      const std::shared_ptr<Pmap>& coarse_result, std::size_t N_grid) const {
+    const auto& u_tiles = u_tr.tiles_range();
+    const std::size_t n_m = plan_.summaM.size();
+    const std::size_t n_n = plan_.summaN.size();
+    const std::size_t rank = n_m + n_n;
+    TA_ASSERT(u_tiles.rank() == rank);
+
+    std::vector<std::vector<std::size_t>> m_u2t(n_m), n_u2t(n_n);
+    std::vector<std::size_t> m_t_ext(n_m), n_t_ext(n_n);
+    for (std::size_t a = 0; a < n_m; ++a) {
+      m_u2t[a] = role_u_to_t_axis(plan_.summaM, a);
+      m_t_ext[a] = role_t_extent(plan_.summaM, a);
+    }
+    for (std::size_t b = 0; b < n_n; ++b) {
+      n_u2t[b] = role_u_to_t_axis(plan_.summaN, b);
+      n_t_ext[b] = role_t_extent(plan_.summaN, b);
+    }
+
+    const std::size_t n_u_tiles = u_tiles.volume();
+    std::vector<ProcessID> owners(n_u_tiles);
+    const auto* extent = u_tiles.extent_data();
+    std::vector<std::size_t> idx(rank);
+    for (std::size_t ord = 0; ord < n_u_tiles; ++ord) {
+      std::size_t rem = ord;
+      for (std::size_t a = rank; a-- > 0;) {
+        const std::size_t e = static_cast<std::size_t>(extent[a]);
+        idx[a] = e ? (rem % e) : 0;
+        rem = e ? (rem / e) : rem;
+      }
+      std::size_t mc = 0;
+      for (std::size_t a = 0; a < n_m; ++a)
+        mc = mc * m_t_ext[a] + m_u2t[a][idx[a]];
+      std::size_t nc = 0;
+      for (std::size_t b = 0; b < n_n; ++b)
+        nc = nc * n_t_ext[b] + n_u2t[b][idx[n_m + b]];
+      const std::size_t cell = mc * N_grid + nc;
+      owners[ord] = static_cast<ProcessID>(coarse_result->owner(cell));
+    }
+
+    std::size_t local = 0;
+    const std::size_t me = world.rank();
+    for (auto o : owners)
+      if (static_cast<std::size_t>(o) == me) ++local;
+    auto owners_ptr = std::make_shared<std::vector<ProcessID>>(std::move(owners));
+    return std::make_shared<TiledArray::detail::UserPmap>(
+        world, n_u_tiles, local,
+        [owners_ptr](std::size_t t) -> std::size_t {
+          return static_cast<std::size_t>((*owners_ptr)[t]);
+        });
   }
 
   /// Initialize result tensor distribution
@@ -689,27 +857,47 @@ class ContEngine : public BinaryEngine<Derived> {
       // This makes proc_grid_.local_rows()/local_cols() iterate COARSE result
       // cells; one coarse cell then covers several U result tiles, reconciled
       // in Summa::initialize/finalize. Inactive plans keep the stock U grid
-      // byte-for-byte (coarse_M_/coarse_N_ are the identity then). The operand
-      // and result pmaps stay keyed to the U tile counts (operands are stored
-      // and the result delivered at U); at np=1 every pmap is rank-local, and
-      // an active plan at np>1 is rejected (coarse_M_/coarse_N_/coarse_K_).
+      // byte-for-byte (coarse_M_/coarse_N_ are the identity then).
       const size_type M_grid = coarse_M_(M);
       const size_type N_grid = coarse_N_(N);
       proc_grid_ = TiledArray::detail::ProcGrid(*world, M_grid, N_grid, m, n);
 
-      // Operand/result distribution stays over the U tile space. When inactive
-      // M_grid==M and N_grid==N so this U grid IS proc_grid_ (stock behavior).
-      const TiledArray::detail::ProcGrid u_grid =
-          plan_.active ? TiledArray::detail::ProcGrid(*world, M, N, m, n)
-                       : proc_grid_;
+      if (plan_.active) {
+        // np>1 COARSEN/identity: operands are stored at U and the result is
+        // delivered at U, but the SUMMA broadcast keys/roots on the COARSE
+        // proc_grid_. Co-locate each U tile on the rank that owns its covering
+        // coarse T-cell (matching coarse phase pmap), so the in-step gather is
+        // local and the coarse-keyed broadcast is consistent. At np=1 every
+        // owner is rank 0, identical to the old fine-u_grid behavior. (Refine
+        // at np>1 was rejected above; only coarsen/identity reaches here.)
+        const size_type K_coarse = coarse_K_(K_);
+        // left U layout = [M-axes..., K-axes...]; phase rows = M_grid, cols =
+        // K_coarse.
+        auto left_phase = proc_grid_.make_row_phase_pmap(K_coarse);
+        left_.init_distribution(
+            world, make_operand_coarse_pmap(*world, left_.trange(),
+                                            plan_.summaM, plan_.summaK,
+                                            left_phase, K_coarse));
+        // right U layout = [K-axes..., N-axes...]; phase rows = K_coarse,
+        // cols = N_grid.
+        auto right_phase = proc_grid_.make_col_phase_pmap(K_coarse);
+        right_.init_distribution(
+            world, make_operand_coarse_pmap(*world, right_.trange(),
+                                            plan_.summaK, plan_.summaN,
+                                            right_phase, N_grid));
 
-      // Initialize children
-      left_.init_distribution(world, u_grid.make_row_phase_pmap(K_));
-      right_.init_distribution(world, u_grid.make_col_phase_pmap(K_));
-
-      // Initialize the process map if not already defined
-      if (!pmap) pmap = u_grid.make_pmap();
-      ExprEngine_::init_distribution(world, pmap);
+        if (!pmap)
+          pmap = make_result_coarse_pmap(*world, trange_, proc_grid_.make_pmap(),
+                                         N_grid);
+        ExprEngine_::init_distribution(world, pmap);
+      } else {
+        // Inactive: stock U grid (M_grid==M, N_grid==N so u_grid IS proc_grid_).
+        const TiledArray::detail::ProcGrid u_grid = proc_grid_;
+        left_.init_distribution(world, u_grid.make_row_phase_pmap(K_));
+        right_.init_distribution(world, u_grid.make_col_phase_pmap(K_));
+        if (!pmap) pmap = u_grid.make_pmap();
+        ExprEngine_::init_distribution(world, pmap);
+      }
     }
   }
 
