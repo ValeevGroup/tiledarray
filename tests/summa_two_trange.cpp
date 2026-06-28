@@ -3819,23 +3819,44 @@ BOOST_AUTO_TEST_CASE(arena_ce_e_retile_regression) {
   BOOST_CHECK_SMALL(array_max_reldiff2(C1, C0), 1e-10);
 }
 
-// ===== Env-gated mixed auto-retile (TA_SUMMA_AUTO_RETILE) ===================
+// ===== Env-var-driven mixed auto-retile (TA_SUMMA_MIXED_RETILE_*) ===========
 // These cases drive the PRODUCTION path: a bare TA::einsum(...) (no .retile())
-// that, when the gate is on, auto-coarsens the plain operand's external + K
-// inside ContEngine::maybe_make_retile_plan_. The gate is flipped in-process
-// via the settable mixed_auto_retile() accessor; each case restores the prior
-// value (RAII) so it leaks no state to later tests.
+// that auto-coarsens roles inside ContEngine::maybe_make_retile_plan_ whenever
+// at least one of the three role targets is positive. There is NO enable flag
+// (the former TA_SUMMA_AUTO_RETILE was removed); the retile engages iff some
+// target > 0. The three targets are set in-process via their settable accessors;
+// each case restores the prior values (RAII) so it leaks no state to later tests.
+//   target == 0 => role INTACT; all three 0 => stock SUMMA path (the "off" state).
+//   target > 0  => COARSEN-ONLY toward it (>= extent => collapse to one tile).
 namespace {
-// RAII guard for the in-process auto-retile gate; restores the prior value.
-struct MixedGateGuard {
-  bool& flag;
-  bool prev;
-  explicit MixedGateGuard(bool on)
-      : flag(TiledArray::expressions::detail::mixed_auto_retile()),
-        prev(flag) {
-    flag = on;
+// A target large enough to always collapse a role to a single tile (>= any axis
+// extent these tests use). With the 0=intact convention, "collapse" is expressed
+// as coarsen-to->=extent, not as 0.
+constexpr std::size_t kMixedCollapse = std::size_t{1} << 30;
+
+// RAII guard for the in-process mixed retile targets (BLAS-external, BLAS-K,
+// SUMMA-external); restores the prior values. Replaces the former boolean gate.
+struct MixedRetileGuard {
+  std::size_t& blas_ext;
+  std::size_t& blas_k;
+  std::size_t& summa_ext;
+  std::size_t prev_e, prev_k, prev_s;
+  MixedRetileGuard(std::size_t be, std::size_t bk, std::size_t se)
+      : blas_ext(TiledArray::expressions::detail::mixed_plain_external_target()),
+        blas_k(TiledArray::expressions::detail::mixed_contracted_target()),
+        summa_ext(TiledArray::expressions::detail::mixed_tot_external_target()),
+        prev_e(blas_ext),
+        prev_k(blas_k),
+        prev_s(summa_ext) {
+    blas_ext = be;
+    blas_k = bk;
+    summa_ext = se;
   }
-  ~MixedGateGuard() { flag = prev; }
+  ~MixedRetileGuard() {
+    blas_ext = prev_e;
+    blas_k = prev_k;
+    summa_ext = prev_s;
+  }
 };
 }  // namespace
 
@@ -3844,14 +3865,14 @@ struct MixedGateGuard {
 // matches a plain einsum reference. Byte-for-byte identical to pre-gate TA.
 BOOST_AUTO_TEST_CASE(mixed_auto_retile_off_is_noop) {
   auto& w = TA::get_default_world();
-  MixedGateGuard guard(false);  // gate OFF
+  MixedRetileGuard guard(0, 0, 0);  // no retile: all roles intact (stock path)
   const int E = 8, T = 4, A4 = 6;
   auto e = tr1(E, T);
   MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
   MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
   w.gop.fence();
 
-  // reference (gate off): plain einsum, no auto-retile.
+  // reference (all targets 0 => intact): plain einsum, no auto-retile.
   MixToT Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
   w.gop.fence();
 
@@ -3859,7 +3880,7 @@ BOOST_AUTO_TEST_CASE(mixed_auto_retile_off_is_noop) {
   MixToT Coff = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
   w.gop.fence();
 
-  // strict no-op: the retile plan never activates with the gate off.
+  // strict no-op: the retile plan never activates with all targets 0 (intact).
   BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_plan_active_calls.load() - p0,
                     0ul);
   BOOST_CHECK_SMALL(array_max_reldiff2(Coff, Cref), 1e-10);
@@ -3876,19 +3897,19 @@ BOOST_AUTO_TEST_CASE(mixed_auto_retile_on_T_x_ToT) {
   MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
   w.gop.fence();
 
-  // fine reference + fine fire-count: gate OFF.
+  // fine reference + fine fire-count: all targets 0 (intact).
   MixToT Cfine;
   std::size_t fine_fires = 0;
   {
-    MixedGateGuard off(false);
+    MixedRetileGuard off(0, 0, 0);
     const auto f0 = mix_scale_fires();
     Cfine = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
     w.gop.fence();
     fine_fires = mix_scale_fires() - f0;
   }
 
-  // auto path: gate ON, SAME bare einsum (no .retile()).
-  MixedGateGuard on(true);
+  // auto path: targets set (collapse M+K, SUMMA->16), SAME bare einsum.
+  MixedRetileGuard on(kMixedCollapse, kMixedCollapse, 16);
   const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
   const auto f1 = mix_scale_fires();
   MixToT Cauto =
@@ -3921,14 +3942,14 @@ BOOST_AUTO_TEST_CASE(mixed_auto_retile_on_ToT_x_T) {
   MixToT Cfine;
   std::size_t fine_fires = 0;
   {
-    MixedGateGuard off(false);
+    MixedRetileGuard off(0, 0, 0);
     const auto f0 = mix_scale_fires();
     Cfine = TA::einsum(I("i1,i2,m;a4i1i2"), G("m,i3,k"), "i1,i2,i3,k;a4i1i2");
     w.gop.fence();
     fine_fires = mix_scale_fires() - f0;
   }
 
-  MixedGateGuard on(true);
+  MixedRetileGuard on(kMixedCollapse, kMixedCollapse, 16);
   const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
   const auto f1 = mix_scale_fires();
   MixToT Cauto =
@@ -3947,11 +3968,12 @@ BOOST_AUTO_TEST_CASE(mixed_auto_retile_on_ToT_x_T) {
   BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cfine), 1e-10);
 }
 
-// DEFAULT auto-retile config (mixed_retile_config): collapse the BLAS axes
-// (plain external + K) to a single tile each, and coarsen the leftover SUMMA
-// axis to tile_size 16 -- COARSEN-ONLY (an axis already coarser than 16 is left
-// intact, never refined). This drives the bare TA::einsum (no .retile()) with
-// the gate ON and checks the engine auto-synthesizes exactly that coarse grid.
+// Representative production config (set via TA_SUMMA_MIXED_RETILE_* accessors):
+// collapse the BLAS axes (plain external + K) to a single tile each, and coarsen
+// the leftover SUMMA axis to tile_size 16 -- COARSEN-ONLY (an axis already
+// coarser than 16 is left intact, never refined). This drives the bare
+// TA::einsum (no .retile()) with those targets set and checks the engine
+// auto-synthesizes exactly that coarse grid.
 //
 // T*ToT: g(i3,k,m) * I(m,i1,i2;a4) -> C(i3,i1,i2,k;a4). The ToT external N is
 // (i1,i2) with DELIBERATELY MISMATCHED tilings to exercise both behaviors:
@@ -3972,16 +3994,16 @@ BOOST_AUTO_TEST_CASE(mixed_auto_default_coarsen_summa_no_refine) {
   MixToT I = mix_make_tot(w, TA::TiledRange{m, i1, i2}, A4);   // (m,i1,i2)
   w.gop.fence();
 
-  // Reference with the gate OFF (stock einsum).
+  // Reference with all targets 0 => intact (stock einsum).
   MixToT Cref;
   {
-    MixedGateGuard off(false);
+    MixedRetileGuard off(0, 0, 0);
     Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
     w.gop.fence();
   }
 
-  // Gate ON: the bare einsum auto-retiles with the DEFAULT config.
-  MixedGateGuard on(true);
+  // Targets set: auto-retile collapses BLAS M+K and coarsens SUMMA-N to 16.
+  MixedRetileGuard on(kMixedCollapse, kMixedCollapse, 16);
   const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
 #ifdef TA_STRIDED_DGEMM_COUNT
   TiledArray::detail::g_summa_coarse_m_grid.store(0);
@@ -4117,7 +4139,7 @@ BOOST_AUTO_TEST_CASE(mixed_ToT_x_T_coarsen_NK_retile_M) {
 
 // ToT*ToT->ToT (a genuine inner product: ce+e / ce+ce -- BOTH operands are
 // arena-ToT) is NOT the "mixed" shape, so the env-gated auto-retile must NOT
-// engage even with TA_SUMMA_AUTO_RETILE ON. is_mixed_ is false at COMPILE time
+// engage even with retile targets set. is_mixed_ is false at COMPILE time
 // (it requires exactly one plain-dense operand), so the auto-retile branch in
 // maybe_make_retile_plan_ is compiled out and the contraction reverts to the
 // stock SUMMA path (plan inactive). This guards the "auto-retile is mixed-only"
@@ -4134,17 +4156,17 @@ BOOST_AUTO_TEST_CASE(mixed_auto_retile_skips_ToT_x_ToT) {
   MixToT B = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (j1,j2,m)
   w.gop.fence();
 
-  // Reference with the gate OFF.
+  // Reference with all targets 0 => intact.
   MixToT Cref;
   {
-    MixedGateGuard off(false);
+    MixedRetileGuard off(0, 0, 0);
     Cref = TA::einsum(A("i1,i2,m;a4i1i2"), B("j1,j2,m;b4j1j2"),
                       "i1,i2,j1,j2;a4i1i2,b4j1j2");
     w.gop.fence();
   }
 
   // Gate ON: a ToT*ToT contraction must still NOT retile (is_mixed_ == false).
-  MixedGateGuard on(true);
+  MixedRetileGuard on(kMixedCollapse, kMixedCollapse, 16);
   const auto p0 = TiledArray::detail::g_summa_plan_active_calls.load();
   MixToT C = TA::einsum(A("i1,i2,m;a4i1i2"), B("j1,j2,m;b4j1j2"),
                         "i1,i2,j1,j2;a4i1i2,b4j1j2");
@@ -4153,8 +4175,218 @@ BOOST_AUTO_TEST_CASE(mixed_auto_retile_skips_ToT_x_ToT) {
   w.gop.sum(&active, 1);
   // No retile plan ever activated: reverted to the stock SUMMA path.
   BOOST_CHECK_EQUAL(active, std::size_t{0});
-  // And the result is unchanged vs the gate-off reference.
+  // And the result is unchanged vs the intact-targets reference.
   BOOST_CHECK_SMALL(array_max_reldiff2(C, Cref), 1e-10);
+}
+
+// ===== Mixture coverage: per-role coarsen / refine-intact / all-intact ======
+// The three role targets are INDEPENDENT. coarsen_tr1 is COARSEN-ONLY, so a
+// target SMALLER than an axis's current tile size is a "refine" request that is
+// silently left INTACT (never refined). These cases sweep the mixtures a user
+// can dial via TA_SUMMA_MIXED_RETILE_{BLAS_EXTERNAL,BLAS_K,SUMMA_EXTERNAL}.
+// Shared shape: g(i3,k,m) * I(m,i1,i2;a4) -> C(i3,i1,i2,k;a4); every axis is 32
+// elements in fine tiles of 4 (8 fine tiles each). Roles: M=(i3,k), K=(m),
+// N=(i1,i2). The result is always delivered at the user's fine tiling, so the
+// universal invariant is "C == non-retiled einsum"; the coarse-grid witnesses
+// (guarded by TA_STRIDED_DGEMM_COUNT) confirm WHICH roles actually moved.
+
+// (1) ALL THREE ROLES COARSEN (none collapsed, none intact): target 8 on each
+// axis whose fine tile is 4 => 4 coarse tiles per axis. coarse_m = 4*4 = 16,
+// coarse_k = 4, coarse_n = 4*4 = 16.
+BOOST_AUTO_TEST_CASE(mixed_retile_all_coarsen) {
+  auto& w = TA::get_default_world();
+  const int E = 32, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  MixToT Cref;
+  {
+    MixedRetileGuard off(0, 0, 0);
+    Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+    w.gop.fence();
+  }
+
+  MixedRetileGuard on(8, 8, 8);  // coarsen M, K, N each from tile 4 -> 8
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_summa_coarse_m_grid.store(0);
+  TiledArray::detail::g_summa_coarse_n_grid.store(0);
+  TiledArray::detail::g_summa_coarse_k_grid.store(0);
+#endif
+  MixToT Cauto =
+      TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cref), 1e-10);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_m_grid.load(), 16ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_k_grid.load(), 4ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_n_grid.load(), 16ul);
+#else
+  (void)p1;
+#endif
+}
+
+// (2) MIXTURE: one role COARSENS, the others get a sub-tile "refine" target that
+// is left INTACT. M coarsens (BLAS_EXTERNAL=8: 4 -> 8 => 4 coarse tiles/axis),
+// while K and N are handed target 2 (< fine tile 4) => REFINE request => intact.
+// coarse_m = 4*4 = 16, coarse_k = 8 (m intact), coarse_n = 8*8 = 64 (intact).
+// Proves a refine-direction target does NOT refine, and partial coarsen is
+// correct alongside intact roles.
+BOOST_AUTO_TEST_CASE(mixed_retile_coarsen_M_refine_KN_intact) {
+  auto& w = TA::get_default_world();
+  const int E = 32, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  MixToT Cref;
+  {
+    MixedRetileGuard off(0, 0, 0);
+    Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+    w.gop.fence();
+  }
+
+  MixedRetileGuard on(8, 2, 2);  // M coarsen; K,N refine-request -> intact
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_summa_coarse_m_grid.store(0);
+  TiledArray::detail::g_summa_coarse_n_grid.store(0);
+  TiledArray::detail::g_summa_coarse_k_grid.store(0);
+#endif
+  MixToT Cauto =
+      TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cref), 1e-10);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_m_grid.load(), 16ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_k_grid.load(), 8ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_n_grid.load(), 64ul);
+#else
+  (void)p1;
+#endif
+}
+
+// (3) COMPLETELY INTACT via sub-tile targets: every role gets target 2 (< fine
+// tile 4) => all REFINE requests => all axes Identity => the synthesized plan is
+// INACTIVE even though the gate engaged (do_retile == true). The engine must
+// revert to the stock SUMMA path: plan_active delta == 0 and result unchanged.
+// This is the "refine-only" sibling of mixed_auto_retile_off_is_noop (which uses
+// all-zero targets and never builds a plan at all).
+BOOST_AUTO_TEST_CASE(mixed_retile_all_refine_is_intact_noop) {
+  auto& w = TA::get_default_world();
+  const int E = 32, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  MixToT Cref;
+  {
+    MixedRetileGuard off(0, 0, 0);
+    Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+    w.gop.fence();
+  }
+
+  MixedRetileGuard on(2, 2, 2);  // all sub-tile => refine-requests => all intact
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+  MixToT Cauto =
+      TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  // plan synthesized but all-Identity => INACTIVE => stock path (delta 0).
+  std::size_t active = TiledArray::detail::g_summa_plan_active_calls.load() - p1;
+  w.gop.sum(&active, 1);
+  BOOST_CHECK_EQUAL(active, std::size_t{0});
+  BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cref), 1e-10);
+}
+
+// (4) ALL THREE ROLES COMPLETELY COARSENED (collapsed to a single tile): a
+// target >= the axis extent (kMixedCollapse) merges every axis to one tile.
+// coarse_m = coarse_k = coarse_n = 1. The maximal-coarsen end of the spectrum.
+BOOST_AUTO_TEST_CASE(mixed_retile_all_collapse) {
+  auto& w = TA::get_default_world();
+  const int E = 32, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  MixToT Cref;
+  {
+    MixedRetileGuard off(0, 0, 0);
+    Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+    w.gop.fence();
+  }
+
+  MixedRetileGuard on(kMixedCollapse, kMixedCollapse, kMixedCollapse);
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_summa_coarse_m_grid.store(0);
+  TiledArray::detail::g_summa_coarse_n_grid.store(0);
+  TiledArray::detail::g_summa_coarse_k_grid.store(0);
+#endif
+  MixToT Cauto =
+      TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cref), 1e-10);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_m_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_k_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_n_grid.load(), 1ul);
+#else
+  (void)p1;
+#endif
+}
+
+// (5) FULL SPECTRUM IN ONE SHOT: M COLLAPSED (target >= extent => 1 tile), K
+// PARTIALLY COARSENED (target 8: m's 8 fine tiles of 4 merge pairwise => 4
+// coarse tiles), N left INTACT (sub-tile refine request). coarse_m = 1,
+// coarse_k = 4, coarse_n = 8*8 = 64. Exercises collapse + partial-coarsen +
+// intact simultaneously on the three independent roles.
+BOOST_AUTO_TEST_CASE(mixed_retile_collapse_M_coarsen_K_intact_N) {
+  auto& w = TA::get_default_world();
+  const int E = 32, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  MixToT Cref;
+  {
+    MixedRetileGuard off(0, 0, 0);
+    Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+    w.gop.fence();
+  }
+
+  MixedRetileGuard on(kMixedCollapse, 8, 2);  // M collapse, K coarsen, N intact
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_summa_coarse_m_grid.store(0);
+  TiledArray::detail::g_summa_coarse_n_grid.store(0);
+  TiledArray::detail::g_summa_coarse_k_grid.store(0);
+#endif
+  MixToT Cauto =
+      TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cref), 1e-10);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_m_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_k_grid.load(), 4ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_n_grid.load(), 64ul);
+#else
+  (void)p1;
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

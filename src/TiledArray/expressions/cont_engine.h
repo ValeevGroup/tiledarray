@@ -595,27 +595,32 @@ class ContEngine : public BinaryEngine<Derived> {
   /// inactive plan. The plan is consumed by later phases; in this phase it is
   /// only stored and threaded to the Summa ctor.
   /// Synthesize coarse retile targets for the mixed (plain x arena-ToT ->
-  /// arena-ToT) shape with the env-gated auto-retile. Per
-  /// detail::mixed_retile_config, coarsen THREE roles:
+  /// arena-ToT) shape. Each role's target comes from a runtime accessor
+  /// (compiled-in default 0 in detail::mixed_retile_config; overridden by env var
+  /// TA_SUMMA_MIXED_RETILE_*). A role target of 0 leaves that role's target
+  /// vector EMPTY (intact); a positive target coarsens each of its axes. Roles:
   ///   - the PLAIN operand's external (role M when the plain operand is LEFT,
-  ///     role N when it is RIGHT) toward plain_external_target (default 0 =>
-  ///     single tile / full collapse);
-  ///   - the contracted (K) axis toward contracted_target (default 0 => collapse);
+  ///     role N when it is RIGHT) toward mixed_plain_external_target()
+  ///     [TA_SUMMA_MIXED_RETILE_BLAS_EXTERNAL];
+  ///   - the contracted (K) axis toward mixed_contracted_target()
+  ///     [TA_SUMMA_MIXED_RETILE_BLAS_K];
   ///   - the arena-ToT operand's external -- the LEFTOVER SUMMA axis (role N
   ///     when the plain operand is LEFT, role M when it is RIGHT) -- toward
-  ///     tot_external_target (default 16).
-  /// The fused (H) axes are left EMPTY (kept intact at U). Every target is fed
-  /// through coarsen_tr1, which COARSENS ONLY (merges U tiles onto existing U
-  /// boundaries; never refines), so a leftover-SUMMA axis already coarser than
-  /// the target is kept intact rather than refined (refine is unsupported).
+  ///     mixed_tot_external_target() [TA_SUMMA_MIXED_RETILE_SUMMA_EXTERNAL].
+  /// The fused (H) axes are always left EMPTY (kept intact at U). Every positive
+  /// target is fed through coarsen_tr1, which COARSENS ONLY (merges U tiles onto
+  /// existing U boundaries; never refines), so an axis already coarser than the
+  /// target is kept intact rather than refined (refine is unsupported), and a
+  /// target >= the axis extent collapses it to a single tile.
   /// The role axes are extracted by the SAME positional H/M/N/K partition that
   /// make_retile_plan consults (nf leading fused modes; the last nc left axes
   /// are K; the remaining left axes are M; the right axes past nf+nc are N), so
   /// the synthesized targets are in canonical H/M/N/K space -- identical to what
-  /// a .retile() caller supplies. This is the default verified by
+  /// a .retile() caller supplies. E.g. setting BLAS_EXTERNAL and BLAS_K large
+  /// enough to collapse plus SUMMA_EXTERNAL=16 reproduces the verified
   /// mixed_T_x_ToT_coarsen_MK_retile_N (plain left -> collapse M+K, coarsen N to
   /// 16) and mixed_ToT_x_T_coarsen_NK_retile_M (plain right -> collapse N+K,
-  /// coarsen M to 16).
+  /// coarsen M to 16) strategies.
   void synthesize_mixed_targets_(bool left_is_plain,
                                  const math::GemmHelper& outer_gh,
                                  std::vector<TiledRange1>& tH,
@@ -629,31 +634,42 @@ class ContEngine : public BinaryEngine<Derived> {
     const unsigned int nc = outer_gh.num_contract_ranks();
     const unsigned int left_rank = static_cast<unsigned int>(left_U.rank());
     const unsigned int right_rank = static_cast<unsigned int>(right_U.rank());
-    const std::size_t ext_target =
-        detail::mixed_retile_config.plain_external_target;
-    const std::size_t k_target = detail::mixed_retile_config.contracted_target;
-    const std::size_t tot_ext_target =
-        detail::mixed_retile_config.tot_external_target;
+    // All three coarsen targets are runtime-overridable via the
+    // TA_SUMMA_MIXED_RETILE_* env vars (defaults = mixed_retile_config fields).
+    // CONVENTION: target == 0 => leave that role INTACT (its target vector stays
+    // empty, so retile_role_axes marks every axis Identity and -- if all roles
+    // are intact -- the plan is inactive and we revert to the stock SUMMA path).
+    // target > 0 => COARSEN-ONLY toward it (coarsen_tr1 merges U tiles up to the
+    // target; never refines, so an axis already >= the target is kept intact and
+    // a target >= the axis extent collapses it to a single tile).
+    const std::size_t ext_target = detail::mixed_plain_external_target();
+    const std::size_t k_target = detail::mixed_contracted_target();
+    const std::size_t tot_ext_target = detail::mixed_tot_external_target();
     if (left_is_plain) {
-      // plain operand is LEFT => its external is role M (left outer axes),
-      // collapsed; the arena-ToT external is role N (right outer axes),
-      // coarsened to tot_ext_target.
-      for (unsigned int i = nf; i + nc < left_rank; ++i)
-        tM.push_back(coarsen_tr1(left_U.dim(i), ext_target));
-      for (unsigned int i = nf + nc; i < right_rank; ++i)
-        tN.push_back(coarsen_tr1(right_U.dim(i), tot_ext_target));
+      // plain operand is LEFT => its external is role M (left outer axes,
+      // ext_target); the arena-ToT external is role N (right outer axes,
+      // tot_ext_target).
+      if (ext_target)
+        for (unsigned int i = nf; i + nc < left_rank; ++i)
+          tM.push_back(coarsen_tr1(left_U.dim(i), ext_target));
+      if (tot_ext_target)
+        for (unsigned int i = nf + nc; i < right_rank; ++i)
+          tN.push_back(coarsen_tr1(right_U.dim(i), tot_ext_target));
     } else {
-      // plain operand is RIGHT => its external is role N (right outer axes),
-      // collapsed; the arena-ToT external is role M (left outer axes),
-      // coarsened to tot_ext_target.
-      for (unsigned int i = nf + nc; i < right_rank; ++i)
-        tN.push_back(coarsen_tr1(right_U.dim(i), ext_target));
-      for (unsigned int i = nf; i + nc < left_rank; ++i)
-        tM.push_back(coarsen_tr1(left_U.dim(i), tot_ext_target));
+      // plain operand is RIGHT => its external is role N (right outer axes,
+      // ext_target); the arena-ToT external is role M (left outer axes,
+      // tot_ext_target).
+      if (ext_target)
+        for (unsigned int i = nf + nc; i < right_rank; ++i)
+          tN.push_back(coarsen_tr1(right_U.dim(i), ext_target));
+      if (tot_ext_target)
+        for (unsigned int i = nf; i + nc < left_rank; ++i)
+          tM.push_back(coarsen_tr1(left_U.dim(i), tot_ext_target));
     }
     // K (contracted) axes are the last nc axes of the left operand.
-    for (unsigned int i = left_rank - nc; i < left_rank; ++i)
-      tK.push_back(coarsen_tr1(left_U.dim(i), k_target));
+    if (k_target)
+      for (unsigned int i = left_rank - nc; i < left_rank; ++i)
+        tK.push_back(coarsen_tr1(left_U.dim(i), k_target));
   }
 
   void maybe_make_retile_plan_() {
@@ -671,15 +687,16 @@ class ContEngine : public BinaryEngine<Derived> {
         ExprEngine_::override_ptr_->contraction_target.present;
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
       // Decide whether we will retile AT ALL before building any helper: an
-      // explicit .retile() target, or the mixed auto-retile gate being on. Only
-      // then is the INNER contract-reduce helper constructed -- its GemmHelper
-      // ctor asserts GEMM rank parity, which a NON-contraction inner product
-      // (inner Hadamard, fused broadcast, no-externals general product) does NOT
-      // satisfy. Building it unconditionally for every ToT contraction would
-      // wrongly throw for those; the stock (no-retile) path must stay inert.
+      // explicit .retile() target, or (mixed shape only) at least one
+      // TA_SUMMA_MIXED_RETILE_* env var requesting a positive coarsen target.
+      // Only then is the INNER contract-reduce helper constructed -- its
+      // GemmHelper ctor asserts GEMM rank parity, which a NON-contraction inner
+      // product (inner Hadamard, fused broadcast, no-externals general product)
+      // does NOT satisfy. Building it unconditionally for every ToT contraction
+      // would wrongly throw for those; the stock (no-retile) path must stay inert.
       bool do_retile = explicit_target;
       if constexpr (is_mixed_)
-        do_retile = do_retile || detail::mixed_auto_retile_enabled();
+        do_retile = do_retile || detail::mixed_any_retile_requested();
       if (!do_retile) return;  // stock SUMMA: plan_ stays inactive
 
       // OUTER (SUMMA-level) role-partition helper, as already built into op_.
