@@ -36,24 +36,39 @@ namespace TiledArray::expressions::detail {
 /// "coarsen this role to a single tile spanning the full axis extent".
 ///
 /// HARDCODED ON PURPOSE: the optimal coarsening tracks the physical system
-/// size, so a maintainer edits these two constants per target system size and
-/// rebuilds. Only the plain-operand BLAS externals and the contracted (K) axis
-/// are coarsened; the fused (H) axes and the arena-ToT operand's externals are
-/// left at the operands' own tiling. The plain operand's external lands on
-/// SUMMA role M when the plain operand is the LEFT argument, and on role N when
-/// it is the RIGHT argument; K is always shared and always coarsened. Hence a
-/// single "plain external" number covers both orientations.
+/// size, so a maintainer edits these constants per target system size and
+/// rebuilds.
+///
+/// The default strategy coarsens THREE roles:
+///   1. the plain-operand BLAS external (SUMMA role M when the plain operand is
+///      LEFT, role N when it is RIGHT) -> a single tile (target 0);
+///   2. the contracted (SUMMA-K) axis (always shared) -> a single tile;
+///   3. the arena-ToT operand's external -- the leftover SUMMA axis (role N when
+///      the plain operand is LEFT, role M when it is RIGHT) -> tile size 16.
+/// The fused (H) axes are left at the operands' own tiling (empty target).
+///
+/// COARSEN-ONLY (never refine): every target is fed through `coarsen_tr1`,
+/// which only ever MERGES consecutive user (U) tiles onto existing U
+/// boundaries; it never splits a tile. So a leftover-SUMMA axis whose tiles are
+/// ALREADY >= the target (16) is kept intact (no refine -- refine is
+/// unsupported here), while a finer axis is merged up toward 16.
 struct MixedRetileConfig {
   /// target tile size for the plain operand's external (SUMMA-M if the plain
   /// operand is LEFT, SUMMA-N if it is RIGHT). 0 => single tile.
   std::size_t plain_external_target = 0;
   /// target tile size for the contracted (SUMMA-K) axis. 0 => single tile.
   std::size_t contracted_target = 0;
+  /// target tile size for the arena-ToT operand's external -- the leftover
+  /// SUMMA axis (role N if the plain operand is LEFT, role M if it is RIGHT).
+  /// Coarsen-only: an axis already coarser than this is left intact (never
+  /// refined). 0 => single tile.
+  std::size_t tot_external_target = 16;
 };
 
 inline constexpr MixedRetileConfig mixed_retile_config{
     /*plain_external_target=*/0,  // collapse M (or N) on the plain operand
     /*contracted_target=*/0,      // collapse K
+    /*tot_external_target=*/16,   // coarsen the leftover SUMMA axis to 16
 };
 
 /// Mutable enable flag for the mixed auto-retile gate. Default-initialized once

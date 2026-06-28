@@ -595,19 +595,27 @@ class ContEngine : public BinaryEngine<Derived> {
   /// inactive plan. The plan is consumed by later phases; in this phase it is
   /// only stored and threaded to the Summa ctor.
   /// Synthesize coarse retile targets for the mixed (plain x arena-ToT ->
-  /// arena-ToT) shape with the env-gated auto-retile. Collapse the PLAIN
-  /// operand's external -- role M when the plain operand is LEFT, role N when it
-  /// is RIGHT -- and the contracted (K) axis toward the element sizes in
-  /// detail::mixed_retile_config (0 => single tile / full collapse). The fused
-  /// (H) axes and the arena-ToT operand's external (the other of M/N) are left
-  /// EMPTY, i.e. kept intact at U. The role axes are extracted by the SAME
-  /// positional H/M/N/K partition that make_retile_plan consults (nf leading
-  /// fused modes; the last nc left axes are K; the remaining left axes are M;
-  /// the right axes past nf+nc are N), so the synthesized targets are in
-  /// canonical H/M/N/K space -- identical to what a .retile() caller supplies.
-  /// This reproduces the verified mixed_T_x_ToT_coarsen_MK (plain left ->
-  /// coarsen M+K) and mixed_ToT_x_T_coarsen_NK (plain right -> coarsen N+K)
-  /// target strategy.
+  /// arena-ToT) shape with the env-gated auto-retile. Per
+  /// detail::mixed_retile_config, coarsen THREE roles:
+  ///   - the PLAIN operand's external (role M when the plain operand is LEFT,
+  ///     role N when it is RIGHT) toward plain_external_target (default 0 =>
+  ///     single tile / full collapse);
+  ///   - the contracted (K) axis toward contracted_target (default 0 => collapse);
+  ///   - the arena-ToT operand's external -- the LEFTOVER SUMMA axis (role N
+  ///     when the plain operand is LEFT, role M when it is RIGHT) -- toward
+  ///     tot_external_target (default 16).
+  /// The fused (H) axes are left EMPTY (kept intact at U). Every target is fed
+  /// through coarsen_tr1, which COARSENS ONLY (merges U tiles onto existing U
+  /// boundaries; never refines), so a leftover-SUMMA axis already coarser than
+  /// the target is kept intact rather than refined (refine is unsupported).
+  /// The role axes are extracted by the SAME positional H/M/N/K partition that
+  /// make_retile_plan consults (nf leading fused modes; the last nc left axes
+  /// are K; the remaining left axes are M; the right axes past nf+nc are N), so
+  /// the synthesized targets are in canonical H/M/N/K space -- identical to what
+  /// a .retile() caller supplies. This is the default verified by
+  /// mixed_T_x_ToT_coarsen_MK_retile_N (plain left -> collapse M+K, coarsen N to
+  /// 16) and mixed_ToT_x_T_coarsen_NK_retile_M (plain right -> collapse N+K,
+  /// coarsen M to 16).
   void synthesize_mixed_targets_(bool left_is_plain,
                                  const math::GemmHelper& outer_gh,
                                  std::vector<TiledRange1>& tH,
@@ -624,14 +632,24 @@ class ContEngine : public BinaryEngine<Derived> {
     const std::size_t ext_target =
         detail::mixed_retile_config.plain_external_target;
     const std::size_t k_target = detail::mixed_retile_config.contracted_target;
+    const std::size_t tot_ext_target =
+        detail::mixed_retile_config.tot_external_target;
     if (left_is_plain) {
-      // plain operand is LEFT => its external is role M (left outer axes).
+      // plain operand is LEFT => its external is role M (left outer axes),
+      // collapsed; the arena-ToT external is role N (right outer axes),
+      // coarsened to tot_ext_target.
       for (unsigned int i = nf; i + nc < left_rank; ++i)
         tM.push_back(coarsen_tr1(left_U.dim(i), ext_target));
+      for (unsigned int i = nf + nc; i < right_rank; ++i)
+        tN.push_back(coarsen_tr1(right_U.dim(i), tot_ext_target));
     } else {
-      // plain operand is RIGHT => its external is role N (right outer axes).
+      // plain operand is RIGHT => its external is role N (right outer axes),
+      // collapsed; the arena-ToT external is role M (left outer axes),
+      // coarsened to tot_ext_target.
       for (unsigned int i = nf + nc; i < right_rank; ++i)
         tN.push_back(coarsen_tr1(right_U.dim(i), ext_target));
+      for (unsigned int i = nf; i + nc < left_rank; ++i)
+        tM.push_back(coarsen_tr1(left_U.dim(i), tot_ext_target));
     }
     // K (contracted) axes are the last nc axes of the left operand.
     for (unsigned int i = left_rank - nc; i < left_rank; ++i)
@@ -1098,6 +1116,17 @@ class ContEngine : public BinaryEngine<Derived> {
         // owner is rank 0, identical to the old fine-u_grid behavior. (Refine
         // at np>1 was rejected above; only coarsen/identity reaches here.)
         const size_type K_coarse = coarse_K_(K_);
+#ifdef TA_STRIDED_DGEMM_COUNT
+        // Witness: expose the coarse SUMMA grid (the retiled operand trange tile
+        // counts on each role). A coarsened SUMMA external shows up here even
+        // though the per-row strided BLAS GEMM count is invariant.
+        TiledArray::detail::g_summa_coarse_m_grid.store(
+            static_cast<std::size_t>(M_grid), std::memory_order_relaxed);
+        TiledArray::detail::g_summa_coarse_n_grid.store(
+            static_cast<std::size_t>(N_grid), std::memory_order_relaxed);
+        TiledArray::detail::g_summa_coarse_k_grid.store(
+            static_cast<std::size_t>(K_coarse), std::memory_order_relaxed);
+#endif
         // left U layout = [M-axes..., K-axes...]; phase rows = M_grid, cols =
         // K_coarse.
         auto left_phase = proc_grid_.make_row_phase_pmap(K_coarse);

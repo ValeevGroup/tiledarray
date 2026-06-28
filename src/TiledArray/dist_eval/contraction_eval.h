@@ -81,6 +81,20 @@ inline std::atomic<std::size_t> g_summa_result_merge_count{0};
 /// tests assert it is > 0 to prove the grouped active distribution engaged.
 /// gop.sum it across ranks for np-correctness.
 inline std::atomic<std::size_t> g_summa_proc_h_grouped_calls{0};
+
+/// witness: the COARSE SUMMA-M / -N / -K grid tile counts (the number of T
+/// tiles the operands are retiled into on each role), recorded by
+/// `ContEngine::init_distribution` whenever a retile plan is active. These
+/// directly expose the "retiled operand trange" tile count on each SUMMA axis:
+/// coarsening SUMMA-N from 64 fine tiles to 4 coarse tiles records
+/// `g_summa_coarse_n_grid == 4`, even though the per-row strided BLAS GEMM count
+/// is INVARIANT (a SUMMA external is not a BLAS axis). STORE (not accumulate) --
+/// the last active contraction's coarse grid; reset to 0 before the contraction
+/// under test. They stay at the reset value on the inactive (stock SUMMA) path.
+/// np=1 or symmetric np>1, so the per-rank store agrees across ranks.
+inline std::atomic<std::size_t> g_summa_coarse_m_grid{0};
+inline std::atomic<std::size_t> g_summa_coarse_n_grid{0};
+inline std::atomic<std::size_t> g_summa_coarse_k_grid{0};
 #endif
 
 /// \brief Distributed contraction evaluator implementation

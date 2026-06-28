@@ -3894,11 +3894,16 @@ BOOST_AUTO_TEST_CASE(mixed_auto_retile_on_T_x_ToT) {
   MixToT Cauto =
       TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
   w.gop.fence();
-  const auto coarse_fires = mix_scale_fires() - f1;
+  // Sum fire counts across ranks: under the default config the coarse grid can
+  // collapse to a single cell (here E=8 < 16, so M+K+N all collapse), idling
+  // some ranks at np>1. The meaningful invariant is the GLOBAL fire count.
+  std::size_t coarse_fires = mix_scale_fires() - f1, fine_g = fine_fires;
+  w.gop.sum(&coarse_fires, 1);
+  w.gop.sum(&fine_g, 1);
 
   BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
-  BOOST_CHECK_GT(coarse_fires, 0ul);          // strided kernel fired
-  BOOST_CHECK_LT(coarse_fires, fine_fires);   // on coarser (fewer) GEMMs
+  BOOST_CHECK_GT(coarse_fires, 0ul);   // strided kernel fired (globally)
+  BOOST_CHECK_LT(coarse_fires, fine_g);  // on coarser (fewer) GEMMs
   BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cfine), 1e-10);
 }
 
@@ -3929,12 +3934,227 @@ BOOST_AUTO_TEST_CASE(mixed_auto_retile_on_ToT_x_T) {
   MixToT Cauto =
       TA::einsum(I("i1,i2,m;a4i1i2"), G("m,i3,k"), "i1,i2,i3,k;a4i1i2");
   w.gop.fence();
-  const auto coarse_fires = mix_scale_fires() - f1;
+  // Sum fire counts across ranks (see mixed_auto_retile_on_T_x_ToT): the
+  // default config can collapse the coarse grid to one cell, idling ranks at
+  // np>1, so the meaningful invariant is the GLOBAL fire count.
+  std::size_t coarse_fires = mix_scale_fires() - f1, fine_g = fine_fires;
+  w.gop.sum(&coarse_fires, 1);
+  w.gop.sum(&fine_g, 1);
 
   BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
   BOOST_CHECK_GT(coarse_fires, 0ul);
-  BOOST_CHECK_LT(coarse_fires, fine_fires);
+  BOOST_CHECK_LT(coarse_fires, fine_g);
   BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cfine), 1e-10);
+}
+
+// DEFAULT auto-retile config (mixed_retile_config): collapse the BLAS axes
+// (plain external + K) to a single tile each, and coarsen the leftover SUMMA
+// axis to tile_size 16 -- COARSEN-ONLY (an axis already coarser than 16 is left
+// intact, never refined). This drives the bare TA::einsum (no .retile()) with
+// the gate ON and checks the engine auto-synthesizes exactly that coarse grid.
+//
+// T*ToT: g(i3,k,m) * I(m,i1,i2;a4) -> C(i3,i1,i2,k;a4). The ToT external N is
+// (i1,i2) with DELIBERATELY MISMATCHED tilings to exercise both behaviors:
+//   i1: extent 32 in 8 fine tiles of 4   -> coarsen to 16 => 2 coarse tiles;
+//   i2: extent 32 as ONE tile (> 16)     -> kept intact   => 1 tile (no refine).
+// So coarse_n_grid == 2*1 == 2; M=(i3,k) and K=(m) collapse => coarse_m/k==1.
+// (A refine of i2 to 16 would mean coarse_n_grid==4 AND would straddle the
+// single-tile boundary -- coarsen_tr1 never does this.) Result matches the
+// gate-off einsum reference.
+BOOST_AUTO_TEST_CASE(mixed_auto_default_coarsen_summa_no_refine) {
+  auto& w = TA::get_default_world();
+  const int A4 = 6;
+  auto m = tr1(8, 4);    // K (contracted): 2 fine tiles -> collapse to 1
+  auto ext = tr1(8, 4);  // plain externals i3,k: collapse to 1
+  auto i1 = tr1(32, 4);  // SUMMA-N axis: 8 fine tiles -> coarsen to 16 => 2
+  auto i2 = tr1(32, 32);  // SUMMA-N axis: 1 tile of 32 (> 16) -> kept intact
+  MixT G = mix_make_plain(w, TA::TiledRange{ext, ext, m});     // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{m, i1, i2}, A4);   // (m,i1,i2)
+  w.gop.fence();
+
+  // Reference with the gate OFF (stock einsum).
+  MixToT Cref;
+  {
+    MixedGateGuard off(false);
+    Cref = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+    w.gop.fence();
+  }
+
+  // Gate ON: the bare einsum auto-retiles with the DEFAULT config.
+  MixedGateGuard on(true);
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_summa_coarse_m_grid.store(0);
+  TiledArray::detail::g_summa_coarse_n_grid.store(0);
+  TiledArray::detail::g_summa_coarse_k_grid.store(0);
+#endif
+  MixToT Cauto =
+      TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_SMALL(array_max_reldiff2(Cauto, Cref), 1e-10);
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // BLAS axes collapsed; SUMMA-N = coarsen(i1: 8->2) x keep(i2: 1) = 2.
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_m_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_k_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_n_grid.load(), 2ul);
+#endif
+}
+
+// C(i3,i1,i2,k;a4) = g(i3,k,m) * I(m,i1,i2;a4). M=(i3,k) [plain], K=(m)
+// [shared], N=(i1,i2) [ToT external]. Retile the BLAS axes (M,K) AND the
+// leftover SUMMA-N axis (i1,i2) SIMULTANEOUSLY: collapse M,K to a single tile
+// each, and coarsen N to tile_size=16 (2 coarse tiles per axis from 8 fine).
+//
+// The result is always delivered at the user's fine (U) tiling, so correctness
+// is "C1 == non-retiled einsum" element-wise. The witness that the SUMMA-N
+// coarsening actually ENGAGED (and wasn't silently dropped -- which would still
+// match the reference) is the COARSE SUMMA grid the engine builds, NOT the
+// strided-scale-GEMM count: a SUMMA external is not a BLAS axis, so the per-row
+// GEMM count is invariant under N retiling. g_summa_coarse_n_grid records the
+// coarse N tile count == product of T-tiles over {i1,i2} == 2*2 = 4 (vs 8*8=64
+// fine). M,K collapse to a single tile each: coarse_m_grid==1, coarse_k_grid==1.
+//
+// Degenerate case (documented, not separately asserted): when the N target
+// tile_size equals the axis extent (E), the coarse tile collapses to a single
+// tile and coarse_n_grid would be 1 -- i.e. tile_size==extent is the same as a
+// full BLAS-axis collapse. tile_size=16 (< E=32) exercises the genuine
+// multi-coarse-tile regime, which a full collapse would not.
+BOOST_AUTO_TEST_CASE(mixed_T_x_ToT_coarsen_MK_retile_N) {
+  auto& w = TA::get_default_world();
+  const int E = 32, T = 4, A4 = 6;  // 8 fine tiles per axis
+  const int N_TILE = 16;            // coarsen N to tile_size=16 (2 coarse tiles)
+  auto e = tr1(E, T);
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (i3,k,m)
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (m,i1,i2)
+  w.gop.fence();
+
+  // Reference: non-retiled einsum.
+  MixToT C0 = TA::einsum(G("i3,k,m"), I("m,i1,i2;a4i1i2"), "i3,i1,i2,k;a4i1i2");
+  w.gop.fence();
+
+  // Combined retile: collapse the BLAS axes (M={i3,k}, K={m}) to a single tile
+  // each AND coarsen the SUMMA-N axis (i1,i2) to tile_size=N_TILE, in one shot.
+  std::vector<TA::TiledRange1> tH, tM, tN, tK;
+  tM.push_back(tr1(E, E));       // i3 -> single tile
+  tM.push_back(tr1(E, E));       // k  -> single tile
+  tK.push_back(tr1(E, E));       // m  -> single tile
+  tN.push_back(tr1(E, N_TILE));  // i1 -> 2 coarse tiles
+  tN.push_back(tr1(E, N_TILE));  // i2 -> 2 coarse tiles
+
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_summa_coarse_m_grid.store(0);
+  TiledArray::detail::g_summa_coarse_n_grid.store(0);
+  TiledArray::detail::g_summa_coarse_k_grid.store(0);
+#endif
+  MixToT C1;
+  C1("i3,i1,i2,k;a4i1i2") =
+      (G("i3,k,m") * I("m,i1,i2;a4i1i2")).retile(tH, tM, tN, tK);
+  w.gop.fence();
+
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_SMALL(array_max_reldiff2(C1, C0), 1e-10);  // element-wise correct
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // The retiled ToT operand's coarse trange: M,K collapsed to one tile; the
+  // SUMMA-N axis genuinely coarsened from 8*8=64 fine tiles to 2*2=4 coarse.
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_m_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_k_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_n_grid.load(), 4ul);
+#endif
+}
+
+// C(i1,i2,i3,k;a4) = I(i1,i2,m;a4) * g(m,i3,k). Mirror of the T*ToT case with
+// the plain operand on the RIGHT: N=(i3,k) [plain], K=(m) [shared], M=(i1,i2)
+// [ToT external]. Retile the BLAS axes (N,K) AND the leftover SUMMA-M axis
+// (i1,i2) simultaneously: collapse N,K to a single tile each, coarsen M to
+// tile_size=16. Witness mirrors the T*ToT case: coarse_m_grid == 2*2 = 4 (the
+// ToT external genuinely coarsened), coarse_n_grid == 1, coarse_k_grid == 1.
+BOOST_AUTO_TEST_CASE(mixed_ToT_x_T_coarsen_NK_retile_M) {
+  auto& w = TA::get_default_world();
+  const int E = 32, T = 4, A4 = 6;  // 8 fine tiles per axis
+  const int M_TILE = 16;            // coarsen M to tile_size=16 (2 coarse tiles)
+  auto e = tr1(E, T);
+  MixToT I = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (i1,i2,m)
+  MixT G = mix_make_plain(w, TA::TiledRange{e, e, e});      // (m,i3,k)
+  w.gop.fence();
+
+  // Reference: non-retiled einsum.
+  MixToT C0 = TA::einsum(I("i1,i2,m;a4i1i2"), G("m,i3,k"), "i1,i2,i3,k;a4i1i2");
+  w.gop.fence();
+
+  // Combined retile: collapse the BLAS axes (N={i3,k}, K={m}) to a single tile
+  // each AND coarsen the SUMMA-M axis (i1,i2) to tile_size=M_TILE, in one shot.
+  std::vector<TA::TiledRange1> tH, tM, tN, tK;
+  tN.push_back(tr1(E, E));       // i3 -> single tile
+  tN.push_back(tr1(E, E));       // k  -> single tile
+  tK.push_back(tr1(E, E));       // m  -> single tile
+  tM.push_back(tr1(E, M_TILE));  // i1 -> 2 coarse tiles
+  tM.push_back(tr1(E, M_TILE));  // i2 -> 2 coarse tiles
+
+  const auto p1 = TiledArray::detail::g_summa_plan_active_calls.load();
+#ifdef TA_STRIDED_DGEMM_COUNT
+  TiledArray::detail::g_summa_coarse_m_grid.store(0);
+  TiledArray::detail::g_summa_coarse_n_grid.store(0);
+  TiledArray::detail::g_summa_coarse_k_grid.store(0);
+#endif
+  MixToT C1;
+  C1("i1,i2,i3,k;a4i1i2") =
+      (I("i1,i2,m;a4i1i2") * G("m,i3,k")).retile(tH, tM, tN, tK);
+  w.gop.fence();
+
+  BOOST_CHECK_GE(TiledArray::detail::g_summa_plan_active_calls.load() - p1, 1ul);
+  BOOST_CHECK_SMALL(array_max_reldiff2(C1, C0), 1e-10);  // element-wise correct
+#ifdef TA_STRIDED_DGEMM_COUNT
+  // The retiled ToT operand's coarse trange: N,K collapsed to one tile; the
+  // SUMMA-M axis genuinely coarsened from 8*8=64 fine tiles to 2*2=4 coarse.
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_n_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_k_grid.load(), 1ul);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_summa_coarse_m_grid.load(), 4ul);
+#endif
+}
+
+// ToT*ToT->ToT (a genuine inner product: ce+e / ce+ce -- BOTH operands are
+// arena-ToT) is NOT the "mixed" shape, so the env-gated auto-retile must NOT
+// engage even with TA_SUMMA_AUTO_RETILE ON. is_mixed_ is false at COMPILE time
+// (it requires exactly one plain-dense operand), so the auto-retile branch in
+// maybe_make_retile_plan_ is compiled out and the contraction reverts to the
+// stock SUMMA path (plan inactive). This guards the "auto-retile is mixed-only"
+// invariant: only T*ToT / ToT*T auto-pick a config; ToT*ToT is untouched.
+// (An explicit .retile() can still drive a ToT*ToT retile -- that path is
+// exercised by summa_two_trange_suite -- but it is never AUTOMATIC.)
+BOOST_AUTO_TEST_CASE(mixed_auto_retile_skips_ToT_x_ToT) {
+  auto& w = TA::get_default_world();
+  const int E = 8, T = 4, A4 = 6;
+  auto e = tr1(E, T);
+  // Two arena-ToT operands contracted over the outer index m; inner indices
+  // a,b are externals => inner outer-product (ce+e). Result C(i1,i2,j1,j2;a,b).
+  MixToT A = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (i1,i2,m)
+  MixToT B = mix_make_tot(w, TA::TiledRange{e, e, e}, A4);  // (j1,j2,m)
+  w.gop.fence();
+
+  // Reference with the gate OFF.
+  MixToT Cref;
+  {
+    MixedGateGuard off(false);
+    Cref = TA::einsum(A("i1,i2,m;a4i1i2"), B("j1,j2,m;b4j1j2"),
+                      "i1,i2,j1,j2;a4i1i2,b4j1j2");
+    w.gop.fence();
+  }
+
+  // Gate ON: a ToT*ToT contraction must still NOT retile (is_mixed_ == false).
+  MixedGateGuard on(true);
+  const auto p0 = TiledArray::detail::g_summa_plan_active_calls.load();
+  MixToT C = TA::einsum(A("i1,i2,m;a4i1i2"), B("j1,j2,m;b4j1j2"),
+                        "i1,i2,j1,j2;a4i1i2,b4j1j2");
+  w.gop.fence();
+  std::size_t active = TA::detail::g_summa_plan_active_calls.load() - p0;
+  w.gop.sum(&active, 1);
+  // No retile plan ever activated: reverted to the stock SUMMA path.
+  BOOST_CHECK_EQUAL(active, std::size_t{0});
+  // And the result is unchanged vs the gate-off reference.
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, Cref), 1e-10);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
