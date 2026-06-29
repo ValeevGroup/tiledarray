@@ -35,6 +35,7 @@
 #include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/util/logger.h"
 #include "TiledArray/util/ptr_registry.h"
+#include "TiledArray/util/retile_probe.h"
 
 #include <umpire_cxx_allocator.hpp>
 
@@ -1852,6 +1853,9 @@ class Tensor {
   template <typename Perm,
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor permute(const Perm& perm) const {
+    TiledArray::detail::RetileTimer _rp{
+        TiledArray::detail::RetileBucket::PermuteIn,
+        TiledArray::detail::tls_permute_back_depth() == 0};
     if constexpr (is_arena_tensor_v<value_type>) {
       // View inner cells cannot be permuted in place; the owning tile
       // rewrites its slab(s). The outer cells reorder shallowly (the 8-byte

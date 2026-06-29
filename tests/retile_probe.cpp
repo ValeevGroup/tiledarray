@@ -101,4 +101,18 @@ BOOST_AUTO_TEST_CASE(gemm_seam_fires_without_retile) {
   TiledArray::detail::clear_retile_probe_testing_override();
 }
 
+BOOST_AUTO_TEST_CASE(permute_in_seam_fires) {
+  TiledArray::detail::set_retile_probe_enabled_for_testing(true);
+  TiledArray::detail::retile_probe_reset_for_testing();
+
+  TA::Tensor<double> t(TA::Range{4, 3}, 1.0);
+  TA::Permutation p{1, 0};
+  auto tp = t.permute(p);  // materializing permute
+  BOOST_CHECK_EQUAL(tp.range().extent(0), 3ul);
+
+  auto s = TiledArray::detail::retile_probe_snapshot();
+  BOOST_CHECK_GT(calls(s, RetileBucket::PermuteIn), 0u);
+  TiledArray::detail::clear_retile_probe_testing_override();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
