@@ -497,6 +497,87 @@ BOOST_AUTO_TEST_CASE(serialization) {
   BOOST_CHECK_EQUAL_COLLECTIONS(t.begin(), t.end(), ts.begin(), ts.end());
 }
 
+// Verifies the rendezvous-protocol diagnostic added to Tensor::serialize:
+// a tile whose serialized size exceeds MAD_BUFFER_SIZE forces MADNESS's slow
+// rendezvous (huge-message) path, and we warn once (never throw, run still
+// completes). Covers four (tile-size vs buffer-size) regimes and proves the
+// once-per-process throttle prevents a log flood from retiled data.
+BOOST_AUTO_TEST_CASE(rendezvous_protocol_warning) {
+  namespace dtl = TiledArray::detail;
+  const auto npos = std::string::npos;
+
+  // Decision + message are exercised through the pure formatter, so the four
+  // (tile-size vs buffer-size) regimes are deterministic and need neither RMI
+  // (not even started at world size 1) nor a real transfer. The real RMI path
+  // is covered by the distributed test rendezvous_protocol_warning_distributed.
+  const std::size_t dflt = std::size_t(1) << 20;  // 1 MiB "default" buffer
+  const std::size_t big_buf = dflt * 8;           // raised MAD_BUFFER_SIZE
+
+  // Case 1: tile smaller than the default buffer -> no warning.
+  BOOST_CHECK(dtl::rendezvous_warning_message("Tensor", dflt / 8, dflt).empty());
+
+  // Case 2: tile larger than the default buffer -> warning that reports the
+  // actual size, the limit, and the operand type.
+  {
+    const std::size_t nbyte = dflt * 2;
+    const std::string msg =
+        dtl::rendezvous_warning_message("Tensor", nbyte, dflt);
+    BOOST_REQUIRE(!msg.empty());
+    BOOST_CHECK(msg.find("Tensor") != npos);
+    BOOST_CHECK(msg.find(std::to_string(nbyte)) != npos);
+    BOOST_CHECK(msg.find(std::to_string(dflt)) != npos);
+  }
+
+  // Case 3: tile larger than the default buffer but smaller than the raised
+  // buffer -> no warning (raising the buffer restored the eager path).
+  BOOST_CHECK(
+      dtl::rendezvous_warning_message("Tensor", dflt * 2, big_buf).empty());
+
+  // Case 4: tile larger than even the raised buffer -> warning; also checks the
+  // ArenaTensor operand label.
+  {
+    const std::size_t nbyte = big_buf * 2;
+    const std::string msg =
+        dtl::rendezvous_warning_message("ArenaTensor", nbyte, big_buf);
+    BOOST_REQUIRE(!msg.empty());
+    BOOST_CHECK(msg.find("ArenaTensor") != npos);
+    BOOST_CHECK(msg.find(std::to_string(big_buf)) != npos);
+  }
+
+  // Throttle / no-flood: many over-limit events collapse to a single emitted
+  // line (without the throttle this would log kFlood lines, swamping logs when
+  // retiled data exceeds the buffer on nearly every tile).
+  struct RestoreGuard {
+    ~RestoreGuard() {
+      dtl::rendezvous_warning_sink() = [](const std::string& msg) {
+        madness::print_error(msg);
+      };
+      dtl::reset_rendezvous_warning();
+    }
+  } restore_guard;
+
+  std::vector<std::string> log;
+  dtl::rendezvous_warning_sink() = [&log](const std::string& msg) {
+    log.push_back(msg);
+  };
+  dtl::reset_rendezvous_warning();
+
+  constexpr int kFlood = 64;
+  for (int i = 0; i < kFlood; ++i)
+    dtl::warn_rendezvous_protocol("Tensor", dflt * 2, dflt);
+  BOOST_CHECK_EQUAL(log.size(), 1u);  // throttled to one line
+  BOOST_CHECK_EQUAL(dtl::rendezvous_warning_attempts().load(),
+                    static_cast<std::size_t>(kFlood));  // would-be flood count
+
+  // Under the limit nothing is counted or emitted.
+  dtl::reset_rendezvous_warning();
+  log.clear();
+  for (int i = 0; i < kFlood; ++i)
+    dtl::warn_rendezvous_protocol("Tensor", dflt / 8, dflt);
+  BOOST_CHECK(log.empty());
+  BOOST_CHECK_EQUAL(dtl::rendezvous_warning_attempts().load(), 0u);
+}
+
 BOOST_AUTO_TEST_CASE(swap) {
   TensorN s = make_tensor(79, 1559);
   rand_fill(431, s.size(), s.data());
@@ -867,6 +948,95 @@ BOOST_AUTO_TEST_CASE(size_of) {
   auto sz3 = TiledArray::size_of<TiledArray::MemorySpace::Host>(ttd);
   BOOST_REQUIRE(sz3 == sizeof(TTD) + 2 * 3 * 4 * sizeof(TTD::value_type) +
                            5 * 6 * sizeof(TTD::value_type::value_type));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(tensor_rendezvous_dist_suite, TA_UT_LABEL_DISTRIBUTED)
+
+// End-to-end check of the rendezvous-protocol warning on the REAL RMI path,
+// which only exists at world size > 1: a remote tile fetch serializes the
+// owner's tile through the active-message buffer. An over-MAD_BUFFER_SIZE tile
+// must (a) still transfer correctly (run completes) and (b) emit exactly one
+// warning on the sender even when several big tiles are shipped, so the
+// once-per-process throttle prevents a log flood.
+BOOST_AUTO_TEST_CASE(rendezvous_protocol_warning_distributed) {
+  namespace dtl = TiledArray::detail;
+  auto& world = *GlobalFixture::world;
+  if (world.size() < 2) return;  // rendezvous only happens multi-rank
+
+  // Restore global warning state no matter how this test exits.
+  struct RestoreGuard {
+    ~RestoreGuard() {
+      dtl::rendezvous_warning_sink() = [](const std::string& msg) {
+        madness::print_error(msg);
+      };
+      dtl::reset_rendezvous_warning();
+    }
+  } restore_guard;
+
+  // Capture warnings instead of printing them. The throttle guarantees the
+  // sink fires at most once, so there is no concurrent push even though the
+  // warning is emitted from active-message handler threads.
+  std::vector<std::string> log;
+  dtl::rendezvous_warning_sink() = [&log](const std::string& msg) {
+    log.push_back(msg);
+  };
+  dtl::reset_rendezvous_warning();
+  world.gop.fence();
+
+  // Each tile is ~2x the RMI buffer, so every inter-rank transfer of a tile
+  // takes the rendezvous path.
+  const std::size_t limit = madness::RMI::max_msg_len();
+  const std::size_t t = (limit / sizeof(double)) * 2 + 1024;
+  const std::size_t ntile = 4;
+  TA::TiledRange trange{{0ul, t, 2 * t, 3 * t, 4 * t}};
+
+  using Array = TA::DistArray<TA::Tensor<double>, TA::DensePolicy>;
+  Array a(world, trange);
+  a.init_tiles([](const TA::Range& r) {
+    TA::Tensor<double> tile(r);
+    const auto lo = r.lobound()[0];
+    for (std::size_t i = 0; i < tile.size(); ++i)
+      tile.at_ordinal(i) = static_cast<double>(lo + i);
+    return tile;
+  });
+  world.gop.fence();
+
+  // Fetch every tile this rank does NOT own -> forces the owner to serialize
+  // and ship it (the rendezvous path). Verify the data round-trips correctly.
+  std::size_t fetched = 0;
+  for (std::size_t ord = 0; ord < ntile; ++ord) {
+    if (a.owner(ord) == world.rank()) continue;
+    TA::Tensor<double> tile = a.find(ord).get();  // remote -> serialized
+    const auto lo = tile.range().lobound()[0];
+    BOOST_REQUIRE_EQUAL(tile.at_ordinal(0), static_cast<double>(lo));
+    BOOST_REQUIRE_EQUAL(tile.at_ordinal(tile.size() / 2),
+                        static_cast<double>(lo + tile.size() / 2));
+    BOOST_REQUIRE_EQUAL(tile.at_ordinal(tile.size() - 1),
+                        static_cast<double>(lo + tile.size() - 1));
+    ++fetched;
+  }
+  BOOST_CHECK_GT(fetched, 0u);  // there really were remote tiles to pull
+  world.gop.fence();            // ensure all of *my* serializations completed
+
+  // How many of my tiles other ranks pulled from me (each over the buffer).
+  std::size_t my_tiles = 0;
+  for (std::size_t ord = 0; ord < ntile; ++ord)
+    if (a.owner(ord) == world.rank()) ++my_tiles;
+  const std::size_t attempts = dtl::rendezvous_warning_attempts().load();
+
+  // No flood: at most one warning regardless of how many big tiles were sent.
+  BOOST_CHECK_LE(log.size(), 1u);
+  if (my_tiles > 0) {
+    // the real over-limit send path ran once per served tile ...
+    BOOST_CHECK_GE(attempts, my_tiles);
+    // ... yet the warning was throttled to a single line (no flood)
+    BOOST_CHECK_EQUAL(log.size(), 1u);
+    BOOST_CHECK(log.front().find("rendezvous warning") != std::string::npos);
+    BOOST_CHECK(log.front().find("Tensor") != std::string::npos);
+    BOOST_CHECK(log.front().find(std::to_string(limit)) != std::string::npos);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

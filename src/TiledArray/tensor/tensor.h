@@ -38,12 +38,21 @@
 
 #include <umpire_cxx_allocator.hpp>
 
+#include <madness/world/print.h>
+#include <madness/world/safempi.h>
+#include <madness/world/worldinit.h>
+#include <madness/world/worldrmi.h>
+
 #include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <functional>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 namespace TiledArray {
 
@@ -52,6 +61,99 @@ namespace detail {
 /// Signals that we can take the trace of a Tensor<T, A> (for numeric \c T)
 template <typename T, typename A>
 struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
+
+/// Formats the rendezvous-protocol warning for a tile whose serialized size
+/// (\p nbyte) exceeds the RMI buffer length (\p max_msg_len). Returns an empty
+/// string when `nbyte <= max_msg_len` (eager path: nothing to warn about), so
+/// the threshold decision and the message live in one testable place.
+/// \param[in] tile_kind human-readable operand kind, e.g. "Tensor" or
+///            "ArenaTensor"
+/// \param[in] nbyte the serialized size of the tile, in bytes
+/// \param[in] max_msg_len the RMI buffer length (MAD_BUFFER_SIZE), in bytes
+inline std::string rendezvous_warning_message(const char* tile_kind,
+                                              std::size_t nbyte,
+                                              std::size_t max_msg_len) {
+  // max_msg_len == 0 is the "disabled" sentinel (RMI not running / world
+  // size 1); never warn there.
+  if (max_msg_len == 0 || nbyte <= max_msg_len) return {};
+  constexpr double mib = 1024.0 * 1024.0;
+  std::ostringstream oss;
+  oss << "[TiledArray] rendezvous warning: serialized " << tile_kind
+      << " tile = " << nbyte << " B (" << std::fixed << std::setprecision(2)
+      << (static_cast<double>(nbyte) / mib)
+      << " MiB) exceeds MAD_BUFFER_SIZE = " << max_msg_len << " B ("
+      << (static_cast<double>(max_msg_len) / mib) << " MiB) by "
+      << (static_cast<double>(nbyte) / static_cast<double>(max_msg_len))
+      << "x.";
+  return oss.str();
+}
+
+/// Sink that receives the (already-formatted) rendezvous warning. The default
+/// routes to `madness::print_error`; tests can swap it to capture the message.
+using rendezvous_warning_sink_t = std::function<void(const std::string&)>;
+inline rendezvous_warning_sink_t& rendezvous_warning_sink() {
+  static rendezvous_warning_sink_t sink = [](const std::string& msg) {
+    madness::print_error(msg);
+  };
+  return sink;
+}
+
+/// Process-wide "already warned" flag backing the once-only throttle.
+inline std::atomic<bool>& rendezvous_warning_emitted() {
+  static std::atomic<bool> emitted{false};
+  return emitted;
+}
+
+/// Count of over-limit serializations seen this process, i.e. how many lines
+/// *would* be logged without the throttle. Lets a test prove the throttle
+/// collapses a would-be log flood (retile can exceed the buffer on every tile).
+inline std::atomic<std::size_t>& rendezvous_warning_attempts() {
+  static std::atomic<std::size_t> attempts{0};
+  return attempts;
+}
+
+/// Resets the throttle and the attempt counter. For tests only.
+inline void reset_rendezvous_warning() {
+  rendezvous_warning_emitted().store(false);
+  rendezvous_warning_attempts().store(0);
+}
+
+/// The RMI buffer length the rendezvous check compares against, cached on first
+/// use so the hot (eager-send) path pays only a single `size_t` load, never a
+/// per-tile MPI call. Returns 0 (the "disabled" sentinel) when RMI is not
+/// running: MADNESS only starts RMI for multi-rank runs (`comm.size() > 1`), so
+/// at world size 1 there are no remote sends and `RMI::max_msg_len()` would
+/// assert. Both the buffer length and the world size are fixed after MADNESS
+/// init, so caching is exact; the first call happens during an actual transfer,
+/// by which point RMI is up.
+inline std::size_t rendezvous_buffer_limit() {
+  static const std::size_t cached =
+      (madness::initialized() && SafeMPI::COMM_WORLD.Get_size() > 1)
+          ? madness::RMI::max_msg_len()
+          : 0;
+  return cached;
+}
+
+/// Emits a single process-wide warning when a tile's serialized size exceeds
+/// MADNESS's RMI buffer length (MAD_BUFFER_SIZE). Above that size MADNESS falls
+/// back to the slow rendezvous (huge-message) protocol instead of the eager
+/// send path, paying extra round-trip latency. This is a diagnostic only: it
+/// never throws, never halts, and fires at most once per process to avoid
+/// flooding the log (retiled data can exceed the buffer on nearly every tile).
+/// \param[in] tile_kind human-readable operand kind, e.g. "Tensor" or
+///            "ArenaTensor"
+/// \param[in] nbyte the serialized size of the tile, in bytes
+/// \param[in] max_msg_len the RMI buffer length (MAD_BUFFER_SIZE), in bytes
+inline void warn_rendezvous_protocol(const char* tile_kind, std::size_t nbyte,
+                                     std::size_t max_msg_len) {
+  std::string msg = rendezvous_warning_message(tile_kind, nbyte, max_msg_len);
+  if (msg.empty()) return;  // eager path: under the buffer, no warning
+  rendezvous_warning_attempts().fetch_add(1, std::memory_order_relaxed);
+  bool expected = false;
+  if (!rendezvous_warning_emitted().compare_exchange_strong(expected, true))
+    return;  // throttle: emit at most once per process
+  rendezvous_warning_sink()(msg);
+}
 
 template <typename To, typename From,
           typename = std::enable_if_t<
@@ -1435,6 +1537,20 @@ class Tensor {
         }
         ar& madness::archive::wrap(this->data_.get(),
                                    this->range_.volume() * nbatch);
+      }
+      // Diagnostic: warn (once per process) when this tile's serialized size
+      // exceeds MADNESS's RMI buffer (MAD_BUFFER_SIZE), which forces the slow
+      // rendezvous protocol instead of the eager send path. Gated to the MPI
+      // buffer-sizing pass (count_only) so disk/vector archives are unaffected;
+      // ar.size() is the true serialized byte count (metadata + payload).
+      if constexpr (std::is_same_v<std::decay_t<Archive>,
+                                   madness::archive::BufferOutputArchive>) {
+        if (ar.count_only()) {
+          constexpr const char* tile_kind =
+              is_arena_tensor_v<value_type> ? "ArenaTensor" : "Tensor";
+          detail::warn_rendezvous_protocol(tile_kind, ar.size(),
+                                           detail::rendezvous_buffer_limit());
+        }
       }
     } else {
       if constexpr (madness::is_input_archive_v<Archive>) {
