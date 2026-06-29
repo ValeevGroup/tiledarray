@@ -24,7 +24,6 @@
 #define TILEDARRAY_TILE_OP_BATCHED_CONTRACT_REDUCE_H__INCLUDED
 
 #include <TiledArray/tile_op/contract_reduce.h>
-#include <TiledArray/util/retile_probe.h>
 #include <TiledArray/util/vector.h>
 
 namespace TiledArray {
@@ -135,7 +134,6 @@ class BatchedContractReduce {
   /// Contract a pair of fused-mode-carrying tiles and add to the target tile
   void operator()(result_type& result, const first_argument_type& left,
                   const second_argument_type& right) const {
-    TiledArray::detail::RetileTimer _rp{TiledArray::detail::RetileBucket::Gemm};
     // the fold relies on TA::Tensor's zero-copy reshape + batched GEMM
     constexpr bool supported_tiles =
         TiledArray::detail::is_ta_tensor_v<result_type> &&

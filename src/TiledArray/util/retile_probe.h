@@ -197,6 +197,7 @@ struct RetileProbeDumper {
     auto s = [](std::uint64_t n) { return n / 1e9; };
     std::ostream& os = std::cerr;
     os << "\n============ TA retile probe (TA_RETILE_PROBE) ============\n";
+    os << "  note: pure-contraction result permutes are fused into SUMMA perm_ and attributed to permute_in/kernel, not permute_back\n";
     for (std::size_t i = 0; i < t.ns.size(); ++i) {
       os << "  " << std::setw(12) << std::left
          << retile_bucket_name(static_cast<RetileBucket>(i)) << "  "
