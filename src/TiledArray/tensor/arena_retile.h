@@ -33,21 +33,6 @@
 namespace TiledArray {
 namespace detail {
 
-/// Locate, among a row-major block of fine outer tiles, the (tile, local outer
-/// ordinal) owning outer element index `idx`. Returns `{tile_index,
-/// local_ordinal}`; `tile_index == fine.size()` signals "no fine tile contains
-/// `idx`" (a hole -- a deliberately-absent cell). `idx` is the outer element
-/// index within the coarse block's coordinate system.
-template <typename ArenaOuter, typename Index>
-inline std::pair<std::size_t, std::size_t> arena_locate_fine_(
-    const std::vector<ArenaOuter>& fine, const Index& idx) {
-  for (std::size_t f = 0; f < fine.size(); ++f) {
-    const auto& fr = fine[f].range();
-    if (fr.includes(idx)) return {f, fr.ordinal(idx)};
-  }
-  return {fine.size(), 0};
-}
-
 /// Gather a contiguous block of fine arena ToT tiles into ONE single-page
 /// coarse tile. `fine` are the source outer tiles partitioning the
 /// coarse outer block (their outer ranges are sub-boxes of `coarse_outer`,
@@ -72,15 +57,35 @@ ArenaOuter arena_gather_block(const std::vector<ArenaOuter>& fine,
   TA_ASSERT(nbatch >= 1);
 
   const std::size_t outer_vol = coarse_outer.volume();
+  const std::size_t F = fine.size();
 
-  // Inner range of coarse cell `ord` == inner range of the fine cell at the
-  // same outer index and batch (empty if no fine tile covers that position).
+  // T1+T2: precompute, ONCE, a position -> source map keyed by the coarse outer
+  // position p in [0, outer_vol). map[p] = {fine tile index, local outer
+  // ordinal within that fine tile}. Holes (coarse positions covered by no fine
+  // tile) keep the sentinel {F, 0}. Built by SCATTER over the fine tiles
+  // (O(outer_vol) total), not by per-cell search (was O(outer_vol * F), twice,
+  // times nbatch). The map is independent of the batch b.
+  std::vector<std::pair<std::size_t, std::size_t>> map(outer_vol, {F, 0});
+  for (std::size_t f = 0; f < F; ++f) {
+    const auto& fr = fine[f].range();
+    const std::size_t fvol = fr.volume();
+    for (std::size_t q = 0; q < fvol; ++q) {
+      // fr is a sub-box of coarse_outer in the SAME coordinate system, so the
+      // coordinate fr.idx(q) maps cleanly into the coarse ordinal space. q is
+      // already the local outer ordinal within fine[f] (== fr.ordinal(fr.idx(q))).
+      const std::size_t p = coarse_outer.ordinal(fr.idx(q));
+      TA_ASSERT(p < outer_vol);
+      map[p] = {f, q};
+    }
+  }
+
+  // Inner range of coarse cell `ord` == inner range of the mapped fine cell at
+  // batch b (empty if a hole or the source cell is itself empty).
   auto range_fn = [&](std::size_t ord) -> inner_range_t {
     const std::size_t b = ord / outer_vol;
     const std::size_t p = ord % outer_vol;
-    auto idx = coarse_outer.idx(p);
-    auto [f, lord] = arena_locate_fine_<ArenaOuter>(fine, idx);
-    if (f == fine.size()) return inner_range_t{};
+    const auto [f, lord] = map[p];
+    if (f == F) return inner_range_t{};                 // hole
     const auto& s = fine[f].data()[b * fine[f].range().volume() + lord];
     return s.empty() ? inner_range_t{} : s.range();
   };
@@ -94,9 +99,8 @@ ArenaOuter arena_gather_block(const std::vector<ArenaOuter>& fine,
     if (dst.empty()) continue;
     const std::size_t b = ord / outer_vol;
     const std::size_t p = ord % outer_vol;
-    auto idx = coarse_outer.idx(p);
-    auto [f, lord] = arena_locate_fine_<ArenaOuter>(fine, idx);
-    TA_ASSERT(f != fine.size());
+    const auto [f, lord] = map[p];
+    TA_ASSERT(f != F);
     const auto& s = fine[f].data()[b * fine[f].range().volume() + lord];
     TA_ASSERT(!s.empty() && s.size() == dst.size());
     std::copy_n(s.data(), s.size(), dst.data());
