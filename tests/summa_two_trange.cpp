@@ -23,6 +23,7 @@
 #include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/tiled_range1.h>
+#include <TiledArray/util/retile_probe.h>
 
 #include "unit_test_config.h"
 
@@ -617,6 +618,82 @@ BOOST_AUTO_TEST_CASE(retile_coarsen_k_ce_e) {
   BOOST_CHECK_EQUAL(gathered, (M + N) * k_fine);
   BOOST_CHECK_EQUAL(gathered % k_fine, std::size_t{0});
 #endif
+}
+
+// Probe: per-bucket attribution on the retile path.
+//  (a) no-retile baseline: GEMM only; both retile buckets read 0.
+//  (b) K-coarsen (CONTRACTED axis): operand RepackIn fires; result maps 1:1 to
+//      U tiles so CarveOut is correctly 0 (rerouted-to-zero, not a failure).
+//  (c) SUMMA-M coarsen (RESULT axis): RepackIn AND CarveOut both fire (the
+//      coarse M result page is carved back into the fine U M-tiles).
+BOOST_AUTO_TEST_CASE(retile_probe_repack_carve_buckets) {
+  auto& w = TA::get_default_world();
+  using TiledArray::detail::RetileBucket;
+  auto B = [](const TiledArray::detail::RetileCounters& s, RetileBucket b) {
+    return s.calls[(std::size_t)b];
+  };
+
+  // ce+e operands for (a) no-retile and (b) K-coarsen.
+  auto t = tr1(4, 2);
+  auto kU = tr1(8, 2);
+  auto kT = tr1(8, 8);
+  ArrayToT1 A0e = make_arena1(w, TA::TiledRange{t, t, kU}, TA::Range{3});
+  ArrayToT1 B0e = make_arena1(w, TA::TiledRange{t, t, kU}, TA::Range{5});
+  w.gop.fence();
+
+  TiledArray::detail::set_retile_probe_enabled_for_testing(true);
+
+  // (a) no-retile baseline: GEMM only.
+  TiledArray::detail::retile_probe_reset_for_testing();
+  ArrayToT1 C_plain =
+      TA::einsum(A0e("i1,i2,k;a"), B0e("j1,j2,k;b"), "i1,i2,j1,j2;a,b");
+  w.gop.fence();
+  {
+    auto s = TiledArray::detail::retile_probe_snapshot();
+    BOOST_CHECK_GT(B(s, RetileBucket::Gemm), 0u);
+    BOOST_CHECK_EQUAL(B(s, RetileBucket::RepackIn), 0u);
+    BOOST_CHECK_EQUAL(B(s, RetileBucket::CarveOut), 0u);
+  }
+
+  // (b) K-coarsen (contracted axis): RepackIn fires, CarveOut stays 0.
+  TiledArray::detail::retile_probe_reset_for_testing();
+  ArrayToT1 C_kcoarsen;
+  C_kcoarsen("i1,i2,j1,j2;a,b") =
+      (A0e("i1,i2,k;a") * B0e("j1,j2,k;b"))
+          .retile(/*H=*/{}, /*M=*/{t, t}, /*N=*/{t, t}, /*K=*/{kT});
+  w.gop.fence();
+  {
+    auto s = TiledArray::detail::retile_probe_snapshot();
+    BOOST_CHECK_GT(B(s, RetileBucket::Gemm), 0u);
+    BOOST_CHECK_GT(B(s, RetileBucket::RepackIn), 0u);
+    BOOST_CHECK_EQUAL(B(s, RetileBucket::CarveOut), 0u);  // rerouted-to-zero
+  }
+
+  // ce+ce operands for (c) SUMMA-M (result-axis) coarsen.
+  auto i1U = tr1(8, 2);
+  auto i2 = tr1(4, 2);
+  auto j1 = tr1(4, 2);
+  auto kk = tr1(4, 4);
+  auto i1T = tr1(8, 8);
+  ArrayToT1 A0m = make_arena1(w, TA::TiledRange{i1U, i2, kk}, TA::Range{3, 4});
+  ArrayToT1 B0m = make_arena1(w, TA::TiledRange{j1, kk}, TA::Range{4});
+  w.gop.fence();
+
+  // (c) M-coarsen: RepackIn AND CarveOut both fire.
+  TiledArray::detail::retile_probe_reset_for_testing();
+  ArrayToT1 C_mcoarsen;
+  C_mcoarsen("i1,i2,j1;a") =
+      (A0m("i1,i2,k;a,c") * B0m("j1,k;c"))
+          .retile(/*H=*/{}, /*M=*/{i1T, i2}, /*N=*/{j1}, /*K=*/{kk});
+  w.gop.fence();
+  {
+    auto s = TiledArray::detail::retile_probe_snapshot();
+    BOOST_CHECK_GT(B(s, RetileBucket::Gemm), 0u);
+    BOOST_CHECK_GT(B(s, RetileBucket::RepackIn), 0u);
+    BOOST_CHECK_GT(B(s, RetileBucket::CarveOut), 0u);
+  }
+
+  TiledArray::detail::clear_retile_probe_testing_override();
 }
 
 // ---------------------------------------------------------------------------

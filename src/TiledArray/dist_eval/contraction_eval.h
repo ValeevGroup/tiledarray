@@ -40,6 +40,7 @@
 #include <TiledArray/tensor/dense_retile.h>
 #include <TiledArray/tensor/arena_tensor.h>
 #include <TiledArray/tensor/type_traits.h>
+#include <TiledArray/util/retile_probe.h>
 
 // #define TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL 1
 // #define TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE 1
@@ -1136,14 +1137,17 @@ class Summa
     std::vector<Future<EvalTile>> fine_;  ///< the fine K-block operand futures
     Range coarse_outer_;                  ///< the FULL declared coarse outer box
     Future<EvalTile> result_;             ///< the packed coarse tile
+    const bool plan_active_;              ///< retile plan active at schedule time
 
    public:
-    PackBlockTask(std::vector<Future<EvalTile>> fine, Range coarse_outer)
+    PackBlockTask(std::vector<Future<EvalTile>> fine, Range coarse_outer,
+                  bool plan_active)
         : madness::TaskInterface(0, "PackBlockTask",
                                  madness::TaskAttributes::hipri()),
           fine_(std::move(fine)),
           coarse_outer_(std::move(coarse_outer)),
-          result_() {
+          result_(),
+          plan_active_(plan_active) {
       // Register each not-yet-ready fine future as a dependency.
       for (auto& f : fine_) {
         if (!f.probe()) {
@@ -1173,6 +1177,8 @@ class Summa
       // pack; plain dense operand (the mixed path) -> contiguous block scatter.
       // The branch keeps arena_gather_block from instantiating on a plain tile
       // (its static_assert requires an arena-backed inner cell).
+      TiledArray::detail::RetileTimer _rp{
+          TiledArray::detail::RetileBucket::RepackIn, plan_active_};
       if constexpr (TiledArray::detail::is_tensor_helper<EvalTile>::value &&
                     TiledArray::is_arena_tensor_v<typename EvalTile::value_type>) {
         result_.set(TiledArray::detail::arena_gather_block<EvalTile>(
@@ -1200,7 +1206,8 @@ class Summa
                                          std::memory_order_relaxed);
 #endif
     auto* task = new PackBlockTask<EvalTile>(std::move(fine_futs),
-                                             std::move(coarse_outer));
+                                             std::move(coarse_outer),
+                                             plan_.active);
     Future<EvalTile> result = task->result();
     TensorImpl_::world().taskq.add(task);
     return result;
@@ -1220,14 +1227,17 @@ class Summa
     std::vector<Future<EvalTile>> fine_;  ///< the covering U operand futures
     Range t_box_;                         ///< the T cell outer box (element)
     Future<EvalTile> result_;             ///< the carved+packed T tile
+    const bool plan_active_;              ///< retile plan active at schedule time
 
    public:
-    CarvePackTask(std::vector<Future<EvalTile>> fine, Range t_box)
+    CarvePackTask(std::vector<Future<EvalTile>> fine, Range t_box,
+                  bool plan_active)
         : madness::TaskInterface(0, "CarvePackTask",
                                  madness::TaskAttributes::hipri()),
           fine_(std::move(fine)),
           t_box_(std::move(t_box)),
-          result_() {
+          result_(),
+          plan_active_(plan_active) {
       for (auto& f : fine_) {
         if (!f.probe()) {
           madness::DependencyInterface::inc();
@@ -1243,6 +1253,8 @@ class Summa
       // keeps arena_carve_block from instantiating on a plain tile.
       if constexpr (TiledArray::detail::is_tensor_helper<EvalTile>::value &&
                     TiledArray::is_arena_tensor_v<typename EvalTile::value_type>) {
+        TiledArray::detail::RetileTimer _rp{
+            TiledArray::detail::RetileBucket::RepackIn, plan_active_};
         TA_ASSERT(!fine_.empty());
         std::size_t nbatch = 1ul;
         // Carve each covering U tile to its intersection with the T box. On the
@@ -1310,7 +1322,8 @@ class Summa
                                          std::memory_order_relaxed);
 #endif
     auto* task =
-        new CarvePackTask<EvalTile>(std::move(fine_futs), std::move(t_box));
+        new CarvePackTask<EvalTile>(std::move(fine_futs), std::move(t_box),
+                                    plan_.active);
     Future<EvalTile> result = task->result();
     TensorImpl_::world().taskq.add(task);
     return result;
@@ -1359,6 +1372,8 @@ class Summa
       // pmap co-locates every covered U tile on this (the producing) rank, so
       // each set_tile below is a LOCAL placement -- a view never has to be
       // serialized cross-rank (which it could not survive).
+      TiledArray::detail::RetileTimer _rp{
+          TiledArray::detail::RetileBucket::CarveOut, owner_->plan_.active};
       auto subs = TiledArray::detail::arena_carve_block<EvalTile>(
           page, u_ranges_, /*view=*/true);
       TA_ASSERT(subs.size() == u_ords_.size());
@@ -1425,6 +1440,8 @@ class Summa
         subs.push_back(std::move(t));
       }
       TA_ASSERT(!subs.empty());
+      TiledArray::detail::RetileTimer _rp{
+          TiledArray::detail::RetileBucket::CarveOut, owner_->plan_.active};
       owner_->set_tile(u_ord_,
                        TiledArray::detail::arena_gather_block<EvalTile>(
                            subs, u_range_, nbatch));
