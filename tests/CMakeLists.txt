@@ -110,6 +110,7 @@ set(ta_test_src_files  ta_test.cpp
     strided_canonicalize.cpp
     scale_segment_dgemm.cpp
     summa_two_trange.cpp
+    retile_probe.cpp
     tot_construction.cpp
 )
 

@@ -208,6 +208,7 @@ TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/threads.h
 TiledArray/util/thread_specific.h
+TiledArray/util/retile_probe.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
 )
