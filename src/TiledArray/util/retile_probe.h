@@ -87,8 +87,10 @@ struct RetileRegistry {
   std::mutex mtx;
   std::vector<RetileCounters*> threads;
   static RetileRegistry& instance() {
-    static RetileRegistry r;
-    return r;
+    // Intentionally leaked so it outlives static destructors (the exit-dump
+    // path reads it from ~RetileProbeDumper).
+    static RetileRegistry* r = new RetileRegistry();
+    return *r;
   }
 };
 
