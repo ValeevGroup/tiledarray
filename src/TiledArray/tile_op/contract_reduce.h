@@ -28,6 +28,7 @@
 
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/util/retile_probe.h>
 #include <TiledArray/tensor/arena_einsum.h>
 #include <TiledArray/tensor/complex.h>
 #include <TiledArray/tile_op/tile_interface.h>
@@ -408,6 +409,7 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// \param[in] right The right-hand tile to be contracted
   void operator()(result_type& result, const first_argument_type& left,
                   const second_argument_type& right) const {
+    TiledArray::detail::RetileTimer _rp{TiledArray::detail::RetileBucket::Gemm};
     using TiledArray::empty;
     using TiledArray::gemm;
     if (empty(left) || empty(right)) return;

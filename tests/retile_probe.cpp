@@ -1,3 +1,4 @@
+#include <tiledarray.h>
 #include <TiledArray/util/retile_probe.h>
 #include "unit_test_config.h"
 
@@ -73,6 +74,30 @@ BOOST_AUTO_TEST_CASE(permute_back_suppresses_nested_permute_in) {
   auto s = TiledArray::detail::retile_probe_snapshot();
   BOOST_CHECK_EQUAL(calls(s, RetileBucket::PermuteIn), 0u);
   BOOST_CHECK_EQUAL(calls(s, RetileBucket::PermuteBack), 1u);
+  TiledArray::detail::clear_retile_probe_testing_override();
+}
+
+BOOST_AUTO_TEST_CASE(gemm_seam_fires_without_retile) {
+  auto& w = TA::get_default_world();
+  TA::TiledRange tr{{0, 2, 4}, {0, 2, 4}};  // 2x2 tiles each mode
+  TA::TArrayD a(w, tr), b(w, tr);
+  a.fill(1.0);
+  b.fill(1.0);
+  w.gop.fence();
+
+  TiledArray::detail::set_retile_probe_enabled_for_testing(true);
+  TiledArray::detail::retile_probe_reset_for_testing();
+
+  TA::TArrayD c;
+  c("i,j") = a("i,k") * b("k,j");  // plain dense contraction, NO retile
+  w.gop.fence();
+
+  auto s = TiledArray::detail::retile_probe_snapshot();
+  // GEMM fired even though plan_.active is false (no retile requested).
+  BOOST_CHECK_GT(calls(s, RetileBucket::Gemm), 0u);
+  // No retile machinery ran.
+  BOOST_CHECK_EQUAL(calls(s, RetileBucket::RepackIn), 0u);
+  BOOST_CHECK_EQUAL(calls(s, RetileBucket::CarveOut), 0u);
   TiledArray::detail::clear_retile_probe_testing_override();
 }
 
