@@ -1616,6 +1616,48 @@ BOOST_AUTO_TEST_CASE(retile_active_permuted_carve_ce_e_dist) {
   BOOST_CHECK_GT(plan_active_count(w), std::size_t{0});
 }
 
+// Probe: a permuted-result GENERAL (Hadamard) product re-permutes each result
+// tile via UnaryEvalImpl<GeneralRepermuteOp> -> the PermuteBack bucket must
+// fire. Pure contractions absorb the result permute into the SUMMA perm_ and do
+// NOT call GeneralRepermuteOp, so a Hadamard outer mode `h` is required here.
+// Cloned from retile_active_hadamard_permuted_result_ride_single_ce_ce_dist.
+BOOST_AUTO_TEST_CASE(retile_probe_permute_back_bucket) {
+  auto& w = TA::get_default_world();
+  auto h = tr1d(4, 2);    // fused Hadamard mode
+  auto i = tr1d(4, 2);
+  auto iT = tr1d(4, 4);   // coarsen M
+  auto j = tr1d(4, 2);
+  auto jT = tr1d(4, 4);   // coarsen N
+  auto kU = tr1d(8, 4);
+  auto kT = tr1d(8, 8);   // coarsen K
+  ArrayToT2 A0 = make_arena2(w, TA::TiledRange{h, i, kU}, TA::Range{3, 4});
+  ArrayToT2 B0 = make_arena2(w, TA::TiledRange{h, j, kU}, TA::Range{4});
+  w.gop.fence();
+
+  // Oracle: no-retile einsum into the PERMUTED (j,i,h) outer layout.
+  ArrayToT2 C_ref = TA::einsum(A0("h,i,k;a,c"), B0("h,j,k;c"), "j,i,h;a");
+  w.gop.fence();
+
+  TiledArray::detail::set_retile_probe_enabled_for_testing(true);
+  TiledArray::detail::retile_probe_reset_for_testing();
+
+  ArrayToT2 C;
+  C("j,i,h;a") = (A0("h,i,k;a,c") * B0("h,j,k;c"))
+                     .retile(/*H=*/{h}, /*M=*/{iT}, /*N=*/{jT}, /*K=*/{kT});
+  w.gop.fence();
+
+  std::size_t pb =
+      TiledArray::detail::retile_probe_snapshot()
+          .calls[(std::size_t)TiledArray::detail::RetileBucket::PermuteBack];
+  w.gop.sum(&pb, 1);  // sum across ranks (np=1 and np=2)
+  BOOST_CHECK_GT(pb, 0u);
+  TiledArray::detail::clear_retile_probe_testing_override();
+
+  // Correctness: permuted retiled result matches the stock permuted oracle.
+  BOOST_CHECK(C.trange() == C_ref.trange());
+  BOOST_CHECK_SMALL(array_max_reldiff2(C, C_ref), 1e-9);
+}
+
 // Permuted-result ACTIVE carve where a RESULT axis also coarsens (>1 U tiles per
 // coarse page): M={i1,i2} with i1 coarsened (4 U -> 1 T), N={j1,j2}; output
 // i1,j1,i2,j2 crosses the role boundary. Exercises the general (subdividing)

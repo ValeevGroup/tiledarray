@@ -41,6 +41,7 @@
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/tile_op/mult.h>
 #include <TiledArray/tile_op/noop.h>
+#include <TiledArray/util/retile_probe.h>
 
 namespace TiledArray {
 namespace expressions {
@@ -1913,6 +1914,7 @@ class ContEngine : public BinaryEngine<Derived> {
     bool permute_contents = true;
     result_type operator()(const argument_type& tile) const {
       if (!permute_contents) return tile;
+      TiledArray::detail::PermuteBackScope _rp;
       TiledArray::detail::Noop<value_type, value_type, false> noop;
       return noop(tile, perm);
     }
