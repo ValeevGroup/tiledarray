@@ -43,3 +43,7 @@
 # IDEs
 *.idea
 *.vscode
+
+
+build/*
+cmake-build*
