@@ -193,6 +193,93 @@ BOOST_AUTO_TEST_CASE(make_groups) {
   }
 }
 
+// Regression test for the SUMMA broadcast-root computation
+// (Summa::get_row_group_root / get_col_group_root in
+// dist_eval/contraction_eval.h).
+//
+// When the right (resp. left) operand is block-sparse the SUMMA row (resp.
+// column) broadcast group is pruned to the ranks that own nonzero source
+// tiles, so its size drops below proc_cols (resp. proc_rows). In that case the
+// broadcast root's group-local rank no longer equals its process-column
+// (-row) index and must be looked up from its *world* rank. make_group always
+// inserts the geometric root into the group via ProcGrid::map_col / map_row,
+// whose returned world rank includes the grid's rank_offset_ -- the world rank
+// of the grid's first process. rank_offset_ is nonzero for the h-grouped 3-d
+// batched SUMMA grid (every slab group beyond group 0). The old root code
+// reconstructed the world rank by hand as rank_row*proc_cols + group_root
+// (resp. group_root*proc_cols + rank_col), *omitting rank_offset_*, so for an
+// offset grid Group::rank() failed to find the root and returned -1, tripping
+// MADNESS_ASSERT(group_root >= 0) in WorldGopInterface::bcast and aborting the
+// process.
+//
+// The fix recomputes the root's world rank with ProcGrid::map_col / map_row,
+// which is exactly the value make_group inserts. This test validates that
+// primitive: on an offset grid map_col / map_row must include the offset, so
+// the broadcast root the fix now uses is the value present in the group, while
+// the old offset-less formula would have missed it (differing by exactly the
+// nonzero offset). A full end-to-end SUMMA repro requires >= 4 ranks (proc_h_
+// > 1 needs P >= 2*proc_rows*proc_cols and a pruned group needs proc_cols or
+// proc_rows >= 2), beyond this suite's np<=2 runs.
+BOOST_AUTO_TEST_CASE(summa_bcast_root_offset) {
+  // Baseline (np-independent): on an unoffset grid the offset-aware maps agree
+  // with the bare geometric formula the old root code used. The test ctor
+  // permits an arbitrary (test_rank, test_nprocs) regardless of world size and
+  // leaves rank_offset_ == 0.
+  {
+    TiledArray::detail::ProcGrid grid(*GlobalFixture::world, /*test_rank=*/5u,
+                                      /*test_nprocs=*/12u, /*rows=*/8,
+                                      /*cols=*/8,
+                                      /*row_size=*/64, /*col_size=*/64);
+    BOOST_REQUIRE_GT(grid.proc_cols(), 0u);
+    BOOST_REQUIRE_GT(grid.proc_rows(), 0u);
+    for (std::size_t c = 0; c < grid.proc_cols(); ++c)
+      BOOST_CHECK_EQUAL(
+          grid.map_col(c),
+          grid.rank_row() * ProcessID(grid.proc_cols()) + ProcessID(c));
+    for (std::size_t r = 0; r < grid.proc_rows(); ++r)
+      BOOST_CHECK_EQUAL(
+          grid.map_row(r),
+          grid.rank_col() + ProcessID(r) * ProcessID(grid.proc_cols()));
+  }
+
+  // Offset grid: this is the regression. Construct a process grid whose first
+  // process is at a nonzero world rank (as the h-grouped batched SUMMA does
+  // for slab groups beyond group 0) and verify the maps the fix now uses
+  // include the offset -- so the broadcast root is the in-group world rank,
+  // not the offset-less one the old code computed (which would be -1 once the
+  // group is pruned). Requires the world to be large enough to host an offset
+  // sub-grid (rank_subset_t ctor asserts rank_offset + nprocs <= world.size()).
+  const auto world_size = GlobalFixture::world->size();
+  if (world_size >= 2) {
+    const std::size_t nprocs = world_size - (world_size / 2);  // upper ~half
+    const ProcessID offset = world_size - ProcessID(nprocs);   // nonzero offset
+    BOOST_REQUIRE_GT(offset, 0);
+    TiledArray::detail::ProcGrid grid(*GlobalFixture::world,
+                                      TiledArray::detail::rank_subset, offset,
+                                      nprocs, /*rows=*/8,
+                                      /*cols=*/8, /*row_size=*/64,
+                                      /*col_size=*/64);
+    // Only ranks inside the sub-grid have a valid (rank_row, rank_col).
+    if (GlobalFixture::world->rank() >= offset) {
+      for (std::size_t c = 0; c < grid.proc_cols(); ++c) {
+        const ProcessID offset_less =
+            grid.rank_row() * ProcessID(grid.proc_cols()) + ProcessID(c);
+        // map_col == the value make_group inserts as the row-broadcast root
+        BOOST_CHECK_EQUAL(grid.map_col(c), offset_less + offset);
+        // ... which differs from the old offset-less root computation
+        BOOST_CHECK_NE(grid.map_col(c), offset_less);
+      }
+      for (std::size_t r = 0; r < grid.proc_rows(); ++r) {
+        const ProcessID offset_less =
+            grid.rank_col() + ProcessID(r) * ProcessID(grid.proc_cols());
+        // map_row == the value make_group inserts as the col-broadcast root
+        BOOST_CHECK_EQUAL(grid.map_row(r), offset_less + offset);
+        BOOST_CHECK_NE(grid.map_row(r), offset_less);
+      }
+    }
+  }
+}
+
 #if 0
 // This test case us used to evaluate distribute statistics. This unit test
 // should only be enabled when changes are made to the ProcGrid algorithm, and

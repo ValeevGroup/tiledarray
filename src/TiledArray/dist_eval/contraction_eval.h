@@ -728,24 +728,46 @@ class Summa
 
   ProcessID get_row_group_root(const ordinal_type k,
                                const madness::Group& row_group) const {
+    // The broadcast root is the process in this process row that owns the
+    // column-k source tiles, i.e. grid position (rank_row, k % proc_cols).
     ProcessID group_root = k % proc_grid_.proc_cols();
     if (!right_.shape().is_dense() &&
         row_group.size() < static_cast<ProcessID>(proc_grid_.proc_cols())) {
-      const ProcessID world_root =
-          proc_grid_.rank_row() * proc_grid_.proc_cols() + group_root;
+      // The group has been pruned (it omits ranks that own no nonzero tiles
+      // for this column), so the root's group-local rank no longer equals its
+      // process-column index and must be looked up by its world rank. Use
+      // ProcGrid::map_col, which is exactly how make_group inserted the root
+      // into the group (it always includes the geometric root). Computing the
+      // world rank by hand here is a latent bug: it must account for the
+      // grid's rank offset (nonzero for the h-grouped 3-d batched grid), which
+      // map_col supplies. Without it Group::rank() fails to find the root and
+      // returns -1, aborting the broadcast.
+      const ProcessID world_root = proc_grid_.map_col(group_root);
       group_root = row_group.rank(world_root);
+      TA_ASSERT(group_root >= 0);
     }
     return group_root;
   }
 
   ProcessID get_col_group_root(const ordinal_type k,
                                const madness::Group& col_group) const {
+    // The broadcast root is the process in this process column that owns the
+    // row-k source tiles, i.e. grid position (k % proc_rows, rank_col).
     ProcessID group_root = k % proc_grid_.proc_rows();
     if (!left_.shape().is_dense() &&
         col_group.size() < static_cast<ProcessID>(proc_grid_.proc_rows())) {
-      const ProcessID world_root =
-          group_root * proc_grid_.proc_cols() + proc_grid_.rank_col();
+      // The group has been pruned (it omits ranks that own no nonzero tiles
+      // for this row), so the root's group-local rank no longer equals its
+      // process-row index and must be looked up by its world rank. Use
+      // ProcGrid::map_row, which is exactly how make_group inserted the root
+      // into the group (it always includes the geometric root). Computing the
+      // world rank by hand here is a latent bug: it must account for the
+      // grid's rank offset (nonzero for the h-grouped 3-d batched grid), which
+      // map_row supplies. Without it Group::rank() fails to find the root and
+      // returns -1, aborting the broadcast.
+      const ProcessID world_root = proc_grid_.map_row(group_root);
       group_root = col_group.rank(world_root);
+      TA_ASSERT(group_root >= 0);
     }
     return group_root;
   }
