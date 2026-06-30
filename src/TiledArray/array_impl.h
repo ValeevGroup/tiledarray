@@ -1041,21 +1041,27 @@ std::shared_ptr<ArrayImpl<Tile, Policy>> make_with_new_trange(
     };
     for (const auto target_ord : *target_array.pmap()) {
       if (target_array.is_zero(target_ord)) continue;
-      // build each target tile in one pass: a single source lookup per cell
-      // sizes it and fills it together (no separate all-ranges walk).
+      // build each target tile up-front in a single contiguous arena page:
+      // arena_outer_init's range pre-walk sizes every cell, and we cache the
+      // source cell it found per ordinal so the fill loop reuses it instead of
+      // repeating the (cached, but non-trivial) source lookup. Every non-null
+      // cell is fully overwritten below, so the slab need not be zero-init'd.
       const auto outer_range = target_trange.make_tile_range(target_ord);
       const std::size_t n = outer_range.volume();
       using InnerRange = typename Tile::value_type::range_type;
+      std::vector<const typename Tile::value_type*> src_cells(n);
       auto range_fn = [&](std::size_t o) -> InnerRange {
         const auto* sc = source_cell_at(outer_range.idx(o));
+        src_cells[o] = sc;
         return (!sc || sc->empty()) ? InnerRange{} : sc->range();
       };
-      Tile tile = arena_outer_init<Tile>(outer_range, 1, range_fn);
+      Tile tile =
+          arena_outer_init<Tile>(outer_range, 1, range_fn, kArenaCachelineAlign,
+                                 /*zero_init=*/false);
       for (std::size_t o = 0; o < n; ++o) {
         auto& cell = tile.data()[o];
         if (cell.empty()) continue;  // deliberately-null cell
-        const auto* sc = source_cell_at(outer_range.idx(o));
-        const auto* s = sc->data();
+        const auto* s = src_cells[o]->data();
         auto* d = cell.data();
         for (std::size_t p = 0; p < cell.size(); ++p) d[p] = s[p];
       }
