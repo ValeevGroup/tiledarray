@@ -137,6 +137,14 @@ struct ScaleRegimeCounters {
 };
 inline ScaleRegimeCounters g_scale[2];  // [0]=tot_x_t, [1]=t_x_tot
 
+/// Non-inline wrapper around detail::libxsmm_gemm_le64 (double), DEFINED
+/// in tensor.cpp. Lets the scale path use the libxsmm fast path WITHOUT pulling
+/// <libxsmm.h> into the heavily-included tensor.h. Returns true iff libxsmm ran
+/// the GEMM; false => the caller must fall back to blas::gemm.
+bool scale_libxsmm_dgemm(bool trans_a, bool trans_b, long m, long n, long k,
+                         const double* a, long lda, const double* b, long ldb,
+                         double beta, double* c, long ldc);
+
 /// Manual (non-scoped) phase clock for regions that set locals used later, so a
 /// timed scope can't wrap them. No-op unless TA_GEMM_TIMING is set. Mirrors the
 /// arena_einsum.h phase_start/phase_stop pattern.
@@ -3422,13 +3430,27 @@ class Tensor {
                 }
                 const integer Ai = static_cast<integer>(A);
                 detail::ScopedScaleTimer _scale_gt(detail::g_scale[0].gemm_ns);
-                TiledArray::math::blas::gemm(
-                    TiledArray::math::blas::Transpose,
-                    TiledArray::math::blas::NoTranspose,
-                    /*M=*/N, /*N=*/Ai, /*K=*/K, Real(1),
-                    /*A=*/right_data, /*lda=*/N,
-                    /*B=*/lc0[0].data(), /*ldb=*/ldb, Real(1),
-                    /*C=*/rc0[0].data(), /*ldc=*/ldc);
+                // libxsmm fast path when max(M,N,K)<=64 (alpha==1, beta in
+                // {0,1}); else vendor BLAS. The timer above wraps EITHER path.
+                // double only.
+                bool _xsmm = false;
+                if constexpr (std::is_same_v<Real, double>) {
+                  _xsmm = detail::scale_libxsmm_dgemm(
+                      /*trans_a=*/true, /*trans_b=*/false,
+                      /*m=*/N, /*n=*/Ai, /*k=*/K,
+                      /*a=*/right_data, /*lda=*/N,
+                      /*b=*/lc0[0].data(), /*ldb=*/ldb, /*beta=*/1.0,
+                      /*c=*/rc0[0].data(), /*ldc=*/ldc);
+                }
+                if (!_xsmm) {
+                  TiledArray::math::blas::gemm(
+                      TiledArray::math::blas::Transpose,
+                      TiledArray::math::blas::NoTranspose,
+                      /*M=*/N, /*N=*/Ai, /*K=*/K, Real(1),
+                      /*A=*/right_data, /*lda=*/N,
+                      /*B=*/lc0[0].data(), /*ldb=*/ldb, Real(1),
+                      /*C=*/rc0[0].data(), /*ldc=*/ldc);
+                }
               } else {  // per-cell AXPY fallback for this row
                 if (detail::scale_gemm_timing_enabled()) {
                   // classify fallback reason (re-scan; observation only, does
@@ -3586,13 +3608,27 @@ class Tensor {
                 }
                 const integer Ai = static_cast<integer>(A);
                 detail::ScopedScaleTimer _scale_gt(detail::g_scale[1].gemm_ns);
-                TiledArray::math::blas::gemm(
-                    TiledArray::math::blas::NoTranspose,
-                    TiledArray::math::blas::NoTranspose,
-                    /*M=*/M, /*N=*/Ai, /*K=*/K, Real(1),
-                    /*A=*/left_data, /*lda=*/K,
-                    /*B=*/right_data[n].data(), /*ldb=*/ldb, Real(1),
-                    /*C=*/this_data[n].data(), /*ldc=*/ldc);
+                // libxsmm fast path when max(M,N,K)<=64 (alpha==1, beta in
+                // {0,1}); else vendor BLAS. The timer above wraps EITHER path.
+                // double only.
+                bool _xsmm = false;
+                if constexpr (std::is_same_v<Real, double>) {
+                  _xsmm = detail::scale_libxsmm_dgemm(
+                      /*trans_a=*/false, /*trans_b=*/false,
+                      /*m=*/M, /*n=*/Ai, /*k=*/K,
+                      /*a=*/left_data, /*lda=*/K,
+                      /*b=*/right_data[n].data(), /*ldb=*/ldb, /*beta=*/1.0,
+                      /*c=*/this_data[n].data(), /*ldc=*/ldc);
+                }
+                if (!_xsmm) {
+                  TiledArray::math::blas::gemm(
+                      TiledArray::math::blas::NoTranspose,
+                      TiledArray::math::blas::NoTranspose,
+                      /*M=*/M, /*N=*/Ai, /*K=*/K, Real(1),
+                      /*A=*/left_data, /*lda=*/K,
+                      /*B=*/right_data[n].data(), /*ldb=*/ldb, Real(1),
+                      /*C=*/this_data[n].data(), /*ldc=*/ldc);
+                }
               } else {  // per-cell AXPY fallback for this column
                 if (detail::scale_gemm_timing_enabled()) {
                   // classify fallback reason (re-scan; observation only) +
