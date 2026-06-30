@@ -17,7 +17,10 @@
 #include "TiledArray/tensor/arena_tensor.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <memory_resource>
 #include <new>
@@ -50,6 +53,62 @@ std::shared_ptr<typename OuterTensor::value_type[]> make_outer_data(
 }
 
 }  // namespace
+
+/// Single-page invariant check for arena ToT outer tiles, env-gated by
+/// `TA_ASSERT_SINGLE_PAGE` (zero overhead when unset). A size-determinable ToT
+/// outer tile must occupy at most one arena page; `Arena::page_count() > 1`
+/// means an incremental build spilled across pages and the strided-BLAS fast
+/// path would silently revert to per-cell AXPY. On violation we print the
+/// offending site and throw a TiledArray::Exception so the run fails loudly.
+/// When the gate is on, a summary (tiles checked, violations) is printed at
+/// process exit (on a clean exit; the throw path skips it). Using
+/// `page_count()` -- not `classify_run` -- so the check is valid for tiles with
+/// null or non-uniform inner cells (which are still single-page).
+inline bool arena_single_page_assert_enabled() {
+  static const bool on = [] {
+    const char* e = std::getenv("TA_ASSERT_SINGLE_PAGE");
+    return e != nullptr && e[0] != '\0' && e[0] != '0';
+  }();
+  return on;
+}
+
+inline std::atomic<std::size_t>& arena_single_page_check_count() {
+  static std::atomic<std::size_t> c{0};
+  return c;
+}
+
+inline std::atomic<std::size_t>& arena_single_page_violation_count() {
+  static std::atomic<std::size_t> c{0};
+  return c;
+}
+
+inline void arena_assert_single_page(const Arena& arena, const char* where) {
+  if (!arena_single_page_assert_enabled()) return;
+  static const bool registered = [] {
+    std::atexit([] {
+      std::fprintf(
+          stderr,
+          "[TA_ASSERT_SINGLE_PAGE] checked %zu arena ToT outer tile(s), "
+          "%zu multi-page violation(s)\n",
+          arena_single_page_check_count().load(std::memory_order_relaxed),
+          arena_single_page_violation_count().load(std::memory_order_relaxed));
+    });
+    return true;
+  }();
+  (void)registered;
+  arena_single_page_check_count().fetch_add(1, std::memory_order_relaxed);
+  const std::size_t pages = arena.page_count();
+  if (pages > 1) {
+    arena_single_page_violation_count().fetch_add(1, std::memory_order_relaxed);
+    std::fprintf(stderr,
+                 "[TA_ASSERT_SINGLE_PAGE] VIOLATION at %s: arena ToT outer tile "
+                 "spans %zu pages (expected <= 1)\n",
+                 where, pages);
+    TA_EXCEPTION(
+        "TA_ASSERT_SINGLE_PAGE: arena ToT outer tile spans multiple arena "
+        "pages -- a size-determinable ToT must be single-page");
+  }
+}
 
 /// Allocate an arena-backed ToT outer tile with caller-provided inner ranges.
 ///
@@ -138,6 +197,7 @@ OuterTensor arena_outer_init(
           InnerT(r, std::shared_ptr<T[]>(h, reinterpret_cast<T*>(h.get())));
     }
   }
+  arena_assert_single_page(*arena_ptr, "arena_outer_init");
   return result;
 }
 
@@ -229,6 +289,7 @@ class ArenaToTBuilder {
 
   /// Finalize and hand back the assembled outer tile; the builder is spent.
   OuterTensor finish() && {
+    arena_assert_single_page(*arena_, "ArenaToTBuilder::finish");
     return OuterTensor(outer_range_, batch_sz_, std::move(data_));
   }
 
@@ -250,21 +311,28 @@ class ArenaToTBuilder {
 /// to the next -- no separate all-ranges walk. A zero-volume inner range
 /// yields a deliberately-null cell, which `inner_fill_fn` is not invoked on.
 /// Cells are zero-initialized, so the default no-op fill still leaves zeroed
-/// storage. Backed by `ArenaToTBuilder`.
+/// storage. Backed by the up-front single-page `arena_outer_init`.
 template <typename OuterTensor, typename InnerRangeFn,
           typename InnerFillFn = nested_fill_noop>
 OuterTensor make_nested_tile(
     const typename OuterTensor::range_type& outer_range,
     InnerRangeFn&& inner_range_fn, InnerFillFn&& inner_fill_fn = {}) {
-  ArenaToTBuilder<OuterTensor> builder(outer_range, /*batch_sz=*/1,
-                                       /*zero_init=*/true);
+  // Up-front, single contiguous page: pre-walk ranges (cheap headers only),
+  // reserve one exact slab, fill in place. inner_range_fn/inner_fill_fn are
+  // random-access (idx-driven), so there is no single-pass data to buffer and
+  // no peak-memory doubling -- only the genuinely single-pass init_tiles path
+  // needs the incremental ArenaToTBuilder.
+  auto cell_range_fn = [&](std::size_t ord) {
+    return inner_range_fn(outer_range.idx(ord));
+  };
+  OuterTensor result =
+      arena_outer_init<OuterTensor>(outer_range, 1, cell_range_fn);
   const std::size_t N = outer_range.volume();
   for (std::size_t ord = 0; ord < N; ++ord) {
-    const auto idx = outer_range.idx(ord);
-    auto& cell = builder.emplace(ord, inner_range_fn(idx));
-    if (!cell.empty()) inner_fill_fn(cell, idx);
+    auto& cell = result.data()[ord];
+    if (!cell.empty()) inner_fill_fn(cell, outer_range.idx(ord));
   }
-  return std::move(builder).finish();
+  return result;
 }
 
 /// Apply a unary fill op while preserving each source inner range.
