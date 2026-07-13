@@ -537,9 +537,22 @@ class Expr {
           std::make_shared<op_type>(shift_op_type(shift));
 
       for (const auto index : *dist_eval.pmap()) {
-        if (!dist_eval.is_zero(index))
-          set_tile(result, blk_range.ordinal(index), dist_eval.get(index),
-                   shift_op);
+        if (!dist_eval.is_zero(index)) {
+          // N.B. always consume the tile from dist_eval: it schedules every
+          // non-zero tile and a stranded (never-got) producer would deadlock
+          // dist_eval.wait() below.
+          auto tile = dist_eval.get(index);
+          // `result`'s block shape was formed by SparseShape::update_block
+          // (above), which screens the updated region with the DESTINATION
+          // array's threshold. That threshold may be stricter than the RHS
+          // (`dist_eval`) shape's threshold, so a tile the RHS kept can be
+          // screened to zero in `result`. Writing it would violate the
+          // result's shape (ArrayImpl::set asserts !is_zero). Let the
+          // destination shape be authoritative: drop such sub-threshold tiles
+          // rather than force them into a shape-zero slot.
+          const auto ord = blk_range.ordinal(index);
+          if (!result.is_zero(ord)) set_tile(result, ord, tile, shift_op);
+        }
       }
     }
 
