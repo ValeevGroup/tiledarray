@@ -47,6 +47,14 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   auto& world = *GlobalFixture::world;
   const float saved_threshold = Shape::threshold();
 
+  // The global (static) sparse threshold must be changed consistently on all
+  // ranks; use the documented gop.serial_invoke idiom (see
+  // SparseShape::threshold and conversions/truncate.h) rather than a bare
+  // setter call.
+  auto set_threshold = [&world](float t) {
+    world.gop.serial_invoke([t] { Shape::threshold(t); });
+  };
+
   // dest: 4x2 tiles; the assigned sub-block is tiles [2,4) x [0,2).
   TiledRange dest_tr{{0, 2, 4, 6, 8}, {0, 3, 6}};
   TiledRange blk_tr{{4, 6, 8}, {0, 3, 6}};  // sub-block, lobounds preserved
@@ -54,7 +62,7 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   // src (built under a LOW threshold) keeps two tiles: a small-norm one that
   // the destination's higher threshold will screen, and a large-norm one it
   // will not.
-  Shape::threshold(1.0e-8f);
+  set_threshold(1.0e-8f);
   Tensor<float> src_norms(blk_tr.tiles_range(), 0.0f);
   src_norms(0, 0) = 1.0e-3f;  // below dest threshold -> must be dropped
   src_norms(1, 1) = 1.0f;     // above dest threshold -> must be kept
@@ -65,7 +73,7 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   world.gop.fence();
 
   // dest: all-ones sparse array pre-sized under a HIGHER threshold.
-  Shape::threshold(1.0e-2f);
+  set_threshold(1.0e-2f);
   TSpArrayD dest(world, dest_tr);  // SparseShape(1, trange): every tile nonzero
   dest.fill(0.0);
   world.gop.fence();
@@ -81,7 +89,7 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   BOOST_CHECK(dest.is_zero({2, 0}));   // 1e-3 < 1e-2 -> screened out
   BOOST_CHECK(!dest.is_zero({3, 1}));  // 1.0  >= 1e-2 -> kept
 
-  Shape::threshold(saved_threshold);  // restore global (static) threshold
+  set_threshold(saved_threshold);  // restore global (static) threshold
 }
 
 BOOST_AUTO_TEST_SUITE_END()
