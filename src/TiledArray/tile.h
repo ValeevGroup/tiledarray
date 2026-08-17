@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_TILE_H__INCLUDED
 #define TILEDARRAY_TILE_H__INCLUDED
 
+#include <TiledArray/tensor/arena_kernels.h>
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tile_interface/cast.h>
 #include <TiledArray/tile_interface/trace.h>
@@ -1195,6 +1196,35 @@ inline decltype(auto) subt_to(TileResult&& result, const Scalar value) {
 template <typename Left, typename Right>
 inline decltype(auto) mult(const Tile<Left>& left, const Tile<Right>& right) {
   return detail::make_tile(mult(left.tensor(), right.tensor()));
+}
+
+/// Multiply a flat (scalar-valued) tile by a `Tensor<ArenaTensor<U>>`
+/// (a nested, arena-backed tensor-of-tensors)
+
+/// \tparam Left The left-hand tile's wrapped tensor type
+/// \tparam Right The right-hand tensor-of-tensors type
+/// \param left The left-hand, scalar-valued argument
+/// \param right The right-hand, arena-backed tensor-of-tensors argument
+/// \return A `Right`, with each outer cell of \c right scaled by the
+/// corresponding element of \c left
+/// \note Mirrors `Tensor<Scalar>::mult(const Right&)`
+/// (`tensor/tensor.h`), the same-shape case for `Tensor`-wrapped left
+/// operands; `Tile<T>` has no member math functions, so this is a free
+/// function, following `mult`/`add`/`scale`'s existing convention above.
+template <typename Left, typename Right,
+          typename std::enable_if<
+              detail::is_numeric_v<typename Tile<Left>::numeric_type> &&
+              is_arena_tensor_v<typename Right::value_type>>::type* = nullptr>
+inline Right mult(const Tile<Left>& left, const Right& right) {
+  if (left.empty() || right.empty()) return Right{};
+  using ArenaInner = typename Right::value_type;
+  using ElemT = typename ArenaInner::value_type;
+  using Scalar = typename Tile<Left>::numeric_type;
+  auto fill = [](ElemT* dst, const ElemT* arena, const Scalar& s,
+                 std::size_t n) {
+    for (std::size_t i = 0; i < n; ++i) dst[i] = s * arena[i];
+  };
+  return detail::arena_trivial_scaled<Right>(right, left, fill);
 }
 
 /// Multiplication and scale tile arguments

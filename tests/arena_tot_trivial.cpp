@@ -1,6 +1,9 @@
 /// Arena-aware ToT trivial-op end-to-end tests (add, subt, mult, scale, clone).
 
 #include "TiledArray/tensor.h"
+#include "TiledArray/tensor/arena_kernels.h"
+#include "TiledArray/tensor/arena_tensor.h"
+#include "TiledArray/tile.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
@@ -11,6 +14,8 @@
 namespace TA = TiledArray;
 using inner_t = TA::Tensor<double>;
 using outer_t = TA::Tensor<inner_t>;
+using arena_inner_t = TA::ArenaTensor<double>;
+using arena_tot_t = TA::Tensor<arena_inner_t>;
 
 namespace {
 
@@ -53,6 +58,23 @@ bool inners_share_one_slab(const outer_t& tot) {
     prev_end = cell_end;
   }
   return true;
+}
+
+/// Build a real arena-backed `Tensor<ArenaTensor<double>>`: outer element e
+/// gets a non-uniform-extent inner cell filled with base + 100*e + i.
+arena_tot_t make_arena_tot(std::size_t N_outer, double base = 1.0) {
+  TA::Range outer_range{static_cast<long>(N_outer)};
+  auto inner_range_fn = [](const auto& idx) {
+    const long e = static_cast<long>(idx[0]);
+    return typename arena_inner_t::range_type{3 + (e % 2)};
+  };
+  auto fill_fn = [base](arena_inner_t& cell, const auto& idx) {
+    const long e = static_cast<long>(idx[0]);
+    for (std::size_t i = 0; i < cell.size(); ++i)
+      cell.data()[i] = base + e * 100.0 + i;
+  };
+  return TA::detail::make_nested_tile<arena_tot_t>(outer_range, inner_range_fn,
+                                                   fill_fn);
 }
 
 }  // namespace
@@ -229,6 +251,46 @@ BOOST_AUTO_TEST_CASE(mult_mismatched_null_inners) {
         BOOST_CHECK_EQUAL(d.at_ordinal(i), 0.0);
     }
   }
+}
+
+// --- new: Tile<flat scalar> x Tensor<ArenaTensor> cross-type mult --------
+// Exercises the new free-function overload in tile.h that lets a flat,
+// Tile<T>-wrapped scalar tensor multiply against a real arena-backed ToT
+// (Tensor<ArenaTensor<U>>) tensor -- the actual failing case from
+// TA::einsum<Tile<CLR>, ArrayToT> (Tile<CLR> plays the role of the flat
+// left-hand tile here; TA::Tensor<double> is used as the CPU stand-in,
+// since the overload dispatches purely on Tile<Left>::numeric_type, not on
+// the specific wrapped tensor type).
+BOOST_AUTO_TEST_CASE(mult_flat_tile_times_arena_tot) {
+  const std::size_t N_outer = 5;
+  arena_tot_t right = make_arena_tot(N_outer, 2.0);
+
+  TA::Tensor<double> scalars(TA::Range{static_cast<long>(N_outer)});
+  for (std::size_t e = 0; e < N_outer; ++e)
+    scalars.at_ordinal(e) = 1.5 + static_cast<double>(e);
+  TA::Tile<TA::Tensor<double>> left(scalars);
+
+  arena_tot_t prod = TA::mult(left, right);
+
+  BOOST_REQUIRE_EQUAL(prod.range().volume(), right.range().volume());
+  for (std::size_t ord = 0; ord < N_outer; ++ord) {
+    const arena_inner_t& src = right.data()[ord];
+    const arena_inner_t& dst = prod.data()[ord];
+    BOOST_REQUIRE_EQUAL(dst.size(), src.size());
+    const double s = scalars.at_ordinal(ord);
+    for (std::size_t i = 0; i < dst.size(); ++i)
+      BOOST_CHECK_EQUAL(dst.data()[i], s * src.data()[i]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(mult_flat_tile_times_arena_tot_empty_operands) {
+  arena_tot_t empty_right;
+  TA::Tile<TA::Tensor<double>> nonempty_left(TA::Tensor<double>(TA::Range{3}));
+  BOOST_CHECK(TA::mult(nonempty_left, empty_right).empty());
+
+  arena_tot_t nonempty_right = make_arena_tot(3, 1.0);
+  TA::Tile<TA::Tensor<double>> empty_left;
+  BOOST_CHECK(TA::mult(empty_left, nonempty_right).empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
