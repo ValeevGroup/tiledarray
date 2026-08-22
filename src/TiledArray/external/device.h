@@ -845,6 +845,13 @@ inline std::optional<Stream>& madness_task_stream_opt_accessor() {
 /// before task completion
 /// \param s the stream to synchronize this task with
 inline void sync_madness_task_with(const Stream& s) {
+  // Outside a device task there is no task completion to defer, so block until
+  // the stream drains. N.B. the thread-local consulted below is pre-initialized
+  // non-empty, so without this branch such a call synchronizes nothing.
+  if (detail::madness_task_stream_opt_ptr_accessor() == nullptr) {
+    DeviceSafeCall(device::streamSynchronize(s.stream));
+    return;
+  }
   if (!detail::madness_task_stream_opt_accessor())
     detail::madness_task_stream_opt_accessor() = s;
   else {
