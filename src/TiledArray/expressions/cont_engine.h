@@ -1171,7 +1171,9 @@ class ContEngine : public BinaryEngine<Derived> {
         const auto* rp = right.data();
         result_tile_element_type acc{0};
         for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
-        return static_cast<result_tile_element_type>(factor) * acc;
+        return TiledArray::detail::elem_factor<result_tile_element_type>(
+                   factor) *
+               acc;
       };
       this->element_nonreturn_op_ = [flat_dot](
                                         result_tile_element_type& result,
@@ -1295,7 +1297,8 @@ class ContEngine : public BinaryEngine<Derived> {
                     Numeric acc{0};
                     for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
                     // result cell is pre-shaped [1] by the unit_range plan.
-                    result.data()[0] += static_cast<Numeric>(factor) * acc;
+                    result.data()[0] +=
+                        TiledArray::detail::elem_factor<Numeric>(factor) * acc;
                   };
               if (this->outer_product_uses_summa()) {
                 this->arena_plan_ =
@@ -1403,8 +1406,9 @@ class ContEngine : public BinaryEngine<Derived> {
                               static_cast<std::size_t>(N),
                               static_cast<std::size_t>(K), gh.left_op(),
                               gh.right_op(),
-                              static_cast<typename result_tile_element_type::
-                                              numeric_type>(factor));
+                              TiledArray::detail::elem_factor<
+                                  typename result_tile_element_type::
+                                      numeric_type>(factor));
                         };
                   }
                   // ce+ce (hce+ce): inner CONTRACTION (num_contract_ranks() >=
@@ -1521,8 +1525,9 @@ class ContEngine : public BinaryEngine<Derived> {
                               static_cast<std::size_t>(No),
                               static_cast<std::size_t>(Ko), gh.left_op(),
                               gh.right_op(),
-                              static_cast<typename result_tile_element_type::
-                                              numeric_type>(factor),
+                              TiledArray::detail::elem_factor<
+                                  typename result_tile_element_type::
+                                      numeric_type>(factor),
                               left_inner_T);
                         };
                   } else if (left_arm_ok) {
@@ -1544,8 +1549,9 @@ class ContEngine : public BinaryEngine<Derived> {
                               static_cast<std::size_t>(No),
                               static_cast<std::size_t>(Ko), gh.left_op(),
                               gh.right_op(),
-                              static_cast<typename result_tile_element_type::
-                                              numeric_type>(factor),
+                              TiledArray::detail::elem_factor<
+                                  typename result_tile_element_type::
+                                      numeric_type>(factor),
                               right_inner_T);
                         };
                   }
@@ -1702,7 +1708,7 @@ class ContEngine : public BinaryEngine<Derived> {
                   const auto* rp = right.data();
                   Numeric acc{0};
                   for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
-                  acc *= static_cast<Numeric>(factor);
+                  acc *= TiledArray::detail::elem_factor<Numeric>(factor);
                   if (TA::empty(result)) {
                     using R = typename result_tile_element_type::range_type;
                     TiledArray::container::svector<std::size_t> ext(

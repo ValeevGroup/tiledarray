@@ -1,3 +1,4 @@
+#include <complex>
 #include "tot_array_fixture.h"
 
 template <typename Tensor, typename ElementGenerator>
@@ -4602,6 +4603,266 @@ BOOST_AUTO_TEST_CASE(ik_mn_eq_ij_mn_times_kj_mn) {
   out("i,k;m,n") = lhs("i,j;m,n") * rhs("k,j;m,n");
   const bool are_equal = ToTArrayFixture::are_equal(corr, out);
   BOOST_CHECK(are_equal);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//------------------------------------------------------------------------------
+// conj() on ToT expressions, and the mixed-type ToT x real-plain-tensor
+// product. Every case is checked against an explicit reference computed from
+// single-tile arrays.
+//------------------------------------------------------------------------------
+
+namespace {
+
+// Owning nested tiles only (the btas inner rows of test_params are not
+// exercised here).
+using conj_test_params = boost::mpl::list<
+    std::tuple<double, Tensor<Tensor<double>>>,
+    std::tuple<std::complex<double>, Tensor<Tensor<std::complex<double>>>>>;
+
+template <typename E>
+E mk(double re, double im) {
+  if constexpr (TiledArray::detail::is_complex_v<E>)
+    return E(re, im);
+  else
+    return E(re);
+}
+
+template <typename E>
+E cj(const E& x) {
+  return TiledArray::detail::conj(x);
+}
+
+template <typename E>
+void check_close(const E& got, const E& ref) {
+  BOOST_CHECK_SMALL(std::abs(got - ref),
+                    1e-10 * std::max(1.0, double(std::abs(ref))));
+}
+
+// Single-tile rank-2-outer ToT with rank-1 inner cells of extent na:
+// A(i,j)(a) = gen(i, j, a)
+template <typename Array, typename Gen>
+Array make_tot_1(World& world, std::size_t ni, std::size_t nj, std::size_t na,
+                 Gen gen) {
+  using inner_t = typename Array::value_type::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) {
+    inner_t t(Range{static_cast<long>(na)});
+    for (std::size_t a = 0; a < na; ++a) t.at_ordinal(a) = gen(idx[0], idx[1], a);
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+// Single-tile rank-2-outer ToT with rank-2 inner cells (na x nb):
+// A(i,j)(a,b) = gen(i, j, a, b)
+template <typename Array, typename Gen>
+Array make_tot_2(World& world, std::size_t ni, std::size_t nj, std::size_t na,
+                 std::size_t nb, Gen gen) {
+  using inner_t = typename Array::value_type::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) {
+    inner_t t(Range{static_cast<long>(na), static_cast<long>(nb)});
+    for (std::size_t a = 0; a < na; ++a)
+      for (std::size_t b = 0; b < nb; ++b) t(a, b) = gen(idx[0], idx[1], a, b);
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+template <typename Array>
+auto single_tile(const Array& arr) {
+  return arr.find({0, 0}).get();
+}
+
+}  // namespace
+
+BOOST_FIXTURE_TEST_SUITE(tot_conj, ToTArrayFixture)
+
+// c(i,j;a) = conj(a(i,j;a))
+BOOST_AUTO_TEST_CASE_TEMPLATE(unary, TestParam, conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, na = 4;
+  auto gen = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i + 2.0 * j + 0.5 * a, 0.3 * i - j + a);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, gen);
+  array_t c;
+  c("i,j;a") = conj(a("i,j;a"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t j = 0; j < nj; ++j)
+      for (std::size_t x = 0; x < na; ++x)
+        check_close(tile(i, j).at_ordinal(x), cj(gen(i, j, x)));
+}
+
+// c(j,i;a) = conj(a(i,j;a))   (outer permutation + conj)
+BOOST_AUTO_TEST_CASE_TEMPLATE(unary_permuted, TestParam, conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, na = 4;
+  auto gen = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i + 2.0 * j + 0.5 * a, 0.3 * i - j + a);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, gen);
+  array_t c;
+  c("j,i;a") = conj(a("i,j;a"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t j = 0; j < nj; ++j)
+      for (std::size_t x = 0; x < na; ++x)
+        check_close(tile(j, i).at_ordinal(x), cj(gen(i, j, x)));
+}
+
+// c(i,k;a,b) = sum_j conj(a(i,j;a)) * b(j,k;b)   (outer contraction, inner
+// outer product, conj on the left operand)
+BOOST_AUTO_TEST_CASE_TEMPLATE(conj_left_outer_product, TestParam,
+                              conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto ga = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+  };
+  auto gb = [](auto j, auto k, auto b) {
+    return mk<E>(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, ga);
+  array_t b = make_tot_1<array_t>(m_world, nj, nk, nb, gb);
+  array_t c;
+  c("i,k;a,b") = conj(a("i,j;a")) * b("j,k;b");
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          E ref{};
+          for (std::size_t j = 0; j < nj; ++j)
+            ref += cj(ga(i, j, x)) * gb(j, k, y);
+          check_close(tile(i, k)(x, y), ref);
+        }
+}
+
+// c(i,k;a,b) = sum_j a(i,j;a) * conj(b(j,k;b))
+BOOST_AUTO_TEST_CASE_TEMPLATE(conj_right_outer_product, TestParam,
+                              conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto ga = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+  };
+  auto gb = [](auto j, auto k, auto b) {
+    return mk<E>(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, ga);
+  array_t b = make_tot_1<array_t>(m_world, nj, nk, nb, gb);
+  array_t c;
+  c("i,k;a,b") = a("i,j;a") * conj(b("j,k;b"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          E ref{};
+          for (std::size_t j = 0; j < nj; ++j)
+            ref += ga(i, j, x) * cj(gb(j, k, y));
+          check_close(tile(i, k)(x, y), ref);
+        }
+}
+
+// c(i,k;a,b) = conj( sum_j a(i,j;a) * b(j,k;b) )
+BOOST_AUTO_TEST_CASE_TEMPLATE(conj_of_product, TestParam, conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto ga = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+  };
+  auto gb = [](auto j, auto k, auto b) {
+    return mk<E>(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, ga);
+  array_t b = make_tot_1<array_t>(m_world, nj, nk, nb, gb);
+  array_t c;
+  c("i,k;a,b") = conj(a("i,j;a") * b("j,k;b"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          E ref{};
+          for (std::size_t j = 0; j < nj; ++j) ref += ga(i, j, x) * gb(j, k, y);
+          check_close(tile(i, k)(x, y), cj(ref));
+        }
+}
+
+// c(i,k;a) = sum_j sum_b conj(a(i,j;a,b)) * b(j,k;b)   (outer + inner
+// contraction, conj on the left operand)
+BOOST_AUTO_TEST_CASE_TEMPLATE(conj_left_inner_contraction, TestParam,
+                              conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto ga = [](auto i, auto j, auto a, auto b) {
+    return mk<E>(1.0 + i - j + 0.5 * a - 0.3 * b, 0.25 * i + j - a + 0.1 * b);
+  };
+  auto gb = [](auto j, auto k, auto b) {
+    return mk<E>(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+  };
+  array_t a = make_tot_2<array_t>(m_world, ni, nj, na, nb, ga);
+  array_t b = make_tot_1<array_t>(m_world, nj, nk, nb, gb);
+  array_t c;
+  c("i,k;a") = conj(a("i,j;a,b")) * b("j,k;b");
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x) {
+        E ref{};
+        for (std::size_t j = 0; j < nj; ++j)
+          for (std::size_t y = 0; y < nb; ++y)
+            ref += cj(ga(i, j, x, y)) * gb(j, k, y);
+        check_close(tile(i, k).at_ordinal(x), ref);
+      }
+}
+
+// c(i,k;a) = sum_j a(i,j;a) * t(j,k) with a REAL plain array t: the
+// ToT x plain-tensor product with different element types (complex ToT, real
+// plain tensor). For the real row this is the same-type product.
+BOOST_AUTO_TEST_CASE_TEMPLATE(tot_times_real_plain, TestParam,
+                              conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  using plain_t = DistArray<Tensor<double>, policy_type<TestParam>>;
+  const std::size_t ni = 2, nj = 3, nk = 4, na = 3;
+  auto ga = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+  };
+  auto gt = [](auto j, auto k) { return 0.5 + j - 0.25 * k; };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, ga);
+  TiledRange tr{TiledRange1{0, static_cast<long>(nj)},
+                TiledRange1{0, static_cast<long>(nk)}};
+  plain_t t(m_world, tr);
+  t.init_elements([=](const auto& idx) { return gt(idx[0], idx[1]); });
+  m_world.gop.fence();
+  array_t c;
+  c("i,k;a") = a("i,j;a") * t("j,k");
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x) {
+        E ref{};
+        for (std::size_t j = 0; j < nj; ++j) ref += ga(i, j, x) * gt(j, k);
+        check_close(tile(i, k).at_ordinal(x), ref);
+      }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

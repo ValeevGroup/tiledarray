@@ -250,6 +250,57 @@ class ContractReduceBase {
   strided_oprod_op() const {
     return pimpl_->strided_oprod_op_;
   }
+  /// Reduce two partial results: \c result += \c arg. Arena ToT partials
+  /// reduced from disjoint K-panel subsets can carry different inner-cell
+  /// sparsity, so their shapes are unioned before accumulating.
+  template <typename R>
+  void reduce_results(R& result, const R& arg) const {
+    if constexpr (
+        detail::is_contraction_arena_tot_v<
+            R, std::remove_cv_t<std::remove_reference_t<first_argument_type>>,
+            std::remove_cv_t<std::remove_reference_t<second_argument_type>>>) {
+      detail::arena_tot_add_to(result, arg);
+    } else {
+      using TiledArray::add_to;
+      add_to(result, arg);
+    }
+  }
+
+  /// Nested-tile accumulate: \c result += \c left * \c right through the
+  /// per-cell multiply-add op (via the arena plan and the strided
+  /// outer-product op when installed). Shared by the primary ContractReduce
+  /// and its ComplexConjugate specializations -- a ComplexConjugate factor is
+  /// applied to the finished result by those specializations' finalization
+  /// step, so the accumulate itself is identical.
+  template <typename R, typename L, typename Rt>
+  void accumulate_nested(R& result, const L& left, const Rt& right) const {
+    using TiledArray::empty;
+    using TiledArray::gemm;
+    TA_ASSERT(this->elem_muladd_op());
+    if constexpr (detail::is_contraction_arena_tot_v<
+                      R, std::remove_cv_t<std::remove_reference_t<L>>,
+                      std::remove_cv_t<std::remove_reference_t<Rt>>>) {
+      // The result tile is shaped from operand inner cells. A SUMMA
+      // reduction streams K-panels one at a time: the first panel sizes the
+      // result; a later panel of a contracted-dimension-sparse ToT operand
+      // can touch inner cells the first panel left null, so each subsequent
+      // panel extends the result to cover its own cells.
+      if (this->arena_plan().has_value()) {
+        if (empty(result))
+          result = this->arena_plan()->reserve_and_construct(
+              left, right, this->gemm_helper());
+        else
+          this->arena_plan()->grow_to_cover(result, left, right,
+                                            this->gemm_helper());
+      }
+      if (this->strided_oprod_op()) {
+        this->strided_oprod_op()(result, left, right, this->gemm_helper());
+        return;
+      }
+    }
+    gemm(result, left, right, this->gemm_helper(), this->elem_muladd_op());
+  }
+
   void set_strided_oprod_op(
       TiledArray::function_ref<typename Impl::strided_oprod_op_type> op) {
     pimpl_->strided_oprod_op_ = op;
@@ -384,19 +435,7 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// target
   /// \param[in] arg The argument that will be added to \c result
   void operator()(result_type& result, const result_type& arg) const {
-    if constexpr (
-        detail::is_contraction_arena_tot_v<
-            result_type,
-            std::remove_cv_t<std::remove_reference_t<first_argument_type>>,
-            std::remove_cv_t<std::remove_reference_t<second_argument_type>>>) {
-      // Two partial contraction results reduced from disjoint K-panel
-      // subsets can carry different inner-cell sparsity; union their shapes
-      // before accumulating.
-      detail::arena_tot_add_to(result, arg);
-    } else {
-      using TiledArray::add_to;
-      add_to(result, arg);
-    }
+    this->reduce_results(result, arg);
   }
 
   /// Contract a pair of tiles and add to a target tile
@@ -413,34 +452,7 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
     if (empty(left) || empty(right)) return;
 
     if constexpr (!ContractReduceBase_::plain_tensors) {
-      TA_ASSERT(this->elem_muladd_op());
-      if constexpr (detail::is_contraction_arena_tot_v<
-                        result_type,
-                        std::remove_cv_t<
-                            std::remove_reference_t<first_argument_type>>,
-                        std::remove_cv_t<
-                            std::remove_reference_t<second_argument_type>>>) {
-        // The result tile is shaped from operand inner cells. A SUMMA
-        // reduction streams K-panels one at a time: the first panel sizes the
-        // result; a later panel of a contracted-dimension-sparse ToT operand
-        // can touch inner cells the first panel left null, so each subsequent
-        // panel extends the result to cover its own cells.
-        if (this->arena_plan().has_value()) {
-          if (empty(result))
-            result = this->arena_plan()->reserve_and_construct(
-                left, right, this->gemm_helper());
-          else
-            this->arena_plan()->grow_to_cover(result, left, right,
-                                              this->gemm_helper());
-        }
-        if (this->strided_oprod_op()) {
-          this->strided_oprod_op()(result, left, right,
-                                   ContractReduceBase_::gemm_helper());
-          return;
-        }
-      }
-      gemm(result, left, right, ContractReduceBase_::gemm_helper(),
-           this->elem_muladd_op());
+      this->accumulate_nested(result, left, right);
     } else {  // plain tensors
       TA_ASSERT(!this->elem_muladd_op());
       if (empty(result))
@@ -476,10 +488,8 @@ class ContractReduce<Result, Left, Right,
   typedef typename ContractReduceBase_::first_argument_type
       first_argument_type;  ///< The left tile type
   typedef typename ContractReduceBase_::second_argument_type
-      second_argument_type;  ///< The right tile type
-  typedef decltype(gemm(std::declval<Left>(), std::declval<Right>(), 1,
-                        std::declval<math::GemmHelper>()))
-      result_type;  ///< The result tile type.
+      second_argument_type;    ///< The right tile type
+  typedef Result result_type;  ///< The result tile type.
   typedef TiledArray::detail::ComplexConjugate<void> scalar_type;
 
   using typename ContractReduceBase_::elem_muladd_op_type;
@@ -555,8 +565,7 @@ class ContractReduce<Result, Left, Right,
   /// target
   /// \param[in] arg The argument that will be added to \c result
   void operator()(result_type& result, const result_type& arg) const {
-    using TiledArray::add_to;
-    add_to(result, arg);
+    this->reduce_results(result, arg);
   }
 
   /// Contract a pair of tiles and add to a target tile
@@ -568,10 +577,10 @@ class ContractReduce<Result, Left, Right,
   /// \param[in] right The right-hand tile to be contracted
   void operator()(result_type& result, const first_argument_type& left,
                   const second_argument_type& right) const {
+    using TiledArray::empty;
+    if (empty(left) || empty(right)) return;
     if constexpr (!ContractReduceBase_::plain_tensors) {
-      TA_ASSERT(this->elem_muladd_op());
-      // not yet implemented
-      abort();
+      this->accumulate_nested(result, left, right);
     } else {
       TA_ASSERT(!this->elem_muladd_op());
       using TiledArray::empty;
@@ -608,10 +617,8 @@ class ContractReduce<Result, Left, Right,
   typedef typename ContractReduceBase_::first_argument_type
       first_argument_type;  ///< The left tile type
   typedef typename ContractReduceBase_::second_argument_type
-      second_argument_type;  ///< The right tile type
-  typedef decltype(gemm(std::declval<Left>(), std::declval<Right>(), 1,
-                        std::declval<math::GemmHelper>()))
-      result_type;  ///< The result tile type.
+      second_argument_type;    ///< The right tile type
+  typedef Result result_type;  ///< The result tile type.
   typedef TiledArray::detail::ComplexConjugate<Scalar> scalar_type;
 
   using typename ContractReduceBase_::elem_muladd_op_type;
@@ -687,8 +694,7 @@ class ContractReduce<Result, Left, Right,
   /// target
   /// \param[in] arg The argument that will be added to \c result
   void operator()(result_type& result, const result_type& arg) const {
-    using TiledArray::add_to;
-    add_to(result, arg);
+    this->reduce_results(result, arg);
   }
 
   /// Contract a pair of tiles and add to a target tile
@@ -700,10 +706,10 @@ class ContractReduce<Result, Left, Right,
   /// \param[in] right The right-hand tile to be contracted
   void operator()(result_type& result, const first_argument_type& left,
                   const second_argument_type& right) const {
+    using TiledArray::empty;
+    if (empty(left) || empty(right)) return;
     if constexpr (!ContractReduceBase_::plain_tensors) {
-      TA_ASSERT(this->elem_muladd_op());
-      // not yet implemented
-      abort();
+      this->accumulate_nested(result, left, right);
     } else {
       TA_ASSERT(!this->elem_muladd_op());
       using TiledArray::empty;

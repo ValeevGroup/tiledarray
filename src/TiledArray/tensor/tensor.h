@@ -3382,6 +3382,10 @@ class Tensor {
   Tensor& gemm(const Tensor<As...>& A, const Tensor<Bs...>& B, const W alpha,
                const math::GemmHelper& gemm_helper) {
     numeric_type beta = 1;
+    // A ComplexConjugate<...> alpha (conj(A*B) at the expression level) is
+    // applied to the finished result by ContractReduce's finalization step;
+    // the gemm itself runs with alpha = 1 (see detail::elem_factor).
+    const numeric_type alpha_n = detail::elem_factor<numeric_type>(alpha);
     if (this->empty()) {
       *this =
           Tensor(gemm_helper.make_result_range<range_type>(A.range_, B.range()),
@@ -3406,7 +3410,7 @@ class Tensor {
       }
       for (size_t i = 0; i < this->nbatch(); ++i) {
         auto Ci = this->batch(i);
-        TiledArray::gemm(alpha, A.batch(i), B.batch(i),
+        TiledArray::gemm(alpha_n, A.batch(i), B.batch(i),
                          twostep ? numeric_type(0) : numeric_type(1), Ci,
                          gemm_helper);
       }
@@ -3460,7 +3464,7 @@ class Tensor {
 #else   // TA_ENABLE_TILE_OPS_LOGGING
     for (size_t i = 0; i < this->nbatch(); ++i) {
       auto Ci = this->batch(i);
-      TiledArray::detail::gemm(alpha, A.batch(i), B.batch(i), beta, Ci,
+      TiledArray::detail::gemm(alpha_n, A.batch(i), B.batch(i), beta, Ci,
                                gemm_helper);
     }
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
@@ -3567,7 +3571,16 @@ class Tensor {
     if constexpr (detail::is_numeric_v<V> && is_tensor_view_v<U> &&
                   is_tensor_view_v<value_type>) {
       using Real = std::remove_cv_t<typename value_type::value_type>;
-      if constexpr (std::is_same_v<std::remove_cv_t<V>, Real>) {
+      using Vr = std::remove_cv_t<V>;
+      // Same element type: one gemm in that type. Real plain scalars (Vr)
+      // against complex<Vr> inner cells: the complex slabs are viewed as real
+      // matrices with the inner extent doubled (re,im interleaved), so one
+      // real gemm with alpha = beta = 1 accumulates both parts exactly.
+      constexpr bool same_type = std::is_same_v<Vr, Real>;
+      constexpr bool interleaved =
+          !same_type && std::is_same_v<std::complex<Vr>, Real>;
+      constexpr integer cw = interleaved ? 2 : 1;  // reals per inner element
+      if constexpr (same_type || interleaved) {
         if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
             gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
           // kernel-total timer: destroyed at `return *this;` below, so it
@@ -3667,7 +3680,7 @@ class Tensor {
                   detail::g_scale[0].gemm_flop.fetch_add(
                       2ull * static_cast<std::uint64_t>(K) *
                           static_cast<std::uint64_t>(N) *
-                          static_cast<std::uint64_t>(A),
+                          static_cast<std::uint64_t>(A) * cw,
                       std::memory_order_relaxed);
                 }
                 const integer Ai = static_cast<integer>(A);
@@ -3675,10 +3688,12 @@ class Tensor {
                 TiledArray::math::blas::gemm(
                     TiledArray::math::blas::Transpose,
                     TiledArray::math::blas::NoTranspose,
-                    /*M=*/N, /*N=*/Ai, /*K=*/K, Real(1),
+                    /*M=*/N, /*N=*/Ai * cw, /*K=*/K, Vr(1),
                     /*A=*/right_data, /*lda=*/N,
-                    /*B=*/lc0[0].data(), /*ldb=*/ldb, Real(1),
-                    /*C=*/rc0[0].data(), /*ldc=*/ldc);
+                    /*B=*/reinterpret_cast<const Vr*>(lc0[0].data()),
+                    /*ldb=*/ldb * cw, Vr(1),
+                    /*C=*/reinterpret_cast<Vr*>(rc0[0].data()),
+                    /*ldc=*/ldc * cw);
               } else {  // per-cell AXPY fallback for this row
                 if (detail::scale_gemm_timing_enabled()) {
                   // classify fallback reason (re-scan; observation only, does
@@ -3747,7 +3762,14 @@ class Tensor {
     if constexpr (detail::is_numeric_v<U> && is_tensor_view_v<V> &&
                   is_tensor_view_v<value_type>) {
       using Real = std::remove_cv_t<typename value_type::value_type>;
-      if constexpr (std::is_same_v<std::remove_cv_t<U>, Real>) {
+      using Ur = std::remove_cv_t<U>;
+      // see the tot_x_t block: same type, or real plain x complex<Ur> inner
+      // cells via the re,im-interleaved real gemm
+      constexpr bool same_type = std::is_same_v<Ur, Real>;
+      constexpr bool interleaved =
+          !same_type && std::is_same_v<std::complex<Ur>, Real>;
+      constexpr integer cw = interleaved ? 2 : 1;  // reals per inner element
+      if constexpr (same_type || interleaved) {
         if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
             gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
           // kernel-total timer (see tot_x_t block); destroyed at `return`.
@@ -3831,7 +3853,7 @@ class Tensor {
                   detail::g_scale[1].gemm_flop.fetch_add(
                       2ull * static_cast<std::uint64_t>(M) *
                           static_cast<std::uint64_t>(K) *
-                          static_cast<std::uint64_t>(A),
+                          static_cast<std::uint64_t>(A) * cw,
                       std::memory_order_relaxed);
                 }
                 const integer Ai = static_cast<integer>(A);
@@ -3839,10 +3861,12 @@ class Tensor {
                 TiledArray::math::blas::gemm(
                     TiledArray::math::blas::NoTranspose,
                     TiledArray::math::blas::NoTranspose,
-                    /*M=*/M, /*N=*/Ai, /*K=*/K, Real(1),
+                    /*M=*/M, /*N=*/Ai * cw, /*K=*/K, Ur(1),
                     /*A=*/left_data, /*lda=*/K,
-                    /*B=*/right_data[n].data(), /*ldb=*/ldb, Real(1),
-                    /*C=*/this_data[n].data(), /*ldc=*/ldc);
+                    /*B=*/reinterpret_cast<const Ur*>(right_data[n].data()),
+                    /*ldb=*/ldb * cw, Ur(1),
+                    /*C=*/reinterpret_cast<Ur*>(this_data[n].data()),
+                    /*ldc=*/ldc * cw);
               } else {  // per-cell AXPY fallback for this column
                 if (detail::scale_gemm_timing_enabled()) {
                   // classify fallback reason (re-scan; observation only) +

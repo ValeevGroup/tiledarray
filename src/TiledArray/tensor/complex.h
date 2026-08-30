@@ -292,6 +292,29 @@ TILEDARRAY_FORCE_INLINE L& operator*=(L& value,
 }
 
 template <typename T>
+struct is_complex_conjugate : std::false_type {};
+template <typename T>
+struct is_complex_conjugate<ComplexConjugate<T>> : std::true_type {};
+/// true if \c T is a ComplexConjugate<...> contraction factor
+template <typename T>
+inline constexpr bool is_complex_conjugate_v =
+    is_complex_conjugate<std::remove_cv_t<T>>::value;
+
+/// The numeric multiplier to bake into a per-element (per-cell) multiply-add
+/// op for a contraction with factor \c factor: the factor itself (converted
+/// to \c Numeric) for a numeric factor, and \c Numeric(1) for a
+/// ComplexConjugate<...> factor -- the conjugation (and, for
+/// ComplexConjugate<Scalar>, the scale) of such a factor is applied to the
+/// finished result by ContractReduce's finalization step, not per element.
+template <typename Numeric, typename Scalar>
+TILEDARRAY_FORCE_INLINE Numeric elem_factor(const Scalar& factor) {
+  if constexpr (is_complex_conjugate_v<Scalar>)
+    return Numeric(1);
+  else
+    return static_cast<Numeric>(factor);
+}
+
+template <typename T>
 inline auto abs(const ComplexConjugate<T>& a) {
   return std::abs(a.factor());
 }
