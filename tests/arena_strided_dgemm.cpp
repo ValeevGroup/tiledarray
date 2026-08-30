@@ -5,6 +5,7 @@
 #include "TiledArray/math/blas.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
+#include <complex>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -2107,6 +2108,124 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_killswitch_matches_left) {
     for (std::size_t a1 = 0; a1 < Cs.data()[o].size(); ++a1)
       BOOST_CHECK_CLOSE(Cs.data()[o].data()[a1], Cp.data()[o].data()[a1], 1e-12);
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// std::complex<double> inner storage: the three strided kernels are templated
+// on the inner numeric type (is_strided_dgemm_numeric_v), so complex ToT
+// contractions (e.g. Kramers/relativistic CSV amplitudes) take the same
+// zero-copy strided path. Each case fabricates complex arena tiles inline and
+// checks against a naive complex reference, including a complex factor.
+using ZInner = TA::ArenaTensor<std::complex<double>, TA::Range>;
+using ZOuter = TA::Tensor<ZInner>;
+
+namespace {
+ZOuter make_filled_z(const TA::Range& r,
+                     const std::function<TA::Range(std::size_t)>& shape_fn,
+                     double base) {
+  ZOuter t = TA::detail::arena_outer_init<ZOuter>(r, 1, shape_fn);
+  for (std::size_t o = 0; o < t.range().volume(); ++o) {
+    ZInner& c = t.data()[o];
+    if (!c) continue;
+    for (std::size_t e = 0; e < c.size(); ++e)
+      c.data()[e] = std::complex<double>(base + 0.01 * o + e, 0.5 * e - 0.1 * o);
+  }
+  return t;
+}
+void check_close_z(const std::complex<double>& got,
+                   const std::complex<double>& ref) {
+  BOOST_CHECK_SMALL(std::abs(got - ref), 1e-10 * std::max(1.0, std::abs(ref)));
+}
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(ce_e_complex_matches_reference) {
+  namespace blas = TA::math::blas;
+  using Z = std::complex<double>;
+  const std::size_t M = 2, N = 3, K = 4, P = 3, Q = 5;
+  const Z factor(0.5, -1.25);
+  ZOuter L = make_filled_z(TA::Range{M, K}, [&](std::size_t) { return TA::Range{P}; }, 1.0);
+  ZOuter R = make_filled_z(TA::Range{N, K}, [&](std::size_t) { return TA::Range{Q}; }, 2.0);
+  ZOuter C = TA::detail::arena_outer_init<ZOuter>(
+      TA::Range{M, N}, 1, [&](std::size_t) { return TA::Range{P, Q}; });  // zero-init
+  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                       blas::Transpose, factor);
+  for (std::size_t m = 0; m < M; ++m)
+    for (std::size_t n = 0; n < N; ++n) {
+      std::vector<Z> ref(P * Q, Z{});
+      for (std::size_t k = 0; k < K; ++k) {
+        const Z* lp = L.data()[m * K + k].data();
+        const Z* rp = R.data()[n * K + k].data();
+        for (std::size_t p = 0; p < P; ++p)
+          for (std::size_t q = 0; q < Q; ++q) ref[p * Q + q] += factor * lp[p] * rp[q];
+      }
+      const Z* got = C.data()[m * N + n].data();
+      for (std::size_t e = 0; e < P * Q; ++e) check_close_z(got[e], ref[e]);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(ce_ce_right_complex_matches_reference) {
+  namespace blas = TA::math::blas;
+  using Z = std::complex<double>;
+  const std::size_t Mo = 2, Mmu = 3, nK = 2, P = 4, Q = 5;
+  const Z factor(-0.75, 0.3);
+  // L outer (Mo,nK) row-major (m slow, k fast), inner {P,Q}.
+  ZOuter L = make_filled_z(TA::Range{Mo, nK}, [&](std::size_t) { return TA::Range{P, Q}; }, 1.0);
+  // R outer (Mmu,nK) canonical (mu slow, k fast), inner {Q}.
+  ZOuter R = make_filled_z(TA::Range{Mmu, nK}, [&](std::size_t) { return TA::Range{Q}; }, 2.0);
+  // C outer (Mo,Mmu) row-major (m slow, mu fast), inner {P}.
+  ZOuter C = TA::detail::arena_outer_init<ZOuter>(
+      TA::Range{Mo, Mmu}, 1, [&](std::size_t) { return TA::Range{P}; });
+  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/Mo, /*No=*/Mmu,
+                                              /*Ko=*/nK, blas::NoTranspose,
+                                              blas::Transpose, factor);
+  for (std::size_t m = 0; m < Mo; ++m)
+    for (std::size_t mu = 0; mu < Mmu; ++mu) {
+      std::vector<Z> ref(P, Z{});
+      for (std::size_t k = 0; k < nK; ++k) {
+        const Z* l = L.data()[m * nK + k].data();   // P x Q row-major
+        const Z* r = R.data()[mu * nK + k].data();  // Q
+        for (std::size_t a1 = 0; a1 < P; ++a1) {
+          Z acc{};
+          for (std::size_t a4 = 0; a4 < Q; ++a4) acc += l[a1 * Q + a4] * r[a4];
+          ref[a1] += factor * acc;
+        }
+      }
+      const Z* got = C.data()[m * Mmu + mu].data();
+      for (std::size_t a1 = 0; a1 < P; ++a1) check_close_z(got[a1], ref[a1]);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(ce_ce_left_complex_matches_reference) {
+  namespace blas = TA::math::blas;
+  using Z = std::complex<double>;
+  const std::size_t Mo = 2, No = 3, nK = 2, P = 4, Q = 5;
+  const Z factor(1.5, 2.0);
+  // L (clean) outer (Mo,nK) row-major (m slow, k fast), inner {Q}.
+  ZOuter L = make_filled_z(TA::Range{Mo, nK}, [&](std::size_t) { return TA::Range{Q}; }, 1.0);
+  // R (matrix) outer (nK,No) canonical (k slow, n fast), inner {Q,P} row-major.
+  ZOuter R = make_filled_z(TA::Range{nK, No}, [&](std::size_t) { return TA::Range{Q, P}; }, 2.0);
+  // C outer (Mo,No) row-major (m slow, n fast), inner {P}.
+  ZOuter C = TA::detail::arena_outer_init<ZOuter>(
+      TA::Range{Mo, No}, 1, [&](std::size_t) { return TA::Range{P}; });
+  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, /*Mo=*/Mo, /*No=*/No,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::NoTranspose, factor);
+  for (std::size_t m = 0; m < Mo; ++m)
+    for (std::size_t n = 0; n < No; ++n) {
+      std::vector<Z> ref(P, Z{});
+      for (std::size_t k = 0; k < nK; ++k) {
+        const Z* l = L.data()[m * nK + k].data();  // Q vector
+        const Z* r = R.data()[k * No + n].data();  // Q x P row-major
+        for (std::size_t p = 0; p < P; ++p) {
+          Z acc{};
+          for (std::size_t a4 = 0; a4 < Q; ++a4) acc += l[a4] * r[a4 * P + p];
+          ref[p] += factor * acc;
+        }
+      }
+      const Z* got = C.data()[m * No + n].data();
+      for (std::size_t p = 0; p < P; ++p) check_close_z(got[p], ref[p]);
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

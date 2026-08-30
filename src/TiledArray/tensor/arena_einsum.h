@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <complex>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -36,6 +37,18 @@
 #endif
 
 namespace TiledArray::detail {
+
+/// Numeric types the arena strided-DGEMM kernels (ce+e, ce+ce) are
+/// instantiated for: the four BLAS gemm element types (float, double,
+/// std::complex<float>, std::complex<double>). The kernels are layout/stride
+/// machinery over math::blas::gemm, so all four share one body; the ContEngine
+/// install gates and the hc+e reuse gate consult this trait so any other inner
+/// numeric type keeps the per-cell path.
+template <typename T>
+inline constexpr bool is_strided_dgemm_numeric_v =
+    std::is_same_v<T, float> || std::is_same_v<T, double> ||
+    std::is_same_v<T, std::complex<float>> ||
+    std::is_same_v<T, std::complex<double>>;
 
 /// Env-gated (TA_STRIDED_DGEMM_VERBOSE) toggle for the strided-DGEMM install
 /// logger. Reads the environment once. Set TA_STRIDED_DGEMM_VERBOSE=1 to have
@@ -282,7 +295,7 @@ template <typename GetCell>
 inline int classify_run(GetCell getcell, std::size_t n) {
   if (n == 0) return 0;
   long s0 = -1;
-  const double* base = nullptr;
+  decltype(getcell(std::size_t{0}).data()) base = nullptr;
   for (std::size_t i = 0; i < n; ++i) {
     const auto& c = getcell(i);
     if (!c) return 1;  // absent
@@ -320,7 +333,7 @@ inline int classify_operand(GetR getR, GetL getL, std::size_t nrun,
     const auto& lk = getL(k);
     if (!lk || static_cast<long>(lk.size()) != P * Q) return 13;  // single-cell
     long s0 = -1;
-    const double* base = nullptr;
+    decltype(getR(std::size_t{0}, std::size_t{0}).data()) base = nullptr;
     for (std::size_t i = 0; i < nrun; ++i) {
       const auto& c = getR(k, i);
       if (!c) return 13;
@@ -397,7 +410,7 @@ inline int gather_rescuable(GetC getC, GetR getR, GetL getL, std::size_t nrun,
   if (nrun == 0 || nrun > 1024) return 0;
   std::size_t pres[1024];
   std::size_t np = 0;
-  const double* rbase = nullptr;
+  decltype(getC(std::size_t{0}).data()) rbase = nullptr;
   for (std::size_t i = 0; i < nrun; ++i) {
     const auto& c = getC(i);
     if (!c) continue;
@@ -418,7 +431,7 @@ inline int gather_rescuable(GetC getC, GetR getR, GetL getL, std::size_t nrun,
   bool any_k = false;
   for (std::size_t k = 0; k < nK; ++k) {
     if (!getL(k)) continue;  // absent single-cell -> skip k (β=1)
-    const double* ob = nullptr;
+    decltype(getR(std::size_t{0}, std::size_t{0}).data()) ob = nullptr;
     long os = -1;
     for (std::size_t j = 0; j < np; ++j) {
       const auto& oc = getR(k, pres[j]);
@@ -472,8 +485,8 @@ inline void measure_segments(GetC getC, GetR getR, GetL getL, std::size_t nrun,
         ++mu;
         continue;
       }
-      const double* cb = c0.data();
-      const double* rb = r0.data();
+      const auto* cb = c0.data();
+      const auto* rb = r0.data();
       std::size_t end = mu + 1;
       long sC = -1, sR = -1;
       while (end < nrun) {
@@ -1166,11 +1179,12 @@ inline std::atomic<std::size_t> g_strided_dgemm_ce_e_calls{0};
 /// present, uniform inner size, single constant stride); else an inline per-k
 /// rank-1 fallback for THAT cell only. Orientation-aware (left_op/right_op pick
 /// per-(m,n,k) offsets). M=left-external, N=right-external, K=outer-contracted.
-template <typename ResultOuter, typename LeftOuter, typename RightOuter>
+template <typename ResultOuter, typename LeftOuter, typename RightOuter,
+          typename T = typename ResultOuter::value_type::numeric_type>
 void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
                               const RightOuter& R, std::size_t M, std::size_t N,
                               std::size_t K, math::blas::Op left_op,
-                              math::blas::Op right_op, double factor) {
+                              math::blas::Op right_op, T factor) {
   namespace blas = TiledArray::math::blas;
   using integer = blas::integer;
   static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
@@ -1178,10 +1192,13 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
                     is_tensor_view_v<typename RightOuter::value_type>,
                 "arena_strided_dgemm_ce_e: arena (view) inner cells only");
   static_assert(
-      std::is_same_v<typename ResultOuter::value_type::numeric_type, double> &&
-          std::is_same_v<typename LeftOuter::value_type::numeric_type, double> &&
-          std::is_same_v<typename RightOuter::value_type::numeric_type, double>,
-      "arena_strided_dgemm_ce_e: double inner storage only");
+      std::is_same_v<typename ResultOuter::value_type::numeric_type, T> &&
+          std::is_same_v<typename LeftOuter::value_type::numeric_type, T> &&
+          std::is_same_v<typename RightOuter::value_type::numeric_type, T>,
+      "arena_strided_dgemm_ce_e: inner storages must share numeric type T");
+  static_assert(is_strided_dgemm_numeric_v<T>,
+                "arena_strided_dgemm_ce_e: float/double/complex<float>/"
+                "complex<double> inner storage only");
   if (M == 0 || N == 0 || K == 0) return;
   const std::size_t nbatch = static_cast<std::size_t>(C.nbatch());
   if (nbatch == 0) return;
@@ -1253,7 +1270,7 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
                        /*K=*/static_cast<integer>(K), factor,
                        /*A=*/l0.data(), /*lda=*/static_cast<integer>(ldA),
                        /*B=*/r0.data(), /*ldb=*/static_cast<integer>(ldB),
-                       /*beta=*/1.0,
+                       /*beta=*/T(1),
                        /*C=*/Cc.data(), /*ldc=*/static_cast<integer>(Q));
           }
 #ifdef TA_STRIDED_DGEMM_COUNT
@@ -1278,7 +1295,7 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
             record_ce_e_fallback(why);
           }
           // inline per-k rank-1 fallback for THIS cell (computed once)
-          double* c = Cc.data();
+          T* c = Cc.data();
           std::uint64_t _fl = 0;
           for (std::size_t k = 0; k < K; ++k) {
             const auto& lk = lc[lbase + a_off(m, k)];
@@ -1287,8 +1304,8 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
             const std::size_t pp = lk.size(), qq = rk.size();
             if (static_cast<long>(Cc.size()) != static_cast<long>(pp * qq))
               continue;
-            const double* lp = lk.data();
-            const double* rp = rk.data();
+            const T* lp = lk.data();
+            const T* rp = rk.data();
             _fl += 2ull * pp * qq;
             for (std::size_t p = 0; p < pp; ++p)
               for (std::size_t q = 0; q < qq; ++q)
@@ -1335,12 +1352,13 @@ inline bool& ce_ce_strided_disabled() {
 /// (each cell once -> no double-count). C must be pre-shaped (a_1-major); the
 /// result outer is (m, μ̃) row-major (left-then-right concatenation, matching
 /// make_result_range). Accumulates into C (beta=1).
-template <typename ResultOuter, typename LeftOuter, typename RightOuter>
+template <typename ResultOuter, typename LeftOuter, typename RightOuter,
+          typename T = typename ResultOuter::value_type::numeric_type>
 void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
                                const RightOuter& R, std::size_t Mo,
                                std::size_t No, std::size_t Ko,
                                math::blas::Op left_op, math::blas::Op right_op,
-                               double factor,
+                               T factor,
                                bool left_inner_transposed = false) {
   // left_inner_transposed: the external-carrying LEFT inner cell is stored
   // (a4,a1)=Q x P (matrix_transpose) instead of canonical (a1,a4)=P x Q. Folded
@@ -1353,10 +1371,13 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
                     is_tensor_view_v<typename RightOuter::value_type>,
                 "arena_strided_dgemm_ce_ce_right: arena (view) inner cells only");
   static_assert(
-      std::is_same_v<typename ResultOuter::value_type::numeric_type, double> &&
-          std::is_same_v<typename LeftOuter::value_type::numeric_type, double> &&
-          std::is_same_v<typename RightOuter::value_type::numeric_type, double>,
-      "arena_strided_dgemm_ce_ce_right: double inner storage only");
+      std::is_same_v<typename ResultOuter::value_type::numeric_type, T> &&
+          std::is_same_v<typename LeftOuter::value_type::numeric_type, T> &&
+          std::is_same_v<typename RightOuter::value_type::numeric_type, T>,
+      "arena_strided_dgemm_ce_ce_right: inner storages must share numeric type T");
+  static_assert(is_strided_dgemm_numeric_v<T>,
+                "arena_strided_dgemm_ce_ce_right: float/double/complex<float>/"
+                "complex<double> inner storage only");
   const std::size_t Mmu = No;  // right outer-external rides BLAS M
   const std::size_t nK = Ko;   // outer-contracted is looped with beta=1
   const std::size_t nbatch = static_cast<std::size_t>(C.nbatch());
@@ -1444,7 +1465,7 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
                            const typename LeftOuter::value_type& lk) {
         ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_ce);
         std::uint64_t _fl = 0;
-        const double* l = lk.data();
+        const T* l = lk.data();
         for (std::size_t mu = 0; mu < Mmu; ++mu) {
           auto& Cc = cc[cbase + c_off(m, mu)];
           const auto& rk = rc[rbase + r_off(k, mu)];
@@ -1453,14 +1474,14 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
           const long Ql = static_cast<long>(rk.size());
           if (Ql == 0 || static_cast<long>(lk.size()) != Pl * Ql) continue;
           _fl += 2ull * static_cast<std::uint64_t>(Pl) * Ql;
-          double* c = Cc.data();
-          const double* rr = rk.data();
+          T* c = Cc.data();
+          const T* rr = rk.data();
           for (long a1 = 0; a1 < Pl; ++a1) {
-            double acc = 0;
+            T acc = 0;
             if (left_inner_transposed) {
               for (long a4 = 0; a4 < Ql; ++a4) acc += l[a4 * Pl + a1] * rr[a4];
             } else {
-              const double* lr = l + a1 * Ql;
+              const T* lr = l + a1 * Ql;
               for (long a4 = 0; a4 < Ql; ++a4) acc += lr[a4] * rr[a4];
             }
             c[a1] += factor * acc;
@@ -1492,7 +1513,7 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
           continue;
         }
 
-        const double* Lk = lk.data();  // P x Q (or Q x P if transposed)
+        const T* Lk = lk.data();  // P x Q (or Q x P if transposed)
         std::size_t mu = 0;
         while (mu < Mmu) {
           const auto& rc0 = rc[rbase + r_off(k, mu)];
@@ -1503,8 +1524,8 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
             ++mu;
             continue;
           }
-          const double* rstart = rc0.data();  // segment μ̃-run base on R, stride sR
-          double* cstart = cc0.data();        // segment μ̃-run base on C, stride sC
+          const T* rstart = rc0.data();  // segment μ̃-run base on R, stride sR
+          T* cstart = cc0.data();        // segment μ̃-run base on C, stride sC
           // Grow the maximal segment, recomputing the strides locally (never
           // reuse a run-wide stale stride).
           std::size_t end = mu + 1;
@@ -1548,7 +1569,7 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
                 /*A=*/rstart, /*lda=*/static_cast<integer>(ldR),
                 /*B=*/Lk,
                 /*ldb=*/static_cast<integer>(left_inner_transposed ? P : Q),
-                /*beta=*/1.0,
+                /*beta=*/T(1),
                 /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
           }
 #ifdef TA_STRIDED_DGEMM_COUNT
@@ -1581,12 +1602,13 @@ inline std::atomic<std::size_t> g_strided_dgemm_ce_ce_left_calls{0};
 /// only (each cell once -> no double-count). Orientation-aware (l_off/r_off from
 /// left_op/right_op of the OUTER GemmHelper, exactly as the right core). C must
 /// be pre-shaped; the result outer is (m, n) row-major. Accumulates (beta=1).
-template <typename ResultOuter, typename LeftOuter, typename RightOuter>
+template <typename ResultOuter, typename LeftOuter, typename RightOuter,
+          typename T = typename ResultOuter::value_type::numeric_type>
 void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
                                     const RightOuter& R, std::size_t Mo,
                                     std::size_t No, std::size_t Ko,
                                     math::blas::Op left_op,
-                                    math::blas::Op right_op, double factor,
+                                    math::blas::Op right_op, T factor,
                                     bool right_inner_transposed = false) {
   // right_inner_transposed: the external-carrying RIGHT inner cell is stored
   // (b1,a4)=P x Q (matrix_transpose) instead of canonical (a4,b1)=Q x P. Folded
@@ -1599,10 +1621,13 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
                     is_tensor_view_v<typename RightOuter::value_type>,
                 "arena_strided_dgemm_ce_ce_left: arena (view) inner cells only");
   static_assert(
-      std::is_same_v<typename ResultOuter::value_type::numeric_type, double> &&
-          std::is_same_v<typename LeftOuter::value_type::numeric_type, double> &&
-          std::is_same_v<typename RightOuter::value_type::numeric_type, double>,
-      "arena_strided_dgemm_ce_ce_left: double inner storage only");
+      std::is_same_v<typename ResultOuter::value_type::numeric_type, T> &&
+          std::is_same_v<typename LeftOuter::value_type::numeric_type, T> &&
+          std::is_same_v<typename RightOuter::value_type::numeric_type, T>,
+      "arena_strided_dgemm_ce_ce_left: inner storages must share numeric type T");
+  static_assert(is_strided_dgemm_numeric_v<T>,
+                "arena_strided_dgemm_ce_ce_left: float/double/complex<float>/"
+                "complex<double> inner storage only");
   const std::size_t nK = Ko;  // outer-contracted, looped with beta=1
   const std::size_t nbatch = static_cast<std::size_t>(C.nbatch());
   if (nbatch == 0 || Mo == 0 || nK == 0 || No == 0) return;
@@ -1681,7 +1706,7 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
                            const typename RightOuter::value_type& rk) {
         ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_ce);
         std::uint64_t _fl = 0;
-        const double* bd = rk.data();  // canonical Q x P row-major
+        const T* bd = rk.data();  // canonical Q x P row-major
         for (std::size_t m = 0; m < Mo; ++m) {
           auto& Cc = cc[cbase + c_off(m, n)];
           const auto& lk = lc[lbase + l_off(m, k)];
@@ -1690,14 +1715,14 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
           const long Ql = static_cast<long>(lk.size());
           if (Ql == 0 || static_cast<long>(rk.size()) != Ql * Pl) continue;
           _fl += 2ull * static_cast<std::uint64_t>(Pl) * Ql;
-          double* c = Cc.data();
-          const double* a = lk.data();  // Ql vector
+          T* c = Cc.data();
+          const T* a = lk.data();  // Ql vector
           for (long a4 = 0; a4 < Ql; ++a4) {
-            const double av = a[a4];
+            const T av = a[a4];
             if (right_inner_transposed) {
               for (long p = 0; p < Pl; ++p) c[p] += factor * av * bd[p * Ql + a4];
             } else {
-              const double* br = bd + a4 * Pl;
+              const T* br = bd + a4 * Pl;
               for (long p = 0; p < Pl; ++p) c[p] += factor * av * br[p];
             }
           }
@@ -1728,7 +1753,7 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
           continue;
         }
 
-        const double* Rk = rk.data();  // Q x P (or P x Q if transposed)
+        const T* Rk = rk.data();  // Q x P (or P x Q if transposed)
         std::size_t m = 0;
         while (m < Mo) {
           const auto& lc0 = lc[lbase + l_off(m, k)];
@@ -1739,8 +1764,8 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
             ++m;
             continue;
           }
-          const double* lstart = lc0.data();  // segment m-run base on L, stride sA
-          double* cstart = cc0.data();        // segment m-run base on C, stride sC
+          const T* lstart = lc0.data();  // segment m-run base on L, stride sA
+          T* cstart = cc0.data();        // segment m-run base on C, stride sC
           // Grow the maximal segment, recomputing the strides locally (never
           // reuse a run-wide stale stride).
           std::size_t end = m + 1;
@@ -1784,7 +1809,7 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
                 /*A=*/lstart, /*lda=*/static_cast<integer>(ldA),
                 /*B=*/Rk,
                 /*ldb=*/static_cast<integer>(right_inner_transposed ? Q : P),
-                /*beta=*/1.0,
+                /*beta=*/T(1),
                 /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
           }
 #ifdef TA_STRIDED_DGEMM_COUNT
@@ -2196,16 +2221,19 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
     if constexpr (a_is_tot && b_is_tot) {
       using IIndex = ::Einsum::index::Index<std::size_t>;
       // hc+e reuse gate: the result/operand inner cells must be the kernel's
-      // (view + double) inner type; mirror arena_strided_dgemm_ce_e's
-      // static_assert so non-view / non-double ToT keep the per-cell path.
+      // (view + BLAS numeric) inner type; mirror arena_strided_dgemm_ce_e's
+      // static_assert so non-view / non-BLAS-numeric / mixed-type ToT keep the
+      // per-cell path.
       using LInnerT = typename ArrayA_t::value_type::value_type;
       using RInnerT = typename ArrayB_t::value_type::value_type;
       constexpr bool ce_e_kernel_ok =
           is_tensor_view_v<InnerT> && is_tensor_view_v<LInnerT> &&
           is_tensor_view_v<RInnerT> &&
-          std::is_same_v<typename InnerT::numeric_type, double> &&
-          std::is_same_v<typename LInnerT::numeric_type, double> &&
-          std::is_same_v<typename RInnerT::numeric_type, double>;
+          is_strided_dgemm_numeric_v<typename InnerT::numeric_type> &&
+          std::is_same_v<typename LInnerT::numeric_type,
+                         typename InnerT::numeric_type> &&
+          std::is_same_v<typename RInnerT::numeric_type,
+                         typename InnerT::numeric_type>;
       // Inner OUTER-PRODUCT (K_inner==0) is the strided-reusable shape; any
       // inner contraction (hc+ce) stays per-cell (two-level stride). The
       // runtime toggle lets tests/benches force the per-cell path.
@@ -2285,7 +2313,7 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
             arena_strided_dgemm_ce_e(cview, ai, bi, /*M=*/std::size_t{1},
                                      /*N=*/std::size_t{1}, /*K=*/Kvol,
                                      blas::NoTranspose, blas::NoTranspose,
-                                     /*factor=*/1.0);
+                                     /*factor=*/typename InnerT::numeric_type(1));
             continue;  // tile-i contribution complete
           }
         }

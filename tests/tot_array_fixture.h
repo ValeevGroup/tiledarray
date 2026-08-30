@@ -23,6 +23,7 @@
 #include <TiledArray/conversions/make_array.h>
 #include <TiledArray/einsum/tiledarray.h>
 #include <TiledArray/expressions/tsr_expr.h>
+#include <complex>
 #include "unit_test_config.h"
 #ifdef TILEDARRAY_HAS_BTAS
 #include <TiledArray/conversions/btas.h>
@@ -44,15 +45,16 @@
 using namespace TiledArray;
 
 // These are all of the template parameters we are going to test over
-using test_params =
-    boost::mpl::list<std::tuple<int, Tensor<Tensor<int>>>,
-                     std::tuple<float, Tensor<Tensor<float>>>,
-                     std::tuple<double, Tensor<Tensor<double>>>
+using test_params = boost::mpl::list<
+    std::tuple<int, Tensor<Tensor<int>>>,
+    std::tuple<float, Tensor<Tensor<float>>>,
+    std::tuple<double, Tensor<Tensor<double>>>,
+    std::tuple<std::complex<double>, Tensor<Tensor<std::complex<double>>>>
 #ifdef TILEDARRAY_HAS_BTAS
-                     ,
-                     std::tuple<int, Tensor<btas::Tensor<int, Range>>>,
-                     std::tuple<float, Tensor<btas::Tensor<float, Range>>>,
-                     std::tuple<double, Tensor<btas::Tensor<double, Range>>>
+    ,
+    std::tuple<int, Tensor<btas::Tensor<int, Range>>>,
+    std::tuple<float, Tensor<btas::Tensor<float, Range>>>,
+    std::tuple<double, Tensor<btas::Tensor<double, Range>>>
 //    ,std::tuple<int, btas::Tensor<btas::Tensor<int, Range>, Range>>,
 //    std::tuple<float, btas::Tensor<btas::Tensor<float, Range>, Range>>,
 //    std::tuple<double, btas::Tensor<btas::Tensor<double, Range>, Range>>
@@ -60,7 +62,7 @@ using test_params =
 //    std::tuple<float, Tile<btas::Tensor<btas::Tensor<float, Range>, Range>>>,
 //    std::tuple<double, Tile<btas::Tensor<btas::Tensor<double, Range>, Range>>>
 #endif
-                     >;
+    >;
 
 // These typedefs unpack the unit test template parameter
 //{
