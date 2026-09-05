@@ -15,6 +15,7 @@
 #include "TiledArray/error.h"
 #include "TiledArray/tensor/arena.h"
 #include "TiledArray/tensor/arena_tensor.h"
+#include "TiledArray/tile_op/tile_interface.h"
 
 #include <algorithm>
 #include <atomic>
@@ -336,33 +337,54 @@ OuterTensor make_nested_tile(
   return result;
 }
 
+/// Physical offset of logical cell ordinal \p ord within `t.data()`.
+
+/// Identity for a contiguous tensor, whose cells are laid out in ordinal
+/// order; a strided view (e.g. `Tensor::block()`'s
+/// `TensorInterface<T, BlockRange>`) maps through its range instead, the same
+/// way `detail::inplace_tensor_op` addresses a non-contiguous operand.
+template <typename T>
+inline std::size_t arena_cell_offset(const T& t, std::size_t ord) {
+  if constexpr (is_contiguous_tensor<T>::value) {
+    (void)t;
+    return ord;
+  } else {
+    return static_cast<std::size_t>(t.range().ordinal(ord));
+  }
+}
+
+/// Number of cells in \p t (batches included) and its batch count. A strided
+/// view has no batch dimension, so its batch count is 1.
+template <typename T>
+inline std::pair<std::size_t, std::size_t> arena_cells_and_batches(const T& t) {
+  const std::size_t n = static_cast<std::size_t>(TiledArray::total_size(t));
+  const std::size_t volume = static_cast<std::size_t>(t.range().volume());
+  return {n, volume ? n / volume : std::size_t{1}};
+}
+
 /// Apply a unary fill op while preserving each source inner range.
 /// `fill_op(dst_data, src_data, n_elements)` writes the result cell.
 template <typename OuterTensor, typename SrcOuterTensor, typename FillOp>
 OuterTensor arena_trivial_unary(const SrcOuterTensor& src, FillOp&& fill_op) {
-  // As in `arena_trivial_binary`: `src` is addressed by linear ordinal.
-  static_assert(
-      is_contiguous_tensor<SrcOuterTensor>::value,
-      "arena_trivial_unary: the source is indexed linearly by ordinal, so it "
-      "must be a contiguous tensor (not a block/strided view)");
   using elem_t = typename OuterTensor::value_type::value_type;
   using inner_range_t = typename OuterTensor::value_type::range_type;
   // A null inner cell has no range to query (`ArenaTensor::range()` asserts
   // non-null); map it to a default range -> a null result cell.
   auto range_fn = [&src](std::size_t ord) -> inner_range_t {
-    const auto& s = src.data()[ord];
+    const auto& s = src.data()[arena_cell_offset(src, ord)];
     return s.empty() ? inner_range_t{} : s.range();
   };
+  const auto [N_cells, src_nbatch] = arena_cells_and_batches(src);
   // Elementwise kernels pack tight (no cross-cell GEMM to amortize padding);
   // the fill overwrites every element, so the slab need not be zero-init'd.
-  OuterTensor result = arena_outer_init<OuterTensor>(src.range(), src.nbatch(),
+  OuterTensor result = arena_outer_init<OuterTensor>(src.range(), src_nbatch,
                                                      range_fn, alignof(elem_t),
                                                      /*zero_init=*/false);
-  const std::size_t N_cells = src.range().volume() * src.nbatch();
   for (std::size_t ord = 0; ord < N_cells; ++ord) {
     auto& dst = result.data()[ord];
     if (dst.empty()) continue;
-    fill_op(dst.data(), src.data()[ord].data(), dst.size());
+    fill_op(dst.data(), src.data()[arena_cell_offset(src, ord)].data(),
+            dst.size());
   }
   return result;
 }
@@ -386,20 +408,14 @@ template <typename OuterTensor, typename LeftTensor, typename RightTensor,
           typename FillOp>
 OuterTensor arena_trivial_binary(const LeftTensor& left,
                                  const RightTensor& right, FillOp&& fill_op) {
-  // Both operands are addressed as `data()[ord]` over a single linear ordinal
-  // range below, so neither may be a strided view: a block view would read
-  // the wrong cells rather than fail. `Tensor::inplace_binary_drops_cells`
-  // can detect a dropped cell for a non-contiguous operand, but there is no
-  // value-returning arena kernel to fall back *to* for one -- so make that a
-  // compile error here instead of a silent misread there.
-  static_assert(
-      is_contiguous_tensor<LeftTensor, RightTensor>::value,
-      "arena_trivial_binary: operands are indexed linearly by ordinal, so "
-      "both must be contiguous tensors (not block/strided views)");
+  // Either operand may be a strided view (`Tensor::block()` yields a
+  // `TensorInterface<T, BlockRange>`); `arena_cell_offset` maps a logical cell
+  // ordinal to its physical slot, so the loops below stay ordinal-driven. The
+  // result is always a freshly built contiguous tensor, indexed directly.
   using elem_t = typename OuterTensor::value_type::value_type;
   using inner_range_t = typename OuterTensor::value_type::range_type;
   TA_ASSERT(left.range().volume() == right.range().volume());
-  TA_ASSERT(left.nbatch() == right.nbatch());
+  TA_ASSERT(TiledArray::total_size(left) == TiledArray::total_size(right));
   // Union sparsity: a result cell is present if *either* operand cell is.
   // ToT arrays with the same outer shape can still differ in which inner cells
   // are populated within an outer tile (e.g. occ_tile_size>1 aggregates several
@@ -410,21 +426,22 @@ OuterTensor arena_trivial_binary(const LeftTensor& left,
   // read a null right slab (segfault) and a lone-right cell would be silently
   // dropped, losing that addend.
   auto range_fn = [&left, &right](std::size_t ord) -> inner_range_t {
-    const auto& l = left.data()[ord];
+    const auto& l = left.data()[arena_cell_offset(left, ord)];
     if (!l.empty()) return l.range();
-    const auto& r = right.data()[ord];
+    const auto& r = right.data()[arena_cell_offset(right, ord)];
     return r.empty() ? inner_range_t{} : r.range();
   };
-  OuterTensor result = arena_outer_init<OuterTensor>(
-      left.range(), left.nbatch(), range_fn, alignof(elem_t),
-      /*zero_init=*/false);
-  const std::size_t N_cells = left.range().volume() * left.nbatch();
+  // `left` shapes the result: its range and batch count become the result's.
+  const auto [N_cells, left_nbatch] = arena_cells_and_batches(left);
+  OuterTensor result = arena_outer_init<OuterTensor>(left.range(), left_nbatch,
+                                                     range_fn, alignof(elem_t),
+                                                     /*zero_init=*/false);
   std::vector<elem_t> zeros;  // grown lazily; implicit-zero slab for lone cells
   for (std::size_t ord = 0; ord < N_cells; ++ord) {
     auto& dst = result.data()[ord];
     if (dst.empty()) continue;
-    const auto& l = left.data()[ord];
-    const auto& r = right.data()[ord];
+    const auto& l = left.data()[arena_cell_offset(left, ord)];
+    const auto& r = right.data()[arena_cell_offset(right, ord)];
     const std::size_t n = dst.size();
     const bool have_l = !l.empty();
     const bool have_r = !r.empty();

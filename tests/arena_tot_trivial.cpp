@@ -581,4 +581,65 @@ BOOST_AUTO_TEST_CASE(mult_to_scaled_empty_right_is_zero) {
   BOOST_CHECK(L.empty());
 }
 
+// --- non-contiguous (block-view) right operand ---------------------------
+// `Tensor::block()` yields a `TensorInterface<T, BlockRange>`, whose cells are
+// strided in the parent's storage. Both `inplace_binary_drops_cells` and the
+// arena value-returning kernels must address it through its range; reading it
+// linearly would silently pick up the wrong cells rather than fail.
+
+namespace {
+
+/// 2-D outer arena ToT; `present[ord]==false` gives a deliberately-null cell.
+arena_outer_t make_arena_tot_2d(long n0, long n1, std::size_t n_inner,
+                                double base, const std::vector<bool>& present) {
+  auto range_fn = [&present, n_inner](std::size_t ord) {
+    return present[ord] ? TA::Range{static_cast<long>(n_inner)} : TA::Range{};
+  };
+  arena_outer_t t = TA::detail::arena_outer_init<arena_outer_t>(
+      TA::Range{n0, n1}, 1, range_fn, alignof(double), /*zero_init=*/true);
+  const std::size_t N = static_cast<std::size_t>(n0 * n1);
+  for (std::size_t ord = 0; ord < N; ++ord) {
+    arena_inner_t& c = t.data()[ord];
+    if (c.empty()) continue;
+    for (std::size_t i = 0; i < n_inner; ++i)
+      c.data()[i] = base + ord * 100.0 + i;
+  }
+  return t;
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(arena_add_to_noncontiguous_right_block) {
+  // R is 2x3, so its leading 2x2 sub-block has row stride 3: block cell (1,0)
+  // is R ordinal 3, not 2. Reading the block linearly would take R's ordinal 2
+  // instead, which is exactly what this test is here to catch.
+  const arena_outer_t R =
+      make_arena_tot_2d(2, 3, 4, 0.5, {true, true, true, true, true, true});
+  auto blk = R.block({0l, 0l}, {2l, 2l});
+  static_assert(!TA::detail::is_contiguous_tensor<decltype(blk)>::value,
+                "a BlockRange view must be non-contiguous for this test to "
+                "exercise the strided path");
+
+  // L is 2x2 with cell (0,1) null, so the fallback fires and must not drop the
+  // block's populated cell there.
+  const arena_outer_t L =
+      make_arena_tot_2d(2, 2, 4, 1.0, {true, false, true, true});
+  arena_outer_t t = L.clone();
+  t.add_to(blk);
+
+  BOOST_REQUIRE_EQUAL(t.range().volume(), 4u);
+  for (std::size_t ord = 0; ord < 4; ++ord) {
+    const arena_inner_t& lc = L.data()[ord];
+    // the block's own view of cell `ord` -- strided, via its range
+    const arena_inner_t& rc = blk.data()[blk.range().ordinal(ord)];
+    const arena_inner_t& got = t.data()[ord];
+    BOOST_REQUIRE(!rc.empty());
+    BOOST_REQUIRE(!got.empty());
+    for (std::size_t i = 0; i < got.size(); ++i) {
+      const double lv = lc.empty() ? 0.0 : lc.data()[i];
+      BOOST_CHECK_EQUAL(got.data()[i], lv + rc.data()[i]);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
