@@ -2068,19 +2068,25 @@ class Tensor {
   /// Does an in-place binary op against a \p Right of this shape ever need
   /// the null-destination fallback?
 
-  /// True only when this tensor's cells are non-owning *views*. Every use is
-  /// an `if constexpr` condition, never a runtime one: the fallback body calls
-  /// the *value-returning* kernels, which need not be well-formed for a
-  /// `Tensor` / `Scalar` combination that the in-place path nonetheless
-  /// supports -- e.g. `Tensor<std::complex<double>>::subt_to(right, int)` is
-  /// fine in place, while the corresponding `subt(right, int)` is ill-formed
+  /// True only when both operands' cells are `ArenaTensor`s. The fallback
+  /// body calls the *value-returning* kernels, which allocate a fresh arena
+  /// slab, so by `arena_tensor.h`'s own trait convention this is
+  /// `is_arena_tensor_v` territory rather than the broader
+  /// `is_tensor_view_v` -- the latter also covers `btas::TensorView`, for
+  /// which no such value-returning kernel exists.
+  ///
+  /// Every use is an `if constexpr` condition, never a runtime one: the
+  /// fallback body need not be well-formed for a `Tensor` / `Scalar`
+  /// combination that the in-place path nonetheless supports -- e.g.
+  /// `Tensor<std::complex<double>>::subt_to(right, int)` is fine in place,
+  /// while the corresponding `subt(right, int)` is ill-formed
   /// (`std::complex<double> * int`). Guarding with `if constexpr` keeps the
-  /// fallback out of every non-view instantiation.
+  /// fallback out of every non-arena instantiation.
   /// \tparam Right The right-hand tensor type
   template <typename Right>
   static constexpr bool binary_needs_view_cell_fallback_v =
-      detail::is_tensor_of_tensor_v<Tensor> && is_tensor_view_v<value_type> &&
-      is_tensor_view_v<typename Right::value_type>;
+      detail::is_tensor_of_tensor_v<Tensor> && is_arena_tensor_v<value_type> &&
+      is_arena_tensor_v<typename Right::value_type>;
 
   /// Would an element-wise in-place binary op against \p right drop data?
 
@@ -2090,7 +2096,23 @@ class Tensor {
   /// corresponding cell of \p right is populated, updating in place would
   /// silently discard it. Callers must instead route through the
   /// value-returning kernel, which builds a fresh slab with union sparsity.
-  /// Always `false` unless both operands' cells are views.
+  /// Always `false` unless both operands' cells are arena tensors.
+  ///
+  /// The scan mirrors how `detail::inplace_tensor_op` -- the kernel this
+  /// guards -- walks the very same operands: linearly over `total_size()`
+  /// when both are contiguous, and by strided range ordinal when they are
+  /// not. Keeping the two in step is what makes the guard exactly as general
+  /// as the operation it guards; a shape this predicate cannot scan must be
+  /// a compile error, never a `false`, since `false` reinstates the
+  /// cell-dropping bug this exists to prevent.
+  ///
+  /// \note A rebind (`*this = ...`) is the only remedy available to the
+  ///       caller, so a fallback replaces this handle's storage instead of
+  ///       mutating it. `TA::Tensor` is a shallow-copy handle, so sibling
+  ///       handles keep observing the pre-op values -- unlike a true in-place
+  ///       update. Callers in tree hold the tile by reference and are
+  ///       unaffected.
+  ///
   /// \tparam Right The right-hand tensor type
   /// \param right The right-hand operand
   /// \return true if some ordinal has a null left cell and a populated right
@@ -2098,13 +2120,47 @@ class Tensor {
   template <typename Right>
   bool inplace_binary_drops_cells(const Right& right) const {
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
+      static_assert(
+          detail::has_member_function_data_anyreturn_v<Tensor> &&
+              detail::has_member_function_data_anyreturn_v<Right>,
+          "Tensor::inplace_binary_drops_cells: both operands must expose "
+          "data(); an operand that cannot be scanned for null cells must not "
+          "silently answer \"no drop\"");
+
       if (empty() || right.empty()) return false;
-      const std::size_t n = static_cast<std::size_t>(this->total_size());
-      if (n != static_cast<std::size_t>(right.total_size())) return false;
-      for (std::size_t ord = 0; ord < n; ++ord)
-        if (this->data()[ord].empty() && !right.data()[ord].empty())
-          return true;
-      return false;
+
+      // Congruent operands are the in-place kernel's own precondition; a
+      // mismatch here is rejected there (loudly under TA_ASSERT_THROW). Bail
+      // rather than walk off the end of the shorter operand.
+      TA_ASSERT(detail::is_range_set_congruent(*this, right));
+
+      auto drops = [](const value_type* l, const typename Right::value_type* r,
+                      std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i)
+          if (l[i].empty() && !r[i].empty()) return true;
+        return false;
+      };
+
+      if constexpr (detail::is_contiguous_tensor<Tensor, Right>::value) {
+        const std::size_t n =
+            static_cast<std::size_t>(TiledArray::total_size(*this));
+        if (n != static_cast<std::size_t>(TiledArray::total_size(right)))
+          return false;
+        return drops(this->data(), right.data(), n);
+      } else {
+        // Non-contiguous operand: walk contiguous runs the way
+        // `inplace_tensor_op` does, one `inner_size` stride at a time.
+        const auto volume = this->range().volume();
+        if (volume != right.range().volume()) return false;
+        const auto stride = detail::inner_size(*this, right);
+        for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume;
+             ord += stride)
+          if (drops(this->data() + this->range().ordinal(ord),
+                    right.data() + right.range().ordinal(ord),
+                    static_cast<std::size_t>(stride)))
+            return true;
+        return false;
+      }
     } else {
       (void)right;
       return false;

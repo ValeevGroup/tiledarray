@@ -100,10 +100,11 @@ inline void arena_assert_single_page(const Arena& arena, const char* where) {
   const std::size_t pages = arena.page_count();
   if (pages > 1) {
     arena_single_page_violation_count().fetch_add(1, std::memory_order_relaxed);
-    std::fprintf(stderr,
-                 "[TA_ASSERT_SINGLE_PAGE] VIOLATION at %s: arena ToT outer tile "
-                 "spans %zu pages (expected <= 1)\n",
-                 where, pages);
+    std::fprintf(
+        stderr,
+        "[TA_ASSERT_SINGLE_PAGE] VIOLATION at %s: arena ToT outer tile "
+        "spans %zu pages (expected <= 1)\n",
+        where, pages);
     TA_EXCEPTION(
         "TA_ASSERT_SINGLE_PAGE: arena ToT outer tile spans multiple arena "
         "pages -- a size-determinable ToT must be single-page");
@@ -339,6 +340,11 @@ OuterTensor make_nested_tile(
 /// `fill_op(dst_data, src_data, n_elements)` writes the result cell.
 template <typename OuterTensor, typename SrcOuterTensor, typename FillOp>
 OuterTensor arena_trivial_unary(const SrcOuterTensor& src, FillOp&& fill_op) {
+  // As in `arena_trivial_binary`: `src` is addressed by linear ordinal.
+  static_assert(
+      is_contiguous_tensor<SrcOuterTensor>::value,
+      "arena_trivial_unary: the source is indexed linearly by ordinal, so it "
+      "must be a contiguous tensor (not a block/strided view)");
   using elem_t = typename OuterTensor::value_type::value_type;
   using inner_range_t = typename OuterTensor::value_type::range_type;
   // A null inner cell has no range to query (`ArenaTensor::range()` asserts
@@ -380,6 +386,16 @@ template <typename OuterTensor, typename LeftTensor, typename RightTensor,
           typename FillOp>
 OuterTensor arena_trivial_binary(const LeftTensor& left,
                                  const RightTensor& right, FillOp&& fill_op) {
+  // Both operands are addressed as `data()[ord]` over a single linear ordinal
+  // range below, so neither may be a strided view: a block view would read
+  // the wrong cells rather than fail. `Tensor::inplace_binary_drops_cells`
+  // can detect a dropped cell for a non-contiguous operand, but there is no
+  // value-returning arena kernel to fall back *to* for one -- so make that a
+  // compile error here instead of a silent misread there.
+  static_assert(
+      is_contiguous_tensor<LeftTensor, RightTensor>::value,
+      "arena_trivial_binary: operands are indexed linearly by ordinal, so "
+      "both must be contiguous tensors (not block/strided views)");
   using elem_t = typename OuterTensor::value_type::value_type;
   using inner_range_t = typename OuterTensor::value_type::range_type;
   TA_ASSERT(left.range().volume() == right.range().volume());
