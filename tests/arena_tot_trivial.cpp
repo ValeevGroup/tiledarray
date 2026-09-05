@@ -530,4 +530,55 @@ BOOST_AUTO_TEST_CASE(expr_permuted_add_null_left_cells_keeps_right) {
   }
 }
 
+// --- empty-operand guards on the in-place binary ops ---------------------
+// An empty tensor denotes zero in these ops -- that is already how `add_to`
+// and the unscaled `mult_to` treat it. `subt_to` (both overloads), the scaled
+// `add_to` and the scaled `mult_to` were missing one or both guards, so they
+// fell through into `inplace_binary`, whose `!empty()` precondition is a
+// TA_ASSERT: it throws in a Debug build and, compiled out in Release, walks a
+// null `data()` or silently yields an empty (== zero) result. Same
+// silent-data-loss shape as the null-cell bug, one function over.
+
+BOOST_AUTO_TEST_CASE(subt_to_empty_left_yields_negated_right) {
+  outer_t L;  // default-constructed -> empty outer == zero
+  outer_t R = make_tot(3, 4, 7.0);
+  BOOST_REQUIRE(L.empty());
+  const outer_t expected = R.scale(-1.0);
+  L.subt_to(R);
+  BOOST_CHECK(tot_equal(L, expected));
+}
+
+BOOST_AUTO_TEST_CASE(subt_to_scaled_empty_left_yields_negated_scaled_right) {
+  outer_t L;
+  outer_t R = make_tot(3, 4, 7.0);
+  const outer_t expected = R.scale(-2.0);
+  L.subt_to(R, 2.0);  // legacy semantics: (l - r) * factor
+  BOOST_CHECK(tot_equal(L, expected));
+}
+
+BOOST_AUTO_TEST_CASE(add_to_scaled_empty_left_yields_scaled_right) {
+  outer_t L;
+  outer_t R = make_tot(3, 4, 7.0);
+  const outer_t expected = R.scale(2.0);
+  L.add_to(R, 2.0);  // legacy semantics: (l + r) * factor
+  BOOST_CHECK(tot_equal(L, expected));
+}
+
+BOOST_AUTO_TEST_CASE(add_to_scaled_empty_right_scales_left) {
+  outer_t L = make_tot(3, 4, 5.0);
+  const outer_t expected = L.scale(2.0);
+  const outer_t empty_right;
+  L.add_to(empty_right, 2.0);
+  BOOST_CHECK(tot_equal(L, expected));
+}
+
+BOOST_AUTO_TEST_CASE(mult_to_scaled_empty_right_is_zero) {
+  outer_t L = make_tot(3, 4, 5.0);
+  const outer_t empty_right;
+  L.mult_to(empty_right, 2.0);
+  // matches the unscaled `mult_to`, which spells the zero product as an
+  // empty result
+  BOOST_CHECK(L.empty());
+}
+
 BOOST_AUTO_TEST_SUITE_END()

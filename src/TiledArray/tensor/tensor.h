@@ -2487,6 +2487,19 @@ class Tensor {
     requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
              detail::addable_to<value_type&, const value_t<Right>&>)
   Tensor& add_to(const Right& right, const Scalar factor) {
+    // early exit for empty right: (this + 0) * factor
+    if (right.empty()) {
+      this->scale_to(factor);
+      return *this;
+    }
+
+    // early exit for empty this: (0 + right) * factor
+    if (empty()) {
+      *this = detail::clone_or_cast<Tensor>(right);
+      this->scale_to(factor);
+      return *this;
+    }
+
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
       if (inplace_binary_drops_cells(right)) {
         *this = this->add(right, factor);
@@ -2803,6 +2816,13 @@ class Tensor {
     // early exit for empty right
     if (right.empty()) return *this;
 
+    // early exit for empty this: 0 - right == -right
+    if (empty()) {
+      *this = detail::clone_or_cast<Tensor>(right);
+      this->neg_to();
+      return *this;
+    }
+
     // a null view cell cannot adopt a populated right cell in place -- fall
     // back to the value-returning (union-sparsity) kernel
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
@@ -2831,6 +2851,14 @@ class Tensor {
     // early exit for empty right
     if (right.empty()) {
       return this->scale_to(factor);
+    }
+
+    // early exit for empty this: (0 - right) * factor
+    if (empty()) {
+      *this = detail::clone_or_cast<Tensor>(right);
+      this->neg_to();
+      this->scale_to(factor);
+      return *this;
     }
 
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
@@ -3085,6 +3113,13 @@ class Tensor {
       typename std::enable_if<detail::is_nested_tensor_v<Right> &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& mult_to(const Right& right, const Scalar factor) {
+    // early exit for empty right: this * 0 == 0, spelled the way the
+    // unscaled `mult_to` spells it
+    if (right.empty()) {
+      *this = Tensor{};
+      return *this;
+    }
+
     // early exit for empty this
     if (empty()) return *this;
 
