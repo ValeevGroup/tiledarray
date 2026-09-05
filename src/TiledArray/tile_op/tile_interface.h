@@ -880,6 +880,25 @@ inline Result& gemm(Result& result, const Left& left, const Right& right,
 template <typename... T>
 using result_of_gemm_t = decltype(gemm(std::declval<T>()...));
 
+// Query operations ----------------------------------------------------------
+
+/// Total number of elements in a tile
+
+/// Unlike `size()`, the result counts every batch for tile types that carry a
+/// batch dimension (e.g. `TA::Tensor`). Tile types with no batch concept
+/// (e.g. `btas::Tensor`, `TensorInterface`) do not declare `total_size()`; for
+/// those this falls back to `size()`, which is the whole tile by definition.
+/// \tparam Arg The tile argument type
+/// \param arg The tile to query
+/// \return The number of elements in \c arg, batches included
+template <typename Arg>
+inline auto total_size(const Arg& arg) {
+  if constexpr (detail::has_member_function_total_size_anyreturn_v<Arg>)
+    return arg.total_size();
+  else
+    return arg.size();
+}
+
 // Reduction operations ------------------------------------------------------
 
 /// Sum the hyper-diagonal elements a tile
@@ -1016,6 +1035,9 @@ inline auto inner_product(const Left& left, const Right& right) {
 
 // template <typename T>
 // using result_of_trace_t = decltype(mult(std::declval<T>()));
+
+template <typename T>
+using result_of_total_size_t = decltype(total_size(std::declval<T>()));
 
 template <typename T>
 using result_of_sum_t = decltype(sum(std::declval<T>()));
