@@ -2908,7 +2908,10 @@ class Tensor {
                    const typename value_type::value_type* r, std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] * r[i];
     };
-    return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+    // mult annihilates: a cell absent from either operand has an identically
+    // zero product, which a null cell already denotes.
+    return detail::arena_trivial_binary<Tensor>(
+        *this, right, fill, detail::ArenaBinarySparsity::Intersection);
   }
 
   /// Mixed `Tensor<ArenaTensor> * Tensor<scalar>`: outer Hadamard, each
@@ -2969,7 +2972,9 @@ class Tensor {
                      const typename value_type::value_type* r, std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] * r[i];
       };
-      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+      // mult annihilates -- see the arena overload above.
+      return detail::arena_trivial_binary<Tensor>(
+          *this, right, fill, detail::ArenaBinarySparsity::Intersection);
     } else {
       return binary(right, mult_op);
     }
@@ -3041,7 +3046,9 @@ class Tensor {
                            std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) dst[i] = (l[i] * r[i]) * factor;
       };
-      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+      // mult annihilates -- see the unscaled overload above.
+      return detail::arena_trivial_binary<Tensor>(
+          *this, right, fill, detail::ArenaBinarySparsity::Intersection);
     } else {
       return binary(right,
                     [factor](const value_type& l, const value_t<Right>& r) {
@@ -3102,10 +3109,13 @@ class Tensor {
     // early exit for empty this
     if (empty()) return *this;
 
-    // No fallback here, unlike add_to/subt_to/axpy_to: multiplication
-    // annihilates, so a null destination cell against a populated source has an
-    // identically zero product and loses nothing. The free per-cell `mult_to`
-    // leaves it null, which is how a sparse ToT spells zero.
+    // No fallback here, unlike add_to/subt_to/axpy_to. Multiplication
+    // annihilates, so a null destination cell against a populated source has
+    // an identically zero product and loses nothing: the free per-cell
+    // `mult_to` leaves it null, which is how a sparse ToT spells zero, and the
+    // value-returning kernel now agrees (ArenaBinarySparsity::Intersection).
+    // Routing through that kernel would rebuild the whole tile only to
+    // materialize explicit zeros where screening had removed cells.
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right>& r) { l *= r; });
   }

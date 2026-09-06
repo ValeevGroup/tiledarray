@@ -402,12 +402,25 @@ OuterTensor arena_compact(const OuterTensor& src) {
       [](auto* dst, const auto* s, std::size_t n) { std::copy_n(s, n, dst); });
 }
 
+/// Which result cells a binary arena kernel materializes.
+
+/// The two rules differ because zero plays a different role in each op:
+///   - `Union` -- zero is the identity (add, subt), so a cell present in only
+///     one operand still carries information and must be emitted, combined
+///     against an implicit zero slab.
+///   - `Intersection` -- zero annihilates (mult), so a cell absent from either
+///     operand has an identically zero product. Emitting it would allocate a
+///     slab of zeros that a null cell already denotes, densifying exactly the
+///     cells screening removed.
+enum class ArenaBinarySparsity { Union, Intersection };
+
 /// Apply a binary fill op using the left operand's inner ranges (asserted
 /// equal to the right's per cell). `fill_op(dst, l, r, n_elements)`.
 template <typename OuterTensor, typename LeftTensor, typename RightTensor,
           typename FillOp>
-OuterTensor arena_trivial_binary(const LeftTensor& left,
-                                 const RightTensor& right, FillOp&& fill_op) {
+OuterTensor arena_trivial_binary(
+    const LeftTensor& left, const RightTensor& right, FillOp&& fill_op,
+    ArenaBinarySparsity sparsity = ArenaBinarySparsity::Union) {
   // Either operand may be a strided view (`Tensor::block()` yields a
   // `TensorInterface<T, BlockRange>`); `arena_cell_offset` maps a logical cell
   // ordinal to its physical slot, so the loops below stay ordinal-driven. The
@@ -416,19 +429,26 @@ OuterTensor arena_trivial_binary(const LeftTensor& left,
   using inner_range_t = typename OuterTensor::value_type::range_type;
   TA_ASSERT(left.range().volume() == right.range().volume());
   TA_ASSERT(TiledArray::total_size(left) == TiledArray::total_size(right));
-  // Union sparsity: a result cell is present if *either* operand cell is.
   // ToT arrays with the same outer shape can still differ in which inner cells
   // are populated within an outer tile (e.g. occ_tile_size>1 aggregates several
-  // pairs, some screened to null). A cell present in only one operand is
-  // combined against an implicit zero slab below -- correct for the linear ops
-  // (add: l+0 / 0+r; subt: l-0 / 0-r) and numerically correct for mult (l*0=0,
-  // emitted as an explicit zero tile). Without this, a lone-left cell would
-  // read a null right slab (segfault) and a lone-right cell would be silently
-  // dropped, losing that addend.
-  auto range_fn = [&left, &right](std::size_t ord) -> inner_range_t {
+  // pairs, some screened to null), so the two operands' cell patterns need not
+  // agree. `sparsity` says what to do where they disagree.
+  //
+  // Under `Union` a cell present in only one operand is emitted and combined
+  // against an implicit zero slab below -- correct for the linear ops (add:
+  // l+0 / 0+r; subt: l-0 / 0-r). Without it a lone-left cell would read a null
+  // right slab (segfault) and a lone-right cell would be dropped, losing that
+  // addend.
+  //
+  // Under `Intersection` such a cell is left null: its product is identically
+  // zero, which a null cell already denotes, so emitting an explicit zero slab
+  // would only densify the cells screening removed.
+  auto range_fn = [&left, &right, sparsity](std::size_t ord) -> inner_range_t {
     const auto& l = left.data()[arena_cell_offset(left, ord)];
-    if (!l.empty()) return l.range();
     const auto& r = right.data()[arena_cell_offset(right, ord)];
+    if (sparsity == ArenaBinarySparsity::Intersection)
+      return (l.empty() || r.empty()) ? inner_range_t{} : l.range();
+    if (!l.empty()) return l.range();
     return r.empty() ? inner_range_t{} : r.range();
   };
   // `left` shapes the result: its range and batch count become the result's.

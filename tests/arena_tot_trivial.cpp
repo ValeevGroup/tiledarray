@@ -642,4 +642,56 @@ BOOST_AUTO_TEST_CASE(arena_add_to_noncontiguous_right_block) {
   }
 }
 
+// --- mult uses intersection sparsity -------------------------------------
+// Multiplication annihilates, so the minimal correct result sparsity is the
+// *intersection* of the operands' cell patterns: a cell absent from either
+// operand has an identically zero product, which a null cell already denotes.
+// `nz_L`/`nz_R` disagree in both directions (cell 0 is right-only, cells 3/4
+// differ), so these pin the rule rather than pass vacuously.
+
+BOOST_AUTO_TEST_CASE(arena_mult_uses_intersection_sparsity) {
+  const arena_outer_t L = make_arena_tot_sparse(5, 4, 2.0, nz_L);
+  const arena_outer_t R = make_arena_tot_sparse(5, 4, 0.5, nz_R);
+  const arena_outer_t prod = L.mult(R);
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const arena_inner_t& l = L.data()[ord];
+    const arena_inner_t& r = R.data()[ord];
+    const arena_inner_t& d = prod.data()[ord];
+    if (!l.empty() && !r.empty()) {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.size(); ++i)
+        BOOST_CHECK_EQUAL(d.data()[i], l.data()[i] * r.data()[i]);
+    } else {
+      // union sparsity would have emitted an explicit zero slab here
+      BOOST_CHECK(d.empty());
+    }
+  }
+}
+
+// The in-place op must not densify either: a null destination cell stays null
+// (its product is zero), and a populated cell against a null source is zeroed
+// in place because a view cannot free its own storage.
+BOOST_AUTO_TEST_CASE(arena_mult_to_does_not_densify_null_cells) {
+  const arena_outer_t L = make_arena_tot_sparse(5, 4, 2.0, nz_L);
+  const arena_outer_t R = make_arena_tot_sparse(5, 4, 0.5, nz_R);
+  arena_outer_t t = L.clone();
+  t.mult_to(R);
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const arena_inner_t& l = L.data()[ord];
+    const arena_inner_t& r = R.data()[ord];
+    const arena_inner_t& d = t.data()[ord];
+    if (l.empty()) {
+      BOOST_CHECK(d.empty());
+    } else if (r.empty()) {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.size(); ++i)
+        BOOST_CHECK_EQUAL(d.data()[i], 0.0);
+    } else {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.size(); ++i)
+        BOOST_CHECK_EQUAL(d.data()[i], l.data()[i] * r.data()[i]);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
