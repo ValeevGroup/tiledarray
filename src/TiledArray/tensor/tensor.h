@@ -2533,8 +2533,17 @@ class Tensor {
     }
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
       if (inplace_binary_drops_cells(right)) {
-        // no value-returning `axpy`; compose scale-then-add on the union kernel
-        *this = this->add(right.scale(factor));
+        // Fuse `l + r * factor` into a single union-sparsity pass. Composing
+        // `add(right.scale(factor))` would allocate a second arena slab just
+        // to hold the scaled intermediate. Both operands are non-null here:
+        // the empty cases returned above, and `inplace_binary_drops_cells`
+        // answers false for either operand empty.
+        using ElemT = typename value_type::value_type;
+        auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
+                             std::size_t n) {
+          for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] + r[i] * factor;
+        };
+        *this = detail::arena_trivial_binary<Tensor>(*this, right, fill);
         return *this;
       }
     }
