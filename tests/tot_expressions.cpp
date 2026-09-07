@@ -4651,7 +4651,8 @@ Array make_tot_1(World& world, std::size_t ni, std::size_t nj, std::size_t na,
   Array arr(world, tr);
   arr.init_elements([=](const auto& idx) {
     inner_t t(Range{static_cast<long>(na)});
-    for (std::size_t a = 0; a < na; ++a) t.at_ordinal(a) = gen(idx[0], idx[1], a);
+    for (std::size_t a = 0; a < na; ++a)
+      t.at_ordinal(a) = gen(idx[0], idx[1], a);
     return t;
   });
   world.gop.fence();

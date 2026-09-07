@@ -3580,6 +3580,13 @@ class Tensor {
       constexpr bool interleaved =
           !same_type && std::is_same_v<std::complex<Vr>, Real>;
       constexpr integer cw = interleaved ? 2 : 1;  // reals per inner element
+      // The interleaved view reinterprets the complex slab as Vr[2*n]: the
+      // standard guarantees array-oriented access to std::complex<Vr>
+      // ([complex.numbers.general]/4), pinned here so an exotic ABI cannot
+      // turn the reinterpret_cast below into silent undefined behavior.
+      static_assert(!interleaved || (sizeof(Real) == 2 * sizeof(Vr) &&
+                                     alignof(Real) == alignof(Vr)),
+                    "interleaved real gemm needs std::complex<Vr> == Vr[2]");
       if constexpr (same_type || interleaved) {
         if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
             gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
@@ -3769,6 +3776,10 @@ class Tensor {
       constexpr bool interleaved =
           !same_type && std::is_same_v<std::complex<Ur>, Real>;
       constexpr integer cw = interleaved ? 2 : 1;  // reals per inner element
+      // see the tot_x_t block: std::complex<Ur> must be exactly Ur[2]
+      static_assert(!interleaved || (sizeof(Real) == 2 * sizeof(Ur) &&
+                                     alignof(Real) == alignof(Ur)),
+                    "interleaved real gemm needs std::complex<Ur> == Ur[2]");
       if constexpr (same_type || interleaved) {
         if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
             gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
