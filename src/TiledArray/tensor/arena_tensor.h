@@ -539,13 +539,19 @@ void axpy_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src,
   for (std::size_t i = 0; i < dst.size(); ++i) d[i] += alpha * s[i];
 }
 
-/// Sum of squared elements; 0 for null views.
+/// Sum of squared magnitudes; 0 for null views. Returns the REAL scalar type
+/// underlying `T` (`scalar_t<complex<U>>` is `U`), matching
+/// `Tensor::squared_norm` and `TensorInterface::squared_norm`. Summing
+/// `s[i] * s[i]` instead would compute the complex `sum z^2` rather than
+/// `sum |z|^2`.
 template <typename T, typename R>
 auto squared_norm(const ArenaTensor<T, R>& src) noexcept {
-  T acc{};
+  using result_type = TiledArray::detail::scalar_t<T>;
+  result_type acc{};
   if (!src) return acc;
   const auto* s = src.data();
-  for (std::size_t i = 0; i < src.size(); ++i) acc += s[i] * s[i];
+  for (std::size_t i = 0; i < src.size(); ++i)
+    acc += TiledArray::detail::squared_norm(s[i]);
   return acc;
 }
 

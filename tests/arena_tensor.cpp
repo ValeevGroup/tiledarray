@@ -15,6 +15,7 @@
 #include <complex>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -216,6 +217,32 @@ BOOST_AUTO_TEST_CASE(squared_norm_sums_squares) {
   x.data()[1] = 2.0;
   x.data()[2] = 2.0;
   BOOST_CHECK_EQUAL(TA::squared_norm(x), 9.0);
+}
+
+// A squared norm is sum |z|^2 -- real and non-negative -- not the complex
+// sum z^2. Summing z*z would give (3+4i)^2 + (1-2i)^2 = (-7+24i) + (-3-4i)
+// = -10+20i here; the magnitudes give 25 + 5 = 30. The return type is
+// likewise the real scalar type, not the element type.
+BOOST_AUTO_TEST_CASE(squared_norm_of_complex_sums_magnitudes) {
+  using Z = std::complex<double>;
+  using ZInner = TA::ArenaTensor<Z, TA::Range>;
+
+  // CellBuf above is specific to `Inner` (double cells); size and align a
+  // buffer for a complex cell the same way.
+  const std::size_t total = ZInner::cell_size(2);
+  const std::size_t algn = ZInner::cell_alignment();
+  std::vector<std::byte> bytes(total + algn, std::byte{0});
+  auto base = reinterpret_cast<std::uintptr_t>(bytes.data());
+  auto* aligned = reinterpret_cast<std::byte*>((base + algn - 1) & ~(algn - 1));
+
+  ZInner x = TA::detail::make_arena_tensor_in<Z>(aligned, TA::Range{2});
+  x.data()[0] = Z(3.0, 4.0);
+  x.data()[1] = Z(1.0, -2.0);
+
+  const auto sq = TA::squared_norm(x);
+  static_assert(std::is_same_v<std::remove_const_t<decltype(sq)>, double>,
+                "squared_norm must return the real scalar type");
+  BOOST_CHECK_CLOSE(sq, 30.0, 1e-12);
 }
 
 BOOST_AUTO_TEST_CASE(in_place_cpos_no_op_on_null) {
