@@ -2186,7 +2186,7 @@ class Tensor {
     if (right.empty()) return this->clone();
 
     // early exit for empty this
-    if (empty()) detail::clone_or_cast<Tensor>(right);
+    if (empty()) return detail::clone_or_cast<Tensor>(right);
 
     if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
                   detail::is_ta_tensor_v<value_type> &&

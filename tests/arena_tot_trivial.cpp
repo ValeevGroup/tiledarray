@@ -231,4 +231,12 @@ BOOST_AUTO_TEST_CASE(mult_mismatched_null_inners) {
   }
 }
 
+// --- regression: `add` on an empty (default-constructed) left outer -------
+BOOST_AUTO_TEST_CASE(add_empty_left_outer_returns_right) {
+  outer_t L;  // default-constructed -> empty outer
+  outer_t R = make_tot(3, 4, 7.0);
+  BOOST_REQUIRE(L.empty());
+  BOOST_CHECK(tot_equal(L.add(R), R));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
