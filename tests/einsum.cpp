@@ -27,6 +27,10 @@
 #include "TiledArray/tensor/arena_kernels.h"
 #include "TiledArray/tensor/arena_tensor.h"
 
+#include <algorithm>
+#include <cmath>
+#include <complex>
+
 BOOST_AUTO_TEST_SUITE(einsum_manual)
 
 namespace {
@@ -1375,11 +1379,27 @@ BOOST_AUTO_TEST_CASE(tensor_contract) {
 // numeric problem on (a) an *arena*-backed ToT DistArray (inner cells are
 // ArenaTensor views) and (b) an *owning* ToT DistArray (inner cells are
 // TA::Tensor), then asserts the two einsum results agree elementwise.
-BOOST_AUTO_TEST_CASE(hce_e_contraction_arena_matches_owning) {
-  using ArenaInner = TA::ArenaTensor<double, TA::Range>;
+// Inner numeric types the arena strided path serves (double and the complex
+// type the Kramers/relativistic ToT amplitudes need); the value helper gives
+// a real value for double and a complex one otherwise.
+using einsum_inner_numeric_types =
+    boost::mpl::list<double, std::complex<double>>;
+namespace {
+template <typename T>
+T einsum_val(double re, double im) {
+  if constexpr (TA::detail::is_complex_v<T>)
+    return T(re, im);
+  else
+    return static_cast<T>(re);
+}
+}  // namespace
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(hce_e_contraction_arena_matches_owning, T,
+                              einsum_inner_numeric_types) {
+  using ArenaInner = TA::ArenaTensor<T, TA::Range>;
   using ArenaOuter = TA::Tensor<ArenaInner>;
   using ArenaArr = TA::DistArray<ArenaOuter, TA::DensePolicy>;
-  using OwnInner = TA::Tensor<double>;
+  using OwnInner = TA::Tensor<T>;
   using OwnOuter = TA::Tensor<OwnInner>;
   using OwnArr = TA::DistArray<OwnOuter, TA::DensePolicy>;
 
@@ -1391,10 +1411,12 @@ BOOST_AUTO_TEST_CASE(hce_e_contraction_arena_matches_owning) {
   TA::TiledRange b_trange{{0l, K}, {0l, J}};  // outer (k,j)
 
   auto a_val = [](long i, long j, long p) {
-    return 1.0 + 0.5 * i + 0.25 * j + 0.125 * p;
+    return einsum_val<T>(1.0 + 0.5 * i + 0.25 * j + 0.125 * p,
+                         0.3 * i - 0.2 * j + 0.07 * p);
   };
   auto b_val = [](long k, long j, long q) {
-    return 2.0 - 0.3 * k + 0.2 * j + 0.05 * q;
+    return einsum_val<T>(2.0 - 0.3 * k + 0.2 * j + 0.05 * q,
+                         -0.4 * k + 0.1 * j - 0.03 * q);
   };
 
   ArenaArr ah(world, a_trange);
@@ -1647,8 +1669,9 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_arena_matches_owning) {
 // the two results cell-by-cell, element-by-element. The toggle is RESTORED to
 // false before the compare loop so a failed assertion cannot leak `true` into
 // later tests.
-BOOST_AUTO_TEST_CASE(regime_a_hce_e_strided_equals_percell) {
-  using ArenaInner = TA::ArenaTensor<double, TA::Range>;
+BOOST_AUTO_TEST_CASE_TEMPLATE(regime_a_hce_e_strided_equals_percell, T,
+                              einsum_inner_numeric_types) {
+  using ArenaInner = TA::ArenaTensor<T, TA::Range>;
   using ArenaOuter = TA::Tensor<ArenaInner>;
   using ArenaArr = TA::DistArray<ArenaOuter, TA::DensePolicy>;
 
@@ -1661,10 +1684,12 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_strided_equals_percell) {
                           TA::TiledRange1{0l, 2, 5}};  // outer (h,i,k)
 
   auto a_val = [](long h, long i, long k, long a1) {
-    return 1.0 + 0.5 * i + 0.25 * k + 0.125 * a1 + 0.0625 * h;
+    return einsum_val<T>(1.0 + 0.5 * i + 0.25 * k + 0.125 * a1 + 0.0625 * h,
+                         0.2 * i - 0.1 * k + 0.05 * a1 + 0.01 * h);
   };
   auto b_val = [](long h, long i, long k, long a2) {
-    return 2.0 - 0.3 * k + 0.2 * i + 0.05 * a2 + 0.03 * h;
+    return einsum_val<T>(2.0 - 0.3 * k + 0.2 * i + 0.05 * a2 + 0.03 * h,
+                         -0.15 * k + 0.25 * i - 0.02 * a2 + 0.04 * h);
   };
 
   ArenaArr ah(world, a_trange);
@@ -1742,7 +1767,8 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_strided_equals_percell) {
       BOOST_REQUIRE_EQUAL(sc.size(), static_cast<std::size_t>(P * Q));
       ++result_outer_cells_seen;
       for (std::size_t e = 0; e < sc.size(); ++e) {
-        BOOST_CHECK_CLOSE(sc.data()[e], pc.data()[e], 1e-12);
+        BOOST_CHECK_SMALL(std::abs(sc.data()[e] - pc.data()[e]),
+                          1e-12 * std::max(1.0, std::abs(pc.data()[e])));
         ++elements_compared;
       }
     }

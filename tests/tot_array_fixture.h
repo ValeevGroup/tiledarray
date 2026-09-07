@@ -66,8 +66,10 @@ using test_params = boost::mpl::list<
 
 // These typedefs unpack the unit test template parameter
 //{
+/// the ELEMENT type of the tile (std::complex<double> for the complex row);
+/// TiledArray::detail::scalar_t<element_type<...>> is the real scalar type
 template <typename TupleElementType>
-using scalar_type = std::tuple_element_t<0, TupleElementType>;
+using element_type = std::tuple_element_t<0, TupleElementType>;
 
 template <typename TupleElementType>
 using tile_type = std::tuple_element_t<1, TupleElementType>;

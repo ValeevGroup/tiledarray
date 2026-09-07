@@ -14,8 +14,8 @@
 
 #include <algorithm>
 #include <atomic>
-#include <complex>
 #include <chrono>
+#include <complex>
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
@@ -23,12 +23,12 @@
 #include <map>
 #include <mutex>
 #include <optional>
-#include <unordered_map>
-#include <vector>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #if defined(_MSC_VER) && _MSC_VER < 1937  // VS 2022 < 17.7
 #define TA_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
@@ -1184,7 +1184,8 @@ template <typename ResultOuter, typename LeftOuter, typename RightOuter,
 void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
                               const RightOuter& R, std::size_t M, std::size_t N,
                               std::size_t K, math::blas::Op left_op,
-                              math::blas::Op right_op, T factor) {
+                              math::blas::Op right_op,
+                              std::type_identity_t<T> factor) {
   namespace blas = TiledArray::math::blas;
   using integer = blas::integer;
   static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
@@ -1355,11 +1356,12 @@ inline bool& ce_ce_strided_disabled() {
 template <typename ResultOuter, typename LeftOuter, typename RightOuter,
           typename T = typename ResultOuter::value_type::numeric_type>
 void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
-                               const RightOuter& R, std::size_t Mo,
-                               std::size_t No, std::size_t Ko,
-                               math::blas::Op left_op, math::blas::Op right_op,
-                               T factor,
-                               bool left_inner_transposed = false) {
+                                     const RightOuter& R, std::size_t Mo,
+                                     std::size_t No, std::size_t Ko,
+                                     math::blas::Op left_op,
+                                     math::blas::Op right_op,
+                                     std::type_identity_t<T> factor,
+                                     bool left_inner_transposed = false) {
   // left_inner_transposed: the external-carrying LEFT inner cell is stored
   // (a4,a1)=Q x P (matrix_transpose) instead of canonical (a1,a4)=P x Q. Folded
   // into the inner GEMM via transb (zero-copy); the right contraction-vector
@@ -1608,7 +1610,8 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
                                     const RightOuter& R, std::size_t Mo,
                                     std::size_t No, std::size_t Ko,
                                     math::blas::Op left_op,
-                                    math::blas::Op right_op, T factor,
+                                    math::blas::Op right_op,
+                                    std::type_identity_t<T> factor,
                                     bool right_inner_transposed = false) {
   // right_inner_transposed: the external-carrying RIGHT inner cell is stored
   // (b1,a4)=P x Q (matrix_transpose) instead of canonical (a4,b1)=Q x P. Folded

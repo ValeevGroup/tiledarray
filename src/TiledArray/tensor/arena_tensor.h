@@ -445,14 +445,10 @@ void scale_to(ArenaTensor<T, R>& dst, Scalar factor) {
   if (!dst) return;
   auto* d = dst.data();
   const auto n = dst.size();
-  if constexpr (requires(T& x) { x *= factor; }) {
-    for (std::size_t i = 0; i < n; ++i) d[i] *= factor;
-  } else {
-    // no compound operator for this element/factor pair (e.g. complex<double>
-    // *= int): use detail's mixed complex x scalar operator*
-    using namespace TiledArray::detail;
-    for (std::size_t i = 0; i < n; ++i) d[i] = d[i] * factor;
-  }
+  // operator*= is the permissive one (std::complex<T>::operator*=(const T&)
+  // accepts any arithmetic factor), so no mixed-scalar detail operator is
+  // needed here
+  for (std::size_t i = 0; i < n; ++i) d[i] *= factor;
 }
 
 /// `dst += src`. Asserts shape compatibility.
