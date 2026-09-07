@@ -1,4 +1,4 @@
-// tests/arena_strided_dgemm.cpp
+// tests/arena_strided_gemm.cpp
 #include <boost/mpl/list.hpp>
 #include "TiledArray/math/blas.h"
 #include "TiledArray/tensor.h"
@@ -68,7 +68,7 @@ std::vector<double> ref_ce_ce(const Outer& L, const Outer& R, std::size_t Mmu,
 }
 
 // ---------------------------------------------------------------------------
-// Sparsity-aware helpers for the per-k segmented strided-DGEMM tests (T1-T15).
+// Sparsity-aware helpers for the per-k segmented strided-GEMM tests (T1-T15).
 //
 // make_sparse: like make_filled, but a cell whose dense_shape(o) is selected by
 // is_hole(o) is built from a zero-volume TA::Range{}, which arena_outer_init
@@ -87,18 +87,18 @@ Outer make_sparse(const TA::Range& outer_range, std::size_t nbatch,
   return t;
 }
 
-// Sparsity-aware reference for arena_strided_dgemm_ce_ce_right in the SAME
-// canonical convention as ref_ce_ce (L=strided P x Q matrix, R=single Q-vector),
-// but generalized to Mo>=1 outer rows, NB batches, holes, and the left-inner
-// transpose. Per the kernel: for result cell C[m,mu] (length P),
+// Sparsity-aware reference for arena_strided_gemm_ce_ce_right in the SAME
+// canonical convention as ref_ce_ce (L=strided P x Q matrix, R=single
+// Q-vector), but generalized to Mo>=1 outer rows, NB batches, holes, and the
+// left-inner transpose. Per the kernel: for result cell C[m,mu] (length P),
 //   C[m,mu](a1) = factor * sum_k present L[m,k] (P x Q) * present R[mu,k] (Q),
 // skipping any k where L[m,k] or R[mu,k] is absent or size-mismatched.
 //   L outer (Mo x nK), canonical index b*Mo*nK + m*nK + k, inner {P,Q}
-//   R outer (Mmu x nK), canonical (mu slow, k fast) b*Mmu*nK + mu*nK + k, inner {Q}
-//   C outer (Mo x Mmu), index b*Mo*Mmu + m*Mmu + mu, inner {P}
-// out[(b*Mo+m)*Mmu+mu] is the expected length-P vector (empty == expect absent).
-// lt mirrors left_inner_transposed: lt=false L stored P x Q (l[a1*Q+a4]),
-// lt=true L stored Q x P (l[a4*P+a1]).
+//   R outer (Mmu x nK), canonical (mu slow, k fast) b*Mmu*nK + mu*nK + k, inner
+//   {Q} C outer (Mo x Mmu), index b*Mo*Mmu + m*Mmu + mu, inner {P}
+// out[(b*Mo+m)*Mmu+mu] is the expected length-P vector (empty == expect
+// absent). lt mirrors left_inner_transposed: lt=false L stored P x Q
+// (l[a1*Q+a4]), lt=true L stored Q x P (l[a4*P+a1]).
 std::vector<std::vector<double>> ref_ce_ce_right_sparse(
     const Outer& L, const Outer& R, std::size_t Mo, std::size_t Mmu,
     std::size_t nK, std::size_t P, double factor, std::size_t nbatch = 1,
@@ -130,16 +130,17 @@ std::vector<std::vector<double>> ref_ce_ce_right_sparse(
   return out;
 }
 
-// Sparsity-aware reference for arena_strided_dgemm_ce_ce_left. Here m (Mo) is
+// Sparsity-aware reference for arena_strided_gemm_ce_ce_left. Here m (Mo) is
 // the strided axis, n (No) the fixed result column; the RIGHT operand cell
 // R[k,n] (the P x Q matrix) is the single non-strided operand and L[m,k] (the
 // length-Q contraction vector) is the strided run. Per the kernel:
 //   C[m,n](b1) = factor * sum_k present L[m,k] (Q) * present R[k,n] (Q x P),
 // where result inner length P = b1. R canonical (a4,b1)=Q x P row-major
-// (rt=false: r[a4*P+b1]); rt mirrors right_inner_transposed (P x Q, r[b1*Q+a4]).
+// (rt=false: r[a4*P+b1]); rt mirrors right_inner_transposed (P x Q,
+// r[b1*Q+a4]).
 //   L outer (Mo x nK), index b*Mo*nK + m*nK + k, inner {Q}
-//   R outer (nK x No), canonical (k slow, n fast) b*nK*No + k*No + n, inner {Q,P}
-//   C outer (Mo x No), index b*Mo*No + m*No + n, inner {P}
+//   R outer (nK x No), canonical (k slow, n fast) b*nK*No + k*No + n, inner
+//   {Q,P} C outer (Mo x No), index b*Mo*No + m*No + n, inner {P}
 std::vector<std::vector<double>> ref_ce_ce_left_sparse(
     const Outer& L, const Outer& R, std::size_t Mo, std::size_t No,
     std::size_t nK, std::size_t P, double factor, std::size_t nbatch = 1,
@@ -195,7 +196,7 @@ Outer assemble_aliased(const Outer& src, const TA::Range& outer_range,
 }
 }  // namespace
 
-BOOST_AUTO_TEST_SUITE(arena_strided_dgemm_suite, TA_UT_LABEL_SERIAL)
+BOOST_AUTO_TEST_SUITE(arena_strided_gemm_suite, TA_UT_LABEL_SERIAL)
 
 // FACT A: uniform cells -> single constant inter-cell stride (>= cell size).
 BOOST_AUTO_TEST_CASE(fact_uniform_constant_stride) {
@@ -242,8 +243,8 @@ BOOST_AUTO_TEST_CASE(ce_e_matches_reference) {
   Outer R = make_filled(TA::Range{N, K}, [&](std::size_t){return TA::Range{Q};}, 2.0);
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{M, N}, 1, [&](std::size_t){return TA::Range{P, Q};});  // zero-init
-  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
-                                       blas::Transpose, /*factor=*/1.0);
+  TA::detail::arena_strided_gemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                      blas::Transpose, /*factor=*/1.0);
   for (std::size_t m = 0; m < M; ++m)
     for (std::size_t n = 0; n < N; ++n) {
       auto ref = ref_ce_e(L, R, m, n, K, P, Q, 1.0);
@@ -266,8 +267,8 @@ BOOST_AUTO_TEST_CASE(ce_e_ragged_cell_still_correct_inline) {
   // for the ragged row use P from k=0 (=3) so the fallback's pp*qq guard holds.
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{M, N}, 1, [&](std::size_t o){ return TA::Range{3, Q}; });
-  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
-                                       blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                      blas::Transpose, 1.0);
   // (0,0): clean GEMM path
   {
     auto ref = ref_ce_e(L, R, 0, 0, K, 3, Q, 1.0);
@@ -298,8 +299,8 @@ BOOST_AUTO_TEST_CASE(ce_e_applies_factor) {
   Outer R = make_filled(TA::Range{N, K}, [&](std::size_t){return TA::Range{Q};}, 2.0);
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{M, N}, 1, [&](std::size_t){return TA::Range{P, Q};});
-  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
-                                       blas::Transpose, 0.5);
+  TA::detail::arena_strided_gemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                      blas::Transpose, 0.5);
   auto ref = ref_ce_e(L, R, 0, 0, K, P, Q, 0.5);
   const double* got = C.data()[0].data();
   for (std::size_t e = 0; e < P * Q; ++e) BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
@@ -324,8 +325,8 @@ BOOST_AUTO_TEST_CASE(ce_e_multi_batch) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   // M=left-ext, N=right-ext, K=contracted; canonical orientation.
-  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K,
-                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                      blas::NoTranspose, 1.0);
   for (std::size_t b = 0; b < NB; ++b)
     for (std::size_t m = 0; m < M; ++m)
       for (std::size_t n = 0; n < N; ++n) {
@@ -345,7 +346,7 @@ BOOST_AUTO_TEST_CASE(ce_e_multi_batch) {
 // Addition A: multi-external inner indices on BOTH operands flatten into the
 // inner outer-product. Left inner {a1,a2} (P=a1*a2), right inner {a3,a4}
 // (Q=a3*a4), result inner {a1,a2,a3,a4} (P*Q). Single batch. Independent
-// outer-product reference; under TA_STRIDED_DGEMM_COUNT the per-cell DGEMM
+// outer-product reference; under TA_STRIDED_GEMM_COUNT the per-cell GEMM
 // fires once per result cell (= M*N).
 BOOST_AUTO_TEST_CASE(ce_e_multi_external_inner) {
   namespace blas = TiledArray::math::blas;
@@ -358,11 +359,11 @@ BOOST_AUTO_TEST_CASE(ce_e_multi_external_inner) {
                         [&](std::size_t){ return TA::Range{a3, a4}; }, 2.0);
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{M, N}, 1, [&](std::size_t){ return TA::Range{a1, a2, a3, a4}; });
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TA::detail::g_strided_gemm_ce_e_calls.store(0);
 #endif
-  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
-                                       blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                      blas::Transpose, 1.0);
   for (std::size_t m = 0; m < M; ++m)
     for (std::size_t n = 0; n < N; ++n) {
       auto ref = ref_ce_e(L, R, m, n, K, P, Q, 1.0);  // flat P*Q
@@ -370,16 +371,16 @@ BOOST_AUTO_TEST_CASE(ce_e_multi_external_inner) {
       for (std::size_t e = 0; e < P * Q; ++e)
         BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
     }
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(), M * N);
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_e_calls.load(), M * N);
 #endif
 }
 
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
 BOOST_AUTO_TEST_CASE(ce_e_fires_clean_path) {
   namespace blas = TiledArray::math::blas;
   const std::size_t M = 2, N = 2, K = 3, P = 3, Q = 4, NB = 2;
-  // NB batches, all uniform sizes => every result cell clean => one DGEMM each.
+  // NB batches, all uniform sizes => every result cell clean => one GEMM each.
   Outer L = TA::detail::arena_outer_init<Outer>(
       TA::Range{M, K}, NB, [&](std::size_t){ return TA::Range{P}; });
   Outer R = TA::detail::arena_outer_init<Outer>(
@@ -392,11 +393,11 @@ BOOST_AUTO_TEST_CASE(ce_e_fires_clean_path) {
   for (std::size_t o = 0; o < NB * K * N; ++o)
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
-  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
-                                       blas::NoTranspose, 1.0);
-  // one DGEMM per result cell per batch
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(), NB * M * N);
+  TA::detail::g_strided_gemm_ce_e_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                      blas::NoTranspose, 1.0);
+  // one GEMM per result cell per batch
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_e_calls.load(), NB * M * N);
 }
 #endif
 
@@ -433,18 +434,20 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_two_tiles) {
   Outer L0 = make_L(VOL0, 1.0), R0 = make_R(VOL0, 2.0);
   Outer L1 = make_L(VOL1, 5.0), R1 = make_R(VOL1, 7.0);
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TA::detail::g_strided_gemm_ce_e_calls.store(0);
 #endif
   // Regime-A call: present C as (Range{1}, nbatch=NB), M=N=1, K=vol, per tile.
   auto cview = C.reshape(TA::Range{1}, NB);
-  TA::detail::arena_strided_dgemm_ce_e(cview, L0, R0, /*M=*/std::size_t{1},
-                                       /*N=*/std::size_t{1}, /*K=*/VOL0,
-                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(cview, L0, R0, /*M=*/std::size_t{1},
+                                      /*N=*/std::size_t{1}, /*K=*/VOL0,
+                                      blas::NoTranspose, blas::NoTranspose,
+                                      1.0);
   auto cview2 = C.reshape(TA::Range{1}, NB);
-  TA::detail::arena_strided_dgemm_ce_e(cview2, L1, R1, /*M=*/std::size_t{1},
-                                       /*N=*/std::size_t{1}, /*K=*/VOL1,
-                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(cview2, L1, R1, /*M=*/std::size_t{1},
+                                      /*N=*/std::size_t{1}, /*K=*/VOL1,
+                                      blas::NoTranspose, blas::NoTranspose,
+                                      1.0);
 
   // Reference: for each batch b, sum the rank-1 outer products over BOTH tiles.
   for (std::size_t b = 0; b < NB; ++b) {
@@ -463,9 +466,9 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_two_tiles) {
     for (std::size_t e = 0; e < P * Q; ++e)
       BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
   }
-#ifdef TA_STRIDED_DGEMM_COUNT
-  // clean operands => one DGEMM per (tile, batch); both tiles clean.
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+#ifdef TA_STRIDED_GEMM_COUNT
+  // clean operands => one GEMM per (tile, batch); both tiles clean.
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_e_calls.load(),
                     std::size_t{2} * NB);
 #endif
 }
@@ -512,9 +515,10 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_scattered_falls_back) {
       TA::Range{NB}, /*batch=*/1, [&](std::size_t) { return TA::Range{P0, Q}; });
 
   auto cview = C.reshape(TA::Range{1}, NB);
-  TA::detail::arena_strided_dgemm_ce_e(cview, L, R, /*M=*/std::size_t{1},
-                                       /*N=*/std::size_t{1}, /*K=*/VOL,
-                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(cview, L, R, /*M=*/std::size_t{1},
+                                      /*N=*/std::size_t{1}, /*K=*/VOL,
+                                      blas::NoTranspose, blas::NoTranspose,
+                                      1.0);
 
   // Reference: per batch b, sum rank-1 outer products over k, but ONLY for k
   // whose left inner size == P0 (the kernel's fallback guard skips the ragged k).
@@ -533,13 +537,13 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_scattered_falls_back) {
       BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
   }
   // Counter intentionally NOT asserted: the ragged cell takes the inline
-  // fallback (no clean DGEMM), so firing is not the property under test --
+  // fallback (no clean GEMM), so firing is not the property under test --
   // correctness of the fallback is.
 }
 
 // Task 3.3 Step 2a: VOL=1 edge -> K=1, a single rank-1 outer product per batch.
 // One operand tile (one strided call). Hand reference + (count build) exactly
-// NB DGEMMs (one per batch, one tile, clean).
+// NB GEMMs (one per batch, one tile, clean).
 BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_vol1) {
   namespace blas = TiledArray::math::blas;
   const std::size_t NB = 2;
@@ -559,13 +563,14 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_vol1) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.02 * o + e;
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TA::detail::g_strided_gemm_ce_e_calls.store(0);
 #endif
   auto cview = C.reshape(TA::Range{1}, NB);
-  TA::detail::arena_strided_dgemm_ce_e(cview, L, R, /*M=*/std::size_t{1},
-                                       /*N=*/std::size_t{1}, /*K=*/VOL,
-                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(cview, L, R, /*M=*/std::size_t{1},
+                                      /*N=*/std::size_t{1}, /*K=*/VOL,
+                                      blas::NoTranspose, blas::NoTranspose,
+                                      1.0);
   for (std::size_t b = 0; b < NB; ++b) {
     std::vector<double> ref(P * Q, 0.0);
     const double* l = L.data()[b * VOL + 0].data();  // P
@@ -576,15 +581,15 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_vol1) {
     for (std::size_t e = 0; e < P * Q; ++e)
       BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
   }
-#ifdef TA_STRIDED_DGEMM_COUNT
-  // one DGEMM per batch, one (clean) tile.
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(), NB);
+#ifdef TA_STRIDED_GEMM_COUNT
+  // one GEMM per batch, one (clean) tile.
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_e_calls.load(), NB);
 #endif
 }
 
 // Task 3.3 Step 2b: P=1 and Q=1 inner-extent edges -> the rank-1 outer product
 // degenerates to a scalar*scalar per k. Two operand tiles (like R1), cross-tile
-// beta=1; (count build) == 2*NB DGEMMs (one per tile per batch, all clean).
+// beta=1; (count build) == 2*NB GEMMs (one per tile per batch, all clean).
 BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_p1_q1) {
   namespace blas = TiledArray::math::blas;
   const std::size_t NB = 2;
@@ -612,17 +617,19 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_p1_q1) {
   Outer L0 = make_L(VOL0, 1.0), R0 = make_R(VOL0, 2.0);
   Outer L1 = make_L(VOL1, 5.0), R1 = make_R(VOL1, 7.0);
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TA::detail::g_strided_gemm_ce_e_calls.store(0);
 #endif
   auto cview = C.reshape(TA::Range{1}, NB);
-  TA::detail::arena_strided_dgemm_ce_e(cview, L0, R0, /*M=*/std::size_t{1},
-                                       /*N=*/std::size_t{1}, /*K=*/VOL0,
-                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(cview, L0, R0, /*M=*/std::size_t{1},
+                                      /*N=*/std::size_t{1}, /*K=*/VOL0,
+                                      blas::NoTranspose, blas::NoTranspose,
+                                      1.0);
   auto cview2 = C.reshape(TA::Range{1}, NB);
-  TA::detail::arena_strided_dgemm_ce_e(cview2, L1, R1, /*M=*/std::size_t{1},
-                                       /*N=*/std::size_t{1}, /*K=*/VOL1,
-                                       blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_e(cview2, L1, R1, /*M=*/std::size_t{1},
+                                      /*N=*/std::size_t{1}, /*K=*/VOL1,
+                                      blas::NoTranspose, blas::NoTranspose,
+                                      1.0);
 
   for (std::size_t b = 0; b < NB; ++b) {
     std::vector<double> ref(P * Q, 0.0);
@@ -638,8 +645,8 @@ BOOST_AUTO_TEST_CASE(regime_a_oprod_mapping_p1_q1) {
     const double* got = C.data()[b].data();
     BOOST_CHECK_CLOSE(got[0], ref[0], 1e-12);
   }
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_e_calls.load(),
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_e_calls.load(),
                     std::size_t{2} * NB);
 #endif
 }
@@ -661,8 +668,9 @@ BOOST_AUTO_TEST_CASE(ce_ce_matches_reference_canonical) {
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});  // zero-init
   namespace blas = TiledArray::math::blas;
   // Mo=1 (no left external), No=Mmu (mu), Ko=nK (k); canonical right_op=Transpose.
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::Transpose, 1.0);
   auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
     const double* got = C.data()[mu].data();
@@ -694,8 +702,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_orientation_aware_no_transpose) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
-                                        blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, 1, Mmu, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   auto ref = ref_ce_ce(L, Rc, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
     const double* got = C.data()[mu].data();
@@ -719,8 +727,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_multi_batch) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, 1, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   for (std::size_t b = 0; b < NB; ++b) {
     std::vector<double> ref(Mmu * P, 0.0);
     for (std::size_t k = 0; k < nK; ++k) {
@@ -764,8 +772,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_ragged_batch_falls_back_inline) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, NB, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, 1, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   for (std::size_t b = 0; b < NB; ++b) {
     std::vector<double> ref(Mmu * P, 0.0);
     for (std::size_t k = 0; k < nK; ++k) {
@@ -804,8 +812,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_applies_factor) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
-                                        blas::NoTranspose, blas::Transpose, 0.5);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, 1, Mmu, nK, blas::NoTranspose, blas::Transpose, 0.5);
   auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 0.5);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
     const double* got = C.data()[mu].data();
@@ -833,8 +841,9 @@ BOOST_AUTO_TEST_CASE(ce_ce_empty_mid_run_falls_back) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::Transpose, 1.0);
   std::vector<double> ref(Mmu * P, 0.0);
   for (std::size_t k = 0; k < nK; ++k) {
     const double* l = L.data()[k].data();
@@ -877,9 +886,9 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/Mo, /*No=*/Mmu,
-                                        /*Ko=*/nK, blas::NoTranspose,
-                                        blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(C, L, R, /*Mo=*/Mo, /*No=*/Mmu,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::Transpose, 1.0);
   for (std::size_t m = 0; m < Mo; ++m) {
     std::vector<double> ref(Mmu * P, 0.0);
     for (std::size_t k = 0; k < nK; ++k) {
@@ -917,8 +926,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_multi_batch) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   for (std::size_t b = 0; b < NB; ++b)
     for (std::size_t m = 0; m < Mo; ++m) {
       std::vector<double> ref(Mmu * P, 0.0);
@@ -963,8 +972,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_orientation_no_transpose) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK, blas::NoTranspose,
-                                        blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   for (std::size_t m = 0; m < Mo; ++m) {
     std::vector<double> ref(Mmu * P, 0.0);
     for (std::size_t k = 0; k < nK; ++k) {
@@ -1009,8 +1018,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_ragged_falls_back) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK, blas::NoTranspose,
-                                        blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   for (std::size_t m = 0; m < Mo; ++m) {
     std::vector<double> ref(Mmu * P, 0.0);
     for (std::size_t k = 0; k < nK; ++k) {
@@ -1059,9 +1068,9 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_clean_core) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, No}, 1, [&](std::size_t) { return TA::Range{P}; });
   namespace blas = TiledArray::math::blas;
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, /*Mo=*/Mo, /*No=*/No,
-                                             /*Ko=*/nK, blas::NoTranspose,
-                                             blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(C, L, R, /*Mo=*/Mo, /*No=*/No,
+                                            /*Ko=*/nK, blas::NoTranspose,
+                                            blas::NoTranspose, 1.0);
   for (std::size_t m = 0; m < Mo; ++m)
     for (std::size_t n = 0; n < No; ++n) {
       std::vector<double> ref(P, 0.0);
@@ -1122,10 +1131,10 @@ void zero_result(Outer& C, std::size_t ncells) {
 }
 }  // namespace
 
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
 BOOST_AUTO_TEST_CASE(ce_ce_fires_clean_path) {
   const std::size_t Mmu = 3, nK = 2, P = 4, Q = 5, NB = 2;
-  // NB batches, all uniform => every (b,k) DGEMM fires => count == NB*Mo*nK.
+  // NB batches, all uniform => every (b,k) GEMM fires => count == NB*Mo*nK.
   Outer L = TA::detail::arena_outer_init<Outer>(
       TA::Range{nK}, NB, [&](std::size_t){return TA::Range{P, Q};});
   Outer R = TA::detail::arena_outer_init<Outer>(
@@ -1139,11 +1148,12 @@ BOOST_AUTO_TEST_CASE(ce_ce_fires_clean_path) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, 1, Mmu, nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
-  // per-DGEMM count: Mo(==1) * nK per batch
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), NB * 1 * nK);
+  TA::detail::g_strided_gemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, 1, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
+  // per-GEMM count: Mo(==1) * nK per batch
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_right_calls.load(),
+                    NB * 1 * nK);
 }
 
 // Addition B firing count: Mo>1, nbatch>1 -> clean count == NB*Mo*nK.
@@ -1162,10 +1172,11 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_external_fires_clean_path) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), NB * Mo * nK);
+  TA::detail::g_strided_gemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_right_calls.load(),
+                    NB * Mo * nK);
 }
 
 // Was "does_not_fire": under per-k segmentation a mid-run hole no longer drops
@@ -1186,12 +1197,13 @@ BOOST_AUTO_TEST_CASE(ce_ce_scattered_run_segments_and_is_correct) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::g_strided_gemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::Transpose, 1.0);
   // mu=1 has a mismatched size, so per k the walker emits segments {0} and {2}
   // (the size-mismatched mu=1 cannot join either) => 2 segments x nK(=2) = 4.
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 4u);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_right_calls.load(), 4u);
   std::vector<double> ref(Mmu * P, 0.0);
   for (std::size_t k = 0; k < nK; ++k) {
     const auto& lk = L.data()[k];
@@ -1252,12 +1264,13 @@ BOOST_AUTO_TEST_CASE(ce_ce_page_jump_run_segments_and_is_correct) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){return TA::Range{P};});
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
-                                        blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::g_strided_gemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::Transpose, 1.0);
   // perm {0,2,1} makes the inter-cell stride non-constant, so per k the walker
   // breaks the run into constant-stride segments {0,1} and {2} => 2 x nK(=2) = 4.
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 4u);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_right_calls.load(), 4u);
   auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
     const double* got = C.data()[mu].data();
@@ -1266,7 +1279,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_page_jump_run_segments_and_is_correct) {
   }
 }
 
-// LEFT-clean firing count: Mo>1, No>1, single batch -> one DGEMM per (n,k)
+// LEFT-clean firing count: Mo>1, No>1, single batch -> one GEMM per (n,k)
 // (the left-external m is ridden into BLAS M) => count == No*nK.
 BOOST_AUTO_TEST_CASE(ce_ce_left_clean_fires_clean_path) {
   const std::size_t Mo = 2, No = 3, nK = 2, P = 4, Q = 5;
@@ -1283,11 +1296,10 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_clean_fires_clean_path) {
     for (std::size_t e = 0; e < R.data()[o].size(); ++e)
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-                                             blas::NoTranspose, blas::NoTranspose,
-                                             1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_left_calls.load(),
+  TA::detail::g_strided_gemm_ce_ce_left_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_left_calls.load(),
                     No * nK);
 }
 
@@ -1324,10 +1336,10 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_page_jump_run_segments_and_is_correct) {
       TA::Range{Mo, No}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, C.range().volume());
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_left_calls.load(), 4u);
+  TA::detail::g_strided_gemm_ce_ce_left_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_left_calls.load(), 4u);
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, No, P);
 }
@@ -1358,10 +1370,11 @@ BOOST_AUTO_TEST_CASE(ce_ce_right_result_page_jump_segments_and_is_correct) {
   const std::ptrdiff_t d12 = C.data()[2].data() - C.data()[1].data();
   BOOST_REQUIRE_NE(d01, d12);  // non-constant result stride
   namespace blas = TiledArray::math::blas;
-  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu, /*Ko=*/nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), 4u);
+  TA::detail::g_strided_gemm_ce_ce_right_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_ce_right(C, L, R, /*Mo=*/1, /*No=*/Mmu,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_right_calls.load(), 4u);
   auto ref = ref_ce_ce(L, R, Mmu, nK, P, Q, 1.0);
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
     const double* got = C.data()[mu].data();
@@ -1372,7 +1385,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_right_result_page_jump_segments_and_is_correct) {
 #endif
 
 // ===========================================================================
-// Per-k segmented strided-DGEMM tests (T1-T15). The kernel walks each present k
+// Per-k segmented strided-GEMM tests (T1-T15). The kernel walks each present k
 // and emits one strided GEMM per maximal contiguous (present + uniform-stride +
 // size-matched) segment along the strided axis, skipping holes, accumulating
 // with beta=1 across k and across segments, never touching absent result cells.
@@ -1393,8 +1406,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_dense_regression) {
       R.data()[o].data()[e] = 2.0 + 0.01 * o + e;
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
   // Independent naive-oracle cross-check.
@@ -1433,8 +1446,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_single_interior_hole) {
   Outer C = make_sparse(TA::Range{Mmu}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1454,8 +1467,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_holes_stay_absent) {
   Outer C = make_sparse(TA::Range{Mmu}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   // hole cells stay absent; present cells stay present.
   for (std::size_t mu = 0; mu < Mmu; ++mu) {
     if (chole(mu))
@@ -1482,8 +1495,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_edge_holes) {
   Outer C = make_sparse(TA::Range{Mmu}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1500,8 +1513,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_alternating_gemv) {
   Outer C = make_sparse(TA::Range{Mmu}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1520,8 +1533,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_per_k_misaligned) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1541,8 +1554,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_absent_k) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1561,8 +1574,9 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_transposed_inner) {
   Outer C = make_sparse(TA::Range{Mmu}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0, /*left_inner_transposed=*/true);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0,
+      /*left_inner_transposed=*/true);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0, 1, /*lt=*/true);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1587,8 +1601,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_multi_batch_sparse) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, NB, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, NB * Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, Lb, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, Lb, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(Lb, R, Mo, Mmu, nK, P, 1.0, NB);
   check_ce_ce(C, ref, NB, Mo, Mmu, P);
 }
@@ -1605,8 +1619,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_applies_factor) {
   Outer C = make_sparse(TA::Range{Mmu}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 2.5);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 2.5);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 2.5);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1628,8 +1642,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_size_mismatch_defensive) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto ref = ref_ce_ce_right_sparse(L, R, Mo, Mmu, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, Mmu, P);
 }
@@ -1652,8 +1666,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_per_k_misaligned) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, No}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mo * No);
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, No, P);
 }
@@ -1674,17 +1688,17 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_single_interior_hole) {
   Outer C = make_sparse(TA::Range{Mo, No}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mo * No);
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, No, P);
 }
 
-// ---- Segment-count assertions (need -DTA_STRIDED_DGEMM_COUNT) ----
+// ---- Segment-count assertions (need -DTA_STRIDED_GEMM_COUNT) ----
 
 // T13: dense Mmu=6, nK=2 -> 2 segment-GEMMs (one full-run segment per k).
 BOOST_AUTO_TEST_CASE(ce_ce_seg_count_dense) {
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
   namespace blas = TA::math::blas;
   const std::size_t Mo = 1, Mmu = 6, nK = 2, P = 3, Q = 4;
   Outer L = make_filled(TA::Range{nK}, [&](std::size_t){return TA::Range{P, Q};}, 1.0);
@@ -1696,19 +1710,20 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_count_dense) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mmu);
-  TA::detail::g_strided_dgemm_ce_ce_right_calls = 0;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(
-      TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), std::size_t{2});
+  TA::detail::g_strided_gemm_ce_ce_right_calls = 0;
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_right_calls.load(),
+                    std::size_t{2});
 #else
-  BOOST_TEST_MESSAGE("ce_ce_seg_count_dense skipped (no TA_STRIDED_DGEMM_COUNT)");
+  BOOST_TEST_MESSAGE(
+      "ce_ce_seg_count_dense skipped (no TA_STRIDED_GEMM_COUNT)");
 #endif
 }
 
 // T14: T5 pattern -> 3 segment-GEMMs total (k=0: {0},{2}=2; k=1: {1,2}=1).
 BOOST_AUTO_TEST_CASE(ce_ce_seg_count_per_k_misaligned) {
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
   namespace blas = TA::math::blas;
   const std::size_t Mo = 1, Mmu = 3, nK = 2, P = 3, Q = 4;
   auto rhole = [&](std::size_t o) { return o == 2 || o == 1; };
@@ -1718,20 +1733,20 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_count_per_k_misaligned) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mmu);
-  TA::detail::g_strided_dgemm_ce_ce_right_calls = 0;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(
-      TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), std::size_t{3});
+  TA::detail::g_strided_gemm_ce_ce_right_calls = 0;
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_right_calls.load(),
+                    std::size_t{3});
 #else
   BOOST_TEST_MESSAGE(
-      "ce_ce_seg_count_per_k_misaligned skipped (no TA_STRIDED_DGEMM_COUNT)");
+      "ce_ce_seg_count_per_k_misaligned skipped (no TA_STRIDED_GEMM_COUNT)");
 #endif
 }
 
 // T15: T4 pattern (even present, Mmu=6, nK=1) -> 3 segment-GEMMs (M=1 each).
 BOOST_AUTO_TEST_CASE(ce_ce_seg_count_alternating) {
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
   namespace blas = TA::math::blas;
   const std::size_t Mo = 1, Mmu = 6, nK = 1, P = 3, Q = 4;
   auto rhole = [&](std::size_t o) { return ((o / nK) % 2) == 1; };
@@ -1742,14 +1757,14 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_count_alternating) {
   Outer C = make_sparse(TA::Range{Mmu}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mmu);
-  TA::detail::g_strided_dgemm_ce_ce_right_calls = 0;
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
-  BOOST_CHECK_EQUAL(
-      TA::detail::g_strided_dgemm_ce_ce_right_calls.load(), std::size_t{3});
+  TA::detail::g_strided_gemm_ce_ce_right_calls = 0;
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_right_calls.load(),
+                    std::size_t{3});
 #else
   BOOST_TEST_MESSAGE(
-      "ce_ce_seg_count_alternating skipped (no TA_STRIDED_DGEMM_COUNT)");
+      "ce_ce_seg_count_alternating skipped (no TA_STRIDED_GEMM_COUNT)");
 #endif
 }
 
@@ -1758,7 +1773,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_count_alternating) {
 // (k=0: m in {0},{2} = 2 segs; k=1: m in {1,2} = 1 seg). Proves the LEFT kernel
 // segments rather than dropping the whole run to the scalar fallback.
 BOOST_AUTO_TEST_CASE(ce_ce_left_seg_count_per_k_misaligned) {
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
   namespace blas = TA::math::blas;
   const std::size_t Mo = 3, No = 1, nK = 2, P = 3, Q = 4;
   // L outer (Mo,nK) ordinal = m*nK + k. Present set: k=0 -> m{0,2}; k=1 -> m{1,2}.
@@ -1774,17 +1789,18 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_count_per_k_misaligned) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, No}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mo * No);
-  TA::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
-  BOOST_CHECK_EQUAL(TA::detail::g_strided_dgemm_ce_ce_left_calls.load(),
+  TA::detail::g_strided_gemm_ce_ce_left_calls.store(0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
+  BOOST_CHECK_EQUAL(TA::detail::g_strided_gemm_ce_ce_left_calls.load(),
                     std::size_t{3});
   // also correctness against the sparsity-aware reference.
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, No, P);
 #else
   BOOST_TEST_MESSAGE(
-      "ce_ce_left_seg_count_per_k_misaligned skipped (no TA_STRIDED_DGEMM_COUNT)");
+      "ce_ce_left_seg_count_per_k_misaligned skipped (no "
+      "TA_STRIDED_GEMM_COUNT)");
 #endif
 }
 
@@ -1803,7 +1819,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_transposed_inner) {
   Outer C = make_sparse(TA::Range{Mo, No}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, Mo * No);
-  TA::detail::arena_strided_dgemm_ce_ce_left(
+  TA::detail::arena_strided_gemm_ce_ce_left(
       C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0,
       /*right_inner_transposed=*/true);
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0, 1, /*rt=*/true);
@@ -1826,8 +1842,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_right_seg_left_op_transpose) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, Mmu}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mo * Mmu);
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, Mo, Mmu, nK,
-      blas::Transpose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      C, L, R, Mo, Mmu, nK, blas::Transpose, blas::Transpose, 1.0);
   // C[m,mu](a1) = sum_k sum_a4 L_phys[k*Mo+m](a1,a4) * R[mu,k](a4)
   for (std::size_t m = 0; m < Mo; ++m)
     for (std::size_t mu = 0; mu < Mmu; ++mu) {
@@ -1861,8 +1877,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_right_op_transpose) {
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, No}, 1, [&](std::size_t){ return TA::Range{P}; });
   zero_result(C, Mo * No);
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::Transpose, 1.0);
   // C[m,n](b1) = sum_k sum_a4 L[m*nK+k](a4) * R_phys[n*nK+k](a4,b1)
   for (std::size_t m = 0; m < Mo; ++m)
     for (std::size_t n = 0; n < No; ++n) {
@@ -1894,8 +1910,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_hole_and_factor) {
   Outer C = make_sparse(TA::Range{Mo, No}, 1,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, C.range().volume());
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, factor);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, factor);
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, factor);
   check_ce_ce(C, ref, 1, Mo, No, P);
 }
@@ -1915,8 +1931,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_absent_k) {
   Outer C = make_filled(TA::Range{Mo, No},
                         [&](std::size_t){ return TA::Range{P}; }, 0.0);
   zero_result(C, C.range().volume());
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, No, P);
 }
@@ -1937,8 +1953,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_strided_operand_absent_k) {
   Outer C = make_filled(TA::Range{Mo, No},
                         [&](std::size_t){ return TA::Range{P}; }, 0.0);
   zero_result(C, C.range().volume());
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, No, P);
 }
@@ -1962,8 +1978,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_size_mismatch_defensive) {
   Outer C = make_filled(TA::Range{Mo, No},
                         [&](std::size_t){ return TA::Range{P}; }, 0.0);
   zero_result(C, C.range().volume());
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, R, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   // Reference skips any k where L[m,k].size() != Q (R[k,n].size()==P*Q gate).
   auto ref = ref_ce_ce_left_sparse(L, R, Mo, No, nK, P, 1.0);
   check_ce_ce(C, ref, 1, Mo, No, P);
@@ -1996,8 +2012,8 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_seg_multi_batch_sparse) {
   Outer C = make_sparse(TA::Range{Mo, No}, NB,
                         [&](std::size_t){ return TA::Range{P}; }, chole, 0.0);
   zero_result(C, C.range().volume() * NB);
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, Rb, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      C, L, Rb, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   auto ref = ref_ce_ce_left_sparse(L, Rb, Mo, No, nK, P, 1.0, NB);
   check_ce_ce(C, ref, NB, Mo, No, P);
 }
@@ -2013,7 +2029,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_all_absent_run_is_noop) {
   Outer Cr = make_sparse(TA::Range{Mmu}, 1,
                          [&](std::size_t){ return TA::Range{P}; },
                          [](std::size_t){ return true; }, 0.0);  // all holes
-  BOOST_REQUIRE_NO_THROW(TA::detail::arena_strided_dgemm_ce_ce_right(
+  BOOST_REQUIRE_NO_THROW(TA::detail::arena_strided_gemm_ce_ce_right(
       Cr, Lr, Rr, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0));
   for (std::size_t o = 0; o < Cr.range().volume(); ++o)
     BOOST_CHECK(!Cr.data()[o]);  // all stay absent
@@ -2023,7 +2039,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_all_absent_run_is_noop) {
   Outer Cl = make_sparse(TA::Range{Mo, No}, 1,
                          [&](std::size_t){ return TA::Range{P}; },
                          [](std::size_t){ return true; }, 0.0);
-  BOOST_REQUIRE_NO_THROW(TA::detail::arena_strided_dgemm_ce_ce_left(
+  BOOST_REQUIRE_NO_THROW(TA::detail::arena_strided_gemm_ce_ce_left(
       Cl, Ll, Rl, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0));
   for (std::size_t o = 0; o < Cl.range().volume(); ++o)
     BOOST_CHECK(!Cl.data()[o]);
@@ -2058,12 +2074,12 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_killswitch_matches_right) {
   };
   auto [Ls, Rs, Cs] = build();  // switch OFF (segment walker)
   TA::detail::ce_ce_strided_disabled() = false;
-  TA::detail::arena_strided_dgemm_ce_ce_right(Cs, Ls, Rs, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      Cs, Ls, Rs, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   auto [Lp, Rp, Cp] = build();  // switch ON (per-cell)
   TA::detail::ce_ce_strided_disabled() = true;
-  TA::detail::arena_strided_dgemm_ce_ce_right(Cp, Lp, Rp, Mo, Mmu, nK,
-      blas::NoTranspose, blas::Transpose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_right(
+      Cp, Lp, Rp, Mo, Mmu, nK, blas::NoTranspose, blas::Transpose, 1.0);
   TA::detail::ce_ce_strided_disabled() = false;  // restore production default
   for (std::size_t o = 0; o < Cs.range().volume(); ++o) {
     BOOST_REQUIRE_EQUAL(bool(Cs.data()[o]), bool(Cp.data()[o]));
@@ -2099,12 +2115,12 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_killswitch_matches_left) {
   };
   auto [Ls, Rs, Cs] = build();
   TA::detail::ce_ce_strided_disabled() = false;
-  TA::detail::arena_strided_dgemm_ce_ce_left(Cs, Ls, Rs, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      Cs, Ls, Rs, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   auto [Lp, Rp, Cp] = build();
   TA::detail::ce_ce_strided_disabled() = true;
-  TA::detail::arena_strided_dgemm_ce_ce_left(Cp, Lp, Rp, Mo, No, nK,
-      blas::NoTranspose, blas::NoTranspose, 1.0);
+  TA::detail::arena_strided_gemm_ce_ce_left(
+      Cp, Lp, Rp, Mo, No, nK, blas::NoTranspose, blas::NoTranspose, 1.0);
   TA::detail::ce_ce_strided_disabled() = false;
   for (std::size_t o = 0; o < Cs.range().volume(); ++o) {
     BOOST_REQUIRE_EQUAL(bool(Cs.data()[o]), bool(Cp.data()[o]));
@@ -2115,7 +2131,7 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_killswitch_matches_left) {
 }
 
 // ---------------------------------------------------------------------------
-// Every other BLAS GEMM element type admitted by is_strided_dgemm_numeric_v
+// Every other BLAS GEMM element type admitted by is_strided_gemm_numeric_v
 // (double is the type of the whole suite above): the three strided kernels
 // are templated on the inner numeric type, so float, complex<float> and
 // complex<double> ToT contractions (e.g. Kramers/relativistic CSV amplitudes)
@@ -2175,8 +2191,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ce_e_numeric_matches_reference, T,
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{M, N}, 1,
       [&](std::size_t) { return TA::Range{P, Q}; });  // zero-init
-  TA::detail::arena_strided_dgemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
-                                       blas::Transpose, factor);
+  TA::detail::arena_strided_gemm_ce_e(C, L, R, M, N, K, blas::NoTranspose,
+                                      blas::Transpose, factor);
   for (std::size_t m = 0; m < M; ++m)
     for (std::size_t n = 0; n < N; ++n) {
       std::vector<T> ref(P * Q, T{});
@@ -2207,9 +2223,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ce_ce_right_numeric_matches_reference, T,
   // C outer (Mo,Mmu) row-major (m slow, mu fast), inner {P}.
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, Mmu}, 1, [&](std::size_t) { return TA::Range{P}; });
-  TA::detail::arena_strided_dgemm_ce_ce_right(C, L, R, /*Mo=*/Mo, /*No=*/Mmu,
-                                              /*Ko=*/nK, blas::NoTranspose,
-                                              blas::Transpose, factor);
+  TA::detail::arena_strided_gemm_ce_ce_right(C, L, R, /*Mo=*/Mo, /*No=*/Mmu,
+                                             /*Ko=*/nK, blas::NoTranspose,
+                                             blas::Transpose, factor);
   for (std::size_t m = 0; m < Mo; ++m)
     for (std::size_t mu = 0; mu < Mmu; ++mu) {
       std::vector<T> ref(P, T{});
@@ -2242,9 +2258,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ce_ce_left_numeric_matches_reference, T,
   // C outer (Mo,No) row-major (m slow, n fast), inner {P}.
   Outer C = TA::detail::arena_outer_init<Outer>(
       TA::Range{Mo, No}, 1, [&](std::size_t) { return TA::Range{P}; });
-  TA::detail::arena_strided_dgemm_ce_ce_left(C, L, R, /*Mo=*/Mo, /*No=*/No,
-                                             /*Ko=*/nK, blas::NoTranspose,
-                                             blas::NoTranspose, factor);
+  TA::detail::arena_strided_gemm_ce_ce_left(C, L, R, /*Mo=*/Mo, /*No=*/No,
+                                            /*Ko=*/nK, blas::NoTranspose,
+                                            blas::NoTranspose, factor);
   for (std::size_t m = 0; m < Mo; ++m)
     for (std::size_t n = 0; n < No; ++n) {
       std::vector<T> ref(P, T{});

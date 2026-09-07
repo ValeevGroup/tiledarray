@@ -38,41 +38,41 @@
 
 namespace TiledArray::detail {
 
-/// Numeric types the arena strided-DGEMM kernels (ce+e, ce+ce) are
+/// Numeric types the arena strided-GEMM kernels (ce+e, ce+ce) are
 /// instantiated for: the four BLAS gemm element types (float, double,
 /// std::complex<float>, std::complex<double>). The kernels are layout/stride
 /// machinery over math::blas::gemm, so all four share one body; the ContEngine
 /// install gates and the hc+e reuse gate consult this trait so any other inner
 /// numeric type keeps the per-cell path.
 template <typename T>
-inline constexpr bool is_strided_dgemm_numeric_v =
+inline constexpr bool is_strided_gemm_numeric_v =
     std::is_same_v<T, float> || std::is_same_v<T, double> ||
     std::is_same_v<T, std::complex<float>> ||
     std::is_same_v<T, std::complex<double>>;
 
-/// Env-gated (TA_STRIDED_DGEMM_VERBOSE) toggle for the strided-DGEMM install
-/// logger. Reads the environment once. Set TA_STRIDED_DGEMM_VERBOSE=1 to have
-/// the ContEngine print, per ToT contraction, whether a strided-DGEMM regime
+/// Env-gated (TA_STRIDED_GEMM_VERBOSE) toggle for the strided-GEMM install
+/// logger. Reads the environment once. Set TA_STRIDED_GEMM_VERBOSE=1 to have
+/// the ContEngine print, per ToT contraction, whether a strided-GEMM regime
 /// (hce+e / hc+e / hce+ce) FIRES or REVERTS to the generic by-cell path.
-inline bool strided_dgemm_verbose() {
+inline bool strided_gemm_verbose() {
   static const bool enabled = [] {
-    const char* e = std::getenv("TA_STRIDED_DGEMM_VERBOSE");
+    const char* e = std::getenv("TA_STRIDED_GEMM_VERBOSE");
     return e != nullptr && e[0] != '\0' && !(e[0] == '0' && e[1] == '\0');
   }();
   return enabled;
 }
 
-/// One-line install-decision logger for the strided-DGEMM regimes. No-op unless
-/// strided_dgemm_verbose() (i.e. TA_STRIDED_DGEMM_VERBOSE) is set.
-inline void strided_dgemm_log(const char* msg) {
-  if (strided_dgemm_verbose()) std::cerr << "[strided-dgemm] " << msg << '\n';
+/// One-line install-decision logger for the strided-GEMM regimes. No-op unless
+/// strided_gemm_verbose() (i.e. TA_STRIDED_GEMM_VERBOSE) is set.
+inline void strided_gemm_log(const char* msg) {
+  if (strided_gemm_verbose()) std::cerr << "[strided-gemm] " << msg << '\n';
 }
 
 /// ===========================================================================
 /// GEMM-vs-op timing instrumentation (Amdahl profiling).
 ///
 /// Accumulates the wall-clock nanoseconds spent INSIDE blas::gemm in the
-/// strided-DGEMM regimes, separated by regime (ce+e = inner outer-product,
+/// strided-GEMM regimes, separated by regime (ce+e = inner outer-product,
 /// ce+ce = inner contraction). The inner-cell loops in each kernel are serial
 /// within a single Product op, so summing per-call durations across all ops is
 /// directly comparable to the summed per-op "Eval | Product | <ns>ns" trace
@@ -127,7 +127,7 @@ class ScopedGemmTimer {
 /// Each ce+e strided GEMM is a (P x Q) result accumulated over K, i.e.
 /// gemm dims M=P, N=Q, K=K. We bucket calls by the exact (P,Q,K) triple and
 /// tally count + wall ns per bucket, so we can see whether the inner extents
-/// in a given molecule are large enough to feed an efficient DGEMM (the bench
+/// in a given molecule are large enough to feed an efficient GEMM (the bench
 /// used K~256; CSV/PNO domains in small molecules may be far smaller).
 ///
 /// To stay lock-free in the hot loop, each thread accumulates into its own
@@ -220,7 +220,7 @@ class ScopedShapedGemmTimer {
 /// ---------------------------------------------------------------------------
 /// Phase decomposition of the ce+ce kernel time (where does the non-GEMM
 /// overhead go?). All gated by TA_GEMM_TIMING; printed at exit.
-///   kernel_total = whole arena_strided_dgemm_ce_ce_{right,left} body
+///   kernel_total = whole arena_strided_gemm_ce_ce_{right,left} body
 ///   gemm         = g_gemm_ns_ce_ce (the blas::gemm calls, timed elsewhere)
 ///   check        = the per-(b,m/n) presence+stride cleanliness verification
 ///   fallback     = the per-cell GEMV scalar path taken when a run is not clean
@@ -278,7 +278,7 @@ inline void phase_stop(std::atomic<std::uint64_t>& acc,
 ///   1 = absent   : a cell in the run is missing (sparsity / screened out)
 ///   2 = nonuniform: present, but inner-cell sizes differ along the run
 ///   3 = stride    : present + uniform, but cells are NOT at a constant
-///                   page-jump-free stride (the strided-DGEMM precondition)
+///                   page-jump-free stride (the strided-GEMM precondition)
 ///   0 = run looks clean (so the rejection came from the OTHER operand run)
 inline std::atomic<std::uint64_t> g_fall_runs_ce_ce{0};
 inline std::atomic<std::uint64_t> g_fall_res_absent_ce_ce{0};      // 1
@@ -1167,38 +1167,38 @@ void fused_scale_t_x_tot_inplace(Result& result, const Scalar& s,
       result, right);
 }
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-inline std::atomic<std::size_t> g_strided_dgemm_ce_e_calls{0};
+#ifdef TA_STRIDED_GEMM_COUNT
+inline std::atomic<std::size_t> g_strided_gemm_ce_e_calls{0};
 #endif
 
-/// ce+e strided-DGEMM core (inner OUTER-PRODUCT), looped over the Hadamard-
+/// ce+e strided-GEMM core (inner OUTER-PRODUCT), looped over the Hadamard-
 /// folded nbatch. For each batch b and result cell (m,n):
 ///   C[m,n](p,q) += factor * sum_k L[m,k](p) * R[k,n](q)
-/// as ONE P x Q DGEMM riding the outer-contracted k into BLAS K via the
+/// as ONE P x Q GEMM riding the outer-contracted k into BLAS K via the
 /// inter-cell slab stride (zero-copy) when the k-run is "clean" (all cells
 /// present, uniform inner size, single constant stride); else an inline per-k
 /// rank-1 fallback for THAT cell only. Orientation-aware (left_op/right_op pick
 /// per-(m,n,k) offsets). M=left-external, N=right-external, K=outer-contracted.
 template <typename ResultOuter, typename LeftOuter, typename RightOuter,
           typename T = typename ResultOuter::value_type::numeric_type>
-void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
-                              const RightOuter& R, std::size_t M, std::size_t N,
-                              std::size_t K, math::blas::Op left_op,
-                              math::blas::Op right_op,
-                              std::type_identity_t<T> factor) {
+void arena_strided_gemm_ce_e(ResultOuter& C, const LeftOuter& L,
+                             const RightOuter& R, std::size_t M, std::size_t N,
+                             std::size_t K, math::blas::Op left_op,
+                             math::blas::Op right_op,
+                             std::type_identity_t<T> factor) {
   namespace blas = TiledArray::math::blas;
   using integer = blas::integer;
   static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
                     is_tensor_view_v<typename LeftOuter::value_type> &&
                     is_tensor_view_v<typename RightOuter::value_type>,
-                "arena_strided_dgemm_ce_e: arena (view) inner cells only");
+                "arena_strided_gemm_ce_e: arena (view) inner cells only");
   static_assert(
       std::is_same_v<typename ResultOuter::value_type::numeric_type, T> &&
           std::is_same_v<typename LeftOuter::value_type::numeric_type, T> &&
           std::is_same_v<typename RightOuter::value_type::numeric_type, T>,
-      "arena_strided_dgemm_ce_e: inner storages must share numeric type T");
-  static_assert(is_strided_dgemm_numeric_v<T>,
-                "arena_strided_dgemm_ce_e: float/double/complex<float>/"
+      "arena_strided_gemm_ce_e: inner storages must share numeric type T");
+  static_assert(is_strided_gemm_numeric_v<T>,
+                "arena_strided_gemm_ce_e: float/double/complex<float>/"
                 "complex<double> inner storage only");
   if (M == 0 || N == 0 || K == 0) return;
   const std::size_t nbatch = static_cast<std::size_t>(C.nbatch());
@@ -1274,8 +1274,8 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
                        /*beta=*/T(1),
                        /*C=*/Cc.data(), /*ldc=*/static_cast<integer>(Q));
           }
-#ifdef TA_STRIDED_DGEMM_COUNT
-          g_strided_dgemm_ce_e_calls.fetch_add(1, std::memory_order_relaxed);
+#ifdef TA_STRIDED_GEMM_COUNT
+          g_strided_gemm_ce_e_calls.fetch_add(1, std::memory_order_relaxed);
 #endif
         } else {
           ScopedPhaseTimer _fb_timer(g_fallback_ns_ce_e);
@@ -1320,12 +1320,12 @@ void arena_strided_dgemm_ce_e(ResultOuter& C, const LeftOuter& L,
   }
 }
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-inline std::atomic<std::size_t> g_strided_dgemm_ce_ce_right_calls{0};
+#ifdef TA_STRIDED_GEMM_COUNT
+inline std::atomic<std::size_t> g_strided_gemm_ce_ce_right_calls{0};
 #endif
 
-/// Kill switch for the ce+ce (hce+ce) per-k segmented strided-DGEMM path: when
-/// true, arena_strided_dgemm_ce_ce_right/_left route EVERY present cell through
+/// Kill switch for the ce+ce (hce+ce) per-k segmented strided-GEMM path: when
+/// true, arena_strided_gemm_ce_ce_right/_left route EVERY present cell through
 /// the per-cell scalar GEMV loop (the legacy "revert to per-cell" behavior)
 /// instead of the segment walker. Test/bench hook only -- production default is
 /// false (segmented on). Mirrors regime_a_strided_disabled().
@@ -1334,19 +1334,20 @@ inline bool& ce_ce_strided_disabled() {
   return flag;
 }
 
-/// ce+ce strided-DGEMM core (inner CONTRACTION; ride right-external μ̃ into BLAS
+/// ce+ce strided-GEMM core (inner CONTRACTION; ride right-external μ̃ into BLAS
 /// M). ORIENTATION-AWARE (offsets derived from left_op/right_op of the OUTER
-/// GemmHelper, exactly as arena_strided_dgemm_ce_e) and Hadamard-agnostic:
+/// GemmHelper, exactly as arena_strided_gemm_ce_e) and Hadamard-agnostic:
 /// Hadamard is carried as nbatch by the einsum driver, so a thin nbatch loop
 /// wraps a fixed-Hadamard ce+ce core and serves both hce+ce (nbatch>1) and the
 /// no-Hadamard ce+ce (nbatch==1). Do NOT assert nbatch==1.
 ///
-/// Outer GemmHelper mapping: Mo = left outer-external, No = right outer-external
-/// = Mμ, Ko = outer-contracted = nK. The left-external `m` (Mo) is an OUTER loop
-/// around the per-(b) body; R (a function of k,μ̃ only) is reused across m.
-/// For each batch b, each left-external m, and each outer-contraction cell Κ=k:
+/// Outer GemmHelper mapping: Mo = left outer-external, No = right
+/// outer-external = Mμ, Ko = outer-contracted = nK. The left-external `m` (Mo)
+/// is an OUTER loop around the per-(b) body; R (a function of k,μ̃ only) is
+/// reused across m. For each batch b, each left-external m, and each
+/// outer-contraction cell Κ=k:
 ///   C̃[m,μ̃, a_1] += factor * Σ_{a_4} R[k,μ̃](a_4) · L[m,k](a_1,a_4)
-/// realized as ONE M=μ̃ × N=a_1 × K=a_4 DGEMM riding μ̃ into BLAS M via the
+/// realized as ONE M=μ̃ × N=a_1 × K=a_4 GEMM riding μ̃ into BLAS M via the
 /// (empirically measured) inter-μ̃-cell slab stride (zero-copy), looping k with
 /// beta=1. Mo==1 reduces to the original ce+ce kernel exactly. If a per-(b,m)
 /// run is not clean, an inline per-cell GEMV fallback handles THAT (b,m) only
@@ -1355,30 +1356,32 @@ inline bool& ce_ce_strided_disabled() {
 /// make_result_range). Accumulates into C (beta=1).
 template <typename ResultOuter, typename LeftOuter, typename RightOuter,
           typename T = typename ResultOuter::value_type::numeric_type>
-void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
-                                     const RightOuter& R, std::size_t Mo,
-                                     std::size_t No, std::size_t Ko,
-                                     math::blas::Op left_op,
-                                     math::blas::Op right_op,
-                                     std::type_identity_t<T> factor,
-                                     bool left_inner_transposed = false) {
+void arena_strided_gemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
+                                    const RightOuter& R, std::size_t Mo,
+                                    std::size_t No, std::size_t Ko,
+                                    math::blas::Op left_op,
+                                    math::blas::Op right_op,
+                                    std::type_identity_t<T> factor,
+                                    bool left_inner_transposed = false) {
   // left_inner_transposed: the external-carrying LEFT inner cell is stored
   // (a4,a1)=Q x P (matrix_transpose) instead of canonical (a1,a4)=P x Q. Folded
   // into the inner GEMM via transb (zero-copy); the right contraction-vector
   // side must remain canonical (gated upstream).
   namespace blas = TiledArray::math::blas;
   using integer = blas::integer;
-  static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
-                    is_tensor_view_v<typename LeftOuter::value_type> &&
-                    is_tensor_view_v<typename RightOuter::value_type>,
-                "arena_strided_dgemm_ce_ce_right: arena (view) inner cells only");
+  static_assert(
+      is_tensor_view_v<typename ResultOuter::value_type> &&
+          is_tensor_view_v<typename LeftOuter::value_type> &&
+          is_tensor_view_v<typename RightOuter::value_type>,
+      "arena_strided_gemm_ce_ce_right: arena (view) inner cells only");
   static_assert(
       std::is_same_v<typename ResultOuter::value_type::numeric_type, T> &&
           std::is_same_v<typename LeftOuter::value_type::numeric_type, T> &&
           std::is_same_v<typename RightOuter::value_type::numeric_type, T>,
-      "arena_strided_dgemm_ce_ce_right: inner storages must share numeric type T");
-  static_assert(is_strided_dgemm_numeric_v<T>,
-                "arena_strided_dgemm_ce_ce_right: float/double/complex<float>/"
+      "arena_strided_gemm_ce_ce_right: inner storages must share numeric type "
+      "T");
+  static_assert(is_strided_gemm_numeric_v<T>,
+                "arena_strided_gemm_ce_ce_right: float/double/complex<float>/"
                 "complex<double> inner storage only");
   const std::size_t Mmu = No;  // right outer-external rides BLAS M
   const std::size_t nK = Ko;   // outer-contracted is looped with beta=1
@@ -1396,7 +1399,8 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
   TA_ASSERT(shape_ok);
   if (!shape_ok) return;
   ScopedPhaseTimer _kernel_timer(g_kernel_ns_ce_ce);
-  // orientation-aware outer offsets (mirror arena_strided_dgemm_ce_e a_off/b_off)
+  // orientation-aware outer offsets (mirror arena_strided_gemm_ce_e
+  // a_off/b_off)
   const std::size_t ldb_o = (right_op == blas::NoTranspose) ? No : Ko;
   auto r_off = [&](std::size_t k, std::size_t mu) {
     return (right_op == blas::NoTranspose) ? k * ldb_o + mu : mu * ldb_o + k;
@@ -1574,9 +1578,9 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
                 /*beta=*/T(1),
                 /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
           }
-#ifdef TA_STRIDED_DGEMM_COUNT
-          g_strided_dgemm_ce_ce_right_calls.fetch_add(1,
-                                                      std::memory_order_relaxed);
+#ifdef TA_STRIDED_GEMM_COUNT
+          g_strided_gemm_ce_ce_right_calls.fetch_add(1,
+                                                     std::memory_order_relaxed);
 #endif
           mu = end;
         }
@@ -1585,12 +1589,12 @@ void arena_strided_dgemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
   }
 }
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-inline std::atomic<std::size_t> g_strided_dgemm_ce_ce_left_calls{0};
+#ifdef TA_STRIDED_GEMM_COUNT
+inline std::atomic<std::size_t> g_strided_gemm_ce_ce_left_calls{0};
 #endif
 
-/// ce+ce strided-DGEMM core, LEFT-clean mirror of
-/// arena_strided_dgemm_ce_ce_right. Here the LEFT operand inner cell is the pure
+/// ce+ce strided-GEMM core, LEFT-clean mirror of
+/// arena_strided_gemm_ce_ce_right. Here the LEFT operand inner cell is the pure
 /// contraction vector L[m,k](a4) (no inner external) and the RIGHT operand
 /// carries the inner external R[k,n](a4,b1); the result inner is the right
 /// inner-external b1. Rides the LEFT outer-external `m` (Mo) into BLAS M and
@@ -1598,21 +1602,22 @@ inline std::atomic<std::size_t> g_strided_dgemm_ce_ce_left_calls{0};
 /// m,k) supplies the strided BLAS-M rows. For each batch b, each right-external
 /// n, and each outer-contraction cell k:
 ///   C[m,n](b1) += factor * Σ_{a4} L[m,k](a4) · R[k,n](a4,b1)
-/// realized as ONE M=Mo × N=P(=b1) × K=Q(=a4) DGEMM riding `m` into BLAS M via
+/// realized as ONE M=Mo × N=P(=b1) × K=Q(=a4) GEMM riding `m` into BLAS M via
 /// the inter-m-cell slab stride (zero-copy), looping k with beta=1. If a
 /// per-(b,n) run is not clean, an inline per-cell fallback handles THAT (b,n)
-/// only (each cell once -> no double-count). Orientation-aware (l_off/r_off from
-/// left_op/right_op of the OUTER GemmHelper, exactly as the right core). C must
-/// be pre-shaped; the result outer is (m, n) row-major. Accumulates (beta=1).
+/// only (each cell once -> no double-count). Orientation-aware (l_off/r_off
+/// from left_op/right_op of the OUTER GemmHelper, exactly as the right core). C
+/// must be pre-shaped; the result outer is (m, n) row-major. Accumulates
+/// (beta=1).
 template <typename ResultOuter, typename LeftOuter, typename RightOuter,
           typename T = typename ResultOuter::value_type::numeric_type>
-void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
-                                    const RightOuter& R, std::size_t Mo,
-                                    std::size_t No, std::size_t Ko,
-                                    math::blas::Op left_op,
-                                    math::blas::Op right_op,
-                                    std::type_identity_t<T> factor,
-                                    bool right_inner_transposed = false) {
+void arena_strided_gemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
+                                   const RightOuter& R, std::size_t Mo,
+                                   std::size_t No, std::size_t Ko,
+                                   math::blas::Op left_op,
+                                   math::blas::Op right_op,
+                                   std::type_identity_t<T> factor,
+                                   bool right_inner_transposed = false) {
   // right_inner_transposed: the external-carrying RIGHT inner cell is stored
   // (b1,a4)=P x Q (matrix_transpose) instead of canonical (a4,b1)=Q x P. Folded
   // into the inner GEMM via transb (zero-copy); the left contraction-vector
@@ -1622,14 +1627,15 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
   static_assert(is_tensor_view_v<typename ResultOuter::value_type> &&
                     is_tensor_view_v<typename LeftOuter::value_type> &&
                     is_tensor_view_v<typename RightOuter::value_type>,
-                "arena_strided_dgemm_ce_ce_left: arena (view) inner cells only");
+                "arena_strided_gemm_ce_ce_left: arena (view) inner cells only");
   static_assert(
       std::is_same_v<typename ResultOuter::value_type::numeric_type, T> &&
           std::is_same_v<typename LeftOuter::value_type::numeric_type, T> &&
           std::is_same_v<typename RightOuter::value_type::numeric_type, T>,
-      "arena_strided_dgemm_ce_ce_left: inner storages must share numeric type T");
-  static_assert(is_strided_dgemm_numeric_v<T>,
-                "arena_strided_dgemm_ce_ce_left: float/double/complex<float>/"
+      "arena_strided_gemm_ce_ce_left: inner storages must share numeric type "
+      "T");
+  static_assert(is_strided_gemm_numeric_v<T>,
+                "arena_strided_gemm_ce_ce_left: float/double/complex<float>/"
                 "complex<double> inner storage only");
   const std::size_t nK = Ko;  // outer-contracted, looped with beta=1
   const std::size_t nbatch = static_cast<std::size_t>(C.nbatch());
@@ -1642,7 +1648,7 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
   TA_ASSERT(shape_ok);
   if (!shape_ok) return;
   ScopedPhaseTimer _kernel_timer(g_kernel_ns_ce_ce);
-  // orientation-aware outer offsets (mirror arena_strided_dgemm_ce_ce_right)
+  // orientation-aware outer offsets (mirror arena_strided_gemm_ce_ce_right)
   const std::size_t lda_o = (left_op == blas::NoTranspose) ? Ko : Mo;
   auto l_off = [&](std::size_t m, std::size_t k) {
     return (left_op == blas::NoTranspose) ? m * lda_o + k : k * lda_o + m;
@@ -1661,14 +1667,14 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
     const std::size_t lbase = b * Mo * nK;
     const std::size_t rbase = b * No * nK;
     for (std::size_t n = 0; n < No; ++n) {  // right-external outer loop
-      // Per-k segment walker (mirror of arena_strided_dgemm_ce_ce_right; strided
+      // Per-k segment walker (mirror of arena_strided_gemm_ce_ce_right; strided
       // axis is m, single-cell operand is R[k,n], strided operands are L[m,k]
       // (the BLAS-M rows) and C[m,n]). For each present R[k,n], walk the m axis
       // and emit one strided GEMM per maximal contiguous segment of present,
-      // size-matched (C.size==P, L.size==Q), uniformly-strided cells; skip holes.
-      // beta=1 accumulates across k AND segments. A fully-dense run yields one
-      // full-run segment == the old clean GEMM. A genuine size mismatch
-      // R[k,n] != P*Q drops to a tiny scalar path for that k only.
+      // size-matched (C.size==P, L.size==Q), uniformly-strided cells; skip
+      // holes. beta=1 accumulates across k AND segments. A fully-dense run
+      // yields one full-run segment == the old clean GEMM. A genuine size
+      // mismatch R[k,n] != P*Q drops to a tiny scalar path for that k only.
       const auto _check_t0 = phase_start();
       // Result inner free index P(=b1) from the FIRST PRESENT C[m,n].
       long P = -1;
@@ -1815,9 +1821,9 @@ void arena_strided_dgemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
                 /*beta=*/T(1),
                 /*C=*/cstart, /*ldc=*/static_cast<integer>(ldC));
           }
-#ifdef TA_STRIDED_DGEMM_COUNT
-          g_strided_dgemm_ce_ce_left_calls.fetch_add(1,
-                                                     std::memory_order_relaxed);
+#ifdef TA_STRIDED_GEMM_COUNT
+          g_strided_gemm_ce_ce_left_calls.fetch_add(1,
+                                                    std::memory_order_relaxed);
 #endif
           m = end;
         }
@@ -2172,7 +2178,7 @@ auto make_regime_a_arena_plan(const A& a, const B& b, const Inner& inner,
   }
 }
 
-/// Kill switch for the regime-A hc+e strided-DGEMM reuse path: when true,
+/// Kill switch for the regime-A hc+e strided-GEMM reuse path: when true,
 /// run_regime_a_arena keeps the legacy per-cell accumulate. Test/bench hook
 /// for the strided-vs-per-cell differential (correctness) and the perf
 /// measurement; production default is false (strided on). Mirrors
@@ -2224,7 +2230,7 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
     if constexpr (a_is_tot && b_is_tot) {
       using IIndex = ::Einsum::index::Index<std::size_t>;
       // hc+e reuse gate: the result/operand inner cells must be the kernel's
-      // (view + BLAS numeric) inner type; mirror arena_strided_dgemm_ce_e's
+      // (view + BLAS numeric) inner type; mirror arena_strided_gemm_ce_e's
       // static_assert so non-view / non-BLAS-numeric / mixed-type ToT keep the
       // per-cell path.
       using LInnerT = typename ArrayA_t::value_type::value_type;
@@ -2232,7 +2238,7 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
       constexpr bool ce_e_kernel_ok =
           is_tensor_view_v<InnerT> && is_tensor_view_v<LInnerT> &&
           is_tensor_view_v<RInnerT> &&
-          is_strided_dgemm_numeric_v<typename InnerT::numeric_type> &&
+          is_strided_gemm_numeric_v<typename InnerT::numeric_type> &&
           std::is_same_v<typename LInnerT::numeric_type,
                          typename InnerT::numeric_type> &&
           std::is_same_v<typename RInnerT::numeric_type,
@@ -2313,10 +2319,11 @@ bool run_regime_a_arena(const Plan& plan, const HIndex& h, std::size_t batch,
             const std::size_t Kvol =
                 static_cast<std::size_t>(trange.tile(i).volume());
             auto cview = tile.reshape(TiledArray::Range{1}, batch);
-            arena_strided_dgemm_ce_e(cview, ai, bi, /*M=*/std::size_t{1},
-                                     /*N=*/std::size_t{1}, /*K=*/Kvol,
-                                     blas::NoTranspose, blas::NoTranspose,
-                                     /*factor=*/typename InnerT::numeric_type(1));
+            arena_strided_gemm_ce_e(
+                cview, ai, bi, /*M=*/std::size_t{1},
+                /*N=*/std::size_t{1}, /*K=*/Kvol, blas::NoTranspose,
+                blas::NoTranspose,
+                /*factor=*/typename InnerT::numeric_type(1));
             continue;  // tile-i contribution complete
           }
         }

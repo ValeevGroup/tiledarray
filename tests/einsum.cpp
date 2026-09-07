@@ -1371,7 +1371,7 @@ BOOST_AUTO_TEST_CASE(tensor_contract) {
 #endif
 
 // --------------------------------------------------------------------------
-// strided-DGEMM ce+e (hce+e) e2e oracles
+// strided-GEMM ce+e (hce+e) e2e oracles
 // --------------------------------------------------------------------------
 
 // c(i,k;p,q) = sum_j a(i,j;p) * b(k,j;q): distinct externals i,k; contract
@@ -1917,7 +1917,7 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_noncanonical_inner_matches_owning) {
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
 
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
 BOOST_AUTO_TEST_CASE(hce_e_uses_strided_path) {
   using ArenaInner = TA::ArenaTensor<double, TA::Range>;
   using ArenaOuter = TA::Tensor<ArenaInner>;
@@ -1970,10 +1970,10 @@ BOOST_AUTO_TEST_CASE(hce_e_uses_strided_path) {
   });
   world.gop.fence();
 
-  TiledArray::detail::g_strided_dgemm_ce_e_calls.store(0);
+  TiledArray::detail::g_strided_gemm_ce_e_calls.store(0);
   auto ca = einsum(ah("h,i,j;p"), bh("h,k,j;q"), "h,i,k;p,q");
   ca.world().gop.fence();
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_e_calls.load(), 0u);
 }
 
 // Regime A (hc+e) firing witness: same shape/fill as
@@ -2031,10 +2031,10 @@ BOOST_AUTO_TEST_CASE(regime_a_hce_e_uses_strided_path) {
   });
   world.gop.fence();
 
-  TiledArray::detail::g_strided_dgemm_ce_e_calls.store(0);
+  TiledArray::detail::g_strided_gemm_ce_e_calls.store(0);
   auto ca = einsum(ah("h,i,k;a1"), bh("h,i,k;a2"), "h,i;a1,a2");
   ca.world().gop.fence();
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_e_calls.load(), 0u);
 }
 
 // Codex must-fix #2 guard: an OWNING ToT contraction (TA::Tensor inner, NOT a
@@ -2088,14 +2088,14 @@ BOOST_AUTO_TEST_CASE(owning_tot_does_not_use_strided_path) {
   });
   world.gop.fence();
 
-  TiledArray::detail::g_strided_dgemm_ce_e_calls.store(0);
-  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TiledArray::detail::g_strided_gemm_ce_e_calls.store(0);
+  TiledArray::detail::g_strided_gemm_ce_ce_right_calls.store(0);
   auto co = einsum(ao("h,i,j;p"), bo("h,k,j;q"), "h,i,k;p,q");
   co.world().gop.fence();
   // owning inner cells never take the view-only strided path
-  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
-  BOOST_CHECK_EQUAL(
-      TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_gemm_ce_e_calls.load(), 0u);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_gemm_ce_ce_right_calls.load(),
+                    0u);
   // sanity: the contraction actually ran and produced the expected outer shape
   BOOST_CHECK_EQUAL(co.trange().elements_range().volume(),
                     static_cast<std::size_t>(H * I * K));
@@ -2182,8 +2182,8 @@ BOOST_AUTO_TEST_CASE(ce_e_multi_external_arena_matches_owning) {
   });
   world.gop.fence();
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_e_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TiledArray::detail::g_strided_gemm_ce_e_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("i,j;a1,a2"), bh("k,j;a3,a4"), "i,k;a1,a2,a3,a4");
   OwnArr co = einsum(ao("i,j;a1,a2"), bo("k,j;a3,a4"), "i,k;a1,a2,a3,a4");
@@ -2213,8 +2213,8 @@ BOOST_AUTO_TEST_CASE(ce_e_multi_external_arena_matches_owning) {
   world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_e_calls.load(), 0u);
 #endif
 }
 
@@ -2308,8 +2308,8 @@ BOOST_AUTO_TEST_CASE(hce_e_multi_external_arena_matches_owning) {
   });
   world.gop.fence();
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_e_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TiledArray::detail::g_strided_gemm_ce_e_calls.store(0);
 #endif
   ArenaArr ca =
       einsum(ah("h,i,j;a1,a2"), bh("h,k,j;a3,a4"), "h,i,k;a1,a2,a3,a4");
@@ -2340,13 +2340,13 @@ BOOST_AUTO_TEST_CASE(hce_e_multi_external_arena_matches_owning) {
   world.gop.max(max_abs_diff);
   BOOST_REQUIRE_GT(elements_compared, 0u);
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_e_calls.load(), 0u);
 #endif
 }
 
 // --------------------------------------------------------------------------
-// strided-DGEMM ce+ce (hce+ce) e2e oracles
+// strided-GEMM ce+ce (hce+ce) e2e oracles
 // --------------------------------------------------------------------------
 
 // c(i,m;a1) = sum_{k,a4} a(i,k;a1,a4) * b(i,m,k;a4): Hadamard i (single tile of
@@ -2472,7 +2472,7 @@ BOOST_AUTO_TEST_CASE(hce_ce_contraction_arena_matches_owning) {
   BOOST_CHECK_LT(max_abs_diff, 1e-12);
 }
 
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
 BOOST_AUTO_TEST_CASE(hce_ce_uses_strided_path) {
   using ArenaInner = TA::ArenaTensor<double, TA::Range>;
   using ArenaOuter = TA::Tensor<ArenaInner>;
@@ -2522,10 +2522,10 @@ BOOST_AUTO_TEST_CASE(hce_ce_uses_strided_path) {
   });
   world.gop.fence();
 
-  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+  TiledArray::detail::g_strided_gemm_ce_ce_right_calls.store(0);
   auto ca = einsum(ah("i,k;a1,a4"), bh("i,m,k;a4"), "i,m;a1");
   ca.world().gop.fence();
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(),
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_ce_right_calls.load(),
                  0u);
 }
 #endif
@@ -2610,14 +2610,14 @@ BOOST_AUTO_TEST_CASE(ce_ce_no_hadamard_arena_matches_owning) {
   });
   world.gop.fence();
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TiledArray::detail::g_strided_gemm_ce_ce_right_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("k;a1,a4"), bh("m,k;a4"), "m;a1");
   OwnArr co = einsum(ao("k;a1,a4"), bo("m,k;a4"), "m;a1");
   world.gop.fence();
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(),
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_ce_right_calls.load(),
                  0u);
 #endif
 
@@ -2731,14 +2731,14 @@ BOOST_AUTO_TEST_CASE(ce_ce_left_clean_arena_matches_owning) {
   });
   world.gop.fence();
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TiledArray::detail::g_strided_gemm_ce_ce_left_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("m,k;a4"), bh("k,n;a4,b1"), "m,n;b1");
   OwnArr co = einsum(ao("m,k;a4"), bo("k,n;a4,b1"), "m,n;b1");
   world.gop.fence();
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_left_calls.load(),
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_ce_left_calls.load(),
                  0u);
 #endif
 
@@ -2857,18 +2857,18 @@ BOOST_AUTO_TEST_CASE(ce_ce_general_matrix_matrix_not_strided) {
   });
   world.gop.fence();
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
-  TiledArray::detail::g_strided_dgemm_ce_ce_left_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TiledArray::detail::g_strided_gemm_ce_ce_right_calls.store(0);
+  TiledArray::detail::g_strided_gemm_ce_ce_left_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("m,k;a1,a4"), bh("k,n;a4,b1"), "m,n;a1,b1");
   OwnArr co = einsum(ao("m,k;a1,a4"), bo("k,n;a4,b1"), "m,n;a1,b1");
   world.gop.fence();
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
   // matrix x matrix inner: neither strided orientation may fire.
-  BOOST_CHECK_EQUAL(
-      TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(), 0u);
-  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_dgemm_ce_ce_left_calls.load(),
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_gemm_ce_ce_right_calls.load(),
+                    0u);
+  BOOST_CHECK_EQUAL(TiledArray::detail::g_strided_gemm_ce_ce_left_calls.load(),
                     0u);
 #endif
 
@@ -2988,14 +2988,14 @@ BOOST_AUTO_TEST_CASE(hce_ce_left_external_arena_matches_owning) {
   });
   world.gop.fence();
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TiledArray::detail::g_strided_gemm_ce_ce_right_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("h,i,j;a1,a4"), bh("h,j,k;a4"), "h,i,k;a1");
   OwnArr co = einsum(ao("h,i,j;a1,a4"), bo("h,j,k;a4"), "h,i,k;a1");
   world.gop.fence();
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(),
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_ce_right_calls.load(),
                  0u);
 #endif
 
@@ -3026,7 +3026,7 @@ BOOST_AUTO_TEST_CASE(hce_ce_left_external_arena_matches_owning) {
 }
 
 // --------------------------------------------------------------------------
-// strided-DGEMM combined equivalence matrices (REVISION: multi-external +
+// strided-GEMM combined equivalence matrices (REVISION: multi-external +
 // left-external + nbatch>1, multi-tile contracted index, edge sizes).
 // --------------------------------------------------------------------------
 
@@ -3118,14 +3118,14 @@ BOOST_AUTO_TEST_CASE(hce_e_combined_equivalence_strided) {
   });
   world.gop.fence();
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_e_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TiledArray::detail::g_strided_gemm_ce_e_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("h,i,j;a1,a2"), bh("h,k,j;a3"), "h,i,k;a1,a2,a3");
   OwnArr co = einsum(ao("h,i,j;a1,a2"), bo("h,k,j;a3"), "h,i,k;a1,a2,a3");
   world.gop.fence();
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_e_calls.load(), 0u);
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_e_calls.load(), 0u);
 #endif
 
   double max_abs_diff = 0.0;
@@ -3243,14 +3243,14 @@ BOOST_AUTO_TEST_CASE(hce_ce_combined_equivalence_strided) {
   });
   world.gop.fence();
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TiledArray::detail::g_strided_gemm_ce_ce_right_calls.store(0);
 #endif
   ArenaArr ca = einsum(ah("h,i,j;a1,a2,a4"), bh("h,j,k;a4"), "h,i,k;a1,a2");
   OwnArr co = einsum(ao("h,i,j;a1,a2,a4"), bo("h,j,k;a4"), "h,i,k;a1,a2");
   world.gop.fence();
-#ifdef TA_STRIDED_DGEMM_COUNT
-  BOOST_CHECK_GT(TiledArray::detail::g_strided_dgemm_ce_ce_right_calls.load(),
+#ifdef TA_STRIDED_GEMM_COUNT
+  BOOST_CHECK_GT(TiledArray::detail::g_strided_gemm_ce_ce_right_calls.load(),
                  0u);
 #endif
 
