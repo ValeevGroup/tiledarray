@@ -1421,8 +1421,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(hce_e_contraction_arena_matches_owning, T,
 
   ArenaArr ah(world, a_trange);
   ah.init_tiles([&](const TA::Range& tr) {
+    // [=]: in a template body g++ requires the constexpr extents captured
     ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
-        tr, 1, [](std::size_t /*ord*/) { return TA::Range{P}; });
+        tr, 1, [=](std::size_t /*ord*/) { return TA::Range{P}; });
     for (std::size_t o = 0; o < t.range().volume(); ++o) {
       ArenaInner& c = t.data()[o];
       if (!c) continue;
@@ -1435,7 +1436,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(hce_e_contraction_arena_matches_owning, T,
   ArenaArr bh(world, b_trange);
   bh.init_tiles([&](const TA::Range& tr) {
     ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
-        tr, 1, [](std::size_t /*ord*/) { return TA::Range{Q}; });
+        tr, 1, [=](std::size_t /*ord*/) { return TA::Range{Q}; });
     for (std::size_t o = 0; o < t.range().volume(); ++o) {
       ArenaInner& c = t.data()[o];
       if (!c) continue;
@@ -1694,8 +1695,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(regime_a_hce_e_strided_equals_percell, T,
 
   ArenaArr ah(world, a_trange);
   ah.init_tiles([&](const TA::Range& tr) {
+    // [=]: in a template body g++ requires the constexpr extents captured
     ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
-        tr, 1, [](std::size_t /*ord*/) { return TA::Range{P}; });
+        tr, 1, [=](std::size_t /*ord*/) { return TA::Range{P}; });
     for (std::size_t o = 0; o < t.range().volume(); ++o) {
       ArenaInner& c = t.data()[o];
       if (!c) continue;
@@ -1710,7 +1712,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(regime_a_hce_e_strided_equals_percell, T,
   ArenaArr bh(world, b_trange);
   bh.init_tiles([&](const TA::Range& tr) {
     ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
-        tr, 1, [](std::size_t /*ord*/) { return TA::Range{Q}; });
+        tr, 1, [=](std::size_t /*ord*/) { return TA::Range{Q}; });
     for (std::size_t o = 0; o < t.range().volume(); ++o) {
       ArenaInner& c = t.data()[o];
       if (!c) continue;

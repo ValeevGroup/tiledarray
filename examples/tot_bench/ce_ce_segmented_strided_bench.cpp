@@ -1,7 +1,7 @@
 // ce_ce_segmented_strided_bench.cpp
 // ---------------------------------------------------------------------------
-// Tile/BLAS-level benchmark for the hce+ce per-k SEGMENTED strided DGEMM
-// (arena_strided_dgemm_ce_ce_right). It times the SAME kernel on the SAME
+// Tile/BLAS-level benchmark for the hce+ce per-k SEGMENTED strided GEMM
+// (arena_strided_gemm_ce_ce_right). It times the SAME kernel on the SAME
 // hole-containing arena operands under the two states of the runtime kill
 // switch TiledArray::detail::ce_ce_strided_disabled():
 //
@@ -13,10 +13,10 @@
 //
 // The ONLY variable between the two timings is that toggle, so the ratio
 // isolates the kernel strategy swap. Operands model the measured CSV-CCk
-// fallback regime: present cells are CLUSTERED (mean segment length ~ --cluster)
-// and per-k MISALIGNED (each k shifts its hole phase), the pattern the old
-// all-or-nothing gate fell back to scalar on. The right-kernel walker is
-// identical to the left's, so this speedup represents hce+ce overall.
+// fallback regime: present cells are CLUSTERED (mean segment length ~
+// --cluster) and per-k MISALIGNED (each k shifts its hole phase), the pattern
+// the old all-or-nothing gate fell back to scalar on. The right-kernel walker
+// is identical to the left's, so this speedup represents hce+ce overall.
 // ---------------------------------------------------------------------------
 
 #include <tiledarray.h>
@@ -169,7 +169,7 @@ int main(int argc, char** argv) {
   for (std::size_t o = 0; o < R.range().volume(); ++o)
     if (R.data()[o]) ++present_R;
 
-  std::printf("=== hce+ce segmented-vs-per-cell strided DGEMM bench ===\n");
+  std::printf("=== hce+ce segmented-vs-per-cell strided GEMM bench ===\n");
   std::printf("Mmu=%zu nK=%zu P=%ld Q=%ld cluster=%ld  "
               "present C=%zu/%zu  present R=%zu/%zu\n",
               Mmu, nK, P, Q, cl, present_C, Ctemplate.range().volume(),
@@ -210,27 +210,28 @@ int main(int argc, char** argv) {
     Outer C = make_C();
     TA::detail::ce_ce_strided_disabled() = disabled;
     for (int w = 0; w < cli.warmup; ++w) { zero_C(C);
-      TA::detail::arena_strided_dgemm_ce_ce_right(
-          C, L, R, Mo, Mmu, nK, tablas::NoTranspose, tablas::Transpose, 1.0); }
+      TA::detail::arena_strided_gemm_ce_ce_right(
+          C, L, R, Mo, Mmu, nK, tablas::NoTranspose, tablas::Transpose, 1.0);
+    }
     std::vector<double> ms;
     ms.reserve(cli.reps);
     for (int r = 0; r < cli.reps; ++r) {
       zero_C(C);  // untimed
       auto t0 = clock_type::now();
-      TA::detail::arena_strided_dgemm_ce_ce_right(
+      TA::detail::arena_strided_gemm_ce_ce_right(
           C, L, R, Mo, Mmu, nK, tablas::NoTranspose, tablas::Transpose, 1.0);
       ms.push_back(ms_since(t0));
     }
     return ms;
   };
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TA::detail::g_strided_dgemm_ce_ce_right_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TA::detail::g_strided_gemm_ce_ce_right_calls.store(0);
 #endif
   auto seg_ms = time_path(/*disabled=*/false);
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
   const std::size_t seg_calls =
-      TA::detail::g_strided_dgemm_ce_ce_right_calls.load();
+      TA::detail::g_strided_gemm_ce_ce_right_calls.load();
 #endif
   auto pc_ms = time_path(/*disabled=*/true);
   TA::detail::ce_ce_strided_disabled() = false;  // restore production default
@@ -249,8 +250,8 @@ int main(int argc, char** argv) {
               seg_min > 0 ? pc_min / seg_min : 0.0,
               seg_med > 0 ? pc_med / seg_med : 0.0);
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  std::printf("\n--- firing witness (TA_STRIDED_DGEMM_COUNT) ---\n");
+#ifdef TA_STRIDED_GEMM_COUNT
+  std::printf("\n--- firing witness (TA_STRIDED_GEMM_COUNT) ---\n");
   std::printf("segment GEMMs over %d+%d (warmup+timed) reps = %zu  "
               "(mean %.1f per rep)\n",
               cli.warmup, cli.reps, seg_calls,
