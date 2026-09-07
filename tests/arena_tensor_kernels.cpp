@@ -11,6 +11,7 @@
 
 #include <optional>
 
+#include <complex>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -723,6 +724,71 @@ BOOST_AUTO_TEST_CASE(tot_axpy_to_accumulates_scaled_operand) {
       BOOST_CHECK_CLOSE(d.data()[i], initial[ord][i] + a.data()[i] * factor,
                         1e-12);
   }
+}
+
+// The axpy paths spell the leaf update as `alpha * cell[i]` (the free arena
+// kernel) or `cell[i] * factor` (Tensor's fill lambda and per-element leaf).
+// For a complex element and a scalar of a different type -- `int` x
+// `complex<double>` here -- std's operator* fails deduction and ADL never
+// reaches TiledArray::detail, so each of the four sites below was a hard
+// compile error until the mixed operators were pulled in by hand. This case
+// exists mainly to instantiate them; the value checks are secondary.
+BOOST_AUTO_TEST_CASE(axpy_to_complex_element_with_integral_factor) {
+  using Z = std::complex<double>;
+  using ZInner = TA::ArenaTensor<Z, TA::Range>;
+  using ZOuter = TA::Tensor<ZInner>;
+
+  const int factor = 2;
+  constexpr std::size_t n_outer = 2, n_inner = 3;
+  auto shape_fn = [](std::size_t /*ord*/) {
+    return TA::Range{static_cast<long>(n_inner)};
+  };
+  auto make_z_outer = [&](double base) {
+    ZOuter t = TA::detail::arena_outer_init<ZOuter>(
+        TA::Range{static_cast<long>(n_outer)}, 1, shape_fn);
+    for (std::size_t ord = 0; ord < n_outer; ++ord)
+      for (std::size_t i = 0; i < n_inner; ++i)
+        t.data()[ord].data()[i] = Z(base + ord + i, 0.5 * i - base);
+    return t;
+  };
+
+  // (1) free axpy_to(ArenaTensor&, const ArenaTensor&, Scalar): `alpha * s[i]`
+  ZOuter dst = make_z_outer(1.0);
+  const ZOuter src = make_z_outer(2.0);
+  std::vector<Z> dst0_before(n_inner);
+  for (std::size_t i = 0; i < n_inner; ++i)
+    dst0_before[i] = dst.data()[0].data()[i];
+  {
+    using TiledArray::axpy_to;
+    axpy_to(dst.data()[0], src.data()[0], factor);
+  }
+  for (std::size_t i = 0; i < n_inner; ++i) {
+    const Z expected =
+        dst0_before[i] + src.data()[0].data()[i] * static_cast<double>(factor);
+    BOOST_CHECK_SMALL(std::abs(dst.data()[0].data()[i] - expected), 1e-12);
+  }
+
+  // (2) Tensor<ArenaTensor>::axpy_to -- instantiates the arena
+  // union-sparsity fill lambda alongside the per-cell leaf.
+  ZOuter tot = make_z_outer(1.0);
+  tot.axpy_to(src, factor);
+
+  // (3)/(4) flat Tensor<complex>::axpy_to, without and with a fused
+  // permutation on the added operand.
+  TA::Tensor<Z> a(TA::Range{2, 2}), b(TA::Range{2, 2});
+  for (std::size_t i = 0; i < 4; ++i) {
+    a.data()[i] = Z(static_cast<double>(i), 1.0);
+    b.data()[i] = Z(1.0, static_cast<double>(i));
+  }
+  const TA::Tensor<Z> a_before = a.clone();
+  a.axpy_to(b, factor);
+  for (std::size_t i = 0; i < 4; ++i) {
+    const Z expected =
+        a_before.data()[i] + b.data()[i] * static_cast<double>(factor);
+    BOOST_CHECK_SMALL(std::abs(a.data()[i] - expected), 1e-12);
+  }
+  TA::Tensor<Z> c = a_before.clone();
+  c.axpy_to(b, factor, TA::Permutation{1, 0});
 }
 
 // --- mismatched null-inner-cell coverage --------------------------------

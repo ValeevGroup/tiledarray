@@ -2541,6 +2541,8 @@ class Tensor {
         using ElemT = typename value_type::value_type;
         auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
                              std::size_t n) {
+          // mixed complex x scalar operator*
+          using namespace TiledArray::detail;
           for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] + r[i] * factor;
         };
         *this = detail::arena_trivial_binary<Tensor>(*this, right, fill);
@@ -2553,6 +2555,8 @@ class Tensor {
                             if constexpr (detail::is_tensor_helper<L>::value) {
                               l.axpy_to(r, factor);
                             } else {
+                              // mixed complex x scalar operator*
+                              using namespace TiledArray::detail;
                               l += r * factor;
                             }
                           });
@@ -2589,6 +2593,8 @@ class Tensor {
             if constexpr (detail::is_tensor_helper<L>::value) {
               l.axpy_to(r, factor);
             } else {
+              // mixed complex x scalar operator*
+              using namespace TiledArray::detail;
               l += r * factor;
             }
           });
