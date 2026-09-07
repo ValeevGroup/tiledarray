@@ -135,6 +135,7 @@ TiledArray/external/madness.h
 TiledArray/host/env.h
 TiledArray/math/blas.h
 TiledArray/math/gemm_helper.h
+TiledArray/math/libxsmm_gemm.h
 TiledArray/math/outer.h
 TiledArray/math/parallel_gemm.h
 TiledArray/math/partial_reduce.h
@@ -215,6 +216,7 @@ set(TILEDARRAY_SOURCE_FILES
         TiledArray/einsum/index.cpp
         TiledArray/expressions/permopt.cpp
         TiledArray/host/env.cpp
+        TiledArray/math/libxsmm_gemm.cpp
         TiledArray/math/linalg/basic.cpp
         TiledArray/math/linalg/rank-local.cpp
         TiledArray/tensor/print.cpp
@@ -302,6 +304,9 @@ endif(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
 if( TARGET TiledArray_SCALAPACK )
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)
+endif()
+if( TARGET TiledArray_LIBXSMM )
+  list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_LIBXSMM)
 endif()
 list(APPEND _TILEDARRAY_DEPENDENCIES "${LAPACK_LIBRARIES}")
 

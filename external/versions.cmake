@@ -23,6 +23,14 @@ set(TA_TRACKED_BTAS_PREVIOUS_TAG 7e64fbad97c76f316f313f4c8ed3fca5445da15f)
 set(TA_TRACKED_LIBRETT_TAG 6eed30d4dd2a5aa58840fe895dcffd80be7fbece)
 set(TA_TRACKED_LIBRETT_PREVIOUS_TAG 354e0ccee54aeb2f191c3ce2c617ebf437e49d83)
 
+# libxsmm: pin a recent `main` commit, NOT the 1.17 release tag (2021). The
+# modern dispatch API used by TiledArray/math/libxsmm_gemm.h
+# (libxsmm_dispatch_gemm/libxsmm_create_gemm_shape/libxsmm_gemm_param) does not
+# exist in 1.17, and 1.17 predates most of libxsmm's AArch64/Apple-Silicon JIT
+# work. This SHA is the version validated on Apple M2 (reports as "1.17-3808").
+set(TA_TRACKED_LIBXSMM_TAG c14cbc6f8bc7964f8c5190a3a16b8cace03e5889)
+set(TA_TRACKED_LIBXSMM_PREVIOUS_TAG c14cbc6f8bc7964f8c5190a3a16b8cace03e5889)
+
 set(TA_TRACKED_UMPIRE-CXX-ALLOCATOR_TAG 1ba7f5f0aa99438826dd1c6bc1cd396080b9d608)
 set(TA_TRACKED_UMPIRE-CXX-ALLOCATOR_PREVIOUS_TAG 0f8144f19897766d0f117f7353221d4e3b8b1178)
 

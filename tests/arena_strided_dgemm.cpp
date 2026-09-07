@@ -2109,4 +2109,56 @@ BOOST_AUTO_TEST_CASE(ce_ce_seg_killswitch_matches_left) {
   }
 }
 
+// Directly validate the scale-path libxsmm entry point
+// (TiledArray::detail::scale_libxsmm_dgemm) for BOTH scale regimes' transpose
+// configs -- tot_x_t maps to (trans_a=true, trans_b=false) and t_x_tot maps to
+// (trans_a=false, trans_b=false). The ce+e / ce+ce arena tests above already
+// exercise libxsmm_gemm_le64 for these same transpose patterns, but the scale
+// wrapper itself (tensor.cpp) is otherwise only reachable through Tensor::gemm;
+// this gates its numerics standalone. When libxsmm is not active (built without
+// TILEDARRAY_HAS_LIBXSMM, or TA_LIBXSMM=0) the wrapper returns false and writes
+// nothing, so the numeric check is keyed on the returned flag.
+BOOST_AUTO_TEST_CASE(scale_path_libxsmm_matches_reference) {
+  // Row-major C(m x n) = beta*C + op_a(A)(m x k) . op_b(B)(k x n), alpha=1,
+  // matching scale_libxsmm_dgemm / blas::gemm semantics.
+  auto ref_gemm = [](bool ta, bool tb, long m, long n, long k,
+                     const std::vector<double>& A, long lda,
+                     const std::vector<double>& B, long ldb, double beta,
+                     std::vector<double>& C, long ldc) {
+    for (long i = 0; i < m; ++i)
+      for (long j = 0; j < n; ++j) {
+        double acc = 0.0;
+        for (long p = 0; p < k; ++p) {
+          const double av = ta ? A[p * lda + i] : A[i * lda + p];
+          const double bv = tb ? B[j * ldb + p] : B[p * ldb + j];
+          acc += av * bv;
+        }
+        C[i * ldc + j] = beta * C[i * ldc + j] + acc;
+      }
+  };
+  struct Cfg { bool ta, tb; long m, n, k; };
+  for (const Cfg cfg : {Cfg{true, false, 5, 7, 4},     // tot_x_t shape
+                        Cfg{false, false, 6, 3, 8}}) {  // t_x_tot shape
+    const long m = cfg.m, n = cfg.n, k = cfg.k;
+    const long lda = cfg.ta ? m : k;  // A is (k x m) if trans_a else (m x k)
+    const long ldb = cfg.tb ? k : n;  // B is (n x k) if trans_b else (k x n)
+    const long ldc = n;
+    std::vector<double> A(static_cast<std::size_t>(m) * k),
+        B(static_cast<std::size_t>(k) * n),
+        C(static_cast<std::size_t>(m) * n, 0.3);
+    for (std::size_t i = 0; i < A.size(); ++i) A[i] = 0.1 * double(i) + 0.5;
+    for (std::size_t i = 0; i < B.size(); ++i) B[i] = 0.2 * double(i) - 0.3;
+    std::vector<double> Cref = C;
+    ref_gemm(cfg.ta, cfg.tb, m, n, k, A, lda, B, ldb, /*beta=*/1.0, Cref, ldc);
+    const bool ran = TA::detail::scale_libxsmm_dgemm(
+        cfg.ta, cfg.tb, m, n, k, A.data(), lda, B.data(), ldb, /*beta=*/1.0,
+        C.data(), ldc);
+    if (ran) {
+      for (long i = 0; i < m * n; ++i)
+        BOOST_CHECK_CLOSE(C[static_cast<std::size_t>(i)],
+                          Cref[static_cast<std::size_t>(i)], 1e-10);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

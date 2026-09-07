@@ -36,3 +36,19 @@ template class Tensor<std::complex<double>>;
 template class Tensor<std::complex<float>>;
 
 }  // namespace TiledArray
+
+// ---------------------------------------------------------------------------
+// libxsmm fast-path wrapper for the scale strided GEMM (declared in tensor.h).
+// Kept out of tensor.h so the scale call sites need no libxsmm types; forwards
+// to detail::libxsmm_gemm_le64 (declared in the lean libxsmm_gemm.h,
+// defined in libxsmm_gemm.cpp -- the only TU that includes <libxsmm.h>).
+#include "TiledArray/math/libxsmm_gemm.h"
+
+namespace TiledArray::detail {
+bool scale_libxsmm_dgemm(bool trans_a, bool trans_b, long m, long n, long k,
+                         const double* a, long lda, const double* b, long ldb,
+                         double beta, double* c, long ldc) {
+  return TiledArray::detail::libxsmm_gemm_le64(
+      trans_a, trans_b, m, n, k, /*alpha=*/1.0, a, lda, b, ldb, beta, c, ldc);
+}
+}  // namespace TiledArray::detail

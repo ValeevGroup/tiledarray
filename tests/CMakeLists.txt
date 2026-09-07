@@ -192,6 +192,18 @@ else()
           )
 endif()
 
+# When libxsmm is enabled, also run the strided-GEMM suites with the libxsmm
+# fast path forced ON (TA_LIBXSMM=1), so its numerics are gated against the
+# in-suite references (the default-OFF run above does not exercise libxsmm).
+if (TA_LIBXSMM)
+  add_test(NAME tiledarray/unit/run-libxsmm
+           COMMAND $<TARGET_FILE:${executable}> --log_level=unit_scope
+                   --run_test=arena_strided_dgemm_suite:arena_einsum_unit_suite)
+  set_tests_properties(tiledarray/unit/run-libxsmm
+          PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
+          ENVIRONMENT "${TA_UNIT_TESTS_ENVIRONMENT};TA_LIBXSMM=1")
+endif()
+
 if (NOT TARGET test-cases-tiledarray)
   add_custom_target_subproject(tiledarray test-cases)
 endif()
