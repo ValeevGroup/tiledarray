@@ -2065,6 +2065,52 @@ class Tensor {
     }
   }
 
+  /// Does an in-place binary op against a \p Right of this shape ever need
+  /// the null-destination fallback?
+
+  /// True only when this tensor's cells are non-owning *views*. Every use is
+  /// an `if constexpr` condition, never a runtime one: the fallback body calls
+  /// the *value-returning* kernels, which need not be well-formed for a
+  /// `Tensor` / `Scalar` combination that the in-place path nonetheless
+  /// supports -- e.g. `Tensor<std::complex<double>>::subt_to(right, int)` is
+  /// fine in place, while the corresponding `subt(right, int)` is ill-formed
+  /// (`std::complex<double> * int`). Guarding with `if constexpr` keeps the
+  /// fallback out of every non-view instantiation.
+  /// \tparam Right The right-hand tensor type
+  template <typename Right>
+  static constexpr bool binary_needs_view_cell_fallback_v =
+      detail::is_tensor_of_tensor_v<Tensor> && is_tensor_view_v<value_type> &&
+      is_tensor_view_v<typename Right::value_type>;
+
+  /// Would an element-wise in-place binary op against \p right drop data?
+
+  /// When `value_type` is a non-owning *view* (e.g. `ArenaTensor`) a null
+  /// inner cell has no storage to write into and cannot allocate any, so the
+  /// view's in-place kernels have no choice but to leave it null. If the
+  /// corresponding cell of \p right is populated, updating in place would
+  /// silently discard it. Callers must instead route through the
+  /// value-returning kernel, which builds a fresh slab with union sparsity.
+  /// Always `false` unless both operands' cells are views.
+  /// \tparam Right The right-hand tensor type
+  /// \param right The right-hand operand
+  /// \return true if some ordinal has a null left cell and a populated right
+  ///         cell
+  template <typename Right>
+  bool inplace_binary_drops_cells(const Right& right) const {
+    if constexpr (binary_needs_view_cell_fallback_v<Right>) {
+      if (empty() || right.empty()) return false;
+      const std::size_t n = static_cast<std::size_t>(this->total_size());
+      if (n != static_cast<std::size_t>(right.total_size())) return false;
+      for (std::size_t ord = 0; ord < n; ++ord)
+        if (this->data()[ord].empty() && !right.data()[ord].empty())
+          return true;
+      return false;
+    } else {
+      (void)right;
+      return false;
+    }
+  }
+
   // Addition operations
 
   /// Element-wise add for `Tensor<ArenaTensor>` ToT operands. Routes through
@@ -2361,6 +2407,15 @@ class Tensor {
       return *this;
     }
 
+    // a null view cell cannot adopt a populated right cell in place -- fall
+    // back to the value-returning (union-sparsity) kernel
+    if constexpr (binary_needs_view_cell_fallback_v<Right>) {
+      if (inplace_binary_drops_cells(right)) {
+        *this = this->add(right);
+        return *this;
+      }
+    }
+
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right> r) { l += r; });
   }
@@ -2376,6 +2431,12 @@ class Tensor {
     requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
              detail::addable_to<value_type&, const value_t<Right>&>)
   Tensor& add_to(const Right& right, const Scalar factor) {
+    if constexpr (binary_needs_view_cell_fallback_v<Right>) {
+      if (inplace_binary_drops_cells(right)) {
+        *this = this->add(right, factor);
+        return *this;
+      }
+    }
     return inplace_binary(
         right, [factor](value_type& MADNESS_RESTRICT l,
                         const value_t<Right> r) { (l += r) *= factor; });
@@ -2400,6 +2461,13 @@ class Tensor {
       *this = detail::clone_or_cast<Tensor>(right);
       this->scale_to(factor);
       return *this;
+    }
+    if constexpr (binary_needs_view_cell_fallback_v<Right>) {
+      if (inplace_binary_drops_cells(right)) {
+        // no value-returning `axpy`; compose scale-then-add on the union kernel
+        *this = this->add(right.scale(factor));
+        return *this;
+      }
     }
     return inplace_binary(right,
                           [factor](auto& MADNESS_RESTRICT l, const auto& r) {
@@ -2679,6 +2747,15 @@ class Tensor {
     // early exit for empty right
     if (right.empty()) return *this;
 
+    // a null view cell cannot adopt a populated right cell in place -- fall
+    // back to the value-returning (union-sparsity) kernel
+    if constexpr (binary_needs_view_cell_fallback_v<Right>) {
+      if (inplace_binary_drops_cells(right)) {
+        *this = this->subt(right);
+        return *this;
+      }
+    }
+
     return inplace_binary(
         right, [](auto& MADNESS_RESTRICT l, const auto& r) { l -= r; });
   }
@@ -2698,6 +2775,13 @@ class Tensor {
     // early exit for empty right
     if (right.empty()) {
       return this->scale_to(factor);
+    }
+
+    if constexpr (binary_needs_view_cell_fallback_v<Right>) {
+      if (inplace_binary_drops_cells(right)) {
+        *this = this->subt(right, factor);
+        return *this;
+      }
     }
 
     return inplace_binary(right,
@@ -2925,6 +3009,10 @@ class Tensor {
     // early exit for empty this
     if (empty()) return *this;
 
+    // No fallback here, unlike add_to/subt_to/axpy_to: multiplication
+    // annihilates, so a null destination cell against a populated source has an
+    // identically zero product and loses nothing. The free per-cell `mult_to`
+    // leaves it null, which is how a sparse ToT spells zero.
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right>& r) { l *= r; });
   }
@@ -2944,6 +3032,7 @@ class Tensor {
     // early exit for empty this
     if (empty()) return *this;
 
+    // No fallback -- see the unscaled `mult_to` above.
     return inplace_binary(
         right, [factor](value_type& MADNESS_RESTRICT l,
                         const value_t<Right>& r) { (l *= r) *= factor; });

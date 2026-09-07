@@ -448,44 +448,91 @@ void scale_to(ArenaTensor<T, R>& dst, Scalar factor) {
   for (std::size_t i = 0; i < n; ++i) d[i] *= factor;
 }
 
-/// `dst += src`. Asserts both views non-null and shape-compatible.
+/// `dst += src`. Asserts shape compatibility.
+/// A null `src` is an implicit zero and a no-op; a null `dst` with a populated
+/// `src` throws (a view has no storage to write into and cannot allocate, so
+/// returning would drop `src`). Contrast `mult_to`, where an annihilating
+/// product makes the same case a legitimate no-op.
 template <typename T, typename R>
 void add_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src) {
-  if (!dst || !src) return;
+  if (!src) return;
+  if (!dst)
+    TA_EXCEPTION(
+        "TiledArray::add_to(ArenaTensor&, ...): destination cell is null while "
+        "the source cell is populated; an ArenaTensor is a non-owning view, so "
+        "it cannot allocate to adopt the source, and returning would silently "
+        "drop data. Route through the value-returning (union-sparsity) kernel "
+        "instead -- see Tensor::inplace_binary_drops_cells");
   TA_ASSERT(dst.size() == src.size());
   auto* d = dst.data();
   const auto* s = src.data();
   for (std::size_t i = 0; i < dst.size(); ++i) d[i] += s[i];
 }
 
-/// `dst -= src`. Asserts both views non-null and shape-compatible.
+/// `dst -= src`. Asserts shape compatibility.
+/// A null `src` is an implicit zero and a no-op; a null `dst` with a populated
+/// `src` throws (a view has no storage to write into and cannot allocate).
 template <typename T, typename R>
 void subt_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src) {
-  if (!dst || !src) return;
+  if (!src) return;
+  if (!dst)
+    TA_EXCEPTION(
+        "TiledArray::subt_to(ArenaTensor&, ...): destination cell is null "
+        "while "
+        "the source cell is populated; an ArenaTensor is a non-owning view, so "
+        "it cannot allocate to adopt the source, and returning would silently "
+        "drop data. Route through the value-returning (union-sparsity) kernel "
+        "instead -- see Tensor::inplace_binary_drops_cells");
   TA_ASSERT(dst.size() == src.size());
   auto* d = dst.data();
   const auto* s = src.data();
   for (std::size_t i = 0; i < dst.size(); ++i) d[i] -= s[i];
 }
 
-/// `dst *= src` element-wise. Asserts both views non-null and shape-compatible.
+/// `dst *= src` element-wise. Asserts shape compatibility.
+///
+/// A null cell is the sparse representation of zero, and multiplication --
+/// unlike `add_to` / `subt_to` / `axpy_to` -- is annihilating, so this kernel
+/// is deliberately asymmetric with those three:
+///   - null `src`: `dst *= 0`, so `dst` is *zeroed* (not a no-op, as it is for
+///     the additive ops, where a zero operand leaves `dst` alone).
+///   - null `dst`: `0 * src == 0`, which the null `dst` already represents, so
+///     this is a no-op and *not* an error. Screened-pair Hadamard products
+///     routinely leave a destination cell null while the source is populated;
+///     no data is lost, so the additive ops' exception would be wrong here.
+///     (The value-returning kernel materializes an explicit zero cell for the
+///     same case; both spellings denote zero.)
 template <typename T, typename R>
 void mult_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src) {
-  if (!dst || !src) return;
+  if (!src) {
+    zero(dst);  // dst *= 0; no-op when dst is itself null
+    return;
+  }
+  if (!dst) return;  // 0 * src == 0, already what a null dst denotes
   TA_ASSERT(dst.size() == src.size());
   auto* d = dst.data();
   const auto* s = src.data();
   for (std::size_t i = 0; i < dst.size(); ++i) d[i] *= s[i];
 }
 
-/// `dst += src * alpha` (in-place BLAS-like AXPY). Asserts both views
-/// non-null and shape-compatible. Argument order matches TA's `_to` CPO
-/// convention `(result, arg, factor)`; the BLAS name AXPY captures the
-/// semantics (in-place, not value-producing).
+/// `dst += src * alpha` (in-place BLAS-like AXPY). Asserts shape
+/// compatibility. Argument order matches TA's `_to` CPO convention
+/// `(result, arg, factor)`; the BLAS name AXPY captures the semantics
+/// (in-place, not value-producing).
+/// A null `src` is an implicit zero and a no-op; a null `dst` with a populated
+/// `src` throws (a view has no storage to write into and cannot allocate).
 template <typename T, typename R, typename Scalar>
 void axpy_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src,
              Scalar alpha) {
-  if (!dst || !src) return;
+  if (!src) return;
+  if (!dst)
+    TA_EXCEPTION(
+        "TiledArray::axpy_to(ArenaTensor&, ...): destination cell is null "
+        "while "
+        "the source cell is populated; an ArenaTensor is a non-owning view, so "
+        "it cannot allocate to adopt the source, and returning would silently "
+        "drop data. Route through the value-returning (union-sparsity) kernel "
+        "instead -- see Tensor::inplace_binary_drops_cells");
   TA_ASSERT(dst.size() == src.size());
   auto* d = dst.data();
   const auto* s = src.data();
