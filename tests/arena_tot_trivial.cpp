@@ -694,4 +694,85 @@ BOOST_AUTO_TEST_CASE(arena_mult_to_does_not_densify_null_cells) {
   }
 }
 
+// --- an empty-`this` fast path must not alias, let alone mutate, the source
+// `detail::clone_or_cast` deep-copies only when `Right` *is* `Tensor`; for any
+// other nested-tensor `Right` (e.g. the `TensorInterface<..., BlockRange>` that
+// `block()` yields) it copies the cell *handles*, which for a view cell aliases
+// the source's storage. Scaling or negating the copy then writes through to a
+// const operand.
+
+BOOST_AUTO_TEST_CASE(subt_to_empty_left_must_not_mutate_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  arena_outer_t t;
+  t.subt_to(P.block({0l, 0l}, {2l, 2l}));
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+  BOOST_CHECK_EQUAL(t.data()[0].data()[0], -before);
+}
+
+BOOST_AUTO_TEST_CASE(subt_to_scaled_empty_left_must_not_mutate_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  arena_outer_t t;
+  t.subt_to(P.block({0l, 0l}, {2l, 2l}), 2.0);
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+  BOOST_CHECK_EQUAL(t.data()[0].data()[0], -before * 2.0);
+}
+
+BOOST_AUTO_TEST_CASE(add_to_scaled_empty_left_must_not_mutate_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  arena_outer_t t;
+  t.add_to(P.block({0l, 0l}, {2l, 2l}), 3.0);
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+  BOOST_CHECK_EQUAL(t.data()[0].data()[0], before * 3.0);
+}
+
+BOOST_AUTO_TEST_CASE(axpy_to_empty_left_must_not_mutate_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  arena_outer_t t;
+  t.axpy_to(P.block({0l, 0l}, {2l, 2l}), 2.0);
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+}
+
+// the value-returning empty-left exits have the same hazard: the result must
+// own its cells, or the caller's later mutation corrupts the source
+BOOST_AUTO_TEST_CASE(add_empty_left_result_must_not_alias_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  const arena_outer_t empty_left;
+  arena_outer_t r = empty_left.add(P.block({0l, 0l}, {2l, 2l}));
+  r.scale_to(-1.0);
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+}
+
+// --- intersection sparsity also governs the plain owning ToT --------------
+// `Tensor::mult`'s intersection rule is applied in the `is_ta_tensor_v` branch
+// too, so it is a behavior change for `TA::Tensor<TA::Tensor<T>>`, not only for
+// arena tiles. Pin it: the pre-existing mult_mismatched_null_inners is written
+// permissively and passes under either rule.
+BOOST_AUTO_TEST_CASE(plain_tot_mult_uses_intersection_sparsity) {
+  outer_t L = make_tot_sparse(5, 4, 2.0, nz_L);
+  outer_t R = make_tot_sparse(5, 4, 0.5, nz_R);
+  outer_t prod = L.mult(R);
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const inner_t& l = *(L.data() + ord);
+    const inner_t& r = *(R.data() + ord);
+    const inner_t& d = *(prod.data() + ord);
+    if (!l.empty() && !r.empty()) {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.range().volume(); ++i)
+        BOOST_CHECK_EQUAL(d.at_ordinal(i), l.at_ordinal(i) * r.at_ordinal(i));
+    } else {
+      BOOST_CHECK(d.empty());
+    }
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

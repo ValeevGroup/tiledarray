@@ -2167,6 +2167,39 @@ class Tensor {
     }
   }
 
+  /// An owning deep copy of \p right, safe to mutate without touching it.
+
+  /// `detail::clone_or_cast` deep-copies only when `Right` *is* `Tensor`, in
+  /// which case it calls `clone()`. For any other nested-tensor `Right` it
+  /// falls into a generic branch that `std::copy`s the *cells*, and a cell is
+  /// a shallow handle -- an `ArenaTensor` is a non-owning view, and
+  /// `TA::Tensor` is itself reference-counted. The copy would then share
+  /// storage with \p right, so negating or scaling it afterwards writes
+  /// through to the source, corrupting a const operand.
+  ///
+  /// Route nested tensors through the arena unary kernel instead: it allocates
+  /// a fresh slab and copies *elements*, and being range-addressed it handles
+  /// a strided (block-view) source correctly.
+  /// \tparam Right The source tensor type
+  /// \param right The tensor to copy
+  /// \return An owning `Tensor` sharing no storage with \p right
+  template <typename Right>
+  static Tensor owning_copy_of(const Right& right) {
+    using RightT = std::remove_cv_t<std::remove_reference_t<Right>>;
+    if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
+                  !std::is_same_v<RightT, Tensor> &&
+                  std::is_same_v<value_type, typename RightT::value_type>) {
+      auto fill = [](typename value_type::value_type* dst,
+                     const typename value_type::value_type* src,
+                     std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = src[i];
+      };
+      return detail::arena_trivial_unary<Tensor>(right, fill);
+    } else {
+      return detail::clone_or_cast<Tensor>(right);
+    }
+  }
+
   // Addition operations
 
   /// Element-wise add for `Tensor<ArenaTensor>` ToT operands. Routes through
@@ -2175,7 +2208,7 @@ class Tensor {
     requires(is_arena_tensor_v<value_type> &&
              is_arena_tensor_v<typename Right::value_type>)
   Tensor add(const Right& right) const {
-    if (empty()) return detail::clone_or_cast<Tensor>(right);
+    if (empty()) return owning_copy_of(right);
     if (right.empty()) return this->clone();
     auto fill = [](typename value_type::value_type* dst,
                    const typename value_type::value_type* l,
@@ -2290,7 +2323,7 @@ class Tensor {
     if (right.empty()) return this->clone();
 
     // early exit for empty this
-    if (empty()) return detail::clone_or_cast<Tensor>(right);
+    if (empty()) return owning_copy_of(right);
 
     if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
                   detail::is_ta_tensor_v<value_type> &&
@@ -2461,7 +2494,7 @@ class Tensor {
 
     // early exit for empty this
     if (empty()) {
-      *this = detail::clone_or_cast<Tensor>(right);
+      *this = owning_copy_of(right);
       return *this;
     }
 
@@ -2497,7 +2530,7 @@ class Tensor {
 
     // early exit for empty this: (0 + right) * factor
     if (empty()) {
-      *this = detail::clone_or_cast<Tensor>(right);
+      *this = owning_copy_of(right);
       this->scale_to(factor);
       return *this;
     }
@@ -2529,7 +2562,7 @@ class Tensor {
   Tensor& axpy_to(const Right& right, const Scalar factor) {
     if (right.empty()) return *this;
     if (empty()) {
-      *this = detail::clone_or_cast<Tensor>(right);
+      *this = owning_copy_of(right);
       this->scale_to(factor);
       return *this;
     }
@@ -2585,7 +2618,7 @@ class Tensor {
         // result inner cell): initialize to factor * (perm ^ arg) rather
         // than asserting non-empty in inplace_binary -- mirrors the
         // non-permuting axpy_to overload above.
-        *this = detail::clone_or_cast<Tensor>(permuted);
+        *this = owning_copy_of(permuted);
         this->scale_to(factor);
         return *this;
       }
@@ -2837,7 +2870,7 @@ class Tensor {
 
     // early exit for empty this: 0 - right == -right
     if (empty()) {
-      *this = detail::clone_or_cast<Tensor>(right);
+      *this = owning_copy_of(right);
       this->neg_to();
       return *this;
     }
@@ -2874,7 +2907,7 @@ class Tensor {
 
     // early exit for empty this: (0 - right) * factor
     if (empty()) {
-      *this = detail::clone_or_cast<Tensor>(right);
+      *this = owning_copy_of(right);
       this->neg_to();
       this->scale_to(factor);
       return *this;

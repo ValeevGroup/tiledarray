@@ -948,17 +948,35 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
               if constexpr (inner_is_view) {
                 // `tile` is built with default-constructed (null) inner cells
                 // and a view cell cannot allocate, so it has no storage to
-                // accept the first contribution: the free `axpy_to` refuses a
-                // null destination rather than silently drop the source. Only
+                // accept a contribution: the free `axpy_to` refuses a null
+                // destination rather than silently drop the source. Only
                 // run_regime_a_arena grows result cells, so reaching this
                 // legacy path means the arena plan was inactive (e.g. under
-                // detail::arena_disabled()). Report that here rather than let
-                // the per-cell kernel raise a lower-level diagnostic --
-                // mirrors the ToT x ToT branch above.
-                TA_EXCEPTION(
-                    "TA::einsum: ToT x T product with view inner cells (e.g. "
-                    "ArenaTensor) is supported only via the regime-A arena "
-                    "fast path, which was inactive for this expression");
+                // detail::arena_disabled()).
+                //
+                // Report that here rather than let the per-cell kernel raise a
+                // lower-level diagnostic -- but only once a source cell is
+                // actually populated. A fully screened operand contributes
+                // nothing, leaves the null result tile correct, and must keep
+                // working: `axpy_to` early-returns on a null source, so that
+                // case never needed the destination to have storage.
+                auto aik = ai.batch(k);
+                auto bik = bi.batch(k);
+                const auto vol = aik.total_size();
+                TA_ASSERT(vol == bik.total_size());
+                for (auto i = 0; i < vol; ++i) {
+                  bool src_populated;
+                  if constexpr (IsArrayToT<ArrayA>)
+                    src_populated = !aik.data()[i].empty();
+                  else
+                    src_populated = !bik.data()[i].empty();
+                  if (src_populated)
+                    TA_EXCEPTION(
+                        "TA::einsum: ToT x T product with view inner cells "
+                        "(e.g. ArenaTensor) is supported only via the regime-A "
+                        "arena fast path, which was inactive for this "
+                        "expression");
+                }
               } else {
                 auto aik = ai.batch(k);
                 auto bik = bi.batch(k);

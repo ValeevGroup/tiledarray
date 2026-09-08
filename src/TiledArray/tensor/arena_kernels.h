@@ -489,21 +489,26 @@ OuterTensor arena_trivial_scaled(const ToTSide& tot_outer,
                                  FillOp&& fill_op) {
   using elem_t = typename OuterTensor::value_type::value_type;
   using inner_range_t = typename OuterTensor::value_type::range_type;
+  // Either side may be a strided view; address both through `arena_cell_offset`
+  // and take the cell/batch counts from the `total_size` CPO, as the unary and
+  // binary kernels do. `nbatch()` is a TA::Tensor member a view does not have.
   TA_ASSERT(tot_outer.range().volume() == scalar_outer.range().volume());
-  TA_ASSERT(tot_outer.nbatch() == scalar_outer.nbatch());
+  TA_ASSERT(TiledArray::total_size(tot_outer) ==
+            TiledArray::total_size(scalar_outer));
   auto range_fn = [&tot_outer](std::size_t ord) -> inner_range_t {
-    const auto& t = tot_outer.data()[ord];
+    const auto& t = tot_outer.data()[arena_cell_offset(tot_outer, ord)];
     return t.empty() ? inner_range_t{} : t.range();
   };
-  OuterTensor result = arena_outer_init<OuterTensor>(
-      tot_outer.range(), tot_outer.nbatch(), range_fn, alignof(elem_t),
-      /*zero_init=*/false);
-  const std::size_t N_cells = tot_outer.range().volume() * tot_outer.nbatch();
+  const auto [N_cells, tot_nbatch] = arena_cells_and_batches(tot_outer);
+  OuterTensor result =
+      arena_outer_init<OuterTensor>(tot_outer.range(), tot_nbatch, range_fn,
+                                    alignof(elem_t), /*zero_init=*/false);
   for (std::size_t ord = 0; ord < N_cells; ++ord) {
     auto& dst = result.data()[ord];
     if (dst.empty()) continue;
-    fill_op(dst.data(), tot_outer.data()[ord].data(), scalar_outer.data()[ord],
-            dst.size());
+    fill_op(
+        dst.data(), tot_outer.data()[arena_cell_offset(tot_outer, ord)].data(),
+        scalar_outer.data()[arena_cell_offset(scalar_outer, ord)], dst.size());
   }
   return result;
 }
