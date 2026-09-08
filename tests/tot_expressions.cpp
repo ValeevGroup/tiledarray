@@ -4756,13 +4756,15 @@ Array make_tot_1_tiled(World& world, std::size_t ni, std::size_t nj,
 }
 
 // gather a (possibly multi-tile) array into one dense tile over its element
-// range, so a multi-tile result can be checked like a single tile
+// range, so a multi-tile result can be checked like a single tile; every
+// tile is fetched with find(), so this is rank-safe (the local-tile
+// iterators would leave the other ranks' tiles empty)
 template <typename Array>
 auto gather_tiles(const Array& arr) {
   using tile_t = typename Array::value_type;
   tile_t out(arr.trange().elements_range());
-  for (auto it = arr.begin(); it != arr.end(); ++it) {
-    const tile_t& t = it->get();
+  for (const auto& tidx : arr.trange().tiles_range()) {
+    const tile_t t = arr.find(tidx).get();
     for (const auto& idx : t.range()) out(idx) = t(idx);
   }
   return out;
