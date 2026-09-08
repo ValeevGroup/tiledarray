@@ -16,7 +16,7 @@ BOOST_FIXTURE_TEST_SUITE(tot_array_suite1, ToTArrayFixture)
  */
 BOOST_AUTO_TEST_CASE_TEMPLATE(typedefs, TestParam, test_params) {
   // Unpack the types for the test
-  using scalar_type = scalar_type<TestParam>;
+  using element_type = element_type<TestParam>;
   using tile_type = tile_type<TestParam>;
   using policy_type = policy_type<TestParam>;
 
@@ -34,13 +34,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(typedefs, TestParam, test_params) {
 
   {
     constexpr bool is_same =
-        std::is_same_v<typename tensor_t::numeric_type, scalar_type>;
+        std::is_same_v<typename tensor_t::numeric_type, element_type>;
     BOOST_TEST(is_same);
   }
 
   {
+    // scalar_type is the REAL type underlying the element type (complex<T>
+    // -> T)
     constexpr bool is_same =
-        std::is_same_v<typename tensor_t::scalar_type, scalar_type>;
+        std::is_same_v<typename tensor_t::scalar_type,
+                       TiledArray::detail::scalar_t<element_type>>;
     BOOST_TEST(is_same);
   }
 

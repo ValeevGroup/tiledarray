@@ -8,11 +8,11 @@
 // `TiledArray::detail::regime_a_strided_disabled()`:
 //
 //   strided   (disabled=false): the ce+e core fuses the outer-contraction k
-//             into ONE strided DGEMM per result cell (M=N=1, K=tile-volume).
+//             into ONE strided GEMM per result cell (M=N=1, K=tile-volume).
 //   per-cell  (disabled=true) : the legacy per-cell rank-1 `dger` loop.
 //
 // The ONLY variable between the two timings is that toggle, so the measured
-// ratio isolates the kernel swap (rank-1 dger loop -> one strided DGEMM). It
+// ratio isolates the kernel swap (rank-1 dger loop -> one strided GEMM). It
 // is NOT an arena-vs-owning comparison: both paths read the identical arena
 // data and pay the identical einsum driver / scheduling overhead (which
 // compresses the ratio -- that is honest and expected).
@@ -210,8 +210,8 @@ int main(int argc, char** argv) {
 
   // ---- Timed: strided path (disabled = false) ----
   TA::detail::regime_a_strided_disabled() = false;
-#ifdef TA_STRIDED_DGEMM_COUNT
-  TA::detail::g_strided_dgemm_ce_e_calls.store(0);
+#ifdef TA_STRIDED_GEMM_COUNT
+  TA::detail::g_strided_gemm_ce_e_calls.store(0);
 #endif
   std::vector<double> strided_ms;
   strided_ms.reserve(cli.reps);
@@ -221,9 +221,9 @@ int main(int argc, char** argv) {
     c.world().gop.fence();
     strided_ms.push_back(ms_since(t0));
   }
-#ifdef TA_STRIDED_DGEMM_COUNT
+#ifdef TA_STRIDED_GEMM_COUNT
   const std::size_t strided_calls =
-      TA::detail::g_strided_dgemm_ce_e_calls.load();
+      TA::detail::g_strided_gemm_ce_e_calls.load();
 #endif
   const double t_strided_min =
       *std::min_element(strided_ms.begin(), strided_ms.end());
@@ -259,17 +259,17 @@ int main(int argc, char** argv) {
   std::printf("speedup   : min=%6.3fx  median=%6.3fx  (t_percell / t_strided)\n",
               speedup_min, speedup_med);
 
-#ifdef TA_STRIDED_DGEMM_COUNT
-  std::printf("\n--- firing witness (TA_STRIDED_DGEMM_COUNT) ---\n");
-  std::printf("g_strided_dgemm_ce_e_calls = %zu  (over %d strided reps)\n",
+#ifdef TA_STRIDED_GEMM_COUNT
+  std::printf("\n--- firing witness (TA_STRIDED_GEMM_COUNT) ---\n");
+  std::printf("g_strided_gemm_ce_e_calls = %zu  (over %d strided reps)\n",
               strided_calls, cli.reps);
   if (strided_calls == 0) {
     std::fprintf(stderr,
-                 "ERROR: strided DGEMM never fired -- reported numbers would "
+                 "ERROR: strided GEMM never fired -- reported numbers would "
                  "reflect a silent fallback, not the strided path.\n");
     std::abort();
   }
-  std::printf("OK: strided DGEMM fired (counter > 0).\n");
+  std::printf("OK: strided GEMM fired (counter > 0).\n");
 #endif
 
   return 0;

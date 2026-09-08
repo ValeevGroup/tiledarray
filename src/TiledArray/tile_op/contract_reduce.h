@@ -138,7 +138,7 @@ class ContractReduceBase {
     /// \note the lifetime is managed by the callee!
     TiledArray::function_ref<elem_muladd_op_type> elem_muladd_op_;
 
-    /// whole-tile strided-DGEMM outer-contraction op for arena ToT. When set,
+    /// whole-tile strided-GEMM outer-contraction op for arena ToT. When set,
     /// ContractReduce::operator() delegates the (pre-shaped) result fill to it
     /// instead of the generic gemm. Carries factor itself (alpha_ is forced to
     /// 1 for ToT).
@@ -243,9 +243,9 @@ class ContractReduceBase {
     return pimpl_->arena_plan_;
   }
 
-  /// Strided-DGEMM op accessor/mutator
+  /// Strided-GEMM op accessor/mutator
 
-  /// \return A const reference to the strided-DGEMM op function_ref
+  /// \return A const reference to the strided-GEMM op function_ref
   const TiledArray::function_ref<typename Impl::strided_oprod_op_type>&
   strided_oprod_op() const {
     return pimpl_->strided_oprod_op_;

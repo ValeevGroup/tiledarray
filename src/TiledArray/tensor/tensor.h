@@ -1972,6 +1972,9 @@ class Tensor {
       auto fill = [factor](typename value_type::value_type* dst,
                            const typename value_type::value_type* src,
                            std::size_t n) {
+        // detail's mixed complex x scalar operator* (e.g. complex<double> *
+        // int), as in the non-nested branch below
+        using namespace TiledArray::detail;
         for (std::size_t i = 0; i < n; ++i) dst[i] = src[i] * factor;
       };
       return detail::arena_trivial_unary<Tensor>(*this, fill);
@@ -1979,6 +1982,9 @@ class Tensor {
       auto fill = [factor](typename value_type::value_type* dst,
                            const typename value_type::value_type* src,
                            std::size_t n) {
+        // detail's mixed complex x scalar operator* (e.g. complex<double> *
+        // int), as in the non-nested branch below
+        using namespace TiledArray::detail;
         for (std::size_t i = 0; i < n; ++i) dst[i] = src[i] * factor;
       };
       return detail::arena_trivial_unary<Tensor>(*this, fill);

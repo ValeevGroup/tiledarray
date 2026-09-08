@@ -445,6 +445,9 @@ void scale_to(ArenaTensor<T, R>& dst, Scalar factor) {
   if (!dst) return;
   auto* d = dst.data();
   const auto n = dst.size();
+  // operator*= is the permissive one (std::complex<T>::operator*=(const T&)
+  // accepts any arithmetic factor), so no mixed-scalar detail operator is
+  // needed here
   for (std::size_t i = 0; i < n; ++i) d[i] *= factor;
 }
 
