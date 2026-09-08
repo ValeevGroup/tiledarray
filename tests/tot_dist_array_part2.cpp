@@ -18,20 +18,12 @@
  */
 #include "tot_array_fixture.h"
 
-#include <unistd.h>
 #include <cstdio>
 
-namespace {
-// Replace the trailing XXXXXX in `name_template` with a unique suffix.
-// Uses mkstemp + close + remove so the resulting name can be reused by
-// callers that open the file themselves; race-free unlike mktemp(3).
-void make_unique_filename_template(char* name_template) {
-  const int fd = mkstemp(name_template);
-  MADNESS_ASSERT(fd != -1);
-  ::close(fd);
-  std::remove(name_template);
-}
-}  // namespace
+#include "archive_file_utils.h"
+
+using TiledArray::test::make_unique_filename_template;
+using TiledArray::test::to_parallel_archive_file_name;
 
 BOOST_FIXTURE_TEST_SUITE(tot_array_suite2, ToTArrayFixture)
 //------------------------------------------------------------------------------
@@ -714,7 +706,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parallel_serialization, TestParam, test_params) {
       t2.load(m_world, ar_in);
       BOOST_TEST(are_equal(corr, t2));
     }
-    std::remove(file_name);
+    // a parallel archive writes `<prefix>.<rank>`, never `<prefix>` itself, so
+    // removing the prefix would be a no-op and leak the per-rank file
+    if (m_world.rank() < nio)
+      std::remove(
+          to_parallel_archive_file_name(file_name, m_world.rank()).c_str());
   }
 }
 
