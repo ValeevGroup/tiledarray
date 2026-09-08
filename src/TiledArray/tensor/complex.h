@@ -331,6 +331,18 @@ template <typename T>
 inline constexpr bool is_complex_conjugate_v =
     is_complex_conjugate<std::remove_cv_t<T>>::value;
 
+/// Whether inner cells of scalar type \c Inner can be viewed as arrays of
+/// \c Real for the interleaved real GEMM on complex cells: \c Inner is
+/// std::complex<Real> laid out as two contiguous \c Real, the standard's
+/// array-oriented access guarantee ([complex.numbers.general]/4). The size
+/// and alignment terms are part of the predicate rather than an assertion, so
+/// an ABI that breaks the layout falls back to the per-cell loop instead of a
+/// reinterpret_cast into undefined behavior.
+template <typename Inner, typename Real>
+inline constexpr bool is_interleaved_real_view_v =
+    std::is_same_v<std::complex<Real>, Inner> &&
+    sizeof(Inner) == 2 * sizeof(Real) && alignof(Inner) >= alignof(Real);
+
 /// The numeric multiplier to bake into a per-element (per-cell) multiply-add
 /// op for a contraction with factor \c factor: the factor itself (converted
 /// to \c Numeric) for a numeric factor, and \c Numeric(1) for a

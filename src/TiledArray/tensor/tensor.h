@@ -3603,21 +3603,19 @@ class Tensor {
                   is_tensor_view_v<value_type>) {
       using Real = std::remove_cv_t<typename value_type::value_type>;
       using Vr = std::remove_cv_t<V>;
-      // Same element type: one gemm in that type. Real plain scalars (Vr)
-      // against complex<Vr> inner cells: the complex slabs are viewed as real
-      // matrices with the inner extent doubled (re,im interleaved), so one
-      // real gemm with alpha = beta = 1 accumulates both parts exactly.
-      constexpr bool same_type = std::is_same_v<Vr, Real>;
-      constexpr bool interleaved =
-          !same_type && std::is_same_v<std::complex<Vr>, Real>;
+      // Both slabs are viewed through Vr* below, so the left ToT's inner
+      // scalar must be the result's. Same element type: one gemm in that
+      // type. Real plain scalars (Vr) against complex<Vr> inner cells: the
+      // complex slabs are viewed as real matrices with the inner extent
+      // doubled (re,im interleaved), so one real gemm with alpha = beta = 1
+      // accumulates both parts exactly (detail::is_interleaved_real_view_v
+      // carries the layout terms; a mismatch falls back to the per-cell loop).
+      constexpr bool left_matches =
+          std::is_same_v<std::remove_cv_t<typename U::value_type>, Real>;
+      constexpr bool same_type = left_matches && std::is_same_v<Vr, Real>;
+      constexpr bool interleaved = left_matches && !std::is_same_v<Vr, Real> &&
+                                   detail::is_interleaved_real_view_v<Real, Vr>;
       constexpr integer cw = interleaved ? 2 : 1;  // reals per inner element
-      // The interleaved view reinterprets the complex slab as Vr[2*n]: the
-      // standard guarantees array-oriented access to std::complex<Vr>
-      // ([complex.numbers.general]/4), pinned here so an exotic ABI cannot
-      // turn the reinterpret_cast below into silent undefined behavior.
-      static_assert(!interleaved || (sizeof(Real) == 2 * sizeof(Vr) &&
-                                     alignof(Real) == alignof(Vr)),
-                    "interleaved real gemm needs std::complex<Vr> == Vr[2]");
       if constexpr (same_type || interleaved) {
         if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
             gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
@@ -3804,16 +3802,15 @@ class Tensor {
                   is_tensor_view_v<value_type>) {
       using Real = std::remove_cv_t<typename value_type::value_type>;
       using Ur = std::remove_cv_t<U>;
-      // see the tot_x_t block: same type, or real plain x complex<Ur> inner
-      // cells via the re,im-interleaved real gemm
-      constexpr bool same_type = std::is_same_v<Ur, Real>;
-      constexpr bool interleaved =
-          !same_type && std::is_same_v<std::complex<Ur>, Real>;
+      // see the tot_x_t block: the right ToT's inner scalar must be the
+      // result's; then same type, or real plain x complex<Ur> inner cells via
+      // the re,im-interleaved real gemm
+      constexpr bool right_matches =
+          std::is_same_v<std::remove_cv_t<typename V::value_type>, Real>;
+      constexpr bool same_type = right_matches && std::is_same_v<Ur, Real>;
+      constexpr bool interleaved = right_matches && !std::is_same_v<Ur, Real> &&
+                                   detail::is_interleaved_real_view_v<Real, Ur>;
       constexpr integer cw = interleaved ? 2 : 1;  // reals per inner element
-      // see the tot_x_t block: std::complex<Ur> must be exactly Ur[2]
-      static_assert(!interleaved || (sizeof(Real) == 2 * sizeof(Ur) &&
-                                     alignof(Real) == alignof(Ur)),
-                    "interleaved real gemm needs std::complex<Ur> == Ur[2]");
       if constexpr (same_type || interleaved) {
         if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
             gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {

@@ -118,15 +118,22 @@ class ContEngine : public BinaryEngine<Derived> {
   using elem_scalar_type =
       typename TiledArray::detail::numeric_type<value_type>::type;
 
-  /// A contraction's factor is applied in exactly one of two places. A
-  /// numeric factor is absorbed into the per-cell (per-element) multiply-add
-  /// ops and the outer tile op runs with factor 1. A ComplexConjugate<...>
-  /// factor (`conj(A*B)`, `S*conj(A*B)`, `-conj(A*B)`) cannot be applied per
-  /// cell -- conj does not distribute into a sum of products -- so the
-  /// per-cell ops run with multiplier 1 and the outer op's finalization
-  /// conjugates AND scales the finished tile (ContractReduce's ComplexConjugate
-  /// specializations). Every consumer of the factor goes through these two
-  /// accessors; none may read factor_ directly.
+  /// Where the contraction's factor is applied.
+  ///
+  /// Plain-tensor contractions (the `!tot_aware_op` branches) hand factor_ to
+  /// the outer ContractReduce as is: a numeric factor is its GEMM alpha, a
+  /// ComplexConjugate<...> one is applied by its finalization. The shape
+  /// GEMMs likewise take factor_ (only its magnitude enters the norms).
+  ///
+  /// ToT-aware contractions (nested tiles, and dot_inner) split it in two,
+  /// through the accessors below, and no such consumer may read factor_
+  /// directly. A numeric factor is absorbed into the per-cell (per-element)
+  /// multiply-add ops and the outer tile op runs with factor 1. A
+  /// ComplexConjugate<...> factor (`conj(A*B)`, `S*conj(A*B)`, `-conj(A*B)`)
+  /// cannot be applied per cell -- conj does not distribute into a sum of
+  /// products -- so the per-cell ops run with multiplier 1 and the outer op's
+  /// finalization conjugates AND scales the finished tile (ContractReduce's
+  /// ComplexConjugate specialization).
 
   /// \return the multiplier for the per-cell ops
   template <typename Numeric = elem_scalar_type>
