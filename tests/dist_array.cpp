@@ -27,6 +27,7 @@
 
 #include <array_fixture.h>
 #include "../src/TiledArray/dist_array.h"
+#include "archive_file_utils.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
@@ -56,27 +57,8 @@ ArrayFixture::ArrayFixture()
 
 ArrayFixture::~ArrayFixture() { GlobalFixture::world->gop.fence(); }
 
-namespace {
-std::string to_parallel_archive_file_name(const char* prefix_name, int rank) {
-  char buf[256];
-  MADNESS_ASSERT(strlen(prefix_name) + 7 <= sizeof(buf));
-  snprintf(buf, sizeof(buf), "%s.%5.5d", prefix_name, rank);
-  return buf;
-}
-
-// Replace the trailing XXXXXX in `name_template` with a unique suffix.
-// Uses mkstemp + close + remove so the resulting name can be reused by
-// callers that want to open it themselves (single-file archive) or use it
-// as a prefix for per-rank files (parallel archive). Unlike mktemp(3),
-// which clang/macOS flags as deprecated, this is race-free against other
-// in-process callers.
-void make_unique_filename_template(char* name_template) {
-  const int fd = mkstemp(name_template);
-  MADNESS_ASSERT(fd != -1);
-  ::close(fd);
-  std::remove(name_template);
-}
-}  // namespace
+using TiledArray::test::make_unique_filename_template;
+using TiledArray::test::to_parallel_archive_file_name;
 
 BOOST_FIXTURE_TEST_SUITE(array_suite, ArrayFixture)
 
