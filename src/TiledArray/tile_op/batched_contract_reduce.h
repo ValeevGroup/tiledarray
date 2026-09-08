@@ -119,11 +119,13 @@ class BatchedContractReduce {
   /// Create a new, empty result object
   result_type operator()() const { return result_type(); }
 
-  /// Post processing step (no result permutation supported)
-  result_type operator()(const result_type& temp) const {
+  /// Post processing step (no result permutation supported): the wrapped
+  /// op's own finalization -- a no-op for a numeric factor, conjugation (and
+  /// scale) of the finished tile for a ComplexConjugate<...> one
+  result_type operator()(result_type& temp) const {
     using TiledArray::empty;
     TA_ASSERT(!empty(temp));
-    return temp;
+    return op_(temp);
   }
 
   /// Reduce two result objects (both carry the full fused range)

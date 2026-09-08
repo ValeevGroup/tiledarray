@@ -113,6 +113,43 @@ class ContEngine : public BinaryEngine<Derived> {
  protected:
   scalar_type factor_;  ///< Contraction scaling factor
 
+  /// The numeric type of the tile's elements (for a tensor-of-tensors, of the
+  /// inner cells): the type of the per-cell multiplier below.
+  using elem_scalar_type =
+      typename TiledArray::detail::numeric_type<value_type>::type;
+
+  /// A contraction's factor is applied in exactly one of two places. A
+  /// numeric factor is absorbed into the per-cell (per-element) multiply-add
+  /// ops and the outer tile op runs with factor 1. A ComplexConjugate<...>
+  /// factor (`conj(A*B)`, `S*conj(A*B)`, `-conj(A*B)`) cannot be applied per
+  /// cell -- conj does not distribute into a sum of products -- so the
+  /// per-cell ops run with multiplier 1 and the outer op's finalization
+  /// conjugates AND scales the finished tile (ContractReduce's ComplexConjugate
+  /// specializations). Every consumer of the factor goes through these two
+  /// accessors; none may read factor_ directly.
+
+  /// \return the multiplier for the per-cell ops
+  template <typename Numeric = elem_scalar_type>
+  Numeric elem_scale() const {
+    return TiledArray::detail::elem_factor<Numeric>(factor_);
+  }
+
+  /// \return true if the per-cell ops need no multiplier
+  bool elem_scale_is_one() const {
+    if constexpr (TiledArray::detail::is_complex_conjugate_v<scalar_type>)
+      return true;
+    else
+      return factor_ == scalar_type(1);
+  }
+
+  /// \return the factor handed to the outer (tile-level) op
+  scalar_type outer_factor() const {
+    if constexpr (TiledArray::detail::is_complex_conjugate_v<scalar_type>)
+      return factor_;
+    else
+      return scalar_type(1);
+  }
+
  protected:
   op_type op_;  ///< Tile operation
 
@@ -431,8 +468,9 @@ class ContEngine : public BinaryEngine<Derived> {
 
         auto total_perm = make_total_perm();
 
-        // factor_ is absorbed into inner_tile_nonreturn_op_
-        op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
+        // a numeric factor_ is absorbed into the per-cell op; a
+        // ComplexConjugate one is applied by op_'s finalization
+        op_ = op_type(left_op, right_op, outer_factor(), outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_),
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
@@ -494,8 +532,9 @@ class ContEngine : public BinaryEngine<Derived> {
 
         auto total_perm = make_total_perm();
 
-        // factor_ is absorbed into inner_tile_nonreturn_op_
-        op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
+        // a numeric factor_ is absorbed into the per-cell op; a
+        // ComplexConjugate one is applied by op_'s finalization
+        op_ = op_type(left_op, right_op, outer_factor(), outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_),
                       total_perm, this->element_nonreturn_op_,
                       std::move(this->arena_plan_));
@@ -779,8 +818,9 @@ class ContEngine : public BinaryEngine<Derived> {
               "annotation of the result");
       }
 
-      // factor_ is absorbed into element_nonreturn_op_
-      op_ = op_type(left_op, right_op, scalar_type(1),
+      // a numeric factor_ is absorbed into the per-cell op; a
+      // ComplexConjugate one is applied by op_'s finalization
+      op_ = op_type(left_op, right_op, outer_factor(),
                     outer_size(indices_) - nh + u + u_right,
                     outer_size(left_indices_) - nh + u,
                     outer_size(right_indices_) - nh + u_right,
@@ -1156,7 +1196,7 @@ class ContEngine : public BinaryEngine<Derived> {
       // ContractReduce (built in init_struct) routes the !plain_tensors case to
       // gemm(result, left, right, helper, elem_muladd_op), invoking this op per
       // outer cell.
-      const scalar_type factor = this->factor_;
+      const auto factor = this->elem_scale();
       // shared flat (non-conjugating) scalar dot of two inner cells, scaled by
       // factor; returns the contribution for one outer cell (0 if either
       // operand cell is empty). The numerically-sensitive accumulation lives
@@ -1245,7 +1285,7 @@ class ContEngine : public BinaryEngine<Derived> {
                   "nested Hadamard on view inner tiles: the arena fast path "
                   "was inactive (arena disabled, or a non-identity inner "
                   "result permutation -- not yet supported on view cells)");
-            if (this->factor_ == scalar_type{1}) {
+            if (this->elem_scale_is_one()) {
               this->element_nonreturn_op_ =
                   TiledArray::detail::make_fused_hadamard_lambda<
                       result_tile_element_type, left_tile_element_type,
@@ -1254,7 +1294,7 @@ class ContEngine : public BinaryEngine<Derived> {
               this->element_nonreturn_op_ =
                   TiledArray::detail::make_fused_hadamard_scaled_lambda<
                       result_tile_element_type, left_tile_element_type,
-                      right_tile_element_type>(this->factor_);
+                      right_tile_element_type>(this->elem_scale());
             }
           }
           // element_return_op_ left null: a view cell cannot be
@@ -1282,7 +1322,7 @@ class ContEngine : public BinaryEngine<Derived> {
                 break;
               }
             if (result_inner_all_phantom) {
-              const scalar_type factor = this->factor_;
+              const auto factor = this->elem_scale();
               this->element_nonreturn_op_ =
                   [factor](result_tile_element_type& result,
                            const left_tile_element_type& left,
@@ -1326,9 +1366,9 @@ class ContEngine : public BinaryEngine<Derived> {
             } else {
               using op_type = TiledArray::detail::ContractReduce<
                   result_tile_element_type, left_tile_element_type,
-                  right_tile_element_type, scalar_type>;
-              // The inner op is built *perm-free* on purpose. factor_ is
-              // absorbed into element_nonreturn_op_; operand inner transposes
+                  right_tile_element_type, elem_scalar_type>;
+              // The inner op is built *perm-free* on purpose. It carries the
+              // per-cell multiplier (elem_scale()); operand inner transposes
               // are folded into the inner GEMM via left_/right_inner_permtype_.
               // A non-identity inner *result* permutation is NOT placed on this
               // op (make_fused_contraction_lambda asserts a perm-free op); it
@@ -1338,7 +1378,7 @@ class ContEngine : public BinaryEngine<Derived> {
               // Hadamard outer product.
               auto contrreduce_op = op_type(
                   to_cblas_op(this->left_inner_permtype_),
-                  to_cblas_op(this->right_inner_permtype_), this->factor_,
+                  to_cblas_op(this->right_inner_permtype_), this->elem_scale(),
                   inner_size(this->indices_), inner_size(this->left_indices_),
                   inner_size(this->right_indices_));
               // perm-free per-cell in-place contraction; used by both outer
@@ -1392,7 +1432,7 @@ class ContEngine : public BinaryEngine<Derived> {
                         typename result_tile_element_type::numeric_type>) {
                   if (contrreduce_op.gemm_helper().num_contract_ranks() == 0 &&
                       !bool(inner(this->perm_))) {
-                    const scalar_type factor = this->factor_;
+                    const auto factor = this->elem_scale();
                     this->arena_strided_gemm_ce_e_tile_op_ =
                         [factor](result_tile_type& Cc, const left_tile_type& Lt,
                                  const right_tile_type& Rt,
@@ -1507,7 +1547,7 @@ class ContEngine : public BinaryEngine<Derived> {
                           TiledArray::expressions::PermutationType::identity &&
                       inner_pt_ok(this->right_inner_permtype_);
                   if (right_arm_ok) {
-                    const scalar_type factor = this->factor_;
+                    const auto factor = this->elem_scale();
                     const bool left_inner_T =
                         this->left_inner_permtype_ ==
                         TiledArray::expressions::PermutationType::
@@ -1531,7 +1571,7 @@ class ContEngine : public BinaryEngine<Derived> {
                               left_inner_T);
                         };
                   } else if (left_arm_ok) {
-                    const scalar_type factor = this->factor_;
+                    const auto factor = this->elem_scale();
                     const bool right_inner_T =
                         this->right_inner_permtype_ ==
                         TiledArray::expressions::PermutationType::
@@ -1694,7 +1734,7 @@ class ContEngine : public BinaryEngine<Derived> {
             }
           if (result_inner_all_phantom) {
             const std::size_t phantom_rank = result_inner.size();
-            const scalar_type factor = this->factor_;
+            const auto factor = this->elem_scale();
             this->element_nonreturn_op_ =
                 [phantom_rank, factor](result_tile_element_type& result,
                                        const left_tile_element_type& left,
@@ -1720,21 +1760,21 @@ class ContEngine : public BinaryEngine<Derived> {
           } else {
             using op_type = TiledArray::detail::ContractReduce<
                 result_tile_element_type, left_tile_element_type,
-                right_tile_element_type, scalar_type>;
-            // factor_ is absorbed into inner_tile_nonreturn_op_
+                right_tile_element_type, elem_scalar_type>;
+            // the inner op carries the per-cell multiplier (elem_scale())
             auto contrreduce_op =
                 (inner_target_indices != inner(this->indices_))
                     ? op_type(
                           to_cblas_op(this->left_inner_permtype_),
                           to_cblas_op(this->right_inner_permtype_),
-                          this->factor_, inner_size(this->indices_),
+                          this->elem_scale(), inner_size(this->indices_),
                           inner_size(this->left_indices_),
                           inner_size(this->right_indices_),
                           (!this->implicit_permute_inner_ ? inner(this->perm_)
                                                           : Permutation{}))
                     : op_type(to_cblas_op(this->left_inner_permtype_),
                               to_cblas_op(this->right_inner_permtype_),
-                              this->factor_, inner_size(this->indices_),
+                              this->elem_scale(), inner_size(this->indices_),
                               inner_size(this->left_indices_),
                               inner_size(this->right_indices_));
             constexpr bool arena_eligible =
@@ -1792,7 +1832,7 @@ class ContEngine : public BinaryEngine<Derived> {
           // is contract then inner must implement (ternary) multiply-add;
           // if the outer is hadamard then the inner is binary multiply
           const bool outer_uses_summa = this->outer_product_uses_summa();
-          if (this->factor_ == scalar_type{1}) {
+          if (this->elem_scale_is_one()) {
             using base_op_type =
                 TiledArray::detail::Mult<result_tile_element_type,
                                          left_tile_element_type,
@@ -1869,16 +1909,16 @@ class ContEngine : public BinaryEngine<Derived> {
           } else {
             using base_op_type = TiledArray::detail::ScalMult<
                 result_tile_element_type, left_tile_element_type,
-                right_tile_element_type, scalar_type, false, false>;
+                right_tile_element_type, elem_scalar_type, false, false>;
             using op_type = TiledArray::detail::BinaryWrapper<
                 base_op_type>;  // can't consume inputs if they are used
                                 // multiple times, e.g. when outer op is gemm
             auto mult_op = (inner_target_indices != inner(this->indices_))
-                               ? op_type(base_op_type(this->factor_),
+                               ? op_type(base_op_type(this->elem_scale()),
                                          !this->implicit_permute_inner_
                                              ? inner(this->perm_)
                                              : Permutation{})
-                               : op_type(base_op_type(this->factor_));
+                               : op_type(base_op_type(this->elem_scale()));
             constexpr bool arena_eligible_h_scaled =
                 TiledArray::detail::is_contraction_arena_tot_v<
                     result_tile_type, left_tile_type, right_tile_type>;
@@ -1896,7 +1936,7 @@ class ContEngine : public BinaryEngine<Derived> {
                 this->element_nonreturn_op_ =
                     TiledArray::detail::make_fused_hadamard_scaled_lambda<
                         result_tile_element_type, left_tile_element_type,
-                        right_tile_element_type>(this->factor_);
+                        right_tile_element_type>(this->elem_scale());
               } else {
                 this->element_nonreturn_op_ =
                     [mult_op, outer_uses_summa](
@@ -1962,8 +2002,7 @@ class ContEngine : public BinaryEngine<Derived> {
             // the fused arena scale ops are factor-free; a non-unit
             // expression-level prefactor (ScalMult) takes the fallback op,
             // which absorbs it
-            if (this->outer_product_uses_summa() &&
-                this->factor_ == scalar_type(1)) {
+            if (this->outer_product_uses_summa() && this->elem_scale_is_one()) {
               // The inner perm handed to the plan must match how the inner
               // *result* permutation is applied for this result cell type --
               // and the two cell types apply it in different places:
@@ -2003,9 +2042,10 @@ class ContEngine : public BinaryEngine<Derived> {
               [perm = !this->implicit_permute_inner_ ? inner(this->perm_)
                                                      : Permutation{},
                outer_uses_summa = this->outer_product_uses_summa(),
-               factor = this->factor_](result_tile_element_type& result,
-                                       const left_tile_element_type& left,
-                                       const right_tile_element_type& right) {
+               factor = this->elem_scale()](
+                  result_tile_element_type& result,
+                  const left_tile_element_type& left,
+                  const right_tile_element_type& right) {
                 if (outer_uses_summa) {
                   using TiledArray::axpy_to;
                   if constexpr (tot_x_t) {

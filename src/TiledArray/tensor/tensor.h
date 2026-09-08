@@ -2057,14 +2057,41 @@ class Tensor {
     // early exit for empty this
     if (empty()) return *this;
 
-    if constexpr (is_arena_tensor_v<value_type>) {
-      // Arena inner cells: route through each cell's own in-place scale_to (the
-      // free arena kernel), which handles a ComplexConjugate factor by
-      // conjugating each arena scalar in place. Going through `cell *= factor`
-      // would instead select the generic operator*=(.., ComplexConjugate) ->
-      // detail::conj(cell), which has no value-returning conj for ArenaTensor.
-      return inplace_unary(
-          [factor](value_type& MADNESS_RESTRICT c) { c.scale_to(factor); });
+    if constexpr (detail::is_complex_conjugate_v<Scalar> &&
+                  !detail::is_complex_v<numeric_type>) {
+      // real elements: conj is the identity, only the scale (if any) remains
+      if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<void>>)
+        return *this;
+      else if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<
+                                                    detail::ComplexNegTag>>)
+        return neg_to();
+      else
+        return scale_to(factor.factor());
+    } else if constexpr (is_arena_tensor_v<value_type>) {
+      // Arena inner cells: the free arena kernel scales -- or, for a
+      // ComplexConjugate factor, conjugates and scales -- every arena scalar
+      // in place. (The member ArenaTensor::scale_to takes numeric factors
+      // only; `cell *= factor` is the same kernel via the ArenaTensor
+      // operator*= overloads.)
+      return inplace_unary([factor](value_type& MADNESS_RESTRICT c) {
+        ::TiledArray::scale_to(c, factor);
+      });
+    } else if constexpr (detail::is_complex_conjugate_v<Scalar> &&
+                         detail::is_ta_tensor_v<value_type>) {
+      // Owning nested cells with a ComplexConjugate factor: conjugate (and
+      // scale) each cell IN PLACE. `cell *= factor` would resolve to
+      // `cell = conj(cell) * S`, i.e. a fresh allocation, copy and free of
+      // every cell.
+      return inplace_unary([factor](value_type& MADNESS_RESTRICT res) {
+        if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<void>>)
+          res.conj_to();
+        else if constexpr (std::is_same_v<Scalar, detail::ComplexConjugate<
+                                                      detail::ComplexNegTag>>) {
+          res.conj_to();
+          res.neg_to();
+        } else
+          res.conj_to(factor.factor());
+      });
     } else {
       return inplace_unary(
           [factor](value_type& MADNESS_RESTRICT res) { res *= factor; });
@@ -3382,10 +3409,14 @@ class Tensor {
   Tensor& gemm(const Tensor<As...>& A, const Tensor<Bs...>& B, const W alpha,
                const math::GemmHelper& gemm_helper) {
     numeric_type beta = 1;
-    // A ComplexConjugate<...> alpha (conj(A*B) at the expression level) is
-    // applied to the finished result by ContractReduce's finalization step;
-    // the gemm itself runs with alpha = 1 (see detail::elem_factor).
-    const numeric_type alpha_n = detail::elem_factor<numeric_type>(alpha);
+    // A ComplexConjugate<...> factor is not a gemm alpha: conj does not
+    // distribute into the sum of products, so the expression layer applies it
+    // to the finished result (ContractReduce's finalization; see
+    // ContEngine::outer_factor) and hands the gemm a numeric alpha.
+    static_assert(!detail::is_complex_conjugate_v<W>,
+                  "Tensor::gemm: a ComplexConjugate<...> alpha cannot be "
+                  "applied inside the gemm; conjugate the finished result");
+    const numeric_type alpha_n = static_cast<numeric_type>(alpha);
     if (this->empty()) {
       *this =
           Tensor(gemm_helper.make_result_range<range_type>(A.range_, B.range()),
@@ -3684,10 +3715,13 @@ class Tensor {
                 if (detail::scale_gemm_timing_enabled()) {
                   detail::g_scale[0].gemm_runs.fetch_add(
                       1, std::memory_order_relaxed);
+                  // element multiply-adds (A in inner elements), the same
+                  // unit as fb_flop and the same-type path, so the
+                  // [scale-timing] coverage ratios compare like with like
                   detail::g_scale[0].gemm_flop.fetch_add(
                       2ull * static_cast<std::uint64_t>(K) *
                           static_cast<std::uint64_t>(N) *
-                          static_cast<std::uint64_t>(A) * cw,
+                          static_cast<std::uint64_t>(A),
                       std::memory_order_relaxed);
                 }
                 const integer Ai = static_cast<integer>(A);
@@ -3861,10 +3895,11 @@ class Tensor {
                 if (detail::scale_gemm_timing_enabled()) {
                   detail::g_scale[1].gemm_runs.fetch_add(
                       1, std::memory_order_relaxed);
+                  // element multiply-adds, the unit of fb_flop (see above)
                   detail::g_scale[1].gemm_flop.fetch_add(
                       2ull * static_cast<std::uint64_t>(M) *
                           static_cast<std::uint64_t>(K) *
-                          static_cast<std::uint64_t>(A) * cw,
+                          static_cast<std::uint64_t>(A),
                       std::memory_order_relaxed);
                 }
                 const integer Ai = static_cast<integer>(A);
