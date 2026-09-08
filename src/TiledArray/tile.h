@@ -23,6 +23,7 @@
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tile_interface/cast.h>
 #include <TiledArray/tile_interface/trace.h>
+#include <TiledArray/tile_op/tile_interface.h>
 #include <memory>
 
 namespace TiledArray {
@@ -264,13 +265,7 @@ class Tile {
 
   /// \return The number of elements in the tensor, tallied across batches (if
   /// any)
-  decltype(auto) total_size() const {
-    if constexpr (detail::has_member_function_total_size_anyreturn_v<
-                      tensor_type>) {
-      return tensor().total_size();
-    } else
-      return size();
-  }
+  decltype(auto) total_size() const { return TiledArray::total_size(tensor()); }
 
   /// Range accessor
 

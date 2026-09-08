@@ -2068,19 +2068,25 @@ class Tensor {
   /// Does an in-place binary op against a \p Right of this shape ever need
   /// the null-destination fallback?
 
-  /// True only when this tensor's cells are non-owning *views*. Every use is
-  /// an `if constexpr` condition, never a runtime one: the fallback body calls
-  /// the *value-returning* kernels, which need not be well-formed for a
-  /// `Tensor` / `Scalar` combination that the in-place path nonetheless
-  /// supports -- e.g. `Tensor<std::complex<double>>::subt_to(right, int)` is
-  /// fine in place, while the corresponding `subt(right, int)` is ill-formed
+  /// True only when both operands' cells are `ArenaTensor`s. The fallback
+  /// body calls the *value-returning* kernels, which allocate a fresh arena
+  /// slab, so by `arena_tensor.h`'s own trait convention this is
+  /// `is_arena_tensor_v` territory rather than the broader
+  /// `is_tensor_view_v` -- the latter also covers `btas::TensorView`, for
+  /// which no such value-returning kernel exists.
+  ///
+  /// Every use is an `if constexpr` condition, never a runtime one: the
+  /// fallback body need not be well-formed for a `Tensor` / `Scalar`
+  /// combination that the in-place path nonetheless supports -- e.g.
+  /// `Tensor<std::complex<double>>::subt_to(right, int)` is fine in place,
+  /// while the corresponding `subt(right, int)` is ill-formed
   /// (`std::complex<double> * int`). Guarding with `if constexpr` keeps the
-  /// fallback out of every non-view instantiation.
+  /// fallback out of every non-arena instantiation.
   /// \tparam Right The right-hand tensor type
   template <typename Right>
   static constexpr bool binary_needs_view_cell_fallback_v =
-      detail::is_tensor_of_tensor_v<Tensor> && is_tensor_view_v<value_type> &&
-      is_tensor_view_v<typename Right::value_type>;
+      detail::is_tensor_of_tensor_v<Tensor> && is_arena_tensor_v<value_type> &&
+      is_arena_tensor_v<typename Right::value_type>;
 
   /// Would an element-wise in-place binary op against \p right drop data?
 
@@ -2090,7 +2096,23 @@ class Tensor {
   /// corresponding cell of \p right is populated, updating in place would
   /// silently discard it. Callers must instead route through the
   /// value-returning kernel, which builds a fresh slab with union sparsity.
-  /// Always `false` unless both operands' cells are views.
+  /// Always `false` unless both operands' cells are arena tensors.
+  ///
+  /// The scan mirrors how `detail::inplace_tensor_op` -- the kernel this
+  /// guards -- walks the very same operands: linearly over `total_size()`
+  /// when both are contiguous, and by strided range ordinal when they are
+  /// not. Keeping the two in step is what makes the guard exactly as general
+  /// as the operation it guards; a shape this predicate cannot scan must be
+  /// a compile error, never a `false`, since `false` reinstates the
+  /// cell-dropping bug this exists to prevent.
+  ///
+  /// \note A rebind (`*this = ...`) is the only remedy available to the
+  ///       caller, so a fallback replaces this handle's storage instead of
+  ///       mutating it. `TA::Tensor` is a shallow-copy handle, so sibling
+  ///       handles keep observing the pre-op values -- unlike a true in-place
+  ///       update. Callers in tree hold the tile by reference and are
+  ///       unaffected.
+  ///
   /// \tparam Right The right-hand tensor type
   /// \param right The right-hand operand
   /// \return true if some ordinal has a null left cell and a populated right
@@ -2098,16 +2120,83 @@ class Tensor {
   template <typename Right>
   bool inplace_binary_drops_cells(const Right& right) const {
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
+      static_assert(
+          detail::has_member_function_data_anyreturn_v<Tensor> &&
+              detail::has_member_function_data_anyreturn_v<Right>,
+          "Tensor::inplace_binary_drops_cells: both operands must expose "
+          "data(); an operand that cannot be scanned for null cells must not "
+          "silently answer \"no drop\"");
+
       if (empty() || right.empty()) return false;
-      const std::size_t n = static_cast<std::size_t>(this->total_size());
-      if (n != static_cast<std::size_t>(right.total_size())) return false;
-      for (std::size_t ord = 0; ord < n; ++ord)
-        if (this->data()[ord].empty() && !right.data()[ord].empty())
-          return true;
-      return false;
+
+      // Congruent operands are the in-place kernel's own precondition; a
+      // mismatch here is rejected there (loudly under TA_ASSERT_THROW). Bail
+      // rather than walk off the end of the shorter operand.
+      TA_ASSERT(detail::is_range_set_congruent(*this, right));
+
+      auto drops = [](const value_type* l, const typename Right::value_type* r,
+                      std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i)
+          if (l[i].empty() && !r[i].empty()) return true;
+        return false;
+      };
+
+      if constexpr (detail::is_contiguous_tensor<Tensor, Right>::value) {
+        const std::size_t n =
+            static_cast<std::size_t>(TiledArray::total_size(*this));
+        if (n != static_cast<std::size_t>(TiledArray::total_size(right)))
+          return false;
+        return drops(this->data(), right.data(), n);
+      } else {
+        // Non-contiguous operand: walk contiguous runs the way
+        // `inplace_tensor_op` does, one `inner_size` stride at a time.
+        const auto volume = this->range().volume();
+        if (volume != right.range().volume()) return false;
+        const auto stride = detail::inner_size(*this, right);
+        for (std::decay_t<decltype(volume)> ord = 0ul; ord < volume;
+             ord += stride)
+          if (drops(this->data() + this->range().ordinal(ord),
+                    right.data() + right.range().ordinal(ord),
+                    static_cast<std::size_t>(stride)))
+            return true;
+        return false;
+      }
     } else {
       (void)right;
       return false;
+    }
+  }
+
+  /// An owning deep copy of \p right, safe to mutate without touching it.
+
+  /// `detail::clone_or_cast` deep-copies only when `Right` *is* `Tensor`, in
+  /// which case it calls `clone()`. For any other nested-tensor `Right` it
+  /// falls into a generic branch that `std::copy`s the *cells*, and a cell is
+  /// a shallow handle -- an `ArenaTensor` is a non-owning view, and
+  /// `TA::Tensor` is itself reference-counted. The copy would then share
+  /// storage with \p right, so negating or scaling it afterwards writes
+  /// through to the source, corrupting a const operand.
+  ///
+  /// Route nested tensors through the arena unary kernel instead: it allocates
+  /// a fresh slab and copies *elements*, and being range-addressed it handles
+  /// a strided (block-view) source correctly.
+  /// \tparam Right The source tensor type
+  /// \param right The tensor to copy
+  /// \return An owning `Tensor` sharing no storage with \p right
+  template <typename Right>
+  static Tensor owning_copy_of(const Right& right) {
+    using RightT = std::remove_cv_t<std::remove_reference_t<Right>>;
+    if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
+                  !std::is_same_v<RightT, Tensor> &&
+                  std::is_same_v<value_type, typename RightT::value_type>) {
+      auto fill = [](typename value_type::value_type* dst,
+                     const typename value_type::value_type* src,
+                     std::size_t n) {
+        for (std::size_t i = 0; i < n; ++i) dst[i] = src[i];
+      };
+      return detail::arena_trivial_unary<Tensor>(right, fill);
+    } else {
+      return detail::clone_or_cast<Tensor>(right);
     }
   }
 
@@ -2119,7 +2208,7 @@ class Tensor {
     requires(is_arena_tensor_v<value_type> &&
              is_arena_tensor_v<typename Right::value_type>)
   Tensor add(const Right& right) const {
-    if (empty()) return detail::clone_or_cast<Tensor>(right);
+    if (empty()) return owning_copy_of(right);
     if (right.empty()) return this->clone();
     auto fill = [](typename value_type::value_type* dst,
                    const typename value_type::value_type* l,
@@ -2173,6 +2262,8 @@ class Tensor {
     using ElemT = typename value_type::value_type;
     auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
                          std::size_t n) {
+      // mixed complex x scalar operator*
+      using namespace TiledArray::detail;
       for (std::size_t i = 0; i < n; ++i) dst[i] = (l[i] + r[i]) * factor;
     };
     return detail::arena_trivial_binary<Tensor>(*this, right, fill);
@@ -2232,7 +2323,7 @@ class Tensor {
     if (right.empty()) return this->clone();
 
     // early exit for empty this
-    if (empty()) return detail::clone_or_cast<Tensor>(right);
+    if (empty()) return owning_copy_of(right);
 
     if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
                   detail::is_ta_tensor_v<value_type> &&
@@ -2403,7 +2494,7 @@ class Tensor {
 
     // early exit for empty this
     if (empty()) {
-      *this = detail::clone_or_cast<Tensor>(right);
+      *this = owning_copy_of(right);
       return *this;
     }
 
@@ -2431,6 +2522,19 @@ class Tensor {
     requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
              detail::addable_to<value_type&, const value_t<Right>&>)
   Tensor& add_to(const Right& right, const Scalar factor) {
+    // early exit for empty right: (this + 0) * factor
+    if (right.empty()) {
+      this->scale_to(factor);
+      return *this;
+    }
+
+    // early exit for empty this: (0 + right) * factor
+    if (empty()) {
+      *this = owning_copy_of(right);
+      this->scale_to(factor);
+      return *this;
+    }
+
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
       if (inplace_binary_drops_cells(right)) {
         *this = this->add(right, factor);
@@ -2458,14 +2562,25 @@ class Tensor {
   Tensor& axpy_to(const Right& right, const Scalar factor) {
     if (right.empty()) return *this;
     if (empty()) {
-      *this = detail::clone_or_cast<Tensor>(right);
+      *this = owning_copy_of(right);
       this->scale_to(factor);
       return *this;
     }
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
       if (inplace_binary_drops_cells(right)) {
-        // no value-returning `axpy`; compose scale-then-add on the union kernel
-        *this = this->add(right.scale(factor));
+        // Fuse `l + r * factor` into a single union-sparsity pass. Composing
+        // `add(right.scale(factor))` would allocate a second arena slab just
+        // to hold the scaled intermediate. Both operands are non-null here:
+        // the empty cases returned above, and `inplace_binary_drops_cells`
+        // answers false for either operand empty.
+        using ElemT = typename value_type::value_type;
+        auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
+                             std::size_t n) {
+          // mixed complex x scalar operator*
+          using namespace TiledArray::detail;
+          for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] + r[i] * factor;
+        };
+        *this = detail::arena_trivial_binary<Tensor>(*this, right, fill);
         return *this;
       }
     }
@@ -2475,6 +2590,8 @@ class Tensor {
                             if constexpr (detail::is_tensor_helper<L>::value) {
                               l.axpy_to(r, factor);
                             } else {
+                              // mixed complex x scalar operator*
+                              using namespace TiledArray::detail;
                               l += r * factor;
                             }
                           });
@@ -2501,7 +2618,7 @@ class Tensor {
         // result inner cell): initialize to factor * (perm ^ arg) rather
         // than asserting non-empty in inplace_binary -- mirrors the
         // non-permuting axpy_to overload above.
-        *this = detail::clone_or_cast<Tensor>(permuted);
+        *this = owning_copy_of(permuted);
         this->scale_to(factor);
         return *this;
       }
@@ -2511,6 +2628,8 @@ class Tensor {
             if constexpr (detail::is_tensor_helper<L>::value) {
               l.axpy_to(r, factor);
             } else {
+              // mixed complex x scalar operator*
+              using namespace TiledArray::detail;
               l += r * factor;
             }
           });
@@ -2675,6 +2794,8 @@ class Tensor {
       using ElemT = typename value_type::value_type;
       auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
                            std::size_t n) {
+        // mixed complex x scalar operator*
+        using namespace TiledArray::detail;
         for (std::size_t i = 0; i < n; ++i) dst[i] = (l[i] - r[i]) * factor;
       };
       return detail::arena_trivial_binary<Tensor>(*this, right, fill);
@@ -2747,6 +2868,13 @@ class Tensor {
     // early exit for empty right
     if (right.empty()) return *this;
 
+    // early exit for empty this: 0 - right == -right
+    if (empty()) {
+      *this = owning_copy_of(right);
+      this->neg_to();
+      return *this;
+    }
+
     // a null view cell cannot adopt a populated right cell in place -- fall
     // back to the value-returning (union-sparsity) kernel
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
@@ -2775,6 +2903,14 @@ class Tensor {
     // early exit for empty right
     if (right.empty()) {
       return this->scale_to(factor);
+    }
+
+    // early exit for empty this: (0 - right) * factor
+    if (empty()) {
+      *this = owning_copy_of(right);
+      this->neg_to();
+      this->scale_to(factor);
+      return *this;
     }
 
     if constexpr (binary_needs_view_cell_fallback_v<Right>) {
@@ -2815,7 +2951,10 @@ class Tensor {
                    const typename value_type::value_type* r, std::size_t n) {
       for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] * r[i];
     };
-    return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+    // mult annihilates: a cell absent from either operand has an identically
+    // zero product, which a null cell already denotes.
+    return detail::arena_trivial_binary<Tensor>(
+        *this, right, fill, detail::ArenaBinarySparsity::Intersection);
   }
 
   /// Mixed `Tensor<ArenaTensor> * Tensor<scalar>`: outer Hadamard, each
@@ -2876,7 +3015,9 @@ class Tensor {
                      const typename value_type::value_type* r, std::size_t n) {
         for (std::size_t i = 0; i < n; ++i) dst[i] = l[i] * r[i];
       };
-      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+      // mult annihilates -- see the arena overload above.
+      return detail::arena_trivial_binary<Tensor>(
+          *this, right, fill, detail::ArenaBinarySparsity::Intersection);
     } else {
       return binary(right, mult_op);
     }
@@ -2946,9 +3087,13 @@ class Tensor {
       using ElemT = typename value_type::value_type;
       auto fill = [factor](ElemT* dst, const ElemT* l, const ElemT* r,
                            std::size_t n) {
+        // mixed complex x scalar operator*
+        using namespace TiledArray::detail;
         for (std::size_t i = 0; i < n; ++i) dst[i] = (l[i] * r[i]) * factor;
       };
-      return detail::arena_trivial_binary<Tensor>(*this, right, fill);
+      // mult annihilates -- see the unscaled overload above.
+      return detail::arena_trivial_binary<Tensor>(
+          *this, right, fill, detail::ArenaBinarySparsity::Intersection);
     } else {
       return binary(right,
                     [factor](const value_type& l, const value_t<Right>& r) {
@@ -3009,10 +3154,13 @@ class Tensor {
     // early exit for empty this
     if (empty()) return *this;
 
-    // No fallback here, unlike add_to/subt_to/axpy_to: multiplication
-    // annihilates, so a null destination cell against a populated source has an
-    // identically zero product and loses nothing. The free per-cell `mult_to`
-    // leaves it null, which is how a sparse ToT spells zero.
+    // No fallback here, unlike add_to/subt_to/axpy_to. Multiplication
+    // annihilates, so a null destination cell against a populated source has
+    // an identically zero product and loses nothing: the free per-cell
+    // `mult_to` leaves it null, which is how a sparse ToT spells zero, and the
+    // value-returning kernel now agrees (ArenaBinarySparsity::Intersection).
+    // Routing through that kernel would rebuild the whole tile only to
+    // materialize explicit zeros where screening had removed cells.
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right>& r) { l *= r; });
   }
@@ -3029,6 +3177,13 @@ class Tensor {
       typename std::enable_if<detail::is_nested_tensor_v<Right> &&
                               detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& mult_to(const Right& right, const Scalar factor) {
+    // early exit for empty right: this * 0 == 0, spelled the way the
+    // unscaled `mult_to` spells it
+    if (right.empty()) {
+      *this = Tensor{};
+      return *this;
+    }
+
     // early exit for empty this
     if (empty()) return *this;
 

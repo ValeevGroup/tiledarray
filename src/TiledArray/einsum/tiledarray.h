@@ -945,23 +945,55 @@ auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
                   add_to(el, element_product_op(aik.data()[i], bik.data()[i]));
               }
             } else if constexpr (!AreArraySame<ArrayA, ArrayB>) {
-              auto aik = ai.batch(k);
-              auto bik = bi.batch(k);
-              auto vol = aik.total_size();
-              TA_ASSERT(vol == bik.total_size());
-
-              auto &el = tile({k});
-
-              // Fused `el += inner_tensor * scalar` -- no scaled temporary
-              // (axpy_to works in-place, so it also supports view inner
-              // cells that cannot value-return a scaled tensor).
-              using TiledArray::axpy_to;
-              for (auto i = 0; i < vol; ++i)
-                if constexpr (IsArrayToT<ArrayA>) {
-                  axpy_to(el, aik.data()[i], bik.data()[i]);
-                } else {
-                  axpy_to(el, bik.data()[i], aik.data()[i]);
+              if constexpr (inner_is_view) {
+                // `tile` is built with default-constructed (null) inner cells
+                // and a view cell cannot allocate, so it has no storage to
+                // accept a contribution: the free `axpy_to` refuses a null
+                // destination rather than silently drop the source. Only
+                // run_regime_a_arena grows result cells, so reaching this
+                // legacy path means the arena plan was inactive (e.g. under
+                // detail::arena_disabled()).
+                //
+                // Report that here rather than let the per-cell kernel raise a
+                // lower-level diagnostic -- but only once a source cell is
+                // actually populated. A fully screened operand contributes
+                // nothing, leaves the null result tile correct, and must keep
+                // working: `axpy_to` early-returns on a null source, so that
+                // case never needed the destination to have storage.
+                auto aik = ai.batch(k);
+                auto bik = bi.batch(k);
+                const auto vol = aik.total_size();
+                TA_ASSERT(vol == bik.total_size());
+                for (auto i = 0; i < vol; ++i) {
+                  bool src_populated;
+                  if constexpr (IsArrayToT<ArrayA>)
+                    src_populated = !aik.data()[i].empty();
+                  else
+                    src_populated = !bik.data()[i].empty();
+                  if (src_populated)
+                    TA_EXCEPTION(
+                        "TA::einsum: ToT x T product with view inner cells "
+                        "(e.g. ArenaTensor) is supported only via the regime-A "
+                        "arena fast path, which was inactive for this "
+                        "expression");
                 }
+              } else {
+                auto aik = ai.batch(k);
+                auto bik = bi.batch(k);
+                auto vol = aik.total_size();
+                TA_ASSERT(vol == bik.total_size());
+
+                auto &el = tile({k});
+
+                // Fused `el += inner_tensor * scalar` -- no scaled temporary.
+                using TiledArray::axpy_to;
+                for (auto i = 0; i < vol; ++i)
+                  if constexpr (IsArrayToT<ArrayA>) {
+                    axpy_to(el, aik.data()[i], bik.data()[i]);
+                  } else {
+                    axpy_to(el, bik.data()[i], aik.data()[i]);
+                  }
+              }
 
             } else {
               auto hk = ai.batch(k).dot(bi.batch(k));

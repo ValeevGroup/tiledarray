@@ -530,4 +530,249 @@ BOOST_AUTO_TEST_CASE(expr_permuted_add_null_left_cells_keeps_right) {
   }
 }
 
+// --- empty-operand guards on the in-place binary ops ---------------------
+// An empty tensor denotes zero in these ops -- that is already how `add_to`
+// and the unscaled `mult_to` treat it. `subt_to` (both overloads), the scaled
+// `add_to` and the scaled `mult_to` were missing one or both guards, so they
+// fell through into `inplace_binary`, whose `!empty()` precondition is a
+// TA_ASSERT: it throws in a Debug build and, compiled out in Release, walks a
+// null `data()` or silently yields an empty (== zero) result. Same
+// silent-data-loss shape as the null-cell bug, one function over.
+
+BOOST_AUTO_TEST_CASE(subt_to_empty_left_yields_negated_right) {
+  outer_t L;  // default-constructed -> empty outer == zero
+  outer_t R = make_tot(3, 4, 7.0);
+  BOOST_REQUIRE(L.empty());
+  const outer_t expected = R.scale(-1.0);
+  L.subt_to(R);
+  BOOST_CHECK(tot_equal(L, expected));
+}
+
+BOOST_AUTO_TEST_CASE(subt_to_scaled_empty_left_yields_negated_scaled_right) {
+  outer_t L;
+  outer_t R = make_tot(3, 4, 7.0);
+  const outer_t expected = R.scale(-2.0);
+  L.subt_to(R, 2.0);  // legacy semantics: (l - r) * factor
+  BOOST_CHECK(tot_equal(L, expected));
+}
+
+BOOST_AUTO_TEST_CASE(add_to_scaled_empty_left_yields_scaled_right) {
+  outer_t L;
+  outer_t R = make_tot(3, 4, 7.0);
+  const outer_t expected = R.scale(2.0);
+  L.add_to(R, 2.0);  // legacy semantics: (l + r) * factor
+  BOOST_CHECK(tot_equal(L, expected));
+}
+
+BOOST_AUTO_TEST_CASE(add_to_scaled_empty_right_scales_left) {
+  outer_t L = make_tot(3, 4, 5.0);
+  const outer_t expected = L.scale(2.0);
+  const outer_t empty_right;
+  L.add_to(empty_right, 2.0);
+  BOOST_CHECK(tot_equal(L, expected));
+}
+
+BOOST_AUTO_TEST_CASE(mult_to_scaled_empty_right_is_zero) {
+  outer_t L = make_tot(3, 4, 5.0);
+  const outer_t empty_right;
+  L.mult_to(empty_right, 2.0);
+  // matches the unscaled `mult_to`, which spells the zero product as an
+  // empty result
+  BOOST_CHECK(L.empty());
+}
+
+// --- non-contiguous (block-view) right operand ---------------------------
+// `Tensor::block()` yields a `TensorInterface<T, BlockRange>`, whose cells are
+// strided in the parent's storage. Both `inplace_binary_drops_cells` and the
+// arena value-returning kernels must address it through its range; reading it
+// linearly would silently pick up the wrong cells rather than fail.
+
+namespace {
+
+/// 2-D outer arena ToT; `present[ord]==false` gives a deliberately-null cell.
+arena_outer_t make_arena_tot_2d(long n0, long n1, std::size_t n_inner,
+                                double base, const std::vector<bool>& present) {
+  auto range_fn = [&present, n_inner](std::size_t ord) {
+    return present[ord] ? TA::Range{static_cast<long>(n_inner)} : TA::Range{};
+  };
+  arena_outer_t t = TA::detail::arena_outer_init<arena_outer_t>(
+      TA::Range{n0, n1}, 1, range_fn, alignof(double), /*zero_init=*/true);
+  const std::size_t N = static_cast<std::size_t>(n0 * n1);
+  for (std::size_t ord = 0; ord < N; ++ord) {
+    arena_inner_t& c = t.data()[ord];
+    if (c.empty()) continue;
+    for (std::size_t i = 0; i < n_inner; ++i)
+      c.data()[i] = base + ord * 100.0 + i;
+  }
+  return t;
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(arena_add_to_noncontiguous_right_block) {
+  // R is 2x3, so its leading 2x2 sub-block has row stride 3: block cell (1,0)
+  // is R ordinal 3, not 2. Reading the block linearly would take R's ordinal 2
+  // instead, which is exactly what this test is here to catch.
+  const arena_outer_t R =
+      make_arena_tot_2d(2, 3, 4, 0.5, {true, true, true, true, true, true});
+  auto blk = R.block({0l, 0l}, {2l, 2l});
+  static_assert(!TA::detail::is_contiguous_tensor<decltype(blk)>::value,
+                "a BlockRange view must be non-contiguous for this test to "
+                "exercise the strided path");
+
+  // L is 2x2 with cell (0,1) null, so the fallback fires and must not drop the
+  // block's populated cell there.
+  const arena_outer_t L =
+      make_arena_tot_2d(2, 2, 4, 1.0, {true, false, true, true});
+  arena_outer_t t = L.clone();
+  t.add_to(blk);
+
+  BOOST_REQUIRE_EQUAL(t.range().volume(), 4u);
+  for (std::size_t ord = 0; ord < 4; ++ord) {
+    const arena_inner_t& lc = L.data()[ord];
+    // the block's own view of cell `ord` -- strided, via its range
+    const arena_inner_t& rc = blk.data()[blk.range().ordinal(ord)];
+    const arena_inner_t& got = t.data()[ord];
+    BOOST_REQUIRE(!rc.empty());
+    BOOST_REQUIRE(!got.empty());
+    for (std::size_t i = 0; i < got.size(); ++i) {
+      const double lv = lc.empty() ? 0.0 : lc.data()[i];
+      BOOST_CHECK_EQUAL(got.data()[i], lv + rc.data()[i]);
+    }
+  }
+}
+
+// --- mult uses intersection sparsity -------------------------------------
+// Multiplication annihilates, so the minimal correct result sparsity is the
+// *intersection* of the operands' cell patterns: a cell absent from either
+// operand has an identically zero product, which a null cell already denotes.
+// `nz_L`/`nz_R` disagree in both directions (cell 0 is right-only, cells 3/4
+// differ), so these pin the rule rather than pass vacuously.
+
+BOOST_AUTO_TEST_CASE(arena_mult_uses_intersection_sparsity) {
+  const arena_outer_t L = make_arena_tot_sparse(5, 4, 2.0, nz_L);
+  const arena_outer_t R = make_arena_tot_sparse(5, 4, 0.5, nz_R);
+  const arena_outer_t prod = L.mult(R);
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const arena_inner_t& l = L.data()[ord];
+    const arena_inner_t& r = R.data()[ord];
+    const arena_inner_t& d = prod.data()[ord];
+    if (!l.empty() && !r.empty()) {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.size(); ++i)
+        BOOST_CHECK_EQUAL(d.data()[i], l.data()[i] * r.data()[i]);
+    } else {
+      // union sparsity would have emitted an explicit zero slab here
+      BOOST_CHECK(d.empty());
+    }
+  }
+}
+
+// The in-place op must not densify either: a null destination cell stays null
+// (its product is zero), and a populated cell against a null source is zeroed
+// in place because a view cannot free its own storage.
+BOOST_AUTO_TEST_CASE(arena_mult_to_does_not_densify_null_cells) {
+  const arena_outer_t L = make_arena_tot_sparse(5, 4, 2.0, nz_L);
+  const arena_outer_t R = make_arena_tot_sparse(5, 4, 0.5, nz_R);
+  arena_outer_t t = L.clone();
+  t.mult_to(R);
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const arena_inner_t& l = L.data()[ord];
+    const arena_inner_t& r = R.data()[ord];
+    const arena_inner_t& d = t.data()[ord];
+    if (l.empty()) {
+      BOOST_CHECK(d.empty());
+    } else if (r.empty()) {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.size(); ++i)
+        BOOST_CHECK_EQUAL(d.data()[i], 0.0);
+    } else {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.size(); ++i)
+        BOOST_CHECK_EQUAL(d.data()[i], l.data()[i] * r.data()[i]);
+    }
+  }
+}
+
+// --- an empty-`this` fast path must not alias, let alone mutate, the source
+// `detail::clone_or_cast` deep-copies only when `Right` *is* `Tensor`; for any
+// other nested-tensor `Right` (e.g. the `TensorInterface<..., BlockRange>` that
+// `block()` yields) it copies the cell *handles*, which for a view cell aliases
+// the source's storage. Scaling or negating the copy then writes through to a
+// const operand.
+
+BOOST_AUTO_TEST_CASE(subt_to_empty_left_must_not_mutate_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  arena_outer_t t;
+  t.subt_to(P.block({0l, 0l}, {2l, 2l}));
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+  BOOST_CHECK_EQUAL(t.data()[0].data()[0], -before);
+}
+
+BOOST_AUTO_TEST_CASE(subt_to_scaled_empty_left_must_not_mutate_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  arena_outer_t t;
+  t.subt_to(P.block({0l, 0l}, {2l, 2l}), 2.0);
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+  BOOST_CHECK_EQUAL(t.data()[0].data()[0], -before * 2.0);
+}
+
+BOOST_AUTO_TEST_CASE(add_to_scaled_empty_left_must_not_mutate_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  arena_outer_t t;
+  t.add_to(P.block({0l, 0l}, {2l, 2l}), 3.0);
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+  BOOST_CHECK_EQUAL(t.data()[0].data()[0], before * 3.0);
+}
+
+BOOST_AUTO_TEST_CASE(axpy_to_empty_left_must_not_mutate_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  arena_outer_t t;
+  t.axpy_to(P.block({0l, 0l}, {2l, 2l}), 2.0);
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+}
+
+// the value-returning empty-left exits have the same hazard: the result must
+// own its cells, or the caller's later mutation corrupts the source
+BOOST_AUTO_TEST_CASE(add_empty_left_result_must_not_alias_source) {
+  arena_outer_t P =
+      make_arena_tot_2d(2, 3, 4, 1.0, {true, true, true, true, true, true});
+  const double before = P.data()[0].data()[0];
+  const arena_outer_t empty_left;
+  arena_outer_t r = empty_left.add(P.block({0l, 0l}, {2l, 2l}));
+  r.scale_to(-1.0);
+  BOOST_CHECK_EQUAL(P.data()[0].data()[0], before);
+}
+
+// --- intersection sparsity also governs the plain owning ToT --------------
+// `Tensor::mult`'s intersection rule is applied in the `is_ta_tensor_v` branch
+// too, so it is a behavior change for `TA::Tensor<TA::Tensor<T>>`, not only for
+// arena tiles. Pin it: the pre-existing mult_mismatched_null_inners is written
+// permissively and passes under either rule.
+BOOST_AUTO_TEST_CASE(plain_tot_mult_uses_intersection_sparsity) {
+  outer_t L = make_tot_sparse(5, 4, 2.0, nz_L);
+  outer_t R = make_tot_sparse(5, 4, 0.5, nz_R);
+  outer_t prod = L.mult(R);
+  for (std::size_t ord = 0; ord < 5; ++ord) {
+    const inner_t& l = *(L.data() + ord);
+    const inner_t& r = *(R.data() + ord);
+    const inner_t& d = *(prod.data() + ord);
+    if (!l.empty() && !r.empty()) {
+      BOOST_REQUIRE(!d.empty());
+      for (std::size_t i = 0; i < d.range().volume(); ++i)
+        BOOST_CHECK_EQUAL(d.at_ordinal(i), l.at_ordinal(i) * r.at_ordinal(i));
+    } else {
+      BOOST_CHECK(d.empty());
+    }
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

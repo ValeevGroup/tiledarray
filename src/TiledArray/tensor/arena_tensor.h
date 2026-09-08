@@ -536,6 +536,11 @@ void axpy_to(ArenaTensor<T, R>& dst, const ArenaTensor<T, R>& src,
   TA_ASSERT(dst.size() == src.size());
   auto* d = dst.data();
   const auto* s = src.data();
+  // `alpha * s[i]` is scalar x element. For a complex element and a scalar of
+  // a different type (e.g. int * complex<double>) std's operator* fails
+  // deduction and ADL never reaches TiledArray::detail, so the mixed
+  // scalar x complex operators have to be pulled in by hand.
+  using namespace TiledArray::detail;
   for (std::size_t i = 0; i < dst.size(); ++i) d[i] += alpha * s[i];
 }
 

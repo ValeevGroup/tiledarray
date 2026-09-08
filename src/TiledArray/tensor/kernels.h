@@ -31,6 +31,7 @@
 #include <TiledArray/tensor/arena_tensor.h>
 #include <TiledArray/tensor/permute.h>
 #include <TiledArray/tensor/utility.h>
+#include <TiledArray/tile_op/tile_interface.h>
 #include <TiledArray/util/vector.h>
 
 namespace TiledArray {
@@ -920,12 +921,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Identity&& identity,
   if (!empty(tensor1, tensors...)) {
     TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-    const auto volume = [&tensor1]() {
-      if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
-        return tensor1.total_size();
-      else
-        return tensor1.size();
-    }();
+    const auto volume = TiledArray::total_size(tensor1);
 
     math::reduce_op(std::forward<ReduceOp>(reduce_op),
                     std::forward<JoinOp>(join_op), init, volume, init,
@@ -993,12 +989,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto volume = [&tensor1]() {
-    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
-      return tensor1.total_size();
-    else
-      return tensor1.size();
-  }();
+  const auto volume = TiledArray::total_size(tensor1);
 
   auto result = identity;
   for (std::remove_cv_t<decltype(volume)> ord = 0ul; ord < volume; ++ord) {
@@ -1040,12 +1031,7 @@ auto tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   TA_ASSERT(!empty(tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
 
-  const auto volume = [&tensor1]() {
-    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
-      return tensor1.total_size();
-    else
-      return tensor1.size();
-  }();
+  const auto volume = TiledArray::total_size(tensor1);
 
   auto result = identity;
   if constexpr (detail::has_member_function_data_anyreturn_v<T1> &&
@@ -1109,12 +1095,7 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   // TA_ASSERT(tensor1.nbatch() == 1); // todo: assert the same for the
   // remaining tensors
 
-  const auto volume = [&tensor1]() {
-    if constexpr (detail::has_member_function_total_size_anyreturn_v<T1>)
-      return tensor1.total_size();
-    else
-      return tensor1.size();
-  }();
+  const auto volume = TiledArray::total_size(tensor1);
 
   Scalar result = identity;
 
