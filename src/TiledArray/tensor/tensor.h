@@ -3568,8 +3568,22 @@ class Tensor {
                   is_tensor_view_v<value_type>) {
       using Real = std::remove_cv_t<typename value_type::value_type>;
       if constexpr (std::is_same_v<std::remove_cv_t<V>, Real>) {
-        if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
-            gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
+        // Both operand orientations are served: the plain (right) matrix's
+        // transpose is passed to BLAS as its op, and a transposed nested
+        // (left) tile only changes which cells form row m (cells (k,m) are
+        // stored k-major, so the row's cells are M cells apart; the stride
+        // is measured from the cell addresses either way). A conjugating op
+        // is not: neither this path nor the per-cell op below conjugates,
+        // so ConjTranspose takes the generic loop.
+        if (gemm_helper.left_op() != TiledArray::math::blas::ConjTranspose &&
+            gemm_helper.right_op() != TiledArray::math::blas::ConjTranspose) {
+          const bool left_no_trans =
+              gemm_helper.left_op() == TiledArray::math::blas::NoTranspose;
+          const bool right_no_trans =
+              gemm_helper.right_op() == TiledArray::math::blas::NoTranspose;
+          auto lcell = [&](integer m, integer k) -> integer {
+            return left_no_trans ? m * lda + k : k * lda + m;
+          };
           // kernel-total timer: destroyed at `return *this;` below, so it
           // captures the whole for-b/for-m loop. loop-residual is derived from
           // it minus the sub-phases.
@@ -3583,7 +3597,9 @@ class Tensor {
             auto left_data = left.batch_data(b);
             auto right_data = right.batch_data(b);  // K x N row-major scalars
             for (integer m = 0; m != M; ++m) {
-              auto* lc0 = left_data + (m * K);  // left cells (m,0..K-1)
+              auto lc = [&](integer k) -> decltype(auto) {
+                return left_data[lcell(m, k)];  // left cell (m,k)
+              };
               auto* rc0 = this_data + (m * N);  // result cells (m,0..N-1)
               // A "clean" row has all cells present, uniform inner size A, and
               // laid out as one contiguous stride-A block (so the GEMM can run
@@ -3593,7 +3609,7 @@ class Tensor {
               bool clean = true;
               const auto _scale_tcp = detail::scale_phase_start();
               for (integer k = 0; k != K && clean; ++k) {
-                const auto& c = lc0[k];
+                const auto& c = lc(k);
                 if (c.empty()) {
                   clean = false;
                   break;
@@ -3630,13 +3646,13 @@ class Tensor {
               integer ldc = static_cast<integer>(A);
               if (clean && A > 0) {
                 if (K > 1)
-                  ldb = static_cast<integer>(lc0[1].data() - lc0[0].data());
+                  ldb = static_cast<integer>(lc(1).data() - lc(0).data());
                 if (N > 1)
                   ldc = static_cast<integer>(rc0[1].data() - rc0[0].data());
                 if (ldb < A || ldc < A) clean = false;  // sanity
                 const std::ptrdiff_t sb = ldb, sc = ldc;
                 for (integer k = 0; clean && k != K; ++k)
-                  if (lc0[k].data() != lc0[0].data() + k * sb) clean = false;
+                  if (lc(k).data() != lc(0).data() + k * sb) clean = false;
                 for (integer n = 0; clean && n != N; ++n)
                   if (rc0[n].data() != rc0[0].data() + n * sc) clean = false;
               }
@@ -3651,7 +3667,7 @@ class Tensor {
                 // element op skips absent cells).
                 bool row_empty = true;
                 for (integer k = 0; row_empty && k != K; ++k)
-                  if (!lc0[k].empty()) row_empty = false;
+                  if (!lc(k).empty()) row_empty = false;
                 if (row_empty) continue;
                 clean = false;
               }
@@ -3672,12 +3688,15 @@ class Tensor {
                 }
                 const integer Ai = static_cast<integer>(A);
                 detail::ScopedScaleTimer _scale_gt(detail::g_scale[0].gemm_ns);
+                // right is K x N (ld N) when NoTranspose -> pass it
+                // transposed; stored N x K (ld K) when Transpose -> as is.
                 TiledArray::math::blas::gemm(
-                    TiledArray::math::blas::Transpose,
+                    right_no_trans ? TiledArray::math::blas::Transpose
+                                   : TiledArray::math::blas::NoTranspose,
                     TiledArray::math::blas::NoTranspose,
                     /*M=*/N, /*N=*/Ai, /*K=*/K, Real(1),
-                    /*A=*/right_data, /*lda=*/N,
-                    /*B=*/lc0[0].data(), /*ldb=*/ldb, Real(1),
+                    /*A=*/right_data, /*lda=*/right_no_trans ? N : K,
+                    /*B=*/lc(0).data(), /*ldb=*/ldb, Real(1),
                     /*C=*/rc0[0].data(), /*ldc=*/ldc);
               } else {  // per-cell AXPY fallback for this row
                 if (detail::scale_gemm_timing_enabled()) {
@@ -3686,7 +3705,7 @@ class Tensor {
                   bool absent = false, ragged = false;
                   long a0 = -1;
                   for (integer k = 0; k != K; ++k) {
-                    const auto& c = lc0[k];
+                    const auto& c = lc(k);
                     if (c.empty()) {
                       absent = true;
                       break;
@@ -3727,9 +3746,11 @@ class Tensor {
                 for (integer n = 0; n != N; ++n) {
                   auto c_offset = m * N + n;
                   for (integer k = 0; k != K; ++k)
-                    elem_muladd_op(*(this_data + c_offset),
-                                   *(left_data + (m * K + k)),
-                                   *(right_data + (k * N + n)));
+                    // N.B. `ldb` is shadowed here by the cell stride; index
+                    // the plain right matrix by its own leading dimension.
+                    elem_muladd_op(*(this_data + c_offset), lc(k),
+                                   *(right_data +
+                                     (right_no_trans ? k * N + n : n * K + k)));
                 }
               }
             }
@@ -3748,8 +3769,20 @@ class Tensor {
                   is_tensor_view_v<value_type>) {
       using Real = std::remove_cv_t<typename value_type::value_type>;
       if constexpr (std::is_same_v<std::remove_cv_t<U>, Real>) {
-        if (gemm_helper.left_op() == TiledArray::math::blas::NoTranspose &&
-            gemm_helper.right_op() == TiledArray::math::blas::NoTranspose) {
+        // Both orientations, as in the tot_x_t block: the plain (left)
+        // matrix's transpose goes to BLAS as its op; a transposed nested
+        // (right) tile stores cell (k,n) at n*K + k, so column n's cells are
+        // then one contiguous run (the friendlier layout). ConjTranspose
+        // takes the generic loop, as above.
+        if (gemm_helper.left_op() != TiledArray::math::blas::ConjTranspose &&
+            gemm_helper.right_op() != TiledArray::math::blas::ConjTranspose) {
+          const bool left_no_trans =
+              gemm_helper.left_op() == TiledArray::math::blas::NoTranspose;
+          const bool right_no_trans =
+              gemm_helper.right_op() == TiledArray::math::blas::NoTranspose;
+          auto rcell = [&](integer k, integer n) -> integer {
+            return right_no_trans ? k * ldb + n : n * ldb + k;
+          };
           // kernel-total timer (see tot_x_t block); destroyed at `return`.
           detail::ScopedScaleTimer _scale_kt(detail::g_scale[1].kernel_ns);
           if (detail::scale_gemm_timing_enabled())
@@ -3765,7 +3798,7 @@ class Tensor {
               bool clean = true;
               const auto _scale_tcp = detail::scale_phase_start();
               for (integer k = 0; k != K && clean; ++k) {
-                const auto& c = right_data[k * N + n];
+                const auto& c = right_data[rcell(k, n)];
                 if (c.empty()) {
                   clean = false;
                   break;
@@ -3791,20 +3824,20 @@ class Tensor {
               detail::scale_phase_stop(detail::g_scale[1].check_pres_ns,
                                        _scale_tcp);
               const auto _scale_tcs = detail::scale_phase_start();
-              integer ldb = static_cast<integer>(A);  // k-stride, right col n
+              integer sbc = static_cast<integer>(A);  // k-stride, right col n
               integer ldc = static_cast<integer>(A);  // m-stride, result col n
               if (clean && A > 0) {
                 if (K > 1)
-                  ldb = static_cast<integer>(right_data[N + n].data() -
-                                             right_data[n].data());
+                  sbc = static_cast<integer>(right_data[rcell(1, n)].data() -
+                                             right_data[rcell(0, n)].data());
                 if (M > 1)
                   ldc = static_cast<integer>(this_data[N + n].data() -
                                              this_data[n].data());
-                if (ldb < A || ldc < A) clean = false;
-                const std::ptrdiff_t sb = ldb, sc = ldc;
+                if (sbc < A || ldc < A) clean = false;
+                const std::ptrdiff_t sb = sbc, sc = ldc;
                 for (integer k = 0; clean && k != K; ++k)
-                  if (right_data[k * N + n].data() !=
-                      right_data[n].data() + k * sb)
+                  if (right_data[rcell(k, n)].data() !=
+                      right_data[rcell(0, n)].data() + k * sb)
                     clean = false;
                 for (integer m = 0; clean && m != M; ++m)
                   if (this_data[m * N + n].data() !=
@@ -3819,7 +3852,7 @@ class Tensor {
                 // absent cell
                 bool col_empty = true;
                 for (integer k = 0; col_empty && k != K; ++k)
-                  if (!right_data[k * N + n].empty()) col_empty = false;
+                  if (!right_data[rcell(k, n)].empty()) col_empty = false;
                 if (col_empty) continue;
                 clean = false;
               }
@@ -3836,12 +3869,15 @@ class Tensor {
                 }
                 const integer Ai = static_cast<integer>(A);
                 detail::ScopedScaleTimer _scale_gt(detail::g_scale[1].gemm_ns);
+                // left is M x K (ld K) when NoTranspose; stored K x M (ld M)
+                // when Transpose -> pass BLAS the op.
                 TiledArray::math::blas::gemm(
-                    TiledArray::math::blas::NoTranspose,
+                    left_no_trans ? TiledArray::math::blas::NoTranspose
+                                  : TiledArray::math::blas::Transpose,
                     TiledArray::math::blas::NoTranspose,
                     /*M=*/M, /*N=*/Ai, /*K=*/K, Real(1),
-                    /*A=*/left_data, /*lda=*/K,
-                    /*B=*/right_data[n].data(), /*ldb=*/ldb, Real(1),
+                    /*A=*/left_data, /*lda=*/left_no_trans ? K : M,
+                    /*B=*/right_data[rcell(0, n)].data(), /*ldb=*/sbc, Real(1),
                     /*C=*/this_data[n].data(), /*ldc=*/ldc);
               } else {  // per-cell AXPY fallback for this column
                 if (detail::scale_gemm_timing_enabled()) {
@@ -3850,7 +3886,7 @@ class Tensor {
                   bool absent = false, ragged = false;
                   long a0 = -1;
                   for (integer k = 0; k != K; ++k) {
-                    const auto& c = right_data[k * N + n];
+                    const auto& c = right_data[rcell(k, n)];
                     if (c.empty()) {
                       absent = true;
                       break;
@@ -3893,8 +3929,9 @@ class Tensor {
                   auto c_offset = m * N + n;
                   for (integer k = 0; k != K; ++k)
                     elem_muladd_op(*(this_data + c_offset),
-                                   *(left_data + (m * K + k)),
-                                   *(right_data + (k * N + n)));
+                                   *(left_data + (left_no_trans ? m * lda + k
+                                                                : k * lda + m)),
+                                   *(right_data + rcell(k, n)));
                 }
               }
             }
