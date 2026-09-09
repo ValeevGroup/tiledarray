@@ -318,6 +318,16 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       check_equal(b_sparse, b_sparse_fused);
     }
   }
+  // The per-rank sub-world (`world_ptr`, size > 1) dies when this test
+  // returns, but the arrays split into it are only LAZILY destroyed:
+  // DistArray's lazy_deleter schedules a lazy_sync task on the array's own
+  // world, i.e. on this sub-world's task queue. Fence the sub-world so those
+  // deferred deletions complete while it is alive; otherwise the task runs
+  // later, from some unrelated fence, against a freed World and the
+  // WorldObject destructor aborts (seen as an asynchronous "Abort trap" in the
+  // two-rank CI run, attributed to whichever test case runs next).
+  this_world.gop.fence();
+  (*GlobalFixture::world).gop.fence();
 }
 
 #if 1
@@ -422,6 +432,16 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
       check_equal(b_sparse, b_sparse_fused);
     }
   }
+  // The per-rank sub-world (`world_ptr`, size > 1) dies when this test
+  // returns, but the arrays split into it are only LAZILY destroyed:
+  // DistArray's lazy_deleter schedules a lazy_sync task on the array's own
+  // world, i.e. on this sub-world's task queue. Fence the sub-world so those
+  // deferred deletions complete while it is alive; otherwise the task runs
+  // later, from some unrelated fence, against a freed World and the
+  // WorldObject destructor aborts (seen as an asynchronous "Abort trap" in the
+  // two-rank CI run, attributed to whichever test case runs next).
+  this_world.gop.fence();
+  (*GlobalFixture::world).gop.fence();
 }
 #endif
 
