@@ -325,9 +325,10 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
   // deferred deletions complete while it is alive; otherwise the task runs
   // later, from some unrelated fence, against a freed World and the
   // WorldObject destructor aborts (seen as an asynchronous "Abort trap" in the
-  // two-rank CI run, attributed to whichever test case runs next).
-  this_world.gop.fence();
-  (*GlobalFixture::world).gop.fence();
+  // two-rank CI run, attributed to whichever test case runs next). The global
+  // world is fenced by the fixture destructor after every case; with one rank
+  // `this_world` IS the global world and needs nothing here.
+  if (world_ptr) world_ptr->gop.fence();
 }
 
 #if 1
@@ -439,9 +440,10 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
   // deferred deletions complete while it is alive; otherwise the task runs
   // later, from some unrelated fence, against a freed World and the
   // WorldObject destructor aborts (seen as an asynchronous "Abort trap" in the
-  // two-rank CI run, attributed to whichever test case runs next).
-  this_world.gop.fence();
-  (*GlobalFixture::world).gop.fence();
+  // two-rank CI run, attributed to whichever test case runs next). The global
+  // world is fenced by the fixture destructor after every case; with one rank
+  // `this_world` IS the global world and needs nothing here.
+  if (world_ptr) world_ptr->gop.fence();
 }
 #endif
 
