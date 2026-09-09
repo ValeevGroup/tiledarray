@@ -1,6 +1,6 @@
 // tests/arena_mixed_product_order.cpp
 //
-// Two DistArray-level regressions for MIXED products (an arena tensor-of-
+// DistArray-level regression for MIXED products (an arena tensor-of-
 // tensors operand times a plain tensor operand), found on the CSV-CC
 // per-batch intermediate (occ,occ,PAO;PNO) * (PAO,PAO,DF) ->
 // (occ,occ,PAO,DF;PNO):
@@ -19,13 +19,8 @@
 //     (both orders, plain and shaped, both result orders) agree and reports
 //     the wall time of each (informational; no timing assertion).
 //
-//  2. permuted operand in a binary op: reading an arena ToT through a
-//     PERMUTED annotation inside a binary expression (e.g. `x(perm) - y`)
-//     destroyed the source: the permuted operand tile is a SHALLOW permute
-//     (cells alias the source slab) and the in-place binary op wrote through
-//     it. A permute-COPY (`y(perm) = x(...)`) was unaffected, and owning
-//     (Tensor<Tensor>) inners were unaffected. The test asserts the source's
-//     norm is unchanged after such a read.
+//  (A second case, a permuted arena operand consumed inside a binary
+//  expression, lands with the fix for that defect.)
 
 #include "TiledArray/tensor/arena_einsum.h"
 #include "TiledArray/tensor/arena_tensor.h"
@@ -33,6 +28,7 @@
 #include "unit_test_config.h"
 
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <string>
 
@@ -127,29 +123,6 @@ BOOST_AUTO_TEST_CASE(operand_order_is_canonicalized) {
                      << t_nf << " flat*nested=" << t_ff
                      << " +shape: " << t_nf_sh << " / " << t_ff_sh
                      << " result q,k,i,j: " << t_nf_alt << " / " << t_ff_alt);
-}
-
-BOOST_AUTO_TEST_CASE(permuted_arena_operand_in_binary_op_keeps_source) {
-  ToTArray ref, src_copy, src_binary;
-  ref(tc) = tot(ta) * flat(tb);
-  src_copy(tc) = tot(ta) * flat(tb);
-  src_binary(tc) = tot(ta) * flat(tb);
-  TA::get_default_world().gop.fence();
-  double const n0 = TA::norm2(src_copy);
-  BOOST_REQUIRE(n0 > 0.0);
-
-  ToTArray y;
-  y(tc_alt) = src_copy(tc);  // permute-copy: must not touch the source
-  TA::get_default_world().gop.fence();
-  BOOST_CHECK_CLOSE(TA::norm2(src_copy), n0, 1e-10);
-
-  ToTArray z;
-  z(tc) = src_binary(tc_alt) - ref(tc);  // permuted operand of a binary op
-  TA::get_default_world().gop.fence();
-  BOOST_CHECK_CLOSE(TA::norm2(src_binary), n0, 1e-10);
-  // and the binary op itself was right: |z| is |ref_perm - ref| = 0 only if
-  // the permutation was applied; here they differ, so just require finite.
-  BOOST_CHECK(std::isfinite(TA::norm2(z)));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -3568,12 +3568,15 @@ class Tensor {
                   is_tensor_view_v<value_type>) {
       using Real = std::remove_cv_t<typename value_type::value_type>;
       if constexpr (std::is_same_v<std::remove_cv_t<V>, Real>) {
-        {
-          // Both operand orientations are served: the plain (right) matrix's
-          // transpose is passed to BLAS as its op, and a transposed nested
-          // (left) tile only changes which cells form row m (cells (k,m) are
-          // stored k-major, so the row's cells are M cells apart; the stride
-          // is measured from the cell addresses either way).
+        // Both operand orientations are served: the plain (right) matrix's
+        // transpose is passed to BLAS as its op, and a transposed nested
+        // (left) tile only changes which cells form row m (cells (k,m) are
+        // stored k-major, so the row's cells are M cells apart; the stride
+        // is measured from the cell addresses either way). A conjugating op
+        // is not: neither this path nor the per-cell op below conjugates,
+        // so ConjTranspose takes the generic loop.
+        if (gemm_helper.left_op() != TiledArray::math::blas::ConjTranspose &&
+            gemm_helper.right_op() != TiledArray::math::blas::ConjTranspose) {
           const bool left_no_trans =
               gemm_helper.left_op() == TiledArray::math::blas::NoTranspose;
           const bool right_no_trans =
@@ -3766,11 +3769,13 @@ class Tensor {
                   is_tensor_view_v<value_type>) {
       using Real = std::remove_cv_t<typename value_type::value_type>;
       if constexpr (std::is_same_v<std::remove_cv_t<U>, Real>) {
-        {
-          // Both orientations, as in the tot_x_t block: the plain (left)
-          // matrix's transpose goes to BLAS as its op; a transposed nested
-          // (right) tile stores cell (k,n) at n*K + k, so column n's cells are
-          // then one contiguous run (the friendlier layout).
+        // Both orientations, as in the tot_x_t block: the plain (left)
+        // matrix's transpose goes to BLAS as its op; a transposed nested
+        // (right) tile stores cell (k,n) at n*K + k, so column n's cells are
+        // then one contiguous run (the friendlier layout). ConjTranspose
+        // takes the generic loop, as above.
+        if (gemm_helper.left_op() != TiledArray::math::blas::ConjTranspose &&
+            gemm_helper.right_op() != TiledArray::math::blas::ConjTranspose) {
           const bool left_no_trans =
               gemm_helper.left_op() == TiledArray::math::blas::NoTranspose;
           const bool right_no_trans =
