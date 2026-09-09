@@ -61,7 +61,7 @@ struct MixedFixture {
     tot = ToTArray(world, ij_p);
     tot.init_tiles([&](TA::Range const& tr) {
       ArenaOuter t = TA::detail::arena_outer_init<ArenaOuter>(
-          tr, 1, [=](std::size_t) { return TA::Range{A}; });
+          tr, 1, [A = this->A](std::size_t) { return TA::Range{A}; });
       for (std::size_t o = 0; o < t.range().volume(); ++o) {
         ArenaInner& c = t.data()[o];
         if (!c) continue;
