@@ -12,6 +12,8 @@
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/util/annotation.h"
 
+#include <blas/config.h>  // blas_int
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -20,6 +22,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -290,6 +293,20 @@ inline std::atomic<std::uint64_t> g_fall_op_stride_ce_ce{0};       // 15
 inline std::atomic<std::uint64_t> g_fall_op_acrossk_ce_ce{0};      // 16
 inline std::atomic<std::uint64_t> g_fall_both_clean_ce_ce{0};      // 17
 
+/// The largest cell-to-cell stride the linked BLAS accepts as a leading
+/// dimension. The strided kernels below MEASURE their leading dimensions as
+/// pointer differences between neighbouring cells; blaspp converts every ld to
+/// blas_int (32-bit under LP64) and throws (`blas::Error: ldb, in function
+/// to_blas_int_`) past its maximum. Two present cells that are not arena
+/// neighbours -- e.g. individually allocated inner tensors that the allocator
+/// placed gigabytes apart -- satisfy every other precondition of a 2-cell run
+/// (uniform size, stride >= cell size, trivially constant) yet yield an
+/// address delta no BLAS can take. Such a run is not strided-GEMM material:
+/// the walkers break it up and the per-cell path handles it.
+inline constexpr long max_blas_ld() {
+  return static_cast<long>(std::numeric_limits<blas_int>::max());
+}
+
 /// Classify a strided run: 1=absent, 2=nonuniform size, 3=bad stride, 0=clean.
 template <typename GetCell>
 inline int classify_run(GetCell getcell, std::size_t n) {
@@ -503,6 +520,7 @@ inline void measure_segments(GetC getC, GetR getR, GetL getL, std::size_t nrun,
           sC = dc;
           sR = dr;
           if (sC < P || sR < Q) break;
+          if (sC > max_blas_ld() || sR > max_blas_ld()) break;
         } else if (dc != off * sC || dr != off * sR) {
           break;
         }
@@ -1249,6 +1267,7 @@ void arena_strided_gemm_ce_e(ResultOuter& C, const LeftOuter& L,
           ldA = static_cast<long>(lc[lbase + a_off(m, 1)].data() - l0.data());
           ldB = static_cast<long>(rc[rbase + b_off(1, n)].data() - r0.data());
           if (ldA < P || ldB < Q) clean = false;
+          if (ldA > max_blas_ld() || ldB > max_blas_ld()) clean = false;
           for (std::size_t k = 0; clean && k < K; ++k) {
             if (lc[lbase + a_off(m, k)].data() !=
                 l0.data() + static_cast<std::ptrdiff_t>(k) * ldA)
@@ -1550,6 +1569,7 @@ void arena_strided_gemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
               sR = dR;
               sC = dC;
               if (sR < Q || sC < P) break;  // page-jump / overlap
+              if (sR > max_blas_ld() || sC > max_blas_ld()) break;
             } else if (dR != off * sR || dC != off * sC) {
               break;
             }
@@ -1793,6 +1813,7 @@ void arena_strided_gemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
               sA = dA;
               sC = dC;
               if (sA < Q || sC < P) break;  // page-jump / overlap
+              if (sA > max_blas_ld() || sC > max_blas_ld()) break;
             } else if (dA != off * sA || dC != off * sC) {
               break;
             }
