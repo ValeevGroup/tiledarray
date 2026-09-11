@@ -590,6 +590,28 @@ class ContractReduce<Result, Left, Right,
   result_type operator()() const { return result_type(); }
 
   /// Post processing step
+
+  /// Requirements on \c Result. `perm()` is a runtime value, so BOTH branches
+  /// below are instantiated for every tile used here:
+  /// - the permuted branch always needs the value-returning \c conj --
+  ///   `conj(result, perm)`, or `conj(result, factor, perm)` when the factor
+  ///   carries a scale -- whether or not a permutation is ever applied. This
+  ///   mirrors the primary template, whose finalization likewise instantiates
+  ///   `Permute<Result, Result>` unconditionally.
+  /// - the unpermuted branch takes \c conj_to when the tile has it and falls
+  ///   back to \c conj otherwise (see \c conj_finalize), so \c conj_to is
+  ///   optional -- but preferred, since it saves an allocate/copy/free.
+  ///
+  /// A tile missing one of the \c conj overloads fails inside
+  /// tile_interface.h's default `conj`, reporting only "too many arguments to
+  /// function call". That is not turned into a named static_assert because the
+  /// default \c conj CPOs are constrained only on \c Perm being a permutation
+  /// and have a DEDUCED return type, so `decltype(conj(arg, perm))` has to
+  /// instantiate the body: detecting them hard-errors instead of yielding
+  /// false, unlike \c has_conj_to_v (whose CPO is constrained on the member).
+  /// Making that detectable means constraining the four \c conj overloads the
+  /// way \c conj_to and \c neg_to already are -- worth doing, but a change to
+  /// a public header's overload set that wants its own PR.
   result_type operator()(result_type& temp) const {
     using TiledArray::empty;
     TA_ASSERT(!empty(temp));
