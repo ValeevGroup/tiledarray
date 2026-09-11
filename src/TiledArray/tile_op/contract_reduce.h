@@ -472,8 +472,12 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 
 /// Contract and (sum) reduce operation with a ComplexConjugate factor
 
-/// The contraction of \c conj(A*B) (\c Scalar = \c void), \c S*conj(A*B)
-/// (numeric \c Scalar) or \c -conj(A*B) (\c Scalar = \c ComplexNegTag).
+/// The contraction of \c conj(A*B) (\c Scalar = \c void) or of a scaled
+/// conjugate -- \c S*conj(A*B) and \c -conj(A*B), both numeric \c Scalar
+/// (the expression layer spells the negation \c conj_op<numeric_type>(-1),
+/// see \c operator-(ConjMultExpr) in expressions/mult_expr.h; it never
+/// produces \c ComplexConjugate<ComplexNegTag> here, which the finalization
+/// below could not read a factor from).
 /// Conjugation does not distribute into the sum of products, so the
 /// contraction and reduction run with unit factor and the finalization
 /// conjugates (and scales) the finished result.
@@ -499,6 +503,14 @@ class ContractReduce<Result, Left, Right,
       second_argument_type;    ///< The right tile type
   typedef Result result_type;  ///< The result tile type.
   typedef TiledArray::detail::ComplexConjugate<Scalar> scalar_type;
+
+  // the finalization below reads factor().factor() for a non-void Scalar,
+  // which ComplexConjugate<ComplexNegTag> does not have; see the class doc
+  static_assert(
+      !std::is_same_v<Scalar, TiledArray::detail::ComplexNegTag>,
+      "ContractReduce: a negated conjugate contraction factor is spelled "
+      "ComplexConjugate<numeric_type>(-1), not "
+      "ComplexConjugate<ComplexNegTag>");
 
   using typename ContractReduceBase_::elem_muladd_op_type;
   using typename ContractReduceBase_::left_value_type;

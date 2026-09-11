@@ -458,6 +458,13 @@ void scale_to(ArenaTensor<T, R>& dst, Scalar factor) {
 /// that a view is never routed to the generic
 /// detail::operator*=(L&, ComplexConjugate), which needs a value-returning
 /// conj(L) that a non-owning view cannot provide.
+///
+/// N.B. all three are needed; the ComplexConjugate<S> one does NOT subsume
+/// the other two. Against detail's own
+/// operator*=(L&, const ComplexConjugate<void>&) it is ambiguous: this
+/// overload is more specialized in the first parameter, detail's in the
+/// second, so neither wins partial ordering. The <void> and <ComplexNegTag>
+/// overloads are more specialized in BOTH parameters and therefore win.
 template <typename T, typename R>
 ArenaTensor<T, R>& operator*=(ArenaTensor<T, R>& dst,
                               const detail::ComplexConjugate<void>& factor) {
