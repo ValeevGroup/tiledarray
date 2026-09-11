@@ -470,6 +470,32 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 
 };  // class ContractReduce
 
+/// Conjugate (and scale) a finished contraction result.
+
+/// In place through `conj_to` when the result tile supports it -- every tile
+/// in the tree does, and it saves an allocate/copy/free per tile -- otherwise
+/// through the value-returning `conj`. The two are independent tile-interface
+/// customization points and a tile may implement only the latter, in which
+/// case an unpermuted `conj(A*B)` used to fail to instantiate while the
+/// permuted form (which already goes through `conj`) compiled. See issue #585.
+///
+/// N.B. the choice is made on the ADL call `conj_to(...)`, not on a
+/// `conj_to()` member: `btas::Tensor` has no member, only free functions in
+/// namespace `btas`, and a member-based test would demote it to the
+/// allocating path.
+/// \tparam Result the result tile type
+/// \tparam Factor the scale, if any (none for a ComplexConjugate<void>)
+template <typename Result, typename... Factor>
+inline Result conj_finalize(Result& temp, const Factor&... factor) {
+  if constexpr (TiledArray::has_conj_to_v<Result&, const Factor&...>) {
+    using TiledArray::conj_to;
+    return conj_to(temp, factor...);
+  } else {
+    using TiledArray::conj;
+    return conj(temp, factor...);
+  }
+}
+
 /// Contract and (sum) reduce operation with a ComplexConjugate factor
 
 /// The contraction of \c conj(A*B) (\c Scalar = \c void) or of a scaled
@@ -569,17 +595,12 @@ class ContractReduce<Result, Left, Right,
     TA_ASSERT(!empty(temp));
 
     if constexpr (std::is_void_v<Scalar>) {
-      if (!ContractReduceBase_::perm()) {
-        using TiledArray::conj_to;
-        return conj_to(temp);
-      }
+      if (!ContractReduceBase_::perm()) return conj_finalize(temp);
       using TiledArray::conj;
       return conj(temp, ContractReduceBase_::perm());
     } else {
-      if (!ContractReduceBase_::perm()) {
-        using TiledArray::conj_to;
-        return conj_to(temp, ContractReduceBase_::factor().factor());
-      }
+      if (!ContractReduceBase_::perm())
+        return conj_finalize(temp, ContractReduceBase_::factor().factor());
       using TiledArray::conj;
       return conj(temp, ContractReduceBase_::factor().factor(),
                   ContractReduceBase_::perm());

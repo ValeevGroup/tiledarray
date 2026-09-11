@@ -730,6 +730,33 @@ using result_of_conj_t = decltype(conj(std::declval<T>()...));
 template <typename... T>
 using result_of_conj_to_t = decltype(conj_to(std::declval<T>()...));
 
+namespace detail {
+template <typename, typename... T>
+struct has_conj_to_helper : public std::false_type {};
+template <typename... T>
+struct has_conj_to_helper<std::void_t<result_of_conj_to_t<T...>>, T...>
+    : public std::true_type {};
+}  // namespace detail
+
+/// Whether the ADL call `conj_to(args...)` is viable, i.e. whether a tile
+/// supports IN-PLACE conjugation.
+
+/// `conj` and `conj_to` are independent customization points: a tile may
+/// implement the value-returning `conj` and not the in-place `conj_to`, which
+/// is a legal partial implementation of the tile interface. Consumers that can
+/// use either should prefer `conj_to` when this is true (it saves an
+/// allocate/copy/free per tile) and fall back to `conj` otherwise.
+///
+/// N.B. this tests the ADL CALL, not a `conj_to()` member. `btas::Tensor` has
+/// no such member -- only free functions in namespace `btas` -- so a
+/// member-based test (`detail::has_member_function_conj_to_anyreturn_v`) would
+/// report false for it and silently push it onto the allocating path.
+/// \tparam T the argument types of the call, e.g. `Result&` or
+///         `Result&, const Scalar&`
+template <typename... T>
+inline constexpr bool has_conj_to_v =
+    detail::has_conj_to_helper<void, T...>::value;
+
 // Generic element-wise unary operations
 // ---------------------------------------------
 
