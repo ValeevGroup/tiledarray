@@ -439,16 +439,50 @@ void fill(ArenaTensor<T, R>& dst, const U& value) {
   std::fill_n(dst.data(), dst.size(), static_cast<T>(value));
 }
 
-/// `dst *= factor`. No-op on a null view.
+/// `dst *= factor`. No-op on a null view. A ComplexConjugate<...> factor
+/// conjugates (and scales) every arena scalar in place.
 template <typename T, typename R, typename Scalar>
 void scale_to(ArenaTensor<T, R>& dst, Scalar factor) {
   if (!dst) return;
   auto* d = dst.data();
   const auto n = dst.size();
   // operator*= is the permissive one (std::complex<T>::operator*=(const T&)
-  // accepts any arithmetic factor), so no mixed-scalar detail operator is
+  // accepts any arithmetic factor; detail::operator*=(T&, ComplexConjugate)
+  // conjugates a scalar in place), so no mixed-scalar detail operator is
   // needed here
   for (std::size_t i = 0; i < n; ++i) d[i] *= factor;
+}
+
+/// `dst *= conj_op()`, `dst *= conj_op(S)`, `dst *= -conj_op()`: in-place
+/// conjugation (and scale) of every arena scalar. These overloads exist so
+/// that a view is never routed to the generic
+/// detail::operator*=(L&, ComplexConjugate), which needs a value-returning
+/// conj(L) that a non-owning view cannot provide.
+///
+/// N.B. all three are needed; the ComplexConjugate<S> one does NOT subsume
+/// the other two. Against detail's own
+/// operator*=(L&, const ComplexConjugate<void>&) it is ambiguous: this
+/// overload is more specialized in the first parameter, detail's in the
+/// second, so neither wins partial ordering. The <void> and <ComplexNegTag>
+/// overloads are more specialized in BOTH parameters and therefore win.
+template <typename T, typename R>
+ArenaTensor<T, R>& operator*=(ArenaTensor<T, R>& dst,
+                              const detail::ComplexConjugate<void>& factor) {
+  scale_to(dst, factor);
+  return dst;
+}
+template <typename T, typename R>
+ArenaTensor<T, R>& operator*=(
+    ArenaTensor<T, R>& dst,
+    const detail::ComplexConjugate<detail::ComplexNegTag>& factor) {
+  scale_to(dst, factor);
+  return dst;
+}
+template <typename T, typename R, typename S>
+ArenaTensor<T, R>& operator*=(ArenaTensor<T, R>& dst,
+                              const detail::ComplexConjugate<S>& factor) {
+  scale_to(dst, factor);
+  return dst;
 }
 
 /// `dst += src`. Asserts shape compatibility.
@@ -599,6 +633,9 @@ auto gemm(ArenaTensor<T, R>& result, const ArenaTensor<T, R>& left,
       (gemm_helper.right_op() == math::blas::NoTranspose) ? N : K;
   const integer ldc = N;
 
+  static_assert(!detail::is_complex_conjugate_v<Scalar>,
+                "ArenaTensor gemm: a ComplexConjugate<...> factor cannot be "
+                "applied inside the gemm; conjugate the finished result");
   math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), M, N, K,
                    static_cast<T>(factor), left.data(), lda, right.data(), ldb,
                    T(1), result.data(), ldc);

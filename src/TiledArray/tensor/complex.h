@@ -220,6 +220,37 @@ inline ComplexConjugate<ComplexNegTag> ComplexConjugate<void>::operator-()
 template <typename S>
 struct is_numeric<ComplexConjugate<S>> : public std::true_type {};
 
+// Mixed-scalar products (an integral or floating scalar with a std::complex of
+// a different scalar type). Declared BEFORE the ComplexConjugate operators
+// below: those evaluate `conj(value) * op.factor()`, and an integer-literal
+// scale (`2 * conj(a*b)` -> ComplexConjugate<int>) resolves only if these are
+// visible at the template definition (they are not found by ADL).
+template <typename L, typename R,
+          typename = std::enable_if_t<std::is_integral_v<L>>>
+TILEDARRAY_FORCE_INLINE auto operator*(const L l, const std::complex<R> r) {
+  return static_cast<R>(l) * r;
+}
+
+template <typename L, typename R,
+          typename = std::enable_if_t<std::is_integral_v<R>>>
+TILEDARRAY_FORCE_INLINE auto operator*(const std::complex<L> l, const R r) {
+  return l * static_cast<L>(r);
+}
+
+template <typename L, typename R>
+TILEDARRAY_FORCE_INLINE
+    std::enable_if_t<std::is_floating_point_v<L>, std::complex<R>>
+    operator*(const L l, const std::complex<R> r) {
+  return std::complex<R>(l, 0.) * r;
+}
+
+template <typename L, typename R>
+TILEDARRAY_FORCE_INLINE
+    std::enable_if_t<std::is_floating_point_v<R>, std::complex<L>>
+    operator*(const std::complex<L> l, const R r) {
+  return l * std::complex<L>(r, 0.);
+}
+
 /// ComplexConjugate operator factory function
 
 /// \tparam S The scalar type
@@ -292,37 +323,46 @@ TILEDARRAY_FORCE_INLINE L& operator*=(L& value,
 }
 
 template <typename T>
+struct is_complex_conjugate : std::false_type {};
+template <typename T>
+struct is_complex_conjugate<ComplexConjugate<T>> : std::true_type {};
+/// true if \c T is a ComplexConjugate<...> contraction factor
+template <typename T>
+inline constexpr bool is_complex_conjugate_v =
+    is_complex_conjugate<std::remove_cv_t<T>>::value;
+
+/// Whether inner cells of scalar type \c Inner can be viewed as arrays of
+/// \c Real for the interleaved real GEMM on complex cells: \c Inner is
+/// std::complex<Real> laid out as two contiguous \c Real, the standard's
+/// array-oriented access guarantee ([complex.numbers.general]/4). The size
+/// and alignment terms are part of the predicate rather than an assertion, so
+/// an ABI that breaks the layout falls back to the per-cell loop instead of a
+/// reinterpret_cast into undefined behavior.
+template <typename Inner, typename Real>
+inline constexpr bool is_interleaved_real_view_v =
+    std::is_same_v<std::complex<Real>, Inner> &&
+    sizeof(Inner) == 2 * sizeof(Real) && alignof(Inner) >= alignof(Real);
+
+/// The numeric multiplier to bake into a per-element (per-cell) multiply-add
+/// op for a contraction with factor \c factor: the factor itself (converted
+/// to \c Numeric) for a numeric factor, and \c Numeric(1) for a
+/// ComplexConjugate<...> factor -- the conjugation (and, for
+/// ComplexConjugate<Scalar>, the scale) of such a factor is applied to the
+/// finished result by ContractReduce's finalization step, not per element.
+template <typename Numeric, typename Scalar>
+TILEDARRAY_FORCE_INLINE Numeric elem_factor(const Scalar& factor) {
+  if constexpr (is_complex_conjugate_v<Scalar>)
+    return Numeric(1);
+  else
+    return static_cast<Numeric>(factor);
+}
+
+template <typename T>
 inline auto abs(const ComplexConjugate<T>& a) {
   return std::abs(a.factor());
 }
 
 inline int abs(const ComplexConjugate<void>& a) { return 1; }
-
-template <typename L, typename R,
-          typename = std::enable_if_t<std::is_integral_v<L>>>
-TILEDARRAY_FORCE_INLINE auto operator*(const L l, const std::complex<R> r) {
-  return static_cast<R>(l) * r;
-}
-
-template <typename L, typename R,
-          typename = std::enable_if_t<std::is_integral_v<R>>>
-TILEDARRAY_FORCE_INLINE auto operator*(const std::complex<L> l, const R r) {
-  return l * static_cast<L>(r);
-}
-
-template <typename L, typename R>
-TILEDARRAY_FORCE_INLINE
-    std::enable_if_t<std::is_floating_point_v<L>, std::complex<R>>
-    operator*(const L l, const std::complex<R> r) {
-  return std::complex<R>(l, 0.) * r;
-}
-
-template <typename L, typename R>
-TILEDARRAY_FORCE_INLINE
-    std::enable_if_t<std::is_floating_point_v<R>, std::complex<L>>
-    operator*(const std::complex<L> l, const R r) {
-  return l * std::complex<L>(r, 0.);
-}
 
 }  // namespace detail
 

@@ -1,3 +1,8 @@
+#include <complex>
+
+#include <TiledArray/tensor/arena_kernels.h>
+#include <TiledArray/tensor/arena_tensor.h>
+
 #include "tot_array_fixture.h"
 
 template <typename Tensor, typename ElementGenerator>
@@ -4602,6 +4607,791 @@ BOOST_AUTO_TEST_CASE(ik_mn_eq_ij_mn_times_kj_mn) {
   out("i,k;m,n") = lhs("i,j;m,n") * rhs("k,j;m,n");
   const bool are_equal = ToTArrayFixture::are_equal(corr, out);
   BOOST_CHECK(are_equal);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//------------------------------------------------------------------------------
+// conj() on ToT expressions, and the mixed-type ToT x real-plain-tensor
+// product. Every case is checked against an explicit reference computed from
+// single-tile arrays.
+//------------------------------------------------------------------------------
+
+namespace {
+
+// Owning nested tiles only (the btas inner rows of test_params are not
+// exercised here).
+using conj_test_params = boost::mpl::list<
+    std::tuple<double, Tensor<Tensor<double>>>,
+    std::tuple<std::complex<double>, Tensor<Tensor<std::complex<double>>>>>;
+
+template <typename E>
+E mk(double re, double im) {
+  if constexpr (TiledArray::detail::is_complex_v<E>)
+    return E(re, im);
+  else
+    return E(re);
+}
+
+template <typename E>
+E cj(const E& x) {
+  return TiledArray::detail::conj(x);
+}
+
+template <typename E>
+void check_close(const E& got, const E& ref) {
+  BOOST_CHECK_SMALL(std::abs(got - ref),
+                    1e-10 * std::max(1.0, double(std::abs(ref))));
+}
+
+// Single-tile rank-2-outer ToT with rank-1 inner cells of extent na:
+// A(i,j)(a) = gen(i, j, a)
+template <typename Array, typename Gen>
+Array make_tot_1(World& world, std::size_t ni, std::size_t nj, std::size_t na,
+                 Gen gen) {
+  using inner_t = typename Array::value_type::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) {
+    inner_t t(Range{static_cast<long>(na)});
+    for (std::size_t a = 0; a < na; ++a)
+      t.at_ordinal(a) = gen(idx[0], idx[1], a);
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+// Single-tile rank-2-outer ToT with rank-2 inner cells (na x nb):
+// A(i,j)(a,b) = gen(i, j, a, b)
+template <typename Array, typename Gen>
+Array make_tot_2(World& world, std::size_t ni, std::size_t nj, std::size_t na,
+                 std::size_t nb, Gen gen) {
+  using inner_t = typename Array::value_type::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) {
+    inner_t t(Range{static_cast<long>(na), static_cast<long>(nb)});
+    for (std::size_t a = 0; a < na; ++a)
+      for (std::size_t b = 0; b < nb; ++b) t(a, b) = gen(idx[0], idx[1], a, b);
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+template <typename Array>
+auto single_tile(const Array& arr) {
+  return arr.find({0, 0}).get();
+}
+
+// rank-3-outer ToT (leading fused mode h) with rank-1 inner cells, one tile
+// per mode, so the outer products below run in batched (fused) mode
+template <typename Array, typename Gen>
+Array make_tot_h1(World& world, std::size_t nh, std::size_t ni, std::size_t nj,
+                  std::size_t na, Gen gen) {
+  using inner_t = typename Array::value_type::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(nh)},
+                TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) {
+    inner_t t(Range{static_cast<long>(na)});
+    for (std::size_t a = 0; a < na; ++a)
+      t.at_ordinal(a) = gen(idx[0], idx[1], idx[2], a);
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+// single-tile rank-2 plain array
+template <typename Array, typename Gen>
+Array make_plain_2(World& world, std::size_t n0, std::size_t n1, Gen gen) {
+  TiledRange tr{TiledRange1{0, static_cast<long>(n0)},
+                TiledRange1{0, static_cast<long>(n1)}};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) { return gen(idx[0], idx[1]); });
+  world.gop.fence();
+  return arr;
+}
+
+// single-tile rank-3 plain array
+template <typename Array, typename Gen>
+Array make_plain_3(World& world, std::size_t n0, std::size_t n1, std::size_t n2,
+                   Gen gen) {
+  TiledRange tr{TiledRange1{0, static_cast<long>(n0)},
+                TiledRange1{0, static_cast<long>(n1)},
+                TiledRange1{0, static_cast<long>(n2)}};
+  Array arr(world, tr);
+  arr.init_elements(
+      [=](const auto& idx) { return gen(idx[0], idx[1], idx[2]); });
+  world.gop.fence();
+  return arr;
+}
+
+// multi-tile (tile extent ts along both outer modes) ToT with rank-1 cells
+template <typename Array, typename Gen>
+Array make_tot_1_tiled(World& world, std::size_t ni, std::size_t nj,
+                       std::size_t na, std::size_t ts, Gen gen) {
+  using inner_t = typename Array::value_type::value_type;
+  auto tr1 = [ts](std::size_t n) {
+    std::vector<std::size_t> b;
+    for (std::size_t x = 0; x < n; x += ts) b.push_back(x);
+    b.push_back(n);
+    return TiledRange1(b.begin(), b.end());
+  };
+  TiledRange tr{tr1(ni), tr1(nj)};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) {
+    inner_t t(Range{static_cast<long>(na)});
+    for (std::size_t a = 0; a < na; ++a)
+      t.at_ordinal(a) = gen(idx[0], idx[1], a);
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+// gather a (possibly multi-tile) array into one dense tile over its element
+// range, so a multi-tile result can be checked like a single tile; every
+// tile is fetched with find(), so this is rank-safe (the local-tile
+// iterators would leave the other ranks' tiles empty)
+template <typename Array>
+auto gather_tiles(const Array& arr) {
+  using tile_t = typename Array::value_type;
+  tile_t out(arr.trange().elements_range());
+  for (const auto& tidx : arr.trange().tiles_range()) {
+    const tile_t t = arr.find(tidx).get();
+    for (const auto& idx : t.range()) out(idx) = t(idx);
+  }
+  return out;
+}
+
+// single-tile rank-2-outer ToT with ARENA (view) inner cells of extent na --
+// the cell type MPQC's ToT arrays use, and the only one that reaches the
+// interleaved real-gemm fast path of Tensor::gemm
+template <typename ArenaArr, typename Gen>
+ArenaArr make_arena_tot_1(World& world, std::size_t ni, std::size_t nj,
+                          std::size_t na, Gen gen) {
+  using ArenaOuter = typename ArenaArr::value_type;
+  using ArenaInner = typename ArenaOuter::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  ArenaArr arr(world, tr);
+  const long NA = static_cast<long>(na);
+  arr.init_tiles([=](const TiledArray::Range& r) {
+    ArenaOuter t = TiledArray::detail::arena_outer_init<ArenaOuter>(
+        r, 1, [=](std::size_t) { return TiledArray::Range{NA}; });
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      ArenaInner& c = t.data()[o];
+      if (!c) continue;
+      const std::size_t i = o / nj, j = o % nj;
+      for (std::size_t a = 0; a < na; ++a) c.data()[a] = gen(i, j, a);
+    }
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+// rank-2 (na x nb) arena-backed inner cells
+template <typename ArenaArr, typename Gen>
+ArenaArr make_arena_tot_2(World& world, std::size_t ni, std::size_t nj,
+                          std::size_t na, std::size_t nb, Gen gen) {
+  using ArenaOuter = typename ArenaArr::value_type;
+  using ArenaInner = typename ArenaOuter::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  ArenaArr arr(world, tr);
+  const long NA = static_cast<long>(na), NB = static_cast<long>(nb);
+  arr.init_tiles([=](const TiledArray::Range& r) {
+    ArenaOuter t = TiledArray::detail::arena_outer_init<ArenaOuter>(
+        r, 1, [=](std::size_t) {
+          return TiledArray::Range{NA, NB};
+        });
+    for (std::size_t o = 0; o < t.range().volume(); ++o) {
+      ArenaInner& c = t.data()[o];
+      if (!c) continue;
+      const std::size_t i = o / nj, j = o % nj;
+      for (std::size_t a = 0; a < na; ++a)
+        for (std::size_t b = 0; b < nb; ++b)
+          c.data()[a * nb + b] = gen(i, j, a, b);
+    }
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+using Z = std::complex<double>;
+using arena_inner_z = TiledArray::ArenaTensor<Z, TiledArray::Range>;
+using arena_tot_z = DistArray<Tensor<arena_inner_z>, DensePolicy>;
+using plain_z = DistArray<Tensor<Z>, DensePolicy>;
+using plain_d = DistArray<Tensor<double>, DensePolicy>;
+using own_tot_z = DistArray<Tensor<Tensor<Z>>, DensePolicy>;
+
+auto gaz1 = [](auto i, auto j, auto a) {
+  return Z(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+};
+auto gbz1 = [](auto j, auto k, auto b) {
+  return Z(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+};
+auto gaz2 = [](auto i, auto j, auto a, auto b) {
+  return Z(1.0 + i - j + 0.5 * a - 0.3 * b, 0.25 * i + j - a + 0.1 * b);
+};
+auto gtd = [](auto j, auto k) { return 0.5 + j - 0.25 * k; };
+auto gtz = [](auto j, auto k) {
+  return Z(0.5 + j - 0.25 * k, 0.3 * j + 0.7 * k);
+};
+
+}  // namespace
+
+BOOST_FIXTURE_TEST_SUITE(tot_conj, ToTArrayFixture)
+
+// c(i,j;a) = conj(a(i,j;a))
+BOOST_AUTO_TEST_CASE_TEMPLATE(unary, TestParam, conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, na = 4;
+  auto gen = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i + 2.0 * j + 0.5 * a, 0.3 * i - j + a);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, gen);
+  array_t c;
+  c("i,j;a") = conj(a("i,j;a"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t j = 0; j < nj; ++j)
+      for (std::size_t x = 0; x < na; ++x)
+        check_close(tile(i, j).at_ordinal(x), cj(gen(i, j, x)));
+}
+
+// c(j,i;a) = conj(a(i,j;a))   (outer permutation + conj)
+BOOST_AUTO_TEST_CASE_TEMPLATE(unary_permuted, TestParam, conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, na = 4;
+  auto gen = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i + 2.0 * j + 0.5 * a, 0.3 * i - j + a);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, gen);
+  array_t c;
+  c("j,i;a") = conj(a("i,j;a"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t j = 0; j < nj; ++j)
+      for (std::size_t x = 0; x < na; ++x)
+        check_close(tile(j, i).at_ordinal(x), cj(gen(i, j, x)));
+}
+
+// c(i,k;a,b) = sum_j conj(a(i,j;a)) * b(j,k;b)   (outer contraction, inner
+// outer product, conj on the left operand)
+BOOST_AUTO_TEST_CASE_TEMPLATE(conj_left_outer_product, TestParam,
+                              conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto ga = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+  };
+  auto gb = [](auto j, auto k, auto b) {
+    return mk<E>(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, ga);
+  array_t b = make_tot_1<array_t>(m_world, nj, nk, nb, gb);
+  array_t c;
+  c("i,k;a,b") = conj(a("i,j;a")) * b("j,k;b");
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          E ref{};
+          for (std::size_t j = 0; j < nj; ++j)
+            ref += cj(ga(i, j, x)) * gb(j, k, y);
+          check_close(tile(i, k)(x, y), ref);
+        }
+}
+
+// c(i,k;a,b) = sum_j a(i,j;a) * conj(b(j,k;b))
+BOOST_AUTO_TEST_CASE_TEMPLATE(conj_right_outer_product, TestParam,
+                              conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto ga = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+  };
+  auto gb = [](auto j, auto k, auto b) {
+    return mk<E>(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, ga);
+  array_t b = make_tot_1<array_t>(m_world, nj, nk, nb, gb);
+  array_t c;
+  c("i,k;a,b") = a("i,j;a") * conj(b("j,k;b"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          E ref{};
+          for (std::size_t j = 0; j < nj; ++j)
+            ref += ga(i, j, x) * cj(gb(j, k, y));
+          check_close(tile(i, k)(x, y), ref);
+        }
+}
+
+// c(i,k;a,b) = conj( sum_j a(i,j;a) * b(j,k;b) )
+BOOST_AUTO_TEST_CASE_TEMPLATE(conj_of_product, TestParam, conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto ga = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+  };
+  auto gb = [](auto j, auto k, auto b) {
+    return mk<E>(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+  };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, ga);
+  array_t b = make_tot_1<array_t>(m_world, nj, nk, nb, gb);
+  array_t c;
+  c("i,k;a,b") = conj(a("i,j;a") * b("j,k;b"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          E ref{};
+          for (std::size_t j = 0; j < nj; ++j) ref += ga(i, j, x) * gb(j, k, y);
+          check_close(tile(i, k)(x, y), cj(ref));
+        }
+}
+
+// c(i,k;a) = sum_j sum_b conj(a(i,j;a,b)) * b(j,k;b)   (outer + inner
+// contraction, conj on the left operand)
+BOOST_AUTO_TEST_CASE_TEMPLATE(conj_left_inner_contraction, TestParam,
+                              conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto ga = [](auto i, auto j, auto a, auto b) {
+    return mk<E>(1.0 + i - j + 0.5 * a - 0.3 * b, 0.25 * i + j - a + 0.1 * b);
+  };
+  auto gb = [](auto j, auto k, auto b) {
+    return mk<E>(2.0 - j + k + 0.1 * b, 0.5 * j - k + 0.2 * b);
+  };
+  array_t a = make_tot_2<array_t>(m_world, ni, nj, na, nb, ga);
+  array_t b = make_tot_1<array_t>(m_world, nj, nk, nb, gb);
+  array_t c;
+  c("i,k;a") = conj(a("i,j;a,b")) * b("j,k;b");
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x) {
+        E ref{};
+        for (std::size_t j = 0; j < nj; ++j)
+          for (std::size_t y = 0; y < nb; ++y)
+            ref += cj(ga(i, j, x, y)) * gb(j, k, y);
+        check_close(tile(i, k).at_ordinal(x), ref);
+      }
+}
+
+// c(i,k;a) = sum_j a(i,j;a) * t(j,k) with a REAL plain array t: the
+// ToT x plain-tensor product with different element types (complex ToT, real
+// plain tensor). For the real row this is the same-type product.
+BOOST_AUTO_TEST_CASE_TEMPLATE(tot_times_real_plain, TestParam,
+                              conj_test_params) {
+  using array_t = tensor_type<TestParam>;
+  using E = typename inner_type<TestParam>::value_type;
+  using plain_t = DistArray<Tensor<double>, policy_type<TestParam>>;
+  const std::size_t ni = 2, nj = 3, nk = 4, na = 3;
+  auto ga = [](auto i, auto j, auto a) {
+    return mk<E>(1.0 + i - j + 0.5 * a, 0.25 * i + j - a);
+  };
+  auto gt = [](auto j, auto k) { return 0.5 + j - 0.25 * k; };
+  array_t a = make_tot_1<array_t>(m_world, ni, nj, na, ga);
+  TiledRange tr{TiledRange1{0, static_cast<long>(nj)},
+                TiledRange1{0, static_cast<long>(nk)}};
+  plain_t t(m_world, tr);
+  t.init_elements([=](const auto& idx) { return gt(idx[0], idx[1]); });
+  m_world.gop.fence();
+  array_t c;
+  c("i,k;a") = a("i,j;a") * t("j,k");
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x) {
+        E ref{};
+        for (std::size_t j = 0; j < nj; ++j) ref += ga(i, j, x) * gt(j, k);
+        check_close(tile(i, k).at_ordinal(x), ref);
+      }
+}
+
+// ---- scaled / negated conj(a*b): the ComplexConjugate<S> factor must be
+// applied exactly once (conj AND scale), whichever inner product the
+// annotation selects
+
+// c(i,k;a,b) = 2 conj( sum_j a(i,j;a) b(j,k;b) ) with a floating and an
+// integer scale, -conj(...), and the outer-permuted scaled form
+BOOST_AUTO_TEST_CASE(scaled_conj_of_product) {
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  own_tot_z a = make_tot_1<own_tot_z>(m_world, ni, nj, na, gaz1);
+  own_tot_z b = make_tot_1<own_tot_z>(m_world, nj, nk, nb, gbz1);
+  auto ref = [=](auto i, auto k, auto x, auto y) {
+    Z r{};
+    for (std::size_t j = 0; j < nj; ++j) r += gaz1(i, j, x) * gbz1(j, k, y);
+    return r;
+  };
+  auto check = [&](const own_tot_z& c, Z scale, const char* what) {
+    auto tile = single_tile(c);
+    for (std::size_t i = 0; i < ni; ++i)
+      for (std::size_t k = 0; k < nk; ++k)
+        for (std::size_t x = 0; x < na; ++x)
+          for (std::size_t y = 0; y < nb; ++y) {
+            BOOST_TEST_CONTEXT(what << " i=" << i << " k=" << k << " x=" << x
+                                    << " y=" << y)
+            check_close(tile(i, k)(x, y), scale * std::conj(ref(i, k, x, y)));
+          }
+  };
+  own_tot_z c;
+  c("i,k;a,b") = 2.0 * conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(2.0), "2.0*conj(a*b)");
+  c("i,k;a,b") = 2 * conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(2.0), "2*conj(a*b)");
+  c("i,k;a,b") = -conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(-1.0), "-conj(a*b)");
+  c("k,i;b,a") = 2.0 * conj(a("i,j;a") * b("j,k;b"));
+  {
+    auto tile = single_tile(c);
+    for (std::size_t i = 0; i < ni; ++i)
+      for (std::size_t k = 0; k < nk; ++k)
+        for (std::size_t x = 0; x < na; ++x)
+          for (std::size_t y = 0; y < nb; ++y)
+            check_close(tile(k, i)(y, x), 2.0 * std::conj(ref(i, k, x, y)));
+  }
+}
+
+// c(i,k;a) = 2 conj( sum_j sum_b a(i,j;a,b) b(j,k;b) ): scaled conj of an
+// inner contraction
+BOOST_AUTO_TEST_CASE(scaled_conj_of_inner_contraction) {
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  own_tot_z a = make_tot_2<own_tot_z>(m_world, ni, nj, na, nb, gaz2);
+  own_tot_z b = make_tot_1<own_tot_z>(m_world, nj, nk, nb, gbz1);
+  own_tot_z c;
+  c("i,k;a") = 2.0 * conj(a("i,j;a,b") * b("j,k;b"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x) {
+        Z ref{};
+        for (std::size_t j = 0; j < nj; ++j)
+          for (std::size_t y = 0; y < nb; ++y)
+            ref += gaz2(i, j, x, y) * gbz1(j, k, y);
+        check_close(tile(i, k).at_ordinal(x), 2.0 * std::conj(ref));
+      }
+}
+
+// c(i,k;a) = 2 conj( sum_j a(i,j;a) b(j,k;a) ) and -conj(...): scaled conj
+// with an inner Hadamard product (outer contraction)
+BOOST_AUTO_TEST_CASE(scaled_conj_of_inner_hadamard) {
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 3;
+  own_tot_z a = make_tot_1<own_tot_z>(m_world, ni, nj, na, gaz1);
+  own_tot_z b = make_tot_1<own_tot_z>(m_world, nj, nk, na, gbz1);
+  auto ref = [=](auto i, auto k, auto x) {
+    Z r{};
+    for (std::size_t j = 0; j < nj; ++j) r += gaz1(i, j, x) * gbz1(j, k, x);
+    return r;
+  };
+  own_tot_z c;
+  c("i,k;a") = 2.0 * conj(a("i,j;a") * b("j,k;a"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        check_close(tile(i, k).at_ordinal(x), 2.0 * std::conj(ref(i, k, x)));
+  c("i,k;a") = -conj(a("i,j;a") * b("j,k;a"));
+  tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        check_close(tile(i, k).at_ordinal(x), -std::conj(ref(i, k, x)));
+}
+
+// conj of a ToT x COMPLEX plain product: c(i,k;a) = 2 conj( sum_j a(i,j;a)
+// t(j,k) ) and, with an inner permutation, c(i,k;b,a) = conj( sum_j
+// a(i,j;a,b) t(j,k) ); a real t would hide a conjugation applied to the
+// wrong operand
+BOOST_AUTO_TEST_CASE(conj_of_tot_times_complex_plain) {
+  const std::size_t ni = 2, nj = 3, nk = 4, na = 3, nb = 2;
+  own_tot_z a = make_tot_1<own_tot_z>(m_world, ni, nj, na, gaz1);
+  plain_z t = make_plain_2<plain_z>(m_world, nj, nk, gtz);
+  own_tot_z c;
+  c("i,k;a") = 2.0 * conj(a("i,j;a") * t("j,k"));
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x) {
+        Z ref{};
+        for (std::size_t j = 0; j < nj; ++j) ref += gaz1(i, j, x) * gtz(j, k);
+        check_close(tile(i, k).at_ordinal(x), 2.0 * std::conj(ref));
+      }
+  own_tot_z a2 = make_tot_2<own_tot_z>(m_world, ni, nj, na, nb, gaz2);
+  c("i,k;b,a") = conj(a2("i,j;a,b") * t("j,k"));
+  tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          Z ref{};
+          for (std::size_t j = 0; j < nj; ++j)
+            ref += gaz2(i, j, x, y) * gtz(j, k);
+          check_close(tile(i, k)(y, x), std::conj(ref));
+        }
+}
+
+// multi-tile outer ranges (K-panel reduce over several j tiles):
+// c(i,k;a,b) = 2 conj( sum_j a(i,j;a) b(j,k;b) )
+BOOST_AUTO_TEST_CASE(multitile_scaled_conj_of_product) {
+  const std::size_t ni = 3, nj = 5, nk = 3, na = 2, nb = 2, ts = 2;
+  own_tot_z a = make_tot_1_tiled<own_tot_z>(m_world, ni, nj, na, ts, gaz1);
+  own_tot_z b = make_tot_1_tiled<own_tot_z>(m_world, nj, nk, nb, ts, gbz1);
+  own_tot_z c;
+  c("i,k;a,b") = 2.0 * conj(a("i,j;a") * b("j,k;b"));
+  auto tile = gather_tiles(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          Z ref{};
+          for (std::size_t j = 0; j < nj; ++j)
+            ref += gaz1(i, j, x) * gbz1(j, k, y);
+          check_close(tile(i, k)(x, y), 2.0 * std::conj(ref));
+        }
+}
+
+// batched (fused leading mode h) contraction, ToT and plain twins:
+// c(h,i,k;a,b) = 2 conj( sum_j a(h,i,j;a) b(h,j,k;b) ) and
+// c(h,i,k) = conj( sum_j a(h,i,j) b(h,j,k) ): the batched reduce must run
+// the same conj/scale finalization as the unbatched one
+BOOST_AUTO_TEST_CASE(fused_conj_of_product) {
+  const std::size_t nh = 2, ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  auto g1 = [](auto h, auto i, auto j, auto a) {
+    return Z(1.0 + h + i - j + 0.5 * a, 0.25 * i + j - a - h);
+  };
+  auto g2 = [](auto h, auto j, auto k, auto b) {
+    return Z(2.0 - j + k + 0.1 * b - h, 0.5 * j - k + 0.2 * b + h);
+  };
+  own_tot_z a = make_tot_h1<own_tot_z>(m_world, nh, ni, nj, na, g1);
+  own_tot_z b = make_tot_h1<own_tot_z>(m_world, nh, nj, nk, nb, g2);
+  own_tot_z c;
+  c("h,i,k;a,b") = 2.0 * conj(a("h,i,j;a") * b("h,j,k;b"));
+  auto tile = c.find({0, 0, 0}).get();
+  for (std::size_t h = 0; h < nh; ++h)
+    for (std::size_t i = 0; i < ni; ++i)
+      for (std::size_t k = 0; k < nk; ++k)
+        for (std::size_t x = 0; x < na; ++x)
+          for (std::size_t y = 0; y < nb; ++y) {
+            Z ref{};
+            for (std::size_t j = 0; j < nj; ++j)
+              ref += g1(h, i, j, x) * g2(h, j, k, y);
+            check_close(tile(h, i, k)(x, y), 2.0 * std::conj(ref));
+          }
+  auto p1 = [](auto h, auto i, auto j) {
+    return Z(1.0 + h + i - 0.5 * j, 0.25 * i + j - h);
+  };
+  auto p2 = [](auto h, auto j, auto k) {
+    return Z(0.5 + j - 0.25 * k + h, 0.3 * j + k - 0.5 * h);
+  };
+  plain_z pa = make_plain_3<plain_z>(m_world, nh, ni, nj, p1);
+  plain_z pb = make_plain_3<plain_z>(m_world, nh, nj, nk, p2);
+  plain_z pc;
+  pc("h,i,k") = conj(pa("h,i,j") * pb("h,j,k"));
+  auto ptile = pc.find({0, 0, 0}).get();
+  for (std::size_t h = 0; h < nh; ++h)
+    for (std::size_t i = 0; i < ni; ++i)
+      for (std::size_t k = 0; k < nk; ++k) {
+        Z ref{};
+        for (std::size_t j = 0; j < nj; ++j) ref += p1(h, i, j) * p2(h, j, k);
+        check_close(ptile(h, i, k), std::conj(ref));
+      }
+}
+
+// ---- ARENA (view) inner cells, MPQC's ToT cell type: the conj forms must
+// compile and agree with the owning-cell results; ToT x real plain is the one
+// form that reaches the interleaved real-gemm fast path
+
+// c(i,k;a,b) = conj / 2 conj / -conj( sum_j a(i,j;a) b(j,k;b) ), the
+// outer-permuted variant, and the inner contraction
+// c(i,k;a) = conj( sum_j sum_b a(i,j;a,b) b(j,k;b) )
+BOOST_AUTO_TEST_CASE(arena_conj_of_product) {
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  arena_tot_z a = make_arena_tot_1<arena_tot_z>(m_world, ni, nj, na, gaz1);
+  arena_tot_z b = make_arena_tot_1<arena_tot_z>(m_world, nj, nk, nb, gbz1);
+  auto ref = [=](auto i, auto k, auto x, auto y) {
+    Z r{};
+    for (std::size_t j = 0; j < nj; ++j) r += gaz1(i, j, x) * gbz1(j, k, y);
+    return r;
+  };
+  auto check = [&](const arena_tot_z& c, Z scale, bool permuted,
+                   const char* what) {
+    auto tile = single_tile(c);
+    for (std::size_t i = 0; i < ni; ++i)
+      for (std::size_t k = 0; k < nk; ++k)
+        for (std::size_t x = 0; x < na; ++x)
+          for (std::size_t y = 0; y < nb; ++y) {
+            const Z got = permuted ? tile(k, i).data()[y * na + x]
+                                   : tile(i, k).data()[x * nb + y];
+            BOOST_TEST_CONTEXT(what << " i=" << i << " k=" << k << " x=" << x
+                                    << " y=" << y)
+            check_close(got, scale * std::conj(ref(i, k, x, y)));
+          }
+  };
+  arena_tot_z c;
+  c("i,k;a,b") = conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(1.0), false, "arena conj(a*b)");
+  c("i,k;a,b") = 2.0 * conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(2.0), false, "arena 2.0*conj(a*b)");
+  c("i,k;a,b") = -conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(-1.0), false, "arena -conj(a*b)");
+  c("k,i;b,a") = conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(1.0), true, "arena conj(a*b) permuted");
+
+  arena_tot_z a2 = make_arena_tot_2<arena_tot_z>(m_world, ni, nj, na, nb, gaz2);
+  arena_tot_z d;
+  d("i,k;a") = conj(a2("i,j;a,b") * b("j,k;b"));
+  auto tile = single_tile(d);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x) {
+        Z r{};
+        for (std::size_t j = 0; j < nj; ++j)
+          for (std::size_t y = 0; y < nb; ++y)
+            r += gaz2(i, j, x, y) * gbz1(j, k, y);
+        check_close(tile(i, k).data()[x], std::conj(r));
+      }
+}
+
+// interleaved real-gemm fast path: complex arena ToT x real plain and real
+// plain x complex arena ToT, rank-1 and rank-2 inner cells
+BOOST_AUTO_TEST_CASE(arena_tot_times_real_plain) {
+  const std::size_t ni = 2, nj = 3, nk = 4, na = 3, nb = 2;
+  arena_tot_z a = make_arena_tot_1<arena_tot_z>(m_world, ni, nj, na, gaz1);
+  plain_d t = make_plain_2<plain_d>(m_world, nj, nk, gtd);
+  arena_tot_z c;
+  c("i,k;a") = a("i,j;a") * t("j,k");
+  auto tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x) {
+        Z ref{};
+        for (std::size_t j = 0; j < nj; ++j) ref += gaz1(i, j, x) * gtd(j, k);
+        check_close(tile(i, k).data()[x], ref);
+      }
+  plain_d u = make_plain_2<plain_d>(m_world, nk, ni, gtd);
+  c("k,j;a") = u("k,i") * a("i,j;a");
+  tile = single_tile(c);
+  for (std::size_t k = 0; k < nk; ++k)
+    for (std::size_t j = 0; j < nj; ++j)
+      for (std::size_t x = 0; x < na; ++x) {
+        Z ref{};
+        for (std::size_t i = 0; i < ni; ++i) ref += gtd(k, i) * gaz1(i, j, x);
+        check_close(tile(k, j).data()[x], ref);
+      }
+  arena_tot_z a2 = make_arena_tot_2<arena_tot_z>(m_world, ni, nj, na, nb, gaz2);
+  c("i,k;a,b") = a2("i,j;a,b") * t("j,k");
+  tile = single_tile(c);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          Z ref{};
+          for (std::size_t j = 0; j < nj; ++j)
+            ref += gaz2(i, j, x, y) * gtd(j, k);
+          check_close(tile(i, k).data()[x * nb + y], ref);
+        }
+}
+
+// ---- BTAS inner cells, the third supported nested-tile family. conj(A*B)
+// on Tensor<btas::Tensor<complex>> does not compile on master (the per-cell
+// op static_casts the ComplexConjugate factor); it works here because the
+// factor reaches the cells as 1 and the finalization conjugates the finished
+// tile through btas's own conj/conj_to CPOs (external/btas.h).
+
+using btas_inner_z = btas::Tensor<Z, TiledArray::Range>;
+using btas_tot_z = DistArray<Tensor<btas_inner_z>, DensePolicy>;
+
+// btas::Tensor has no at_ordinal(); fill through data() so the same generator
+// serves the owning, arena and btas rows.
+template <typename Array, typename Gen>
+Array make_tot_1_data(World& world, std::size_t ni, std::size_t nj,
+                      std::size_t na, Gen gen) {
+  using inner_t = typename Array::value_type::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) {
+    inner_t t(Range{static_cast<long>(na)});
+    for (std::size_t a = 0; a < na; ++a) t.data()[a] = gen(idx[0], idx[1], a);
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+// c(i,k;a,b) = conj / 2 conj / -conj( sum_j a(i,j;a) b(j,k;b) ) on btas cells
+BOOST_AUTO_TEST_CASE(btas_conj_of_product) {
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  btas_tot_z a = make_tot_1_data<btas_tot_z>(m_world, ni, nj, na, gaz1);
+  btas_tot_z b = make_tot_1_data<btas_tot_z>(m_world, nj, nk, nb, gbz1);
+  auto ref = [=](auto i, auto k, auto x, auto y) {
+    Z r{};
+    for (std::size_t j = 0; j < nj; ++j) r += gaz1(i, j, x) * gbz1(j, k, y);
+    return r;
+  };
+  auto check = [&](const btas_tot_z& c, Z scale, const char* what) {
+    auto tile = single_tile(c);
+    for (std::size_t i = 0; i < ni; ++i)
+      for (std::size_t k = 0; k < nk; ++k)
+        for (std::size_t x = 0; x < na; ++x)
+          for (std::size_t y = 0; y < nb; ++y) {
+            BOOST_TEST_CONTEXT(what << " i=" << i << " k=" << k << " x=" << x
+                                    << " y=" << y)
+            check_close(tile(i, k).data()[x * nb + y],
+                        scale * std::conj(ref(i, k, x, y)));
+          }
+  };
+  btas_tot_z c;
+  c("i,k;a,b") = conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(1.0), "btas conj(a*b)");
+  c("i,k;a,b") = 2.0 * conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(2.0), "btas 2.0*conj(a*b)");
+  c("i,k;a,b") = -conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(-1.0), "btas -conj(a*b)");
+
+  // unary conj, and conj on one operand of the product
+  btas_tot_z u;
+  u("i,j;a") = conj(a("i,j;a"));
+  auto utile = single_tile(u);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t j = 0; j < nj; ++j)
+      for (std::size_t x = 0; x < na; ++x)
+        check_close(utile(i, j).data()[x], std::conj(gaz1(i, j, x)));
+
+  btas_tot_z l;
+  l("i,k;a,b") = conj(a("i,j;a")) * b("j,k;b");
+  auto ltile = single_tile(l);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          Z r{};
+          for (std::size_t j = 0; j < nj; ++j)
+            r += std::conj(gaz1(i, j, x)) * gbz1(j, k, y);
+          check_close(ltile(i, k).data()[x * nb + y], r);
+        }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
