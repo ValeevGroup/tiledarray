@@ -28,6 +28,22 @@ if (NOT TARGET BTAS::BTAS)
     set(gpu_backend none CACHE STRING "The device backend to use for Linalg++")
   endif()
 
+  # forward TA's assertion policy to BTAS, else BTAS defaults BTAS_ASSERT_THROWS
+  # to BUILD_TESTING, i.e. BTAS_ASSERT throws (regardless of NDEBUG) whenever
+  # tests are built, no matter what TA_ASSERT does.
+  # N.B. BTAS has no abort mode; with BTAS_ASSERT_THROWS=OFF BTAS_ASSERT is a
+  #      plain assert(), which is the closest match for TA_ASSERT_ABORT (aborts
+  #      in Debug, elided under NDEBUG)
+  # N.B. only if the user did not ask for a specific BTAS_ASSERT_THROWS, hence a
+  #      parent project that sets BTAS_ASSERT_THROWS first keeps control
+  if (NOT DEFINED BTAS_ASSERT_THROWS)
+    if (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW)
+      set(BTAS_ASSERT_THROWS ON CACHE BOOL "Whether BTAS_ASSERT should throw")
+    else ()
+      set(BTAS_ASSERT_THROWS OFF CACHE BOOL "Whether BTAS_ASSERT should throw")
+    endif()
+  endif (NOT DEFINED BTAS_ASSERT_THROWS)
+
   include(FetchContent)
   FetchContent_Declare(
       BTAS
