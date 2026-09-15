@@ -33,16 +33,23 @@ if (NOT TARGET BTAS::BTAS)
   # BTAS_ASSERT_POLICY has the same three modes as TA_ASSERT_POLICY, and
   # like it is not affected by NDEBUG.
   # N.B. only if the user did not ask for a specific BTAS_ASSERT_POLICY, hence a
-  #      parent project that sets BTAS_ASSERT_POLICY first keeps control
-  if (NOT DEFINED BTAS_ASSERT_POLICY)
-    if (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW)
-      set(BTAS_ASSERT_POLICY BTAS_ASSERT_THROW CACHE STRING "Controls the behavior of BTAS_ASSERT")
-    elseif (TA_ASSERT_POLICY STREQUAL TA_ASSERT_ABORT)
-      set(BTAS_ASSERT_POLICY BTAS_ASSERT_ABORT CACHE STRING "Controls the behavior of BTAS_ASSERT")
-    else ()
-      set(BTAS_ASSERT_POLICY BTAS_ASSERT_IGNORE CACHE STRING "Controls the behavior of BTAS_ASSERT")
-    endif()
-  endif (NOT DEFINED BTAS_ASSERT_POLICY)
+  #      parent project that sets BTAS_ASSERT_POLICY first keeps control;
+  #      a value that this module derived on an earlier configure (recorded in
+  #      TA_BTAS_ASSERT_POLICY_DERIVED) is re-derived, so that reconfiguring
+  #      with a different TA_ASSERT_POLICY keeps BTAS in sync
+  if (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW)
+    set(_ta_btas_assert_policy BTAS_ASSERT_THROW)
+  elseif (TA_ASSERT_POLICY STREQUAL TA_ASSERT_ABORT)
+    set(_ta_btas_assert_policy BTAS_ASSERT_ABORT)
+  else ()
+    set(_ta_btas_assert_policy BTAS_ASSERT_IGNORE)
+  endif()
+  if (NOT DEFINED BTAS_ASSERT_POLICY OR
+      (DEFINED TA_BTAS_ASSERT_POLICY_DERIVED AND BTAS_ASSERT_POLICY STREQUAL TA_BTAS_ASSERT_POLICY_DERIVED))
+    set(BTAS_ASSERT_POLICY ${_ta_btas_assert_policy} CACHE STRING "Controls the behavior of BTAS_ASSERT" FORCE)
+    set(TA_BTAS_ASSERT_POLICY_DERIVED ${_ta_btas_assert_policy} CACHE INTERNAL "BTAS_ASSERT_POLICY derived from TA_ASSERT_POLICY by TiledArray")
+  endif()
+  unset(_ta_btas_assert_policy)
 
   include(FetchContent)
   FetchContent_Declare(
