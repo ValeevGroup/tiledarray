@@ -32,24 +32,35 @@ if (NOT TARGET BTAS::BTAS)
   # (BTAS_ASSERT_THROW whenever BUILD_TESTING=ON, no matter what TA_ASSERT does).
   # BTAS_ASSERT_POLICY has the same three modes as TA_ASSERT_POLICY, and
   # like it is not affected by NDEBUG.
-  # N.B. only if the user did not ask for a specific BTAS_ASSERT_POLICY, hence a
-  #      parent project that sets BTAS_ASSERT_POLICY first keeps control;
-  #      a value that this module derived on an earlier configure (recorded in
-  #      TA_BTAS_ASSERT_POLICY_DERIVED) is re-derived, so that reconfiguring
-  #      with a different TA_ASSERT_POLICY keeps BTAS in sync
-  if (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW)
-    set(_ta_btas_assert_policy BTAS_ASSERT_THROW)
-  elseif (TA_ASSERT_POLICY STREQUAL TA_ASSERT_ABORT)
-    set(_ta_btas_assert_policy BTAS_ASSERT_ABORT)
-  else ()
-    set(_ta_btas_assert_policy BTAS_ASSERT_IGNORE)
+  # TA_BTAS_ASSERT_POLICY_FOLLOWS_TA is the opt-out: while ON, BTAS_ASSERT_POLICY
+  # is (re)derived from TA_ASSERT_POLICY on every configure; an explicit
+  # BTAS_ASSERT_POLICY that differs from the value TA last acknowledged
+  # (recorded in TA_BTAS_ASSERT_POLICY_SEEN) is honored and turns the option OFF.
+  # N.B. CMake cannot tell an explicit -DBTAS_ASSERT_POLICY=<X> from a cache
+  #      entry that already holds X, so to pin BTAS to the value TA derived on
+  #      an earlier configure pass -DTA_BTAS_ASSERT_POLICY_FOLLOWS_TA=OFF as well
+  set(_ta_btas_follow_doc "Derive BTAS_ASSERT_POLICY from TA_ASSERT_POLICY when BTAS is built from source; OFF leaves BTAS_ASSERT_POLICY to the user (or to BTAS's default)")
+  option(TA_BTAS_ASSERT_POLICY_FOLLOWS_TA "${_ta_btas_follow_doc}" ON)
+  if (TA_BTAS_ASSERT_POLICY_FOLLOWS_TA)
+    if (DEFINED BTAS_ASSERT_POLICY AND NOT (DEFINED TA_BTAS_ASSERT_POLICY_SEEN AND BTAS_ASSERT_POLICY STREQUAL TA_BTAS_ASSERT_POLICY_SEEN))
+      # explicit user value (on the first configure, or changed since TA last saw it): honor it, stop following
+      set(TA_BTAS_ASSERT_POLICY_FOLLOWS_TA OFF CACHE BOOL "${_ta_btas_follow_doc}" FORCE)
+      message(STATUS "BTAS_ASSERT_POLICY=${BTAS_ASSERT_POLICY} was set explicitly: TA_BTAS_ASSERT_POLICY_FOLLOWS_TA turned OFF, BTAS_ASSERT_POLICY will no longer follow TA_ASSERT_POLICY")
+    else()
+      if (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW)
+        set(BTAS_ASSERT_POLICY BTAS_ASSERT_THROW CACHE STRING "Controls the behavior of BTAS_ASSERT" FORCE)
+      elseif (TA_ASSERT_POLICY STREQUAL TA_ASSERT_ABORT)
+        set(BTAS_ASSERT_POLICY BTAS_ASSERT_ABORT CACHE STRING "Controls the behavior of BTAS_ASSERT" FORCE)
+      else ()
+        set(BTAS_ASSERT_POLICY BTAS_ASSERT_IGNORE CACHE STRING "Controls the behavior of BTAS_ASSERT" FORCE)
+      endif()
+    endif()
   endif()
-  if (NOT DEFINED BTAS_ASSERT_POLICY OR
-      (DEFINED TA_BTAS_ASSERT_POLICY_DERIVED AND BTAS_ASSERT_POLICY STREQUAL TA_BTAS_ASSERT_POLICY_DERIVED))
-    set(BTAS_ASSERT_POLICY ${_ta_btas_assert_policy} CACHE STRING "Controls the behavior of BTAS_ASSERT" FORCE)
-    set(TA_BTAS_ASSERT_POLICY_DERIVED ${_ta_btas_assert_policy} CACHE INTERNAL "BTAS_ASSERT_POLICY derived from TA_ASSERT_POLICY by TiledArray")
+  if (DEFINED BTAS_ASSERT_POLICY)
+    # the value TA acknowledged (derived, or explicit); turning the option back ON with this value still in the cache resumes following
+    set(TA_BTAS_ASSERT_POLICY_SEEN ${BTAS_ASSERT_POLICY} CACHE INTERNAL "BTAS_ASSERT_POLICY last acknowledged by TiledArray")
   endif()
-  unset(_ta_btas_assert_policy)
+  unset(_ta_btas_follow_doc)
 
   include(FetchContent)
   FetchContent_Declare(
