@@ -56,10 +56,6 @@ if (NOT TARGET BTAS::BTAS)
       endif()
     endif()
   endif()
-  if (DEFINED BTAS_ASSERT_POLICY)
-    # the value TA acknowledged (derived, or explicit); turning the option back ON with this value still in the cache resumes following
-    set(TA_BTAS_ASSERT_POLICY_SEEN ${BTAS_ASSERT_POLICY} CACHE INTERNAL "BTAS_ASSERT_POLICY last acknowledged by TiledArray")
-  endif()
   unset(_ta_btas_follow_doc)
 
   include(FetchContent)
@@ -69,6 +65,14 @@ if (NOT TARGET BTAS::BTAS)
       GIT_TAG             ${TA_TRACKED_BTAS_TAG}
   )
   FetchContent_MakeAvailable(BTAS)
+
+  # record the BTAS_ASSERT_POLICY value TA acknowledged (derived, explicit, or
+  # BTAS's own default when following is OFF): turning
+  # TA_BTAS_ASSERT_POLICY_FOLLOWS_TA back ON with this value still in the cache
+  # resumes following. Done after BTAS has been configured so that the entry
+  # exists even on a first configure with following OFF and no explicit value.
+  # N.B. INTERNAL implies FORCE; spelled out for clarity
+  set(TA_BTAS_ASSERT_POLICY_SEEN ${BTAS_ASSERT_POLICY} CACHE INTERNAL "BTAS_ASSERT_POLICY last acknowledged by TiledArray" FORCE)
   FetchContent_GetProperties(BTAS
       SOURCE_DIR BTAS_SOURCE_DIR
       BINARY_DIR BTAS_BINARY_DIR
