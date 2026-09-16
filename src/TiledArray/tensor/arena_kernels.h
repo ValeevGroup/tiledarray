@@ -625,6 +625,50 @@ OuterTensor arena_permute_shallow(const SrcOuterTensor& src, const Perm& perm) {
   return result;
 }
 
+/// Deep outer permute of a slab-backed ToT outer tile: a fresh single-page
+/// slab holding a copy of every cell, laid out in permuted order. The owning
+/// counterpart of arena_permute_shallow(): the result shares nothing with
+/// `src`, so it may be consumed in place -- the expression layer consumes a
+/// permuted operand tile (`x(perm) - y`) -- without touching `src`; the
+/// shallow form aliased the source cells, and such a consume wrote through
+/// them. Inner cells keep their ranges (an inner permutation is a separate
+/// pass, arena_inner_permute()). Null cells stay null.
+template <typename OuterTensor, typename SrcOuterTensor, typename Perm>
+OuterTensor arena_permute_deep(const SrcOuterTensor& src, const Perm& perm) {
+  using inner_t = typename OuterTensor::value_type;
+  using elem_t = typename inner_t::value_type;
+  using inner_range_t = typename inner_t::range_type;
+  TA_ASSERT(perm);
+  TA_ASSERT(perm.size() == src.range().rank());
+  auto perm_range = perm * src.range();
+  const std::size_t N_cells = src.range().volume();
+  const std::size_t batch_sz = src.nbatch();
+  // target cell ordinal -> source cell ordinal (within one batch)
+  std::vector<std::size_t> src_of(N_cells);
+  for (std::size_t s = 0; s < N_cells; ++s) {
+    auto src_idx = src.range().idx(s);
+    src_of[perm_range.ordinal(perm * src_idx)] = s;
+  }
+  auto range_fn = [&](std::size_t t_off) -> inner_range_t {
+    const std::size_t b = t_off / N_cells, t = t_off % N_cells;
+    const inner_t& c = src.data()[b * N_cells + src_of[t]];
+    return c.empty() ? inner_range_t{} : c.range();
+  };
+  // every element of every live cell is written below; no zero-init
+  OuterTensor result = arena_outer_init<OuterTensor>(
+      perm_range, batch_sz, range_fn, alignof(elem_t), /*zero_init=*/false);
+  for (std::size_t b = 0; b < batch_sz; ++b) {
+    for (std::size_t t = 0; t < N_cells; ++t) {
+      inner_t& dst = result.data()[b * N_cells + t];
+      if (dst.empty()) continue;
+      const inner_t& s = src.data()[b * N_cells + src_of[t]];
+      TA_ASSERT(dst.size() == s.size());
+      std::copy_n(s.data(), s.size(), dst.data());
+    }
+  }
+  return result;
+}
+
 /// Permute the inner modes of every cell of a slab-backed ToT outer tile.
 ///
 /// Produces a fresh slab-backed tile with the same outer layout as `src`,

@@ -107,6 +107,7 @@ set(ta_test_src_files  ta_test.cpp
     arena_tensor.cpp
     arena_tensor_kernels.cpp
     arena_strided_gemm.cpp
+    arena_mixed_product_order.cpp
     tot_construction.cpp
 )
 

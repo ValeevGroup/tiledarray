@@ -4809,7 +4809,9 @@ ArenaArr make_arena_tot_2(World& world, std::size_t ni, std::size_t nj,
   const long NA = static_cast<long>(na), NB = static_cast<long>(nb);
   arr.init_tiles([=](const TiledArray::Range& r) {
     ArenaOuter t = TiledArray::detail::arena_outer_init<ArenaOuter>(
-        r, 1, [=](std::size_t) { return TiledArray::Range{NA, NB}; });
+        r, 1, [=](std::size_t) {
+          return TiledArray::Range{NA, NB};
+        });
     for (std::size_t o = 0; o < t.range().volume(); ++o) {
       ArenaInner& c = t.data()[o];
       if (!c) continue;
@@ -5309,6 +5311,86 @@ BOOST_AUTO_TEST_CASE(arena_tot_times_real_plain) {
           for (std::size_t j = 0; j < nj; ++j)
             ref += gaz2(i, j, x, y) * gtd(j, k);
           check_close(tile(i, k).data()[x * nb + y], ref);
+        }
+}
+
+// ---- BTAS inner cells, the third supported nested-tile family. conj(A*B)
+// on Tensor<btas::Tensor<complex>> does not compile on master (the per-cell
+// op static_casts the ComplexConjugate factor); it works here because the
+// factor reaches the cells as 1 and the finalization conjugates the finished
+// tile through btas's own conj/conj_to CPOs (external/btas.h).
+
+using btas_inner_z = btas::Tensor<Z, TiledArray::Range>;
+using btas_tot_z = DistArray<Tensor<btas_inner_z>, DensePolicy>;
+
+// btas::Tensor has no at_ordinal(); fill through data() so the same generator
+// serves the owning, arena and btas rows.
+template <typename Array, typename Gen>
+Array make_tot_1_data(World& world, std::size_t ni, std::size_t nj,
+                      std::size_t na, Gen gen) {
+  using inner_t = typename Array::value_type::value_type;
+  TiledRange tr{TiledRange1{0, static_cast<long>(ni)},
+                TiledRange1{0, static_cast<long>(nj)}};
+  Array arr(world, tr);
+  arr.init_elements([=](const auto& idx) {
+    inner_t t(Range{static_cast<long>(na)});
+    for (std::size_t a = 0; a < na; ++a) t.data()[a] = gen(idx[0], idx[1], a);
+    return t;
+  });
+  world.gop.fence();
+  return arr;
+}
+
+// c(i,k;a,b) = conj / 2 conj / -conj( sum_j a(i,j;a) b(j,k;b) ) on btas cells
+BOOST_AUTO_TEST_CASE(btas_conj_of_product) {
+  const std::size_t ni = 2, nj = 3, nk = 2, na = 2, nb = 3;
+  btas_tot_z a = make_tot_1_data<btas_tot_z>(m_world, ni, nj, na, gaz1);
+  btas_tot_z b = make_tot_1_data<btas_tot_z>(m_world, nj, nk, nb, gbz1);
+  auto ref = [=](auto i, auto k, auto x, auto y) {
+    Z r{};
+    for (std::size_t j = 0; j < nj; ++j) r += gaz1(i, j, x) * gbz1(j, k, y);
+    return r;
+  };
+  auto check = [&](const btas_tot_z& c, Z scale, const char* what) {
+    auto tile = single_tile(c);
+    for (std::size_t i = 0; i < ni; ++i)
+      for (std::size_t k = 0; k < nk; ++k)
+        for (std::size_t x = 0; x < na; ++x)
+          for (std::size_t y = 0; y < nb; ++y) {
+            BOOST_TEST_CONTEXT(what << " i=" << i << " k=" << k << " x=" << x
+                                    << " y=" << y)
+            check_close(tile(i, k).data()[x * nb + y],
+                        scale * std::conj(ref(i, k, x, y)));
+          }
+  };
+  btas_tot_z c;
+  c("i,k;a,b") = conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(1.0), "btas conj(a*b)");
+  c("i,k;a,b") = 2.0 * conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(2.0), "btas 2.0*conj(a*b)");
+  c("i,k;a,b") = -conj(a("i,j;a") * b("j,k;b"));
+  check(c, Z(-1.0), "btas -conj(a*b)");
+
+  // unary conj, and conj on one operand of the product
+  btas_tot_z u;
+  u("i,j;a") = conj(a("i,j;a"));
+  auto utile = single_tile(u);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t j = 0; j < nj; ++j)
+      for (std::size_t x = 0; x < na; ++x)
+        check_close(utile(i, j).data()[x], std::conj(gaz1(i, j, x)));
+
+  btas_tot_z l;
+  l("i,k;a,b") = conj(a("i,j;a")) * b("j,k;b");
+  auto ltile = single_tile(l);
+  for (std::size_t i = 0; i < ni; ++i)
+    for (std::size_t k = 0; k < nk; ++k)
+      for (std::size_t x = 0; x < na; ++x)
+        for (std::size_t y = 0; y < nb; ++y) {
+          Z r{};
+          for (std::size_t j = 0; j < nj; ++j)
+            r += std::conj(gaz1(i, j, x)) * gbz1(j, k, y);
+          check_close(ltile(i, k).data()[x * nb + y], r);
         }
 }
 

@@ -23,6 +23,10 @@
  *
  */
 
+#include <complex>
+#include <vector>
+
+#include "TiledArray/external/btas.h"
 #include "TiledArray/tile_op/contract_reduce.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
@@ -510,6 +514,140 @@ BOOST_AUTO_TEST_CASE(tensor_contract2) {
   // Compute reference values and compare to the result
   C.noalias() += 3 * AT.transpose() * BT.transpose();
   BOOST_CHECK_EQUAL(result_map, C);
+}
+
+// ---------------------------------------------------------------------------
+// conj finalization on a tile that provides only the value-returning conj.
+//
+// `conj` and `conj_to` are independent tile-interface customization points, so
+// implementing just the former is a legal partial implementation. Before
+// issue #585 the ComplexConjugate finalization called `conj_to`
+// unconditionally on the unpermuted path, so such a tile compiled for
+// `c("k,i") = conj(a*b)` (permuted -> conj) and hard-errored for
+// `c("i,k") = conj(a*b)` (unpermuted -> conj_to).
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// A tile with the full value-returning `conj` overload set and NO `conj_to`,
+/// member or free. Carries only what the finalization touches.
+class ConjOnlyTile {
+ public:
+  using value_type = std::complex<double>;
+
+  ConjOnlyTile() = default;
+  explicit ConjOnlyTile(std::vector<value_type> data)
+      : data_(std::move(data)) {}
+
+  bool empty() const { return data_.empty(); }
+  const std::vector<value_type>& data() const { return data_; }
+
+  ConjOnlyTile conj() const {
+    std::vector<value_type> out;
+    out.reserve(data_.size());
+    for (auto const& z : data_) out.push_back(std::conj(z));
+    return ConjOnlyTile(std::move(out));
+  }
+  template <typename Scalar,
+            typename = std::enable_if_t<std::is_arithmetic_v<Scalar>>>
+  ConjOnlyTile conj(const Scalar factor) const {
+    std::vector<value_type> out;
+    out.reserve(data_.size());
+    for (auto const& z : data_) out.push_back(std::conj(z) * factor);
+    return ConjOnlyTile(std::move(out));
+  }
+  // the suite never permutes; these exist so the permuted branch of the
+  // finalization instantiates alongside the unpermuted one under test
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  ConjOnlyTile conj(const Perm&) const {
+    return conj();
+  }
+  template <
+      typename Scalar, typename Perm,
+      typename = std::enable_if_t<std::is_arithmetic_v<Scalar> &&
+                                  TiledArray::detail::is_permutation_v<Perm>>>
+  ConjOnlyTile conj(const Scalar factor, const Perm&) const {
+    return conj(factor);
+  }
+
+ private:
+  std::vector<value_type> data_;
+};
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(conj_to_detection) {
+  // every tile in the tree supports in-place conjugation, with and without a
+  // scale -- including btas::Tensor, whose conj_to is a free function in
+  // namespace btas rather than a member. That is why the trait tests the ADL
+  // CALL: a member-based test would report false for btas::Tensor and demote
+  // it to the allocating path.
+  using TensorZ = Tensor<std::complex<double>>;
+  BOOST_CHECK(TiledArray::has_conj_to_v<TensorZ&>);
+  BOOST_CHECK((TiledArray::has_conj_to_v<TensorZ&, const double&>));
+
+  using BtasZ = btas::Tensor<std::complex<double>, TiledArray::Range>;
+  BOOST_CHECK(TiledArray::has_conj_to_v<BtasZ&>);
+  BOOST_CHECK((TiledArray::has_conj_to_v<BtasZ&, const double&>));
+  static_assert(
+      !TiledArray::detail::has_member_function_conj_to_anyreturn_v<BtasZ&>,
+      "btas::Tensor has no conj_to MEMBER; if this ever gains one the ADL "
+      "call is still the right test, but this guard has lost its point");
+
+  // the nested tile types too -- Tensor<ArenaTensor<...>> is MPQC's ToT cell
+  // type and the one this dispatch must not quietly move off the in-place path
+  using ArenaToTZ = Tensor<TiledArray::ArenaTensor<std::complex<double>>>;
+  BOOST_CHECK(TiledArray::has_conj_to_v<ArenaToTZ&>);
+  BOOST_CHECK((TiledArray::has_conj_to_v<ArenaToTZ&, const double&>));
+  using OwnToTZ = Tensor<Tensor<std::complex<double>>>;
+  BOOST_CHECK(TiledArray::has_conj_to_v<OwnToTZ&>);
+
+  BOOST_CHECK(!TiledArray::has_conj_to_v<ConjOnlyTile&>);
+}
+
+BOOST_AUTO_TEST_CASE(conj_finalize_in_place_when_supported) {
+  const std::complex<double> z{1.0, 2.0};
+  Tensor<std::complex<double>> tile(Tensor<std::complex<double>>::range_type(
+      std::array<std::size_t, 1>{1ul}));
+  tile.at_ordinal(0) = z;
+  const auto result = TiledArray::detail::conj_finalize(tile);
+  BOOST_CHECK(result.at_ordinal(0) == std::conj(z));
+  // in place: the argument itself was conjugated, no copy was made
+  BOOST_CHECK(tile.at_ordinal(0) == std::conj(z));
+
+  tile.at_ordinal(0) = z;
+  const auto scaled = TiledArray::detail::conj_finalize(tile, 2.0);
+  BOOST_CHECK(scaled.at_ordinal(0) == 2.0 * std::conj(z));
+  BOOST_CHECK(tile.at_ordinal(0) == 2.0 * std::conj(z));
+}
+
+// The regression: instantiating and running the ComplexConjugate finalization
+// for a tile with no conj_to. On master this is
+// "contract_reduce.h: no matching function for call to 'conj_to'".
+BOOST_AUTO_TEST_CASE(conj_finalization_without_conj_to) {
+  const std::complex<double> z0{1.0, 2.0}, z1{-3.0, 0.5};
+
+  using CR_conj = ContractReduce<ConjOnlyTile, ConjOnlyTile, ConjOnlyTile,
+                                 TiledArray::detail::ComplexConjugate<void>>;
+  CR_conj op(math::blas::NoTranspose, math::blas::NoTranspose,
+             TiledArray::detail::conj_op(), 2u, 2u, 2u);
+  ConjOnlyTile temp({z0, z1});
+  const ConjOnlyTile out = op(temp);
+  BOOST_REQUIRE_EQUAL(out.data().size(), 2u);
+  BOOST_CHECK(out.data()[0] == std::conj(z0));
+  BOOST_CHECK(out.data()[1] == std::conj(z1));
+
+  using CR_scaled =
+      ContractReduce<ConjOnlyTile, ConjOnlyTile, ConjOnlyTile,
+                     TiledArray::detail::ComplexConjugate<double>>;
+  CR_scaled op_scaled(math::blas::NoTranspose, math::blas::NoTranspose,
+                      TiledArray::detail::conj_op(2.0), 2u, 2u, 2u);
+  ConjOnlyTile temp_scaled({z0, z1});
+  const ConjOnlyTile out_scaled = op_scaled(temp_scaled);
+  BOOST_REQUIRE_EQUAL(out_scaled.data().size(), 2u);
+  BOOST_CHECK(out_scaled.data()[0] == 2.0 * std::conj(z0));
+  BOOST_CHECK(out_scaled.data()[1] == 2.0 * std::conj(z1));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -125,6 +125,10 @@ class BatchedContractReduce {
   result_type operator()(result_type& temp) const {
     using TiledArray::empty;
     TA_ASSERT(!empty(temp));
+    // the wrapped op's finalization also applies ITS permutation; the batched
+    // op is built perm-free (ContEngine), and a perm leaking in here would
+    // permute the fused result silently
+    TA_ASSERT(!op_.perm());
     return op_(temp);
   }
 

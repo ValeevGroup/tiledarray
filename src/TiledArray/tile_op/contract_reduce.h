@@ -470,10 +470,40 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 
 };  // class ContractReduce
 
+/// Conjugate (and scale) a finished contraction result.
+
+/// In place through `conj_to` when the result tile supports it -- every tile
+/// in the tree does, and it saves an allocate/copy/free per tile -- otherwise
+/// through the value-returning `conj`. The two are independent tile-interface
+/// customization points and a tile may implement only the latter, in which
+/// case an unpermuted `conj(A*B)` used to fail to instantiate while the
+/// permuted form (which already goes through `conj`) compiled. See issue #585.
+///
+/// N.B. the choice is made on the ADL call `conj_to(...)`, not on a
+/// `conj_to()` member: `btas::Tensor` has no member, only free functions in
+/// namespace `btas`, and a member-based test would demote it to the
+/// allocating path.
+/// \tparam Result the result tile type
+/// \tparam Factor the scale, if any (none for a ComplexConjugate<void>)
+template <typename Result, typename... Factor>
+inline Result conj_finalize(Result& temp, const Factor&... factor) {
+  if constexpr (TiledArray::has_conj_to_v<Result&, const Factor&...>) {
+    using TiledArray::conj_to;
+    return conj_to(temp, factor...);
+  } else {
+    using TiledArray::conj;
+    return conj(temp, factor...);
+  }
+}
+
 /// Contract and (sum) reduce operation with a ComplexConjugate factor
 
-/// The contraction of \c conj(A*B) (\c Scalar = \c void), \c S*conj(A*B)
-/// (numeric \c Scalar) or \c -conj(A*B) (\c Scalar = \c ComplexNegTag).
+/// The contraction of \c conj(A*B) (\c Scalar = \c void) or of a scaled
+/// conjugate -- \c S*conj(A*B) and \c -conj(A*B), both numeric \c Scalar
+/// (the expression layer spells the negation \c conj_op<numeric_type>(-1),
+/// see \c operator-(ConjMultExpr) in expressions/mult_expr.h; it never
+/// produces \c ComplexConjugate<ComplexNegTag> here, which the finalization
+/// below could not read a factor from).
 /// Conjugation does not distribute into the sum of products, so the
 /// contraction and reduction run with unit factor and the finalization
 /// conjugates (and scales) the finished result.
@@ -499,6 +529,14 @@ class ContractReduce<Result, Left, Right,
       second_argument_type;    ///< The right tile type
   typedef Result result_type;  ///< The result tile type.
   typedef TiledArray::detail::ComplexConjugate<Scalar> scalar_type;
+
+  // the finalization below reads factor().factor() for a non-void Scalar,
+  // which ComplexConjugate<ComplexNegTag> does not have; see the class doc
+  static_assert(
+      !std::is_same_v<Scalar, TiledArray::detail::ComplexNegTag>,
+      "ContractReduce: a negated conjugate contraction factor is spelled "
+      "ComplexConjugate<numeric_type>(-1), not "
+      "ComplexConjugate<ComplexNegTag>");
 
   using typename ContractReduceBase_::elem_muladd_op_type;
   using typename ContractReduceBase_::left_value_type;
@@ -552,22 +590,39 @@ class ContractReduce<Result, Left, Right,
   result_type operator()() const { return result_type(); }
 
   /// Post processing step
+
+  /// Requirements on \c Result. `perm()` is a runtime value, so BOTH branches
+  /// below are instantiated for every tile used here:
+  /// - the permuted branch always needs the value-returning \c conj --
+  ///   `conj(result, perm)`, or `conj(result, factor, perm)` when the factor
+  ///   carries a scale -- whether or not a permutation is ever applied. This
+  ///   mirrors the primary template, whose finalization likewise instantiates
+  ///   `Permute<Result, Result>` unconditionally.
+  /// - the unpermuted branch takes \c conj_to when the tile has it and falls
+  ///   back to \c conj otherwise (see \c conj_finalize), so \c conj_to is
+  ///   optional -- but preferred, since it saves an allocate/copy/free.
+  ///
+  /// A tile missing one of the \c conj overloads fails inside
+  /// tile_interface.h's default `conj`, reporting only "too many arguments to
+  /// function call". That is not turned into a named static_assert because the
+  /// default \c conj CPOs are constrained only on \c Perm being a permutation
+  /// and have a DEDUCED return type, so `decltype(conj(arg, perm))` has to
+  /// instantiate the body: detecting them hard-errors instead of yielding
+  /// false, unlike \c has_conj_to_v (whose CPO is constrained on the member).
+  /// Making that detectable means constraining the four \c conj overloads the
+  /// way \c conj_to and \c neg_to already are -- worth doing, but a change to
+  /// a public header's overload set that wants its own PR.
   result_type operator()(result_type& temp) const {
     using TiledArray::empty;
     TA_ASSERT(!empty(temp));
 
     if constexpr (std::is_void_v<Scalar>) {
-      if (!ContractReduceBase_::perm()) {
-        using TiledArray::conj_to;
-        return conj_to(temp);
-      }
+      if (!ContractReduceBase_::perm()) return conj_finalize(temp);
       using TiledArray::conj;
       return conj(temp, ContractReduceBase_::perm());
     } else {
-      if (!ContractReduceBase_::perm()) {
-        using TiledArray::conj_to;
-        return conj_to(temp, ContractReduceBase_::factor().factor());
-      }
+      if (!ContractReduceBase_::perm())
+        return conj_finalize(temp, ContractReduceBase_::factor().factor());
       using TiledArray::conj;
       return conj(temp, ContractReduceBase_::factor().factor(),
                   ContractReduceBase_::perm());

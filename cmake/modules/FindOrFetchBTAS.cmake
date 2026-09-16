@@ -28,6 +28,24 @@ if (NOT TARGET BTAS::BTAS)
     set(gpu_backend none CACHE STRING "The device backend to use for Linalg++")
   endif()
 
+  # Seed BTAS's assertion policy from TA's, so that the two agree by default
+  # (else BTAS_ASSERT throws whenever BUILD_TESTING=ON, regardless of NDEBUG);
+  # BTAS_ASSERT_POLICY has the same three modes as TA_ASSERT_POLICY and is
+  # likewise not affected by NDEBUG. Like any cached option this applies on
+  # the first configure of a build directory only: an explicit
+  # -DBTAS_ASSERT_POLICY=... (from the user or a parent project) is already in
+  # the cache and wins, and a later change of TA_ASSERT_POLICY does not re-seed
+  # it (set BTAS_ASSERT_POLICY explicitly, or use a fresh build directory).
+  if (NOT DEFINED CACHE{BTAS_ASSERT_POLICY})
+    if (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW)
+      set(BTAS_ASSERT_POLICY BTAS_ASSERT_THROW CACHE STRING "Controls the behavior of BTAS_ASSERT (seeded from TA_ASSERT_POLICY)")
+    elseif (TA_ASSERT_POLICY STREQUAL TA_ASSERT_ABORT)
+      set(BTAS_ASSERT_POLICY BTAS_ASSERT_ABORT CACHE STRING "Controls the behavior of BTAS_ASSERT (seeded from TA_ASSERT_POLICY)")
+    else ()
+      set(BTAS_ASSERT_POLICY BTAS_ASSERT_IGNORE CACHE STRING "Controls the behavior of BTAS_ASSERT (seeded from TA_ASSERT_POLICY)")
+    endif()
+  endif()
+
   include(FetchContent)
   FetchContent_Declare(
       BTAS
@@ -35,6 +53,7 @@ if (NOT TARGET BTAS::BTAS)
       GIT_TAG             ${TA_TRACKED_BTAS_TAG}
   )
   FetchContent_MakeAvailable(BTAS)
+
   FetchContent_GetProperties(BTAS
       SOURCE_DIR BTAS_SOURCE_DIR
       BINARY_DIR BTAS_BINARY_DIR

@@ -1218,9 +1218,7 @@ class ContEngine : public BinaryEngine<Derived> {
         const auto* rp = right.data();
         result_tile_element_type acc{0};
         for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
-        return TiledArray::detail::elem_factor<result_tile_element_type>(
-                   factor) *
-               acc;
+        return factor * acc;
       };
       this->element_nonreturn_op_ = [flat_dot](
                                         result_tile_element_type& result,
@@ -1269,7 +1267,7 @@ class ContEngine : public BinaryEngine<Derived> {
           // Mirror the owning-tile path (init_inner_tile_op_owning_): the
           // SUMMA shapes each result cell from a non-empty left inner cell
           // (left_range plan), and the per-cell op accumulates `r += l * rr`
-          // -- or `r += (l * rr) * factor_` when scaled -- via
+          // -- or `r += (l * rr) * elem_scale()` when scaled -- via
           // fused_hadamard_inplace into the pre-shaped view cell. No
           // value-returning per-cell op is needed, so this works for view
           // cells; non-identity inner result permutation is rejected here
@@ -1344,8 +1342,7 @@ class ContEngine : public BinaryEngine<Derived> {
                     Numeric acc{0};
                     for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
                     // result cell is pre-shaped [1] by the unit_range plan.
-                    result.data()[0] +=
-                        TiledArray::detail::elem_factor<Numeric>(factor) * acc;
+                    result.data()[0] += factor * acc;
                   };
               if (this->outer_product_uses_summa()) {
                 this->arena_plan_ =
@@ -1452,10 +1449,7 @@ class ContEngine : public BinaryEngine<Derived> {
                               Cc, Lt, Rt, static_cast<std::size_t>(M),
                               static_cast<std::size_t>(N),
                               static_cast<std::size_t>(K), gh.left_op(),
-                              gh.right_op(),
-                              TiledArray::detail::elem_factor<
-                                  typename result_tile_element_type::
-                                      numeric_type>(factor));
+                              gh.right_op(), factor);
                         };
                   }
                   // ce+ce (hce+ce): inner CONTRACTION (num_contract_ranks() >=
@@ -1571,11 +1565,7 @@ class ContEngine : public BinaryEngine<Derived> {
                               Cc, Lt, Rt, static_cast<std::size_t>(Mo),
                               static_cast<std::size_t>(No),
                               static_cast<std::size_t>(Ko), gh.left_op(),
-                              gh.right_op(),
-                              TiledArray::detail::elem_factor<
-                                  typename result_tile_element_type::
-                                      numeric_type>(factor),
-                              left_inner_T);
+                              gh.right_op(), factor, left_inner_T);
                         };
                   } else if (left_arm_ok) {
                     const auto factor = this->elem_scale();
@@ -1595,11 +1585,7 @@ class ContEngine : public BinaryEngine<Derived> {
                               Cc, Lt, Rt, static_cast<std::size_t>(Mo),
                               static_cast<std::size_t>(No),
                               static_cast<std::size_t>(Ko), gh.left_op(),
-                              gh.right_op(),
-                              TiledArray::detail::elem_factor<
-                                  typename result_tile_element_type::
-                                      numeric_type>(factor),
-                              right_inner_T);
+                              gh.right_op(), factor, right_inner_T);
                         };
                   }
                   // [strided-gemm] install-decision instrumentation. For each
@@ -1755,7 +1741,7 @@ class ContEngine : public BinaryEngine<Derived> {
                   const auto* rp = right.data();
                   Numeric acc{0};
                   for (std::size_t j = 0; j < n; ++j) acc += lp[j] * rp[j];
-                  acc *= TiledArray::detail::elem_factor<Numeric>(factor);
+                  acc *= factor;
                   if (TA::empty(result)) {
                     using R = typename result_tile_element_type::range_type;
                     TiledArray::container::svector<std::size_t> ext(
@@ -2043,8 +2029,11 @@ class ContEngine : public BinaryEngine<Derived> {
           // cells. The Hadamard outer product is an assignment
           // `result = (perm ^ tot) * scalar`, which needs value-returning
           // `scale`; only owning inner cells support it.
-          // N.B. the expression-level scalar prefactor (factor_, != 1 for
-          // ScalMult expressions) multiplies the plain operand's element
+          // N.B. the expression-level scalar prefactor (elem_scale(), != 1
+          // for a scaled ScalMult expression) multiplies the plain operand's
+          // element. A ComplexConjugate factor_ leaves it 1 and is applied by
+          // op_'s finalization instead -- applying it here as well would
+          // conjugate the plain operand a second time.
           auto fallback_op =
               [perm = !this->implicit_permute_inner_ ? inner(this->perm_)
                                                      : Permutation{},
