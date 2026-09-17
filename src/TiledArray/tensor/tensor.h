@@ -3704,6 +3704,20 @@ class Tensor {
                 if (N > 1)
                   ldc = static_cast<integer>(rc0[1].data() - rc0[0].data());
                 if (ldb < A || ldc < A) clean = false;  // sanity
+                // ...and the strides must be indexable by the BLAS. ldb/ldc
+                // are MEASURED (a distance between two cell addresses), not
+                // derived from an extent, so an un-compacted ToT tile whose
+                // cells the allocator placed far apart can produce one that
+                // BLAS++ cannot narrow to blas_int -- `blas::Error: ldb, in
+                // function to_blas_int_` under LP64. The gemm below reads
+                // element (K-1)*ldb*cw + A*cw-1 of the left slab and writes
+                // (N-1)*ldc*cw + A*cw-1 of the result slab, so bound the whole
+                // span, not just one step.
+                if (!TiledArray::math::blas::ld_fits(
+                        ldb * cw, K, static_cast<integer>(A) * cw) ||
+                    !TiledArray::math::blas::ld_fits(
+                        ldc * cw, N, static_cast<integer>(A) * cw))
+                  clean = false;
                 const std::ptrdiff_t sb = ldb, sc = ldc;
                 for (integer k = 0; clean && k != K; ++k)
                   if (lc(k).data() != lc(0).data() + k * sb) clean = false;
@@ -3903,6 +3917,15 @@ class Tensor {
                   ldc = static_cast<integer>(this_data[N + n].data() -
                                              this_data[n].data());
                 if (sbc < A || ldc < A) clean = false;
+                // measured strides, so bound their BLAS-indexable span too
+                // (see the ToT x scalar mirror above): the gemm reads element
+                // (K-1)*sbc*cw + A*cw-1 of the right slab and writes
+                // (M-1)*ldc*cw + A*cw-1 of the result slab.
+                if (!TiledArray::math::blas::ld_fits(
+                        sbc * cw, K, static_cast<integer>(A) * cw) ||
+                    !TiledArray::math::blas::ld_fits(
+                        ldc * cw, M, static_cast<integer>(A) * cw))
+                  clean = false;
                 const std::ptrdiff_t sb = sbc, sc = ldc;
                 for (integer k = 0; clean && k != K; ++k)
                   if (right_data[rcell(k, n)].data() !=

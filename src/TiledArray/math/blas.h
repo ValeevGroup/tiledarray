@@ -29,6 +29,7 @@
 #include <TiledArray/external/eigen.h>
 #include <TiledArray/type_traits.h>
 
+#include <blas/config.h>  // blas_int
 #include <blas/dot.hh>
 #include <blas/gemm.hh>
 #include <blas/scal.hh>
@@ -36,6 +37,7 @@
 #include <blas/wrappers.hh>
 
 #include <cstdint>
+#include <limits>
 
 namespace TiledArray::math::blas {
 
@@ -47,6 +49,32 @@ using Op = ::blas::Op;
 static constexpr auto NoTranspose = Op::NoTrans;
 static constexpr auto Transpose = Op::Trans;
 static constexpr auto ConjTranspose = Op::ConjTrans;
+
+/// The largest leading dimension the linked BLAS can accept. `integer` is
+/// 64-bit here unconditionally, but BLAS++ narrows every dimension to its own
+/// `blas_int` -- 32-bit under an LP64 BLAS -- and throws
+/// (`blas::Error: ldb, in function to_blas_int_`) past this value. Callers that
+/// MEASURE a leading dimension (as a distance between two addresses, rather
+/// than deriving it from an extent) have to check it themselves; see
+/// ld_fits().
+inline constexpr integer max_ld() {
+  return static_cast<integer>(std::numeric_limits<blas_int>::max());
+}
+
+/// True if a row-major matrix of `nslab` rows and `extent` columns at leading
+/// dimension `ld` addresses only elements a `blas_int` can index. max_ld()
+/// alone bounds ONE row step; the GEMM reaches element
+/// (nslab-1)*ld + extent-1, and a 32-bit-indexed BLAS must be able to form
+/// THAT index too, so a stride comfortably under the cap still overflows it
+/// once there are enough rows. Phrased as a division so the bound itself
+/// cannot overflow when `blas_int` is 64-bit (ILP64), where max_ld() is
+/// INT64_MAX.
+inline constexpr bool ld_fits(integer ld, integer nslab, integer extent) {
+  if (ld < 0 || extent < 1 || extent - 1 > max_ld() || ld > max_ld())
+    return false;
+  if (nslab <= 1) return true;
+  return ld <= (max_ld() - (extent - 1)) / (nslab - 1);
+}
 
 /// converts Op to ints in manner useful for bit manipulations
 /// NoTranspose -> 0, Transpose->1, ConjTranspose->2

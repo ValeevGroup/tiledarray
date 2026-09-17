@@ -12,8 +12,6 @@
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/util/annotation.h"
 
-#include <blas/config.h>  // blas_int
-
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -22,7 +20,6 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include <limits>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -282,32 +279,38 @@ inline void phase_stop(std::atomic<std::uint64_t>& acc,
 ///   2 = nonuniform: present, but inner-cell sizes differ along the run
 ///   3 = stride    : present + uniform, but cells are NOT at a constant
 ///                   page-jump-free stride (the strided-GEMM precondition)
+///   4 = ld range  : constant stride, but the run spans more elements than the
+///                   BLAS integer can index (see ld_fits)
 ///   0 = run looks clean (so the rejection came from the OTHER operand run)
 inline std::atomic<std::uint64_t> g_fall_runs_ce_ce{0};
 inline std::atomic<std::uint64_t> g_fall_res_absent_ce_ce{0};      // 1
 inline std::atomic<std::uint64_t> g_fall_res_nonuniform_ce_ce{0};  // 2
 inline std::atomic<std::uint64_t> g_fall_res_stride_ce_ce{0};      // 3
+inline std::atomic<std::uint64_t> g_fall_res_ldrange_ce_ce{0};     // 4
 inline std::atomic<std::uint64_t> g_fall_op_absent_ce_ce{0};       // 13
 inline std::atomic<std::uint64_t> g_fall_op_nonuniform_ce_ce{0};   // 14
 inline std::atomic<std::uint64_t> g_fall_op_stride_ce_ce{0};       // 15
 inline std::atomic<std::uint64_t> g_fall_op_acrossk_ce_ce{0};      // 16
 inline std::atomic<std::uint64_t> g_fall_both_clean_ce_ce{0};      // 17
+inline std::atomic<std::uint64_t> g_fall_op_ldrange_ce_ce{0};      // 18
 
-/// The largest cell-to-cell stride the linked BLAS accepts as a leading
-/// dimension. The strided kernels below MEASURE their leading dimensions as
-/// pointer differences between neighbouring cells; blaspp converts every ld to
-/// blas_int (32-bit under LP64) and throws (`blas::Error: ldb, in function
-/// to_blas_int_`) past its maximum. Two present cells that are not arena
-/// neighbours -- e.g. individually allocated inner tensors that the allocator
-/// placed gigabytes apart -- satisfy every other precondition of a 2-cell run
-/// (uniform size, stride >= cell size, trivially constant) yet yield an
-/// address delta no BLAS can take. Such a run is not strided-GEMM material:
-/// the walkers break it up and the per-cell path handles it.
-inline constexpr long max_blas_ld() {
-  return static_cast<long>(std::numeric_limits<blas_int>::max());
-}
+/// Does a measured strided run address only elements the BLAS can index?
+/// The strided kernels below MEASURE their leading dimensions as pointer
+/// differences between neighbouring cells, so -- unlike a kernel that derives
+/// them from extents -- they can hand blaspp an ld it cannot convert to
+/// `blas_int` (`blas::Error: ldb, in function to_blas_int_`). Two present
+/// cells that are not arena neighbours -- e.g. individually allocated inner
+/// tensors the allocator placed gigabytes apart -- satisfy every other
+/// precondition of a 2-cell run (uniform size, stride >= cell size, trivially
+/// constant) yet yield exactly such an address delta; and a stride well inside
+/// `blas_int` still overflows the BLAS index once the run is long enough,
+/// because the GEMM reaches element (nslab-1)*ld + extent-1. Such a run is not
+/// strided-GEMM material: the walkers break it up and the per-cell path
+/// handles it.
+using math::blas::ld_fits;
 
-/// Classify a strided run: 1=absent, 2=nonuniform size, 3=bad stride, 0=clean.
+/// Classify a strided run: 1=absent, 2=nonuniform size, 3=bad stride,
+/// 4=stride past the BLAS index range (see ld_fits), 0=clean.
 template <typename GetCell>
 inline int classify_run(GetCell getcell, std::size_t n) {
   if (n == 0) return 0;
@@ -330,6 +333,8 @@ inline int classify_run(GetCell getcell, std::size_t n) {
   for (std::size_t i = 0; i < n; ++i)
     if (getcell(i).data() != base + static_cast<std::ptrdiff_t>(i) * st)
       return 3;  // non-constant stride
+  // ...and the whole run must stay inside the BLAS index range
+  if (!ld_fits(st, static_cast<long>(n), s0)) return 4;
   return 0;
 }
 
@@ -337,7 +342,8 @@ inline int classify_run(GetCell getcell, std::size_t n) {
 /// is the strided operand run (length `nrun`, per outer-contraction k); getL(k)
 /// is the per-k single (non-strided) operand cell, expected size P*Q. Returns
 /// 13=absent/size, 14=nonuniform, 15=bad stride within a k, 16=stride varies
-/// across k, 17=clean (gate rejected a run this re-check finds valid).
+/// across k, 18=stride past the BLAS index range (see ld_fits), 17=clean (gate
+/// rejected a run this re-check finds valid).
 template <typename GetR, typename GetL>
 inline int classify_operand(GetR getR, GetL getL, std::size_t nrun,
                             std::size_t nK, long P) {
@@ -369,6 +375,7 @@ inline int classify_operand(GetR getR, GetL getL, std::size_t nrun,
       for (std::size_t i = 0; i < nrun; ++i)
         if (getR(k, i).data() != base + static_cast<std::ptrdiff_t>(i) * sk)
           return 15;
+      if (!ld_fits(sk, static_cast<long>(nrun), Q)) return 18;
       if (k == 0)
         sR = sk;
       else if (sk != sR)
@@ -520,10 +527,12 @@ inline void measure_segments(GetC getC, GetR getR, GetL getL, std::size_t nrun,
           sC = dc;
           sR = dr;
           if (sC < P || sR < Q) break;
-          if (sC > max_blas_ld() || sR > max_blas_ld()) break;
         } else if (dc != off * sC || dr != off * sR) {
           break;
         }
+        // admitting this cell makes the segment off+1 slabs long; the GEMM
+        // would then reach element off*sC+P-1 of C and off*sR+Q-1 of R.
+        if (!ld_fits(sC, off + 1, P) || !ld_fits(sR, off + 1, Q)) break;
         ++end;
       }
       const std::size_t len = end - mu;
@@ -546,10 +555,12 @@ inline void record_ce_ce_fallback(int why) {
     case 1: g_fall_res_absent_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
     case 2: g_fall_res_nonuniform_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
     case 3: g_fall_res_stride_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
+    case 4: g_fall_res_ldrange_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
     case 13: g_fall_op_absent_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
     case 14: g_fall_op_nonuniform_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
     case 15: g_fall_op_stride_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
     case 16: g_fall_op_acrossk_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
+    case 18: g_fall_op_ldrange_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
     default: g_fall_both_clean_ce_ce.fetch_add(1, std::memory_order_relaxed); break;
   }
 }
@@ -558,7 +569,8 @@ inline void record_ce_ce_fallback(int why) {
 // ce+e phase timers + fallback diagnosis (mirror of the ce+ce instrumentation).
 // In ce+e a "run" is one result cell (m,n); the clean check is over the k-slabs
 // of L (stride ldA) and R (stride ldB). Fallback reasons classify those k-runs:
-//   L-run: 1 absent / 2 nonuniform / 3 stride;  R-run: 11 / 12 / 13;  17 clean.
+//   L-run: 1 absent / 2 nonuniform / 3 stride / 4 ld range;
+//   R-run: 11 / 12 / 13 / 14;  17 clean.
 inline std::atomic<std::uint64_t> g_kernel_ns_ce_e{0};
 inline std::atomic<std::uint64_t> g_check_ns_ce_e{0};
 inline std::atomic<std::uint64_t> g_fallback_ns_ce_e{0};
@@ -566,9 +578,11 @@ inline std::atomic<std::uint64_t> g_e_fall_runs{0};
 inline std::atomic<std::uint64_t> g_e_l_absent{0};
 inline std::atomic<std::uint64_t> g_e_l_nonuniform{0};
 inline std::atomic<std::uint64_t> g_e_l_stride{0};
+inline std::atomic<std::uint64_t> g_e_l_ldrange{0};
 inline std::atomic<std::uint64_t> g_e_r_absent{0};
 inline std::atomic<std::uint64_t> g_e_r_nonuniform{0};
 inline std::atomic<std::uint64_t> g_e_r_stride{0};
+inline std::atomic<std::uint64_t> g_e_r_ldrange{0};
 inline std::atomic<std::uint64_t> g_e_both_clean{0};
 
 inline void record_ce_e_fallback(int why) {
@@ -578,9 +592,11 @@ inline void record_ce_e_fallback(int why) {
     case 1: g_e_l_absent.fetch_add(1, std::memory_order_relaxed); break;
     case 2: g_e_l_nonuniform.fetch_add(1, std::memory_order_relaxed); break;
     case 3: g_e_l_stride.fetch_add(1, std::memory_order_relaxed); break;
+    case 4: g_e_l_ldrange.fetch_add(1, std::memory_order_relaxed); break;
     case 11: g_e_r_absent.fetch_add(1, std::memory_order_relaxed); break;
     case 12: g_e_r_nonuniform.fetch_add(1, std::memory_order_relaxed); break;
     case 13: g_e_r_stride.fetch_add(1, std::memory_order_relaxed); break;
+    case 14: g_e_r_ldrange.fetch_add(1, std::memory_order_relaxed); break;
     default: g_e_both_clean.fetch_add(1, std::memory_order_relaxed); break;
   }
 }
@@ -677,12 +693,16 @@ struct GemmTimingDumper {
                 << "  (" << fp(L(g_e_l_nonuniform)) << "%)\n";
       std::cerr << "[ce+e-fallback]   L-run bad stride : " << L(g_e_l_stride)
                 << "  (" << fp(L(g_e_l_stride)) << "%)\n";
+      std::cerr << "[ce+e-fallback]   L-run ld range   : " << L(g_e_l_ldrange)
+                << "  (" << fp(L(g_e_l_ldrange)) << "%)\n";
       std::cerr << "[ce+e-fallback]   R-run absent     : " << L(g_e_r_absent)
                 << "  (" << fp(L(g_e_r_absent)) << "%)\n";
       std::cerr << "[ce+e-fallback]   R-run nonuniform : " << L(g_e_r_nonuniform)
                 << "  (" << fp(L(g_e_r_nonuniform)) << "%)\n";
       std::cerr << "[ce+e-fallback]   R-run bad stride : " << L(g_e_r_stride)
                 << "  (" << fp(L(g_e_r_stride)) << "%)\n";
+      std::cerr << "[ce+e-fallback]   R-run ld range   : " << L(g_e_r_ldrange)
+                << "  (" << fp(L(g_e_r_ldrange)) << "%)\n";
       std::cerr << "[ce+e-fallback]   both runs clean  : " << L(g_e_both_clean)
                 << "  (" << fp(L(g_e_both_clean)) << "%)\n";
     }
@@ -701,6 +721,9 @@ struct GemmTimingDumper {
       std::cerr << "[ce+ce-fallback]   result bad stride     : "
                 << L(g_fall_res_stride_ce_ce) << "  ("
                 << fp(L(g_fall_res_stride_ce_ce)) << "%)\n";
+      std::cerr << "[ce+ce-fallback]   result ld range       : "
+                << L(g_fall_res_ldrange_ce_ce) << "  ("
+                << fp(L(g_fall_res_ldrange_ce_ce)) << "%)\n";
       std::cerr << "[ce+ce-fallback]   operand absent/size   : "
                 << L(g_fall_op_absent_ce_ce) << "  ("
                 << fp(L(g_fall_op_absent_ce_ce)) << "%)\n";
@@ -713,6 +736,9 @@ struct GemmTimingDumper {
       std::cerr << "[ce+ce-fallback]   operand stride X k    : "
                 << L(g_fall_op_acrossk_ce_ce) << "  ("
                 << fp(L(g_fall_op_acrossk_ce_ce)) << "%)\n";
+      std::cerr << "[ce+ce-fallback]   operand ld range      : "
+                << L(g_fall_op_ldrange_ce_ce) << "  ("
+                << fp(L(g_fall_op_ldrange_ce_ce)) << "%)\n";
       std::cerr << "[ce+ce-fallback]   both runs clean (!)   : "
                 << L(g_fall_both_clean_ce_ce) << "  ("
                 << fp(L(g_fall_both_clean_ce_ce)) << "%)\n";
@@ -1267,7 +1293,9 @@ void arena_strided_gemm_ce_e(ResultOuter& C, const LeftOuter& L,
           ldA = static_cast<long>(lc[lbase + a_off(m, 1)].data() - l0.data());
           ldB = static_cast<long>(rc[rbase + b_off(1, n)].data() - r0.data());
           if (ldA < P || ldB < Q) clean = false;
-          if (ldA > max_blas_ld() || ldB > max_blas_ld()) clean = false;
+          if (!ld_fits(ldA, static_cast<long>(K), P) ||
+              !ld_fits(ldB, static_cast<long>(K), Q))
+            clean = false;
           for (std::size_t k = 0; clean && k < K; ++k) {
             if (lc[lbase + a_off(m, k)].data() !=
                 l0.data() + static_cast<std::ptrdiff_t>(k) * ldA)
@@ -1569,10 +1597,13 @@ void arena_strided_gemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
               sR = dR;
               sC = dC;
               if (sR < Q || sC < P) break;  // page-jump / overlap
-              if (sR > max_blas_ld() || sC > max_blas_ld()) break;
             } else if (dR != off * sR || dC != off * sC) {
               break;
             }
+            // admitting this cell makes the segment off+1 slabs long; the
+            // GEMM would then reach element off*sR+Q-1 of A and off*sC+P-1
+            // of C.
+            if (!ld_fits(sR, off + 1, Q) || !ld_fits(sC, off + 1, P)) break;
             ++end;
           }
           const std::size_t Mseg = end - mu;
@@ -1813,10 +1844,13 @@ void arena_strided_gemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
               sA = dA;
               sC = dC;
               if (sA < Q || sC < P) break;  // page-jump / overlap
-              if (sA > max_blas_ld() || sC > max_blas_ld()) break;
             } else if (dA != off * sA || dC != off * sC) {
               break;
             }
+            // admitting this cell makes the segment off+1 slabs long; the
+            // GEMM would then reach element off*sA+Q-1 of A and off*sC+P-1
+            // of C.
+            if (!ld_fits(sA, off + 1, Q) || !ld_fits(sC, off + 1, P)) break;
             ++end;
           }
           const std::size_t Mseg = end - m;
