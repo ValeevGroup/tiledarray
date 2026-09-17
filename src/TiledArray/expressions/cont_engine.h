@@ -28,6 +28,7 @@
 
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/dist_eval/unary_eval.h>
+#include <TiledArray/dist_eval/zero_volume_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/expressions/permopt.h>
 #include <TiledArray/pmap/slabbed_pmap.h>
@@ -38,48 +39,6 @@
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/tile_op/mult.h>
 #include <TiledArray/tile_op/noop.h>
-
-namespace TiledArray {
-namespace detail {
-
-/// A distributed evaluator over a zero-volume tiled range: it owns no tiles,
-/// so evaluation produces nothing and no tile can be requested. The general
-/// (fused x contracted) product evaluates a zero-volume result through it,
-/// since its SUMMA evaluator needs a process grid and ProcGrid requires at
-/// least one row and one column (see ContEngine::init_distribution_general).
-template <typename Tile, typename Policy>
-class ZeroVolumeEvalImpl final : public DistEvalImpl<Tile, Policy> {
- public:
-  typedef DistEvalImpl<Tile, Policy> DistEvalImpl_;  ///< The base class type
-  typedef typename DistEvalImpl_::ordinal_type ordinal_type;  ///< Ordinal type
-  typedef typename DistEvalImpl_::trange_type trange_type;    ///< Tiled range
-  typedef typename DistEvalImpl_::shape_type shape_type;      ///< Shape type
-  typedef typename DistEvalImpl_::pmap_interface pmap_interface;  ///< Pmap
-  typedef typename DistEvalImpl_::value_type value_type;          ///< Tile
-
-  /// \param world The world of the result
-  /// \param trange The result tiled range; its tile range must be empty
-  /// \param shape The result shape
-  /// \param pmap The result process map
-  ZeroVolumeEvalImpl(World& world, const trange_type& trange,
-                     const shape_type& shape,
-                     const std::shared_ptr<const pmap_interface>& pmap)
-      : DistEvalImpl_(world, trange, shape, pmap, Permutation{}) {
-    TA_ASSERT(trange.tiles_range().volume() == 0);
-  }
-
-  Future<value_type> get_tile(ordinal_type) const override {
-    TA_EXCEPTION("ZeroVolumeEvalImpl owns no tiles");
-    return Future<value_type>();
-  }
-
-  void discard_tile(ordinal_type) const override {}
-
-  int internal_eval() override { return 0; }
-};
-
-}  // namespace detail
-}  // namespace TiledArray
 
 namespace TiledArray {
 namespace expressions {
