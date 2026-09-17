@@ -28,6 +28,7 @@
 
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/dist_eval/unary_eval.h>
+#include <TiledArray/dist_eval/zero_volume_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/expressions/permopt.h>
 #include <TiledArray/pmap/slabbed_pmap.h>
@@ -1119,6 +1120,19 @@ class ContEngine : public BinaryEngine<Derived> {
                                       typename right_type::dist_eval_type,
                                       batched_op_type, typename Derived::policy>
         impl_type;
+
+    // A zero-volume result (some result mode has no tiles): the corner case
+    // of init_distribution_general skipped the process grid (ProcGrid needs
+    // at least one row and one column) and the slabbed process maps, so
+    // neither the Summa evaluator nor its canonical pmap can be built here.
+    // The result has no tiles, so evaluate it through the tile-less
+    // evaluator in the target layout.
+    if (trange_.tiles_range().volume() == 0) {
+      typedef TiledArray::detail::ZeroVolumeEvalImpl<value_type, policy>
+          empty_impl_type;
+      return dist_eval_type(
+          std::make_shared<empty_impl_type>(*world_, trange_, shape_, pmap_));
+    }
 
     typename left_type::dist_eval_type left = left_.make_dist_eval();
     typename right_type::dist_eval_type right = right_.make_dist_eval();

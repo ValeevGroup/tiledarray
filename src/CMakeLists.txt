@@ -100,6 +100,7 @@ TiledArray/dist_eval/binary_eval.h
 TiledArray/dist_eval/contraction_eval.h
 TiledArray/dist_eval/dist_eval.h
 TiledArray/dist_eval/unary_eval.h
+TiledArray/dist_eval/zero_volume_eval.h
 TiledArray/einsum/index.h
 TiledArray/einsum/range.h
 TiledArray/einsum/string.h
