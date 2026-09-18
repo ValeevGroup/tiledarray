@@ -353,4 +353,45 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(complex_gemm_ld, T, floating_point_types) {
   delete[] c;
 }
 
+BOOST_AUTO_TEST_CASE(measured_ld_fits) {
+  // ld_fits() guards the leading dimensions the arena strided kernels
+  // (arena_einsum.h) and Tensor::gemm's arena scale paths MEASURE as a
+  // distance between two inner-cell addresses: BLAS++ narrows every dimension
+  // to blas_int (max_ld()), and a GEMM of nslab rows at leading dimension ld
+  // reaches element (nslab - 1) * ld + extent - 1, which must be
+  // representable too.
+  namespace blas = TiledArray::math::blas;
+  const integer cap = blas::max_ld();
+  BOOST_CHECK_EQUAL(cap,
+                    static_cast<integer>(std::numeric_limits<blas_int>::max()));
+
+  // the ordinary contiguous slab always fits
+  BOOST_CHECK(blas::ld_fits(64, 1, 64));
+  BOOST_CHECK(blas::ld_fits(64, 1000, 64));
+  // degenerate arguments never do
+  BOOST_CHECK(!blas::ld_fits(-1, 1, 1));
+  BOOST_CHECK(!blas::ld_fits(64, 1, 0));
+  // one slab: only the step itself must be representable
+  BOOST_CHECK(blas::ld_fits(cap, 1, 1));
+  BOOST_CHECK(blas::ld_fits(cap, 1, cap));
+  // more slabs: the last addressed element must be representable
+  BOOST_CHECK(blas::ld_fits(cap, 2, 1));       // reaches cap
+  BOOST_CHECK(!blas::ld_fits(cap, 2, 2));      // reaches cap + 1
+  BOOST_CHECK(blas::ld_fits(cap - 1, 2, 2));   // reaches cap
+  BOOST_CHECK(!blas::ld_fits(cap - 1, 2, 3));  // reaches cap + 1
+  const integer nslab = 1000, extent = 7;
+  const integer ld_max = (cap - (extent - 1)) / (nslab - 1);
+  BOOST_CHECK(blas::ld_fits(ld_max, nslab, extent));
+  BOOST_CHECK(!blas::ld_fits(ld_max + 1, nslab, extent));
+  // past the cap outright: only expressible when blas_int is narrower than
+  // integer (LP64); under ILP64 the cap is integer's own maximum
+  if (cap < std::numeric_limits<integer>::max()) {
+    BOOST_CHECK(!blas::ld_fits(cap + 1, 1, 1));
+    // the motivating case: a 2-cell run whose measured stride is the
+    // distance between two individually allocated inner tensors
+    BOOST_CHECK(!blas::ld_fits(cap + 1, 2, 64));
+    BOOST_CHECK(!blas::ld_fits(1, 1, cap + 2));
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
