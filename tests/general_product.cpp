@@ -911,6 +911,107 @@ BOOST_AUTO_TEST_CASE(expression_general_product_sparse_no_externals) {
   BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i"), 1e-10);
 }
 
+namespace {
+
+/// tranges for C("b,i,k") = A("b,i,j") * B("b,j,k") in which exactly one
+/// result mode has no tiles, so the result has zero volume. Which mode is
+/// empty selects which of the general-product distribution extents vanishes:
+/// `i` -> M == 0, `b` -> n_slabs_ == 0, `k` -> N == 0 (see
+/// ContEngine::init_distribution_general).
+struct ZeroVolumeTRanges {
+  TA::TiledRange a;  ///< b, i, j
+  TA::TiledRange b;  ///< b, j, k
+};
+
+/// \param empty_mode one of "i" (M == 0), "b" (n_slabs_ == 0), "k" (N == 0)
+ZeroVolumeTRanges make_zero_volume_tranges(const std::string& empty_mode) {
+  const TA::TiledRange1 none{0};  // no tiles
+  const TA::TiledRange1 tr_b{0, 2, 5}, tr_i{0, 3, 4}, tr_j{0, 2, 6, 7},
+      tr_k{0, 4, 5};
+  if (empty_mode == "i")
+    return {TA::TiledRange{tr_b, none, tr_j}, TA::TiledRange{tr_b, tr_j, tr_k}};
+  if (empty_mode == "b")
+    return {TA::TiledRange{none, tr_i, tr_j}, TA::TiledRange{none, tr_j, tr_k}};
+  BOOST_REQUIRE_EQUAL(empty_mode, "k");
+  return {TA::TiledRange{tr_b, tr_i, tr_j}, TA::TiledRange{tr_b, tr_j, none}};
+}
+
+/// checks that \p array carries no tiles and no elements
+template <typename Array>
+void check_zero_volume(const Array& array) {
+  BOOST_CHECK_EQUAL(array.trange().tiles_range().volume(), 0ul);
+  BOOST_CHECK_EQUAL(array.trange().elements_range().volume(), 0ul);
+  BOOST_CHECK(array.begin() == array.end());
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(expression_general_product_zero_volume_dense) {
+  // a result mode with no tiles => zero-volume result.
+  // init_distribution_general skips the process grid in that corner case
+  // (ProcGrid needs at least one row and one column), so make_dist_eval_general
+  // must not build the Summa evaluator or its canonical slabbed pmap: it
+  // evaluates through the tile-less ZeroVolumeEvalImpl instead. Before that,
+  // this tripped TA_ASSERT(world_) in ProcGrid::make_pmap.
+  auto& world = TA::get_default_world();
+
+  for (const std::string empty_mode : {"i", "b", "k"}) {
+    BOOST_TEST_CONTEXT("empty mode = " << empty_mode) {
+      const auto tr = make_zero_volume_tranges(empty_mode);
+      auto a = make_patterned_array(world, tr.a, 1.0);
+      auto b = make_patterned_array(world, tr.b, 2.0);
+
+      // canonical target
+      TA::TArrayD c;
+      BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+      check_zero_volume(c);
+
+      // repermuted target: the result layout differs from the canonical
+      // (h, e_A, e_B) one, so the evaluator is built in the target layout
+      TA::TArrayD d;
+      BOOST_REQUIRE_NO_THROW(d("i,b,k") = a("b,i,j") * b("b,j,k"));
+      check_zero_volume(d);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_zero_volume_sparse) {
+  // same three degenerate shapes on SparsePolicy: the zero-volume path runs
+  // before any shape-driven work, so it must behave identically
+  auto& world = TA::get_default_world();
+
+  for (const std::string empty_mode : {"i", "b", "k"}) {
+    BOOST_TEST_CONTEXT("empty mode = " << empty_mode) {
+      const auto tr = make_zero_volume_tranges(empty_mode);
+      auto a = make_patterned_sparse_array(world, tr.a, 1.0, 3);
+      auto b = make_patterned_sparse_array(world, tr.b, 2.0, 4);
+
+      TA::TSpArrayD c;
+      BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+      check_zero_volume(c);
+
+      TA::TSpArrayD d;
+      BOOST_REQUIRE_NO_THROW(d("i,b,k") = a("b,i,j") * b("b,j,k"));
+      check_zero_volume(d);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_zero_volume_contracted_mode) {
+  // control: a zero-tile CONTRACTED mode leaves the result volume nonzero, so
+  // the ordinary (process-grid) path still runs and produces a zero array
+  auto& world = TA::get_default_world();
+  const TA::TiledRange1 none{0};
+  const TA::TiledRange1 tr_b{0, 2, 5}, tr_i{0, 3, 4}, tr_k{0, 4, 5};
+  auto a = make_patterned_array(world, TA::TiledRange{tr_b, tr_i, none}, 1.0);
+  auto b = make_patterned_array(world, TA::TiledRange{tr_b, none, tr_k}, 2.0);
+
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+  BOOST_CHECK_EQUAL(c.trange().tiles_range().volume(), 8ul);  // 2 * 2 * 2
+  BOOST_CHECK_SMALL(c("b,i,k").norm().get(), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(expression_general_product_tot_inner_outer_product) {
   // the PNO-CC PPL building-block shape: ToT x ToT with an EMPTY right
   // outer-external set and an inner OUTER-product:
