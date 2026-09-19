@@ -97,6 +97,7 @@ set(ta_test_src_files  ta_test.cpp
     dot_inner.cpp
     general_product.cpp
     linalg.cpp
+    math_blas.cpp
     cp.cpp
     btas.cpp
     arena.cpp

@@ -10,9 +10,14 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <vector>
+
+#include <sys/mman.h>
 
 namespace TA = TiledArray;
 using Inner = TA::ArenaTensor<double, TA::Range>;
@@ -376,6 +381,88 @@ BOOST_AUTO_TEST_CASE(ce_e_multi_external_inner) {
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(ce_e_stride_past_blas_int_falls_back) {
+  // Two present, uniform-size left k-cells at a constant stride that does not
+  // fit blas_int: individually allocated inner tensors the allocator placed
+  // gigabytes apart pass every other strided-GEMM precondition of a 2-cell
+  // run. The kernel must reject the run (per-cell path) rather than hand
+  // BLAS++ the measured stride (`blas::Error: ldb, in function to_blas_int_`
+  // under LP64). Only expressible when blas_int is narrower than integer. The
+  // second cell sits in lazily reserved address space, so only the two cells'
+  // pages are ever touched; if the reservation is refused the case is skipped.
+  namespace blas = TiledArray::math::blas;
+  const std::size_t M = 1, N = 1, K = 2, P = 3, Q = 4;
+  // Always run, so neither skip below leaves the case without a single
+  // assertion: an ordinary contiguous 2-cell run is still accepted.
+  BOOST_CHECK(blas::ld_fits(static_cast<blas::integer>(Q), 2,
+                            static_cast<blas::integer>(Q)));
+  if (blas::max_ld() >= std::numeric_limits<blas::integer>::max()) {
+    BOOST_TEST_MESSAGE(
+        "ILP64: blas_int is as wide as integer, so no stride can outrun it; "
+        "skipped");
+    return;
+  }
+  const std::size_t stride = static_cast<std::size_t>(blas::max_ld()) + 1;
+  const std::size_t align = Inner::cell_alignment();
+  const std::size_t len = stride * sizeof(double) + Inner::cell_size(P) + align;
+  void* mem = ::mmap(nullptr, len, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+  if (mem == MAP_FAILED) {
+    BOOST_TEST_MESSAGE("cannot reserve " << len
+                                         << " bytes of address space; skipped");
+    return;
+  }
+  using Cell = Inner::Cell;
+  // Owns the reservation and the placement-new'd cells together: a failing
+  // BOOST_REQUIRE below must not skip ~Cell(), whose TA::Range owns a heap
+  // buffer -- under this repo's ASan debug build that would bury the real
+  // failure in leak reports.
+  struct Reservation {
+    void* mem;
+    std::size_t len;
+    Cell* c0 = nullptr;
+    Cell* c1 = nullptr;
+    ~Reservation() {
+      if (c1) c1->~Cell();
+      if (c0) c0->~Cell();
+      ::munmap(mem, len);
+    }
+  } reservation{mem, len};
+  auto* base = reinterpret_cast<std::byte*>(
+      (reinterpret_cast<std::uintptr_t>(mem) + align - 1) & ~(align - 1));
+  // stride * sizeof(double) is a power of two >= align, so cell 1 is aligned
+  Cell* c0 = reservation.c0 = ::new (base) Cell{TA::Range{P}};
+  Cell* c1 = reservation.c1 =
+      ::new (base + stride * sizeof(double)) Cell{TA::Range{P}};
+  {
+    Inner l0(c0), l1(c1);
+    BOOST_REQUIRE_EQUAL(static_cast<std::size_t>(l1.data() - l0.data()),
+                        stride);
+    for (std::size_t p = 0; p < P; ++p) {
+      l0.data()[p] = 1.0 + p;
+      l1.data()[p] = 2.0 + p;
+    }
+    std::allocator<Inner> alloc;
+    Inner* raw = alloc.allocate(K);
+    ::new (raw) Inner(l0);
+    ::new (raw + 1) Inner(l1);
+    std::shared_ptr<Inner[]> ldata(raw, [alloc, n = K](Inner* p) mutable {
+      for (std::size_t i = 0; i < n; ++i) (p + i)->~Inner();
+      alloc.deallocate(p, n);
+    });
+    Outer L(TA::Range{M, K}, /*nbatch=*/1, std::move(ldata));
+    Outer R = make_filled(
+        TA::Range{N, K}, [&](std::size_t) { return TA::Range{Q}; }, 2.0);
+    Outer C = TA::detail::arena_outer_init<Outer>(
+        TA::Range{M, N}, 1, [&](std::size_t) { return TA::Range{P, Q}; });
+    BOOST_REQUIRE_NO_THROW(TA::detail::arena_strided_gemm_ce_e(
+        C, L, R, M, N, K, blas::NoTranspose, blas::Transpose, 1.0));
+    const auto ref = ref_ce_e(L, R, 0, 0, K, P, Q, 1.0);
+    const double* got = C.data()[0].data();
+    for (std::size_t e = 0; e < P * Q; ++e)
+      BOOST_CHECK_CLOSE(got[e], ref[e], 1e-12);
+  }  // the views die before their cells, which ~Reservation then destroys
+}
 #ifdef TA_STRIDED_GEMM_COUNT
 BOOST_AUTO_TEST_CASE(ce_e_fires_clean_path) {
   namespace blas = TiledArray::math::blas;
