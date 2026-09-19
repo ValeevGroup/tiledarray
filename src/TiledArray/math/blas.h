@@ -61,19 +61,30 @@ inline constexpr integer max_ld() {
   return static_cast<integer>(std::numeric_limits<blas_int>::max());
 }
 
+/// The largest row offset `o` for which element o*ld + extent-1 of a
+/// row-major matrix at leading dimension `ld` is still indexable by a
+/// `blas_int`, i.e. the largest `o` with ld_fits(ld, o+1, extent). Phrased as
+/// a division so the bound itself cannot overflow when `blas_int` is 64-bit
+/// (ILP64), where max_ld() is INT64_MAX. Callers that grow a run one row at a
+/// time should take this bound ONCE, while `ld` and `extent` are fixed,
+/// rather than calling ld_fits() per row -- that divides every time round the
+/// loop.
+inline constexpr integer max_ld_offset(integer ld, integer extent) {
+  if (ld <= 0 || extent < 1 || extent - 1 > max_ld()) return 0;
+  return (max_ld() - (extent - 1)) / ld;
+}
+
 /// True if a row-major matrix of `nslab` rows and `extent` columns at leading
 /// dimension `ld` addresses only elements a `blas_int` can index. max_ld()
 /// alone bounds ONE row step; the GEMM reaches element
 /// (nslab-1)*ld + extent-1, and a 32-bit-indexed BLAS must be able to form
 /// THAT index too, so a stride comfortably under the cap still overflows it
-/// once there are enough rows. Phrased as a division so the bound itself
-/// cannot overflow when `blas_int` is 64-bit (ILP64), where max_ld() is
-/// INT64_MAX.
+/// once there are enough rows.
 inline constexpr bool ld_fits(integer ld, integer nslab, integer extent) {
   if (ld < 0 || extent < 1 || extent - 1 > max_ld() || ld > max_ld())
     return false;
   if (nslab <= 1) return true;
-  return ld <= (max_ld() - (extent - 1)) / (nslab - 1);
+  return nslab - 1 <= max_ld_offset(ld, extent);
 }
 
 /// converts Op to ints in manner useful for bit manipulations

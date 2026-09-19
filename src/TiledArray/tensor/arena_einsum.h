@@ -294,20 +294,27 @@ inline std::atomic<std::uint64_t> g_fall_op_acrossk_ce_ce{0};      // 16
 inline std::atomic<std::uint64_t> g_fall_both_clean_ce_ce{0};      // 17
 inline std::atomic<std::uint64_t> g_fall_op_ldrange_ce_ce{0};      // 18
 
-/// Does a measured strided run address only elements the BLAS can index?
-/// The strided kernels below MEASURE their leading dimensions as pointer
-/// differences between neighbouring cells, so -- unlike a kernel that derives
-/// them from extents -- they can hand blaspp an ld it cannot convert to
-/// `blas_int` (`blas::Error: ldb, in function to_blas_int_`). Two present
-/// cells that are not arena neighbours -- e.g. individually allocated inner
-/// tensors the allocator placed gigabytes apart -- satisfy every other
-/// precondition of a 2-cell run (uniform size, stride >= cell size, trivially
-/// constant) yet yield exactly such an address delta; and a stride well inside
-/// `blas_int` still overflows the BLAS index once the run is long enough,
-/// because the GEMM reaches element (nslab-1)*ld + extent-1. Such a run is not
-/// strided-GEMM material: the walkers break it up and the per-cell path
-/// handles it.
-using math::blas::ld_fits;
+// ---------------------------------------------------------------------------
+// Measured leading dimensions vs. the BLAS index range.
+//
+// The strided kernels below MEASURE their leading dimensions as pointer
+// differences between neighbouring cells, so -- unlike a kernel that derives
+// them from extents -- they can hand blaspp an ld it cannot convert to
+// `blas_int` (`blas::Error: ldb, in function to_blas_int_`). Two present
+// cells that are not arena neighbours -- e.g. individually allocated inner
+// tensors the allocator placed gigabytes apart -- satisfy every other
+// precondition of a 2-cell run (uniform size, stride >= cell size, trivially
+// constant) yet yield exactly such an address delta; and a stride well inside
+// `blas_int` still overflows the BLAS index once the run is long enough,
+// because the GEMM reaches element (nslab-1)*ld + extent-1. Such a run is not
+// strided-GEMM material: the walkers break it up and the per-cell path
+// handles it.
+//
+// math::blas::ld_fits() is the whole-run test. The segment walkers instead
+// take math::blas::max_ld_offset() once per segment -- the same bound solved
+// for the slab offset -- because ld_fits() divides, and the admission loop
+// runs once per cell.
+// ---------------------------------------------------------------------------
 
 /// Classify a strided run: 1=absent, 2=nonuniform size, 3=bad stride,
 /// 4=stride past the BLAS index range (see ld_fits), 0=clean.
@@ -334,7 +341,7 @@ inline int classify_run(GetCell getcell, std::size_t n) {
     if (getcell(i).data() != base + static_cast<std::ptrdiff_t>(i) * st)
       return 3;  // non-constant stride
   // ...and the whole run must stay inside the BLAS index range
-  if (!ld_fits(st, static_cast<long>(n), s0)) return 4;
+  if (!math::blas::ld_fits(st, static_cast<long>(n), s0)) return 4;
   return 0;
 }
 
@@ -375,7 +382,7 @@ inline int classify_operand(GetR getR, GetL getL, std::size_t nrun,
       for (std::size_t i = 0; i < nrun; ++i)
         if (getR(k, i).data() != base + static_cast<std::ptrdiff_t>(i) * sk)
           return 15;
-      if (!ld_fits(sk, static_cast<long>(nrun), Q)) return 18;
+      if (!math::blas::ld_fits(sk, static_cast<long>(nrun), Q)) return 18;
       if (k == 0)
         sR = sk;
       else if (sk != sR)
@@ -513,6 +520,7 @@ inline void measure_segments(GetC getC, GetR getR, GetL getL, std::size_t nrun,
       const auto* rb = r0.data();
       std::size_t end = mu + 1;
       long sC = -1, sR = -1;
+      long max_off = 0;  // set with the strides, below
       while (end < nrun) {
         const auto& ce = getC(end);
         const auto& re = getR(k, end);
@@ -527,12 +535,15 @@ inline void measure_segments(GetC getC, GetR getR, GetL getL, std::size_t nrun,
           sC = dc;
           sR = dr;
           if (sC < P || sR < Q) break;
+          // A segment of off+1 slabs reaches element off*sC+P-1 of C and
+          // off*sR+Q-1 of R, both of which the BLAS has to be able to index.
+          // The strides and extents are fixed from here on, so bound off once.
+          max_off = std::min(math::blas::max_ld_offset(sC, P),
+                             math::blas::max_ld_offset(sR, Q));
         } else if (dc != off * sC || dr != off * sR) {
           break;
         }
-        // admitting this cell makes the segment off+1 slabs long; the GEMM
-        // would then reach element off*sC+P-1 of C and off*sR+Q-1 of R.
-        if (!ld_fits(sC, off + 1, P) || !ld_fits(sR, off + 1, Q)) break;
+        if (off > max_off) break;
         ++end;
       }
       const std::size_t len = end - mu;
@@ -1293,8 +1304,8 @@ void arena_strided_gemm_ce_e(ResultOuter& C, const LeftOuter& L,
           ldA = static_cast<long>(lc[lbase + a_off(m, 1)].data() - l0.data());
           ldB = static_cast<long>(rc[rbase + b_off(1, n)].data() - r0.data());
           if (ldA < P || ldB < Q) clean = false;
-          if (!ld_fits(ldA, static_cast<long>(K), P) ||
-              !ld_fits(ldB, static_cast<long>(K), Q))
+          if (!math::blas::ld_fits(ldA, static_cast<long>(K), P) ||
+              !math::blas::ld_fits(ldB, static_cast<long>(K), Q))
             clean = false;
           for (std::size_t k = 0; clean && k < K; ++k) {
             if (lc[lbase + a_off(m, k)].data() !=
@@ -1583,6 +1594,7 @@ void arena_strided_gemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
           // reuse a run-wide stale stride).
           std::size_t end = mu + 1;
           long sR = -1, sC = -1;
+          long max_off = 0;  // set with the strides, below
           while (end < Mmu) {
             const auto& rce = rc[rbase + r_off(k, end)];
             const auto& cce = cc[cbase + c_off(m, end)];
@@ -1597,13 +1609,16 @@ void arena_strided_gemm_ce_ce_right(ResultOuter& C, const LeftOuter& L,
               sR = dR;
               sC = dC;
               if (sR < Q || sC < P) break;  // page-jump / overlap
+              // A segment of off+1 slabs reaches element off*sR+Q-1 of A and
+              // off*sC+P-1 of C, both of which the BLAS has to be able to
+              // index. The strides and extents are fixed from here on, so
+              // bound off once rather than dividing per admitted cell.
+              max_off = std::min(blas::max_ld_offset(sR, Q),
+                                 blas::max_ld_offset(sC, P));
             } else if (dR != off * sR || dC != off * sC) {
               break;
             }
-            // admitting this cell makes the segment off+1 slabs long; the
-            // GEMM would then reach element off*sR+Q-1 of A and off*sC+P-1
-            // of C.
-            if (!ld_fits(sR, off + 1, Q) || !ld_fits(sC, off + 1, P)) break;
+            if (off > max_off) break;
             ++end;
           }
           const std::size_t Mseg = end - mu;
@@ -1830,6 +1845,7 @@ void arena_strided_gemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
           // reuse a run-wide stale stride).
           std::size_t end = m + 1;
           long sA = -1, sC = -1;
+          long max_off = 0;  // set with the strides, below
           while (end < Mo) {
             const auto& lce = lc[lbase + l_off(end, k)];
             const auto& cce = cc[cbase + c_off(end, n)];
@@ -1844,13 +1860,16 @@ void arena_strided_gemm_ce_ce_left(ResultOuter& C, const LeftOuter& L,
               sA = dA;
               sC = dC;
               if (sA < Q || sC < P) break;  // page-jump / overlap
+              // A segment of off+1 slabs reaches element off*sA+Q-1 of A and
+              // off*sC+P-1 of C, both of which the BLAS has to be able to
+              // index. The strides and extents are fixed from here on, so
+              // bound off once rather than dividing per admitted cell.
+              max_off = std::min(blas::max_ld_offset(sA, Q),
+                                 blas::max_ld_offset(sC, P));
             } else if (dA != off * sA || dC != off * sC) {
               break;
             }
-            // admitting this cell makes the segment off+1 slabs long; the
-            // GEMM would then reach element off*sA+Q-1 of A and off*sC+P-1
-            // of C.
-            if (!ld_fits(sA, off + 1, Q) || !ld_fits(sC, off + 1, P)) break;
+            if (off > max_off) break;
             ++end;
           }
           const std::size_t Mseg = end - m;
