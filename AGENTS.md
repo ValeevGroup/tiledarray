@@ -6,8 +6,6 @@ covers what an agent needs beyond that: the source layout, how tests are
 organized, the project-specific gotchas that are easy to get wrong, and the
 invariants that downstream consumers (primarily MPQC) rely on.
 
-`CLAUDE.md` is a symlink to this file; there is no vendor-specific variant.
-
 TiledArray sits on top of MADWorld (MADNESS's parallel runtime). Anything
 concerning task scheduling, MPI use, active messages, `World` lifetime, or
 the MADNESS archive format lives in
