@@ -409,15 +409,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(find, TestParam, test_params) {
       auto upbound = tile_range.upbound();
 
       // Throw if coordinate index is out of bounds
-      BOOST_CHECK_THROW(t.find(upbound), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.find(upbound), TiledArray::Exception);
 
       // Throw if ordinal index is out of bounds
-      BOOST_CHECK_THROW(t.find(tile_range.volume()), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.find(tile_range.volume()), TiledArray::Exception);
 
       std::vector<unsigned int> temp(upbound.begin(), upbound.end());
       temp.push_back(1);
       // Throw if coordinate index has a different rank
-      BOOST_CHECK_THROW(t.find(temp), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.find(temp), TiledArray::Exception);
     }
 
     // Get the 0-th element by ordinate index
@@ -506,7 +506,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_value, TestParam, test_params) {
   {
     if (m_world.nproc() == 1) {
       tensor_type t;
-      BOOST_CHECK_THROW(t.set(0, inner_type{}), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.set(0, inner_type{}), TiledArray::Exception);
     }
   }
 
@@ -525,17 +525,17 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_value, TestParam, test_params) {
 
       // Throw if already initialized
       auto& t3 = std::get<2>(tr_t);
-      BOOST_CHECK_THROW(t3.set(lobound, inner_type{}), except_t);
+      BOOST_CHECK_TA_ASSERT(t3.set(lobound, inner_type{}), except_t);
 
       // Throw if coordinate index is out of bounds
-      BOOST_CHECK_THROW(t.set(upbound, inner_type{}), except_t);
+      BOOST_CHECK_TA_ASSERT(t.set(upbound, inner_type{}), except_t);
 
       // Throw if ordinal index is out of bounds
-      BOOST_CHECK_THROW(t.set(volume, inner_type{}), except_t);
+      BOOST_CHECK_TA_ASSERT(t.set(volume, inner_type{}), except_t);
 
       // Throw if coordinate index has a different rank
       std::vector<unsigned int> bad_rank(tr.tiles_range().rank() + 1, 0);
-      BOOST_CHECK_THROW(t.set(bad_rank, inner_type{}), except_t);
+      BOOST_CHECK_TA_ASSERT(t.set(bad_rank, inner_type{}), except_t);
     }
 
     {
@@ -588,7 +588,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_future, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.set(0, future_type{}), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.set(0, future_type{}), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -606,18 +606,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_future, TestParam, test_params) {
       future_type f;  // Value doesn't matter for throwing
 
       // Throw if tile is already initialized
-      BOOST_CHECK_THROW(corr.set(0, f), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(corr.set(0, f), TiledArray::Exception);
 
       // Throw if coordinate index is out of bounds
-      BOOST_CHECK_THROW(t_by_idx.set(upbound, f), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t_by_idx.set(upbound, f), TiledArray::Exception);
 
       // Throw if ordinal index is out of bounds
-      BOOST_CHECK_THROW(t_by_idx.set(volume, f), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t_by_idx.set(volume, f), TiledArray::Exception);
 
       // Throw if coordinate index has a different rank
       std::vector<unsigned int> temp(upbound.begin(), upbound.end());
       temp.push_back(0);
-      BOOST_CHECK_THROW(t_by_idx.set(temp, f), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t_by_idx.set(temp, f), TiledArray::Exception);
     }
 
     for (auto tidx : tile_range) {
@@ -658,7 +658,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_tile, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.set(0, tile_type{}), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.set(0, tile_type{}), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -676,18 +676,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_tile, TestParam, test_params) {
       tile_type t;  // Value doesn't matter for throwing
 
       // Throw if tile is already initialized
-      BOOST_CHECK_THROW(corr.set(0, t), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(corr.set(0, t), TiledArray::Exception);
 
       // Throw if coordinate index is out of bounds
-      BOOST_CHECK_THROW(t_by_idx.set(upbound, t), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t_by_idx.set(upbound, t), TiledArray::Exception);
 
       // Throw if ordinal index is out of bounds
-      BOOST_CHECK_THROW(t_by_idx.set(volume, t), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t_by_idx.set(volume, t), TiledArray::Exception);
 
       // Throw if coordinate index has a different rank
       std::vector<unsigned int> temp(upbound.begin(), upbound.end());
       temp.push_back(0);
-      BOOST_CHECK_THROW(t_by_idx.set(temp, t), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t_by_idx.set(temp, t), TiledArray::Exception);
     }
 
     for (auto tidx : tile_range) {

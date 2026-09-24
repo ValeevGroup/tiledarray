@@ -749,7 +749,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_base1, F, Fixtures, F) {
     // overriding trange of result block is not allowed ... (this is enforced
     // by a TA_ASSERT, so the throw only happens when assertions throw)
 #if TA_ASSERT_POLICY == TA_ASSERT_THROW
-    BOOST_REQUIRE_THROW(
+    BOOST_REQUIRE_TA_ASSERT(
         a_block("a,b,c")
             .block({0, 0, 0}, {2, 2, 2})
             .set_trange_lobound({0, 0, 0}) = a_base1("a,b,c")

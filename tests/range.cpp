@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_REQUIRE_NO_THROW(
       Range r(ranges::views::zip(p2, f2)));  // uses zipped range of p2 and f2
 
-  BOOST_CHECK_THROW(Range r2(f2, p2), Exception);  // lobound > upbound
+  BOOST_CHECK_TA_ASSERT(Range r2(f2, p2), Exception);  // lobound > upbound
   Range r2(p2, f2);
   BOOST_CHECK_EQUAL_COLLECTIONS(
       r2.lobound_data(), r2.lobound_data() + r2.rank(), p2.begin(), p2.end());
@@ -639,7 +639,7 @@ BOOST_AUTO_TEST_CASE(include) {
     BOOST_CHECK(r.includes_ordinal(o));  // equivalent: see below
   }
   BOOST_CHECK(!r.includes(o));
-  BOOST_CHECK_THROW(
+  BOOST_CHECK_TA_ASSERT(
       r_1d.includes(0),
       TiledArray::Exception);  // for 1-d Range can't distinguish
                                // includes(integers...) and includes(ordinal)

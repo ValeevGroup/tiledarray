@@ -504,7 +504,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_local, TestParam, test_params) {
 
       // Throws if index has wrong rank
       std::vector<unsigned int> bad_idx(upbound.size() + 1, 0);
-      BOOST_CHECK_THROW(corr.is_local(bad_idx), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(corr.is_local(bad_idx), TiledArray::Exception);
     }
 
     for (auto idx : corr.tiles_range()) {
@@ -519,7 +519,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_local_init_list, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.is_local({0}), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.is_local({0}), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -533,13 +533,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_local_init_list, TestParam, test_params) {
 
       // Test throws if index is out of bounds
       if (rank == 1)
-        BOOST_CHECK_THROW(corr.is_local({upbound[0]}), except_t);
+        BOOST_CHECK_TA_ASSERT(corr.is_local({upbound[0]}), except_t);
       else if (rank == 2)
-        BOOST_CHECK_THROW(corr.is_local({upbound[0], upbound[1]}), except_t);
+        BOOST_CHECK_TA_ASSERT(corr.is_local({upbound[0], upbound[1]}),
+                              except_t);
 
       // Throws if index has wrong rank
       std::initializer_list<unsigned int> il2{0, 0, 0, 0, 0, 0};
-      BOOST_CHECK_THROW(corr.is_local(il2), except_t);
+      BOOST_CHECK_TA_ASSERT(corr.is_local(il2), except_t);
     }
 
     for (auto idx : corr.tiles_range()) {
@@ -558,7 +559,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.is_zero(0), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.is_zero(0), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -569,11 +570,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params) {
       const auto& upbound = tr.tiles_range().upbound();
 
       // Test throws if index is out of bounds
-      BOOST_CHECK_THROW(corr.is_zero(upbound), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(corr.is_zero(upbound), TiledArray::Exception);
 
       // Throws if index has wrong rank
       std::vector<unsigned int> bad_idx(upbound.size() + 1, 0);
-      BOOST_CHECK_THROW(corr.is_zero(bad_idx), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(corr.is_zero(bad_idx), TiledArray::Exception);
     }
 
     for (auto idx : corr.tiles_range()) {
@@ -588,7 +589,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero_init_list, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.is_zero({0}), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.is_zero({0}), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
@@ -602,13 +603,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero_init_list, TestParam, test_params) {
 
       // Test throws if index is out of bounds
       if (rank == 1)
-        BOOST_CHECK_THROW(corr.is_zero({upbound[0]}), except_t);
+        BOOST_CHECK_TA_ASSERT(corr.is_zero({upbound[0]}), except_t);
       else if (rank == 2)
-        BOOST_CHECK_THROW(corr.is_zero({upbound[0], upbound[1]}), except_t);
+        BOOST_CHECK_TA_ASSERT(corr.is_zero({upbound[0], upbound[1]}), except_t);
 
       // Throws if index has wrong rank
       std::initializer_list<unsigned int> il2{0, 0, 0, 0, 0, 0};
-      BOOST_CHECK_THROW(corr.is_zero(il2), except_t);
+      BOOST_CHECK_TA_ASSERT(corr.is_zero(il2), except_t);
     }
 
     for (auto idx : corr.tiles_range()) {
@@ -639,7 +640,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(make_replicated, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.make_replicated(), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(t.make_replicated(), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {

@@ -335,11 +335,11 @@ BOOST_AUTO_TEST_CASE(end_itr) {
 BOOST_AUTO_TEST_CASE(at_member) {
   for (auto&& [str, idx] : idxs) {
     if (world.nproc() == 1) {
-      BOOST_CHECK_TA_ASSERT(idx.at(idx.size()),
+      BOOST_CHECK_THROW(idx.at(idx.size()),
 #ifdef BOOST_CONTAINER_USE_STD_EXCEPTIONS
-                            std::out_of_range
+                        std::out_of_range
 #else
-                            boost::container::out_of_range
+                        boost::container::out_of_range
 #endif
       );
     }

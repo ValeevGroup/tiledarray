@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(bad_matrix) {
   std::array<double, 5> buffer{};
   matrix_il<double> il{{1, 2}, {3, 4, 5}};
   if (world.rank() == 0)  // only rank 0 does the work
-    BOOST_CHECK_THROW(flatten_il(il, buffer.begin()), Exception);
+    BOOST_CHECK_TA_ASSERT(flatten_il(il, buffer.begin()), Exception);
 }
 
 BOOST_AUTO_TEST_CASE(empty_matrix) {
@@ -470,8 +470,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
   TiledRange tr{{0, 2, 3}};
   auto array = array_from_il<TArray<T>>(world, tr, il);
   using tile_type = typename TArray<T>::value_type;
-  std::vector corr{tile_type(tr.make_tile_range(0), {1.0, 2.0}),
-                   tile_type(tr.make_tile_range(1), std::initializer_list<T>{3.0})};
+  std::vector corr{
+      tile_type(tr.make_tile_range(0), {1.0, 2.0}),
+      tile_type(tr.make_tile_range(1), std::initializer_list<T>{3.0})};
   for (auto i = 0; i < array.size(); ++i) {
     if (!array.is_local(i)) continue;
     tile_type tile = array.find(i);
@@ -484,10 +485,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(matrix, T, scalar_type_list) {
   TiledRange tr{{{0, 2, 3}, {0, 1, 3}}};
   auto array = array_from_il<TArray<T>>(world, tr, il);
   using tile_type = typename TArray<T>::value_type;
-  std::vector corr{tile_type(tr.make_tile_range(0), {1.0, 4.0}),
-                   tile_type(tr.make_tile_range(1), {2.0, 3.0, 5.0, 6.0}),
-                   tile_type(tr.make_tile_range(2), std::initializer_list<T>{7.0}),
-                   tile_type(tr.make_tile_range(3), {8.0, 9.0})};
+  std::vector corr{
+      tile_type(tr.make_tile_range(0), {1.0, 4.0}),
+      tile_type(tr.make_tile_range(1), {2.0, 3.0, 5.0, 6.0}),
+      tile_type(tr.make_tile_range(2), std::initializer_list<T>{7.0}),
+      tile_type(tr.make_tile_range(3), {8.0, 9.0})};
   for (auto i = 0; i < array.size(); ++i) {
     if (!array.is_local(i)) continue;
     tile_type tile = array.find(i);
@@ -501,14 +503,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tensor, T, scalar_type_list) {
   TiledRange tr{{{0, 1, 2}, {0, 2, 3}, {0, 1, 3}}};
   auto array = array_from_il<TArray<T>>(world, tr, il);
   using tile_type = typename TArray<T>::value_type;
-  std::vector corr{tile_type(tr.make_tile_range(0), {1.0, 4.0}),
-                   tile_type(tr.make_tile_range(1), {2.0, 3.0, 5.0, 6.0}),
-                   tile_type(tr.make_tile_range(2), std::initializer_list<T>{7.0}),
-                   tile_type(tr.make_tile_range(3), {8.0, 9.0}),
-                   tile_type(tr.make_tile_range(4), {10.0, 13.0}),
-                   tile_type(tr.make_tile_range(5), {11.0, 12.0, 14.0, 15.0}),
-                   tile_type(tr.make_tile_range(6), std::initializer_list<T>{16.0}),
-                   tile_type(tr.make_tile_range(7), {17.0, 18.0})};
+  std::vector corr{
+      tile_type(tr.make_tile_range(0), {1.0, 4.0}),
+      tile_type(tr.make_tile_range(1), {2.0, 3.0, 5.0, 6.0}),
+      tile_type(tr.make_tile_range(2), std::initializer_list<T>{7.0}),
+      tile_type(tr.make_tile_range(3), {8.0, 9.0}),
+      tile_type(tr.make_tile_range(4), {10.0, 13.0}),
+      tile_type(tr.make_tile_range(5), {11.0, 12.0, 14.0, 15.0}),
+      tile_type(tr.make_tile_range(6), std::initializer_list<T>{16.0}),
+      tile_type(tr.make_tile_range(7), {17.0, 18.0})};
   for (auto i = 0; i < array.size(); ++i) {
     if (!array.is_local(i)) continue;
     tile_type tile = array.find(i);
@@ -529,7 +532,7 @@ BOOST_AUTO_TEST_CASE(scalar) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_vector, T, scalar_type_list) {
   vector_il<T> il{};
   if (world.rank() == 0)  // only rank 0 does the work
-    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+    BOOST_CHECK_TA_ASSERT(array_from_il<TArray<T>>(world, il), Exception);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
@@ -550,13 +553,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_matrix, T, scalar_type_list) {
   matrix_il<T> il{{}};
   if (world.rank() == 0)  // only rank 0 does the work
-    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+    BOOST_CHECK_TA_ASSERT(array_from_il<TArray<T>>(world, il), Exception);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(bad_matrix, T, scalar_type_list) {
   matrix_il<T> il{{1, 2}, {3, 4, 5}};
   if (world.rank() == 0)  // only rank 0 does the work
-    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+    BOOST_CHECK_TA_ASSERT(array_from_il<TArray<T>>(world, il), Exception);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(square_matrix, T, scalar_type_list) {
@@ -611,13 +614,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(short_matrix, T, scalar_type_list) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_rank3, T, scalar_type_list) {
   tensor3_il<T> il{{{}}};
   if (world.rank() == 0)  // only rank 0 does the work
-    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+    BOOST_CHECK_TA_ASSERT(array_from_il<TArray<T>>(world, il), Exception);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(bad_rank3, T, scalar_type_list) {
   tensor3_il<T> il{{{1, 2}, {3, 4, 5}}};
   if (world.rank() == 0)  // only rank 0 does the work
-    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+    BOOST_CHECK_TA_ASSERT(array_from_il<TArray<T>>(world, il), Exception);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(square_rank3, T, scalar_type_list) {

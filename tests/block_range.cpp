@@ -111,7 +111,8 @@ BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
         ++count_invalid;
 
         // Check for exception with invalid input
-        BOOST_CHECK_THROW(BlockRange(r0, lower, upper), TiledArray::Exception);
+        BOOST_CHECK_TA_ASSERT(BlockRange(r0, lower, upper),
+                              TiledArray::Exception);
       }
     }
   }
@@ -258,7 +259,8 @@ BOOST_AUTO_TEST_CASE(block) {
         ++count_invalid;
 
         // Check for exception with invalid input
-        BOOST_CHECK_THROW(BlockRange(r, lower, upper), TiledArray::Exception);
+        BOOST_CHECK_TA_ASSERT(BlockRange(r, lower, upper),
+                              TiledArray::Exception);
       }
     }
   }

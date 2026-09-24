@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(array_operator) {
 
   // Check throw for an out-of-range set.
   BOOST_CHECK_TA_ASSERT(t.get(t.max_size()), TiledArray::Exception);
-  BOOST_CHECK_THROW(t.get(t.max_size() + 2), TiledArray::Exception);
+  BOOST_CHECK_TA_ASSERT(t.get(t.max_size() + 2), TiledArray::Exception);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
