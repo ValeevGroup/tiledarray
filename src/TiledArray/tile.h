@@ -33,11 +33,14 @@ namespace TiledArray {
  * @{
  */
 
-/// An N-dimensional shallow-copy wrapper for Tensor-like types that, unlike
-/// Tensor, have deep-copy semantics. Like Tensor, Tile is
-/// default-constructible. The default constructor produced a Tile in
-/// null state (not referring to any tensor object). The name refers to its
-/// intended use as a tile of DistArray.
+/// A shallow-copy wrapper for deep-copy Tensor-like types. The name
+/// refers to its intended use as a tile of DistArray.
+/// Like Tensor, Tile is default-constructible. The default constructor
+/// produces a Tile in null state (not referring to any tensor object);
+/// calling reset() on a Tile also produces a null Tile.
+/// Most operations on a null Tile will produce a failing TA_ASSERT
+/// (see Tile::tensor()), even in cases where valid semantics could be defined
+/// (such as add_to).
 ///
 /// \tparam T a tensor type. It may provide a subset of the full operation
 /// set of Tensor, since only those operations that are actually used
@@ -196,9 +199,19 @@ class Tile {
 
   // Tile accessor -----------------------------------------------------------
 
-  tensor_type& tensor() { return *pimpl_; }
+  /// \return reference to the referred-to value
+  /// \pre TA_ASSERT that this is not in a null state
+  tensor_type& tensor() {
+    TA_ASSERT(pimpl_);
+    return *pimpl_;
+  }
 
-  const tensor_type& tensor() const { return *pimpl_; }
+  /// \return const reference to the referred-to value
+  /// \pre TA_ASSERT that this is not in a null state
+  const tensor_type& tensor() const {
+    TA_ASSERT(pimpl_);
+    return *pimpl_;
+  }
 
   // Iterator accessor -------------------------------------------------------
 

@@ -41,6 +41,7 @@ set(ta_test_src_files  ta_test.cpp
     btas_zb_inner_tile.cpp
     tensor_tensor_view.cpp
     tensor_shift_wrapper.cpp
+    tile.cpp
     tiled_range1.cpp
     tiled_range.cpp
     blocked_pmap.cpp
