@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_CASE(array_to_matrix) {
       }
     } else {
       // Check that eigen_to_array throws when there is more than one node
-      BOOST_CHECK_THROW(array_to_eigen(arr), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(array_to_eigen(arr), TiledArray::Exception);
 
       // Fill local tiles with data
       GlobalFixture::world->srand(27);
@@ -370,7 +370,7 @@ BOOST_AUTO_TEST_CASE(array_to_vector) {
       }
     } else {
       // Check that eigen_to_array throws when there is more than one node
-      BOOST_CHECK_THROW(array_to_eigen(arr1), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(array_to_eigen(arr1), TiledArray::Exception);
 
       // Fill local tiles with data
       GlobalFixture::world->srand(27);
@@ -533,8 +533,8 @@ BOOST_AUTO_TEST_CASE(array_to_tensor) {
     if (GlobalFixture::world->size() > 1) {
       // Check that array_to_eigen_tensor throws when there is more than one
       // node
-      BOOST_CHECK_THROW(array_to_eigen_tensor<Tensor>(arr),
-                        TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(array_to_eigen_tensor<Tensor>(arr),
+                            TiledArray::Exception);
     }
 
     // Distribute the data of arrayN to all nodes

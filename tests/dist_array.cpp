@@ -469,7 +469,7 @@ BOOST_AUTO_TEST_CASE(find_local) {
     } else {
       // Check that an exception is thrown when using a default constructed
       // object
-      BOOST_CHECK_THROW(a.find_local(tile_idx), TiledArray::Exception);
+      BOOST_CHECK_TA_ASSERT(a.find_local(tile_idx), TiledArray::Exception);
     }
   }
 }
