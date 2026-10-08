@@ -527,20 +527,22 @@ void arena_tot_grow_inplace(OuterTensor& result, MoreRangeFn&& more_range_fn) {
   using elem_t = typename inner_t::value_type;
   using inner_range_t = typename inner_t::range_type;
   const std::size_t N_cells = result.range().volume() * result.nbatch();
-  std::vector<inner_range_t> ranges;
-  ranges.reserve(N_cells);
+  // Pass 1: only a null cell can grow. Ask for those cells' ranges and stop
+  // at the first one that grows; the steady state (nothing grows) is one
+  // range evaluation per null cell and no allocation.
   bool grows = false;
-  for (std::size_t ord = 0; ord < N_cells; ++ord) {
-    const auto& rc = result.data()[ord];
-    if (!rc.empty()) {
-      ranges.emplace_back(rc.range());
-      continue;
-    }
-    inner_range_t r = more_range_fn(ord);
-    if (r.volume() != 0) grows = true;
-    ranges.emplace_back(std::move(r));
+  for (std::size_t ord = 0; ord < N_cells && !grows; ++ord) {
+    if (!result.data()[ord].empty()) continue;
+    grows = more_range_fn(ord).volume() != 0;
   }
   if (!grows) return;
+  // Pass 2 (something grows): the full per-cell range vector, as before.
+  std::vector<inner_range_t> ranges;
+  ranges.reserve(N_cells);
+  for (std::size_t ord = 0; ord < N_cells; ++ord) {
+    const auto& rc = result.data()[ord];
+    ranges.emplace_back(rc.empty() ? more_range_fn(ord) : rc.range());
+  }
   OuterTensor grown = arena_outer_init<OuterTensor>(
       result.range(), result.nbatch(),
       [&ranges](std::size_t ord) -> inner_range_t { return ranges[ord]; });
