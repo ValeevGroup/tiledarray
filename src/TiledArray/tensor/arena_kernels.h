@@ -521,19 +521,21 @@ OuterTensor arena_trivial_scaled(const ToTSide& tot_outer,
 /// path stays cheap. Used by the SUMMA ToT contraction, which shapes a result
 /// tile from its first K-panel only and must extend it for later panels of a
 /// contracted-dimension-sparse ToT operand.
-template <typename OuterTensor, typename MoreRangeFn>
-void arena_tot_grow_inplace(OuterTensor& result, MoreRangeFn&& more_range_fn) {
+template <typename OuterTensor, typename GrowsFn, typename MoreRangeFn>
+void arena_tot_grow_inplace(OuterTensor& result, GrowsFn&& grows_fn,
+                            MoreRangeFn&& more_range_fn) {
   using inner_t = typename OuterTensor::value_type;
   using elem_t = typename inner_t::value_type;
   using inner_range_t = typename inner_t::range_type;
   const std::size_t N_cells = result.range().volume() * result.nbatch();
-  // Pass 1: only a null cell can grow. Ask for those cells' ranges and stop
-  // at the first one that grows; the steady state (nothing grows) is one
-  // range evaluation per null cell and no allocation.
+  // Pass 1: only a null cell can grow. Test those cells (grows_fn(ord) must
+  // be true exactly when more_range_fn(ord) has non-zero volume) and stop at
+  // the first one that grows; the steady state (nothing grows) is one cheap
+  // test per null cell and no allocation.
   bool grows = false;
   for (std::size_t ord = 0; ord < N_cells && !grows; ++ord) {
     if (!result.data()[ord].empty()) continue;
-    grows = more_range_fn(ord).volume() != 0;
+    grows = grows_fn(ord);
   }
   if (!grows) return;
   // Pass 2 (something grows): the full per-cell range vector, as before.
@@ -556,6 +558,17 @@ void arena_tot_grow_inplace(OuterTensor& result, MoreRangeFn&& more_range_fn) {
     for (std::size_t i = 0; i < src.size(); ++i) d[i] = s[i];
   }
   result = std::move(grown);
+}
+
+/// The two-argument form: the growth test is the range's own volume.
+template <typename OuterTensor, typename MoreRangeFn>
+void arena_tot_grow_inplace(OuterTensor& result, MoreRangeFn&& more_range_fn) {
+  arena_tot_grow_inplace(
+      result,
+      [&more_range_fn](std::size_t ord) {
+        return more_range_fn(ord).volume() != 0;
+      },
+      more_range_fn);
 }
 
 /// Accumulate `arg` into `result` (`result += arg`), first growing `result`
