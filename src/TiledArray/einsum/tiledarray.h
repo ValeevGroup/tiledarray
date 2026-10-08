@@ -516,13 +516,19 @@ template <DeNest DeNestFlag = DeNest::False, typename ArrayA_, typename ArrayB_,
 auto einsum(expressions::TsrExpr<ArrayA_> A, expressions::TsrExpr<ArrayB_> B,
             std::tuple<Einsum::Index<std::string>, Indices...> cs,
             World &world) {
-  // hotfix: process all preceding tasks before entering this code with many
-  // blocking calls
+  // The legacy sub-World path (TA_EINSUM_LEGACY_SUBWORLD, and the
+  // differential cross-check that runs it) makes blocking collective MPI
+  // calls (MPI_Comm_split, per-slab sub-World fences); draining every
+  // preceding task first was a hotfix for progress stalls there.
   // TODO figure out why having free threads left after blocking MPI split
   //  still not enough to ensure progress
+  // The expression routes are asynchronous and need no such barrier, and a
+  // global fence per product was the single largest wait in a PNS-CC
+  // residual, so the fence is taken only when the legacy path can run.
   const auto _ein_entry_t0 =
       detail::einsum_instrument_enabled() ? now() : time_point{};
-  world.gop.fence();
+  if (detail::einsum_legacy_subworld() || detail::einsum_differential())
+    world.gop.fence();
   const std::int64_t _ein_entry_fence_ns =
       detail::einsum_instrument_enabled() ? duration_in_ns(_ein_entry_t0, now())
                                           : 0;
