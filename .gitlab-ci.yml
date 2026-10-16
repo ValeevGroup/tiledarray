@@ -35,8 +35,9 @@ before_script:
   - ccache -p
   # zero out the ccache statistics
   - ccache -z
-  # update local copy of GH:madness
-  - git fetch /root/github/madness
+  # update the local mirror of GH:madness; the mirror is shared by every runner
+  # on the host, so serialize the fetch
+  - flock -w 900 /root/github/madness git -C /root/github/madness fetch
 
 ubuntu:
   stage: build
