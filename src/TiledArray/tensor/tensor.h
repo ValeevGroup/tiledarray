@@ -4276,6 +4276,10 @@ class Tensor {
 
   /// \return The vector norm of this tensor
   scalar_type squared_norm() const {
+    TA_ON_DEVICE(Tensor) if (!empty()) {
+      return std::real(
+          device::inner_product(total_size(), data(), data(), range_));
+    }
     auto square_op = [](scalar_type& MADNESS_RESTRICT res,
                         const numeric_type arg) {
       res += TiledArray::detail::squared_norm(arg);
@@ -4358,6 +4362,10 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   numeric_type dot(const Right& other) const {
+    TA_ON_DEVICE(Tensor, Right) if (!empty() && !other.empty()) {
+      TA_ASSERT(detail::is_range_set_congruent(*this, other));
+      return device::dot(total_size(), data(), other.data(), range_);
+    }
     auto mult_add_op = [](numeric_type& res, const numeric_type l,
                           const numeric_t<Right> r) { res += l * r; };
     auto add_op = [](numeric_type& MADNESS_RESTRICT res,
@@ -4375,6 +4383,10 @@ class Tensor {
   template <typename Right,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   numeric_type inner_product(const Right& other) const {
+    TA_ON_DEVICE(Tensor, Right) if (!empty() && !other.empty()) {
+      TA_ASSERT(detail::is_range_set_congruent(*this, other));
+      return device::inner_product(total_size(), data(), other.data(), range_);
+    }
     auto mult_add_op = [](numeric_type& res, const numeric_type l,
                           const numeric_t<Right> r) {
       res += TiledArray::detail::inner_product(l, r);

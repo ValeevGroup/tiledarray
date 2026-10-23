@@ -27,15 +27,12 @@
 #ifdef TILEDARRAY_HAS_DEVICE
 
 #include <TiledArray/conversions/to_new_tile_type.h>
-#include <TiledArray/device/blas.h>
 #include <TiledArray/external/device.h>
-#include <TiledArray/math/blas.h>
 #include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/tile.h>
 
 #include <madness/world/archive.h>
-#include <blas.hh>
 
 namespace TiledArray {
 namespace detail {
@@ -74,45 +71,6 @@ inline void to_host(const TiledArray::UMTensor<T>& tile) {
 }
 
 }  // namespace detail
-
-/// dot product: scalar = sum_i arg1[i] * arg2[i]
-template <typename T>
-  requires TiledArray::detail::is_numeric_v<T>
-inline T dot(const UMTensor<T>& arg1, const UMTensor<T>& arg2) {
-  TA_ASSERT(!arg1.empty());
-  TA_ASSERT(!arg2.empty());
-  TA_ASSERT(arg1.nbatch() == 1 && arg2.nbatch() == 1);
-  TA_ASSERT(arg1.size() == arg2.size());
-
-  auto& queue = blasqueue_for(arg1.range());
-  const device::Stream stream(queue.device(), queue.stream());
-  DeviceSafeCall(device::setDevice(stream.device));
-
-  detail::to_device(arg1);
-  detail::to_device(arg2);
-
-  T result(0);
-  ::blas::dot(arg1.size(), arg1.data(), 1, arg2.data(), 1, &result, queue);
-
-  device::sync_madness_task_with(stream);
-  return result;
-}
-
-/// scalar = sum_i arg[i] * arg[i]
-template <typename T>
-  requires TiledArray::detail::is_numeric_v<T>
-inline auto squared_norm(const UMTensor<T>& arg) {
-  return dot(arg, arg);
-}
-
-/// scalar = sqrt(squared_norm(arg))
-template <typename T>
-  requires TiledArray::detail::is_numeric_v<T>
-inline auto norm(const UMTensor<T>& arg) {
-  using std::sqrt;
-  using ResultType = TiledArray::detail::scalar_t<T>;
-  return static_cast<ResultType>(sqrt(squared_norm(arg)));
-}
 
 /// Array-level helpers: bulk to-host / to-device prefetch and conversions
 /// between UMTensor-backed and host-Tensor-backed DistArrays.

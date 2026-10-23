@@ -128,6 +128,14 @@ template <typename T>
 void permute(const T* in, T* out, const Range& in_range,
              const Permutation& perm);
 
+/// \return sum_i x[i] * y[i]
+template <typename T>
+T dot(integer n, const T* x, const T* y, const Range& range);
+
+/// \return sum_i conj(x[i]) * y[i]
+template <typename T>
+T inner_product(integer n, const T* x, const T* y, const Range& range);
+
 /// blocks until the device work queued so far by this task completes
 void synchronize();
 

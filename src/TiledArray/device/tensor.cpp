@@ -21,6 +21,7 @@
 
 #include <TiledArray/device/tensor.h>
 
+#include <TiledArray/device/blas.h>
 #include <TiledArray/device/kernel/mult_kernel.h>
 #include <TiledArray/external/librett.h>
 
@@ -145,6 +146,30 @@ void permute(const T* in, T* out, const Range& in_range,
   launch.finish();
 }
 
+template <typename T>
+T dot(integer n, const T* x, const T* y, const Range& range) {
+  const Launch launch(range);
+  launch.prefetch(x, n);
+  launch.prefetch(y, n);
+  T result(0);
+  ::blas::dotu(n, x, 1, y, 1, &result, launch.queue);
+  launch.queue.sync();  // result is written on the host by the stream
+  launch.finish();
+  return result;
+}
+
+template <typename T>
+T inner_product(integer n, const T* x, const T* y, const Range& range) {
+  const Launch launch(range);
+  launch.prefetch(x, n);
+  launch.prefetch(y, n);
+  T result(0);
+  ::blas::dot(n, x, 1, y, 1, &result, launch.queue);
+  launch.queue.sync();  // result is written on the host by the stream
+  launch.finish();
+  return result;
+}
+
 void synchronize() {
   if (auto stream = madness_task_current_stream())
     DeviceSafeCall(streamSynchronize(stream->stream));
@@ -159,7 +184,9 @@ void synchronize() {
   template void axpy(integer, T, const T*, T*, const Range&);                 \
   template void mult(integer, const T*, const T*, T*, const Range&);          \
   template void mult_to(integer, const T*, T*, const Range&);                 \
-  template void permute(const T*, T*, const Range&, const Permutation&);
+  template void permute(const T*, T*, const Range&, const Permutation&);      \
+  template T dot(integer, const T*, const T*, const Range&);                  \
+  template T inner_product(integer, const T*, const T*, const Range&);
 
 TA_INSTANTIATE_DEVICE_KERNELS(float)
 TA_INSTANTIATE_DEVICE_KERNELS(double)

@@ -613,6 +613,16 @@ BOOST_AUTO_TEST_CASE(complex_expressions) {
     for (std::size_t k = 0; k < d_tile.size(); ++k)
       BOOST_CHECK_SMALL(std::abs(d_tile.data()[k] - h_tile.data()[k]), 1.0e-12);
   }
+
+  // dot does not conjugate, inner_product conjugates its left operand
+  const Z dot = x("i,j").dot(y("i,j")).get();
+  const Z inner = x("i,j").inner_product(y("i,j")).get();
+  const double norm = x("i,j").norm().get();
+  BOOST_CHECK_SMALL(std::abs(dot - x_h("i,j").dot(y_h("i,j")).get()), 1.0e-10);
+  BOOST_CHECK_SMALL(
+      std::abs(inner - x_h("i,j").inner_product(y_h("i,j")).get()), 1.0e-10);
+  BOOST_CHECK_CLOSE_FRACTION(norm, x_h("i,j").norm().get(), 1.0e-12);
+  BOOST_CHECK(std::abs(dot - inner) > 1.0e-6);  // the two really differ
 }
 
 BOOST_AUTO_TEST_CASE(general_product_batched) {
