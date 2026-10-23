@@ -564,6 +564,57 @@ BOOST_AUTO_TEST_CASE(contraction_rank4_via_two_indices) {
 }
 
 /// TA::einsum
+BOOST_AUTO_TEST_CASE(mixed_allocator_add) {
+  // a host operand keeps the op on the host, whatever execution_space() says
+  const auto range = tr.make_tile_range(0);
+  TileD u(range);
+  HostTile h(range);
+  for (std::size_t k = 0; k < range.volume(); ++k) {
+    u.data()[k] = 0.5 * k;
+    h.data()[k] = 1.0 + k;
+  }
+  const auto r = u.add(h);
+  for (std::size_t k = 0; k < range.volume(); ++k)
+    BOOST_CHECK_EQUAL(r.data()[k], u.data()[k] + h.data()[k]);
+}
+
+BOOST_AUTO_TEST_CASE(complex_expressions) {
+  using Z = std::complex<double>;
+  using ZArray = DistArray<UMTensor<Z>, DensePolicy>;
+  using ZHostArray = DistArray<Tensor<Z>, DensePolicy>;
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  ZArray x(*GlobalFixture::world, tr2), y(*GlobalFixture::world, tr2), z;
+  ZHostArray x_h(*GlobalFixture::world, tr2), y_h(*GlobalFixture::world, tr2),
+      z_h;
+  std::mt19937 rng(23);
+  std::uniform_real_distribution<double> dist(-1.0, 1.0);
+  auto fill = [&](ZArray& d, ZHostArray& h) {
+    for (auto it = d.pmap()->begin(); it != d.pmap()->end(); ++it) {
+      const auto range = d.trange().make_tile_range(*it);
+      UMTensor<Z> d_tile(range);
+      Tensor<Z> h_tile(range);
+      for (std::size_t k = 0; k < range.volume(); ++k)
+        d_tile.data()[k] = h_tile.data()[k] = Z(dist(rng), dist(rng));
+      d.set(*it, d_tile);
+      h.set(*it, h_tile);
+    }
+  };
+  fill(x, x_h);
+  fill(y, y_h);
+  GlobalFixture::world->gop.fence();
+
+  const Z s(0.5, -2.0);
+  z("i,j") = s * (x("i,j") + y("j,i")) - x("i,k") * y("k,j");
+  z_h("i,j") = s * (x_h("i,j") + y_h("j,i")) - x_h("i,k") * y_h("k,j");
+  GlobalFixture::world->gop.fence();
+  for (auto it = z.begin(); it != z.end(); ++it) {
+    const auto d_tile = it->get();
+    const auto h_tile = z_h.find(it.index()).get();
+    for (std::size_t k = 0; k < d_tile.size(); ++k)
+      BOOST_CHECK_SMALL(std::abs(d_tile.data()[k] - h_tile.data()[k]), 1.0e-12);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(general_product_batched) {
   // b is a fused (Hadamard) index, so BatchedContractReduce folds it into
   // nbatch > 1 and gemm must run once per batch

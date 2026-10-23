@@ -859,6 +859,12 @@ class Tensor {
         };
         result = detail::arena_trivial_unary<Tensor>(*this, fill);
       } else {
+        TA_ON_DEVICE(Tensor) {
+          result = Tensor(range_, nbatch(), default_construct{false});
+          device::copy<numeric_type>(total_size(), data(), result.data(),
+                                     range_);
+          return result;
+        }
         result = detail::tensor_op<Tensor>(
             [](const numeric_type value) -> numeric_type { return value; },
             *this);
@@ -1732,6 +1738,15 @@ class Tensor {
       }
       return result;
     } else {
+      TA_ON_DEVICE(Tensor) {
+        if (!empty()) {
+          TA_ASSERT(nbatch() == 1);
+          const auto outer_perm = outer(perm);
+          Tensor result(outer_perm * range_, 1, default_construct{false});
+          device::permute(data(), result.data(), range_, outer_perm);
+          return result;
+        }
+      }
       return Tensor(*this, perm);
     }
   }
@@ -1994,6 +2009,11 @@ class Tensor {
       };
       return detail::arena_trivial_unary<Tensor>(*this, fill);
     } else {
+      TA_ON_DEVICE(Tensor) {
+        Tensor result = clone();
+        result.scale_to(factor);
+        return result;
+      }
       return unary([factor](const value_type& a) {
         using namespace TiledArray::detail;
         return a * factor;
@@ -2042,6 +2062,11 @@ class Tensor {
           "supported for view inner cells");
       return Tensor{};
     } else {
+      TA_ON_DEVICE(Tensor) {
+        Tensor result = permute(perm);
+        result.scale_to(factor);
+        return result;
+      }
       return unary(
           [factor](const value_type& a) {
             using namespace TiledArray::detail;
@@ -2098,6 +2123,17 @@ class Tensor {
           res.conj_to(factor.factor());
       });
     } else {
+      TA_ON_DEVICE(Tensor) {
+        // conjugation has no device kernel: finish this task's device work,
+        // then run the host code below
+        if constexpr (detail::is_complex_conjugate_v<Scalar>)
+          device::synchronize();
+        else {
+          TA_ASSERT(nbatch() == 1);
+          device::scal(range_.volume(), numeric_type(factor), data(), range_);
+          return *this;
+        }
+      }
       return inplace_unary(
           [factor](value_type& MADNESS_RESTRICT res) { res *= factor; });
     }
@@ -2224,6 +2260,7 @@ class Tensor {
   template <typename Right>
   static Tensor owning_copy_of(const Right& right) {
     using RightT = std::remove_cv_t<std::remove_reference_t<Right>>;
+    TA_ON_DEVICE(Tensor, RightT) return right.clone();
     if constexpr (detail::is_tensor_of_tensor_v<Tensor> &&
                   !std::is_same_v<RightT, Tensor> &&
                   std::is_same_v<value_type, typename RightT::value_type>) {
@@ -2236,6 +2273,16 @@ class Tensor {
     } else {
       return detail::clone_or_cast<Tensor>(right);
     }
+  }
+
+  /// \return \p tmp permuted by \p perm, once the device work reading
+  /// \p tmp is done, so that \p tmp can be freed
+  // ponytail: blocks the task; stream-ordered deallocation would avoid it
+  template <typename Perm>
+  static Tensor permute_temporary(const Tensor& tmp, const Perm& perm) {
+    Tensor result = tmp.permute(perm);
+    device::synchronize();
+    return result;
   }
 
   // Addition operations
@@ -2373,6 +2420,11 @@ class Tensor {
       };
       return detail::arena_trivial_binary<Tensor>(*this, right, fill);
     } else {
+      TA_ON_DEVICE(Tensor, Right) {
+        Tensor result = clone();
+        result.add_to(right);
+        return result;
+      }
       return binary(
           right,
           [](const value_type& l, const value_t<Right>& r) -> decltype(l + r) {
@@ -2443,6 +2495,7 @@ class Tensor {
     requires(is_tensor<Right>::value && detail::is_permutation_v<Perm> &&
              detail::addable<const value_type&, const value_t<Right>&>)
   auto add(const Right& right, const Perm& perm) const {
+    TA_ON_DEVICE(Tensor, Right) return permute_temporary(add(right), perm);
     return binary(
         right,
         [](const value_type& l, const value_t<Right>& r) { return l + r; },
@@ -2461,6 +2514,11 @@ class Tensor {
     requires(is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
              detail::addable<const value_type&, const value_t<Right>&>)
   auto add(const Right& right, const Scalar factor) const {
+    TA_ON_DEVICE(Tensor, Right) {
+      Tensor result = add(right);
+      result.scale_to(factor);
+      return result;
+    }
     return binary(right,
                   [factor](const value_type& l, const value_t<Right>& r) {
                     return (l + r) * factor;
@@ -2482,6 +2540,9 @@ class Tensor {
              detail::is_permutation_v<Perm> &&
              detail::addable<const value_type&, const value_t<Right>&>)
   auto add(const Right& right, const Scalar factor, const Perm& perm) const {
+    TA_ON_DEVICE(Tensor, Right) {
+      return permute_temporary(add(right, factor), perm);
+    }
     return binary(
         right,
         [factor](const value_type& l, const value_t<Right>& r) {
@@ -2545,6 +2606,12 @@ class Tensor {
       }
     }
 
+    TA_ON_DEVICE(Tensor, Right) {
+      TA_ASSERT(nbatch() == 1 && detail::is_range_set_congruent(*this, right));
+      device::axpy(range_.volume(), numeric_type(1), right.data(), data(),
+                   range_);
+      return *this;
+    }
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right> r) { l += r; });
   }
@@ -2579,6 +2646,7 @@ class Tensor {
         return *this;
       }
     }
+    TA_ON_DEVICE(Tensor, Right) return add_to(right).scale_to(factor);
     return inplace_binary(
         right, [factor](value_type& MADNESS_RESTRICT l,
                         const value_t<Right> r) { (l += r) *= factor; });
@@ -2622,6 +2690,12 @@ class Tensor {
         return *this;
       }
     }
+    TA_ON_DEVICE(Tensor, Right) {
+      TA_ASSERT(nbatch() == 1 && detail::is_range_set_congruent(*this, right));
+      device::axpy(range_.volume(), numeric_type(factor), right.data(), data(),
+                   range_);
+      return *this;
+    }
     return inplace_binary(right,
                           [factor](auto& MADNESS_RESTRICT l, const auto& r) {
                             using L = std::remove_reference_t<decltype(l)>;
@@ -2650,6 +2724,12 @@ class Tensor {
           "permutation is not supported for view inner cells");
       return *this;
     } else {
+      TA_ON_DEVICE(Tensor, Right) {
+        const Tensor permuted_right = right.permute(perm);
+        axpy_to(permuted_right, factor);
+        device::synchronize();  // before permuted_right is freed
+        return *this;
+      }
       auto permuted = right.permute(perm);
       if (empty()) {
         // first contribution into an unallocated target (e.g. a contraction
@@ -2757,6 +2837,11 @@ class Tensor {
       };
       return detail::arena_trivial_binary<Tensor>(*this, right, fill);
     } else {
+      TA_ON_DEVICE(Tensor, Right) {
+        Tensor result = clone();
+        result.subt_to(right);
+        return result;
+      }
       return binary(
           right,
           [](const value_type& l, const value_t<Right>& r) -> decltype(l - r) {
@@ -2807,6 +2892,7 @@ class Tensor {
           "supported for view inner cells");
       return Tensor{};
     } else {
+      TA_ON_DEVICE(Tensor, Right) return permute_temporary(subt(right), perm);
       return binary(
           right, [](const value_type& l, const value_type& r) { return l - r; },
           perm);
@@ -2838,6 +2924,11 @@ class Tensor {
       };
       return detail::arena_trivial_binary<Tensor>(*this, right, fill);
     } else {
+      TA_ON_DEVICE(Tensor, Right) {
+        Tensor result = subt(right);
+        result.scale_to(factor);
+        return result;
+      }
       return binary(right, [factor](const value_type& l, const value_type& r) {
         return (l - r) * factor;
       });
@@ -2867,6 +2958,9 @@ class Tensor {
       auto result = subt(right, factor);
       return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
+      TA_ON_DEVICE(Tensor, Right) {
+        return permute_temporary(subt(right, factor), perm);
+      }
       return binary(
           right,
           [factor](const value_type& l, const value_type& r) {
@@ -2922,6 +3016,12 @@ class Tensor {
       }
     }
 
+    TA_ON_DEVICE(Tensor, Right) {
+      TA_ASSERT(nbatch() == 1 && detail::is_range_set_congruent(*this, right));
+      device::axpy(range_.volume(), numeric_type(-1), right.data(), data(),
+                   range_);
+      return *this;
+    }
     return inplace_binary(
         right, [](auto& MADNESS_RESTRICT l, const auto& r) { l -= r; });
   }
@@ -2958,6 +3058,7 @@ class Tensor {
       }
     }
 
+    TA_ON_DEVICE(Tensor, Right) return subt_to(right).scale_to(factor);
     return inplace_binary(right,
                           [factor](auto& MADNESS_RESTRICT l, const auto& r) {
                             (l -= r) *= factor;
@@ -3057,6 +3158,14 @@ class Tensor {
       return detail::arena_trivial_binary<Tensor>(
           *this, right, fill, detail::ArenaBinarySparsity::Intersection);
     } else {
+      TA_ON_DEVICE(Tensor, Right) {
+        TA_ASSERT(nbatch() == 1 &&
+                  detail::is_range_set_congruent(*this, right));
+        Tensor result(range_, 1, default_construct{false});
+        device::mult(range_.volume(), data(), right.data(), result.data(),
+                     range_);
+        return result;
+      }
       return binary(right, mult_op);
     }
   }
@@ -3100,6 +3209,7 @@ class Tensor {
       auto result = mult(right);
       return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
+      TA_ON_DEVICE(Tensor, Right) return permute_temporary(mult(right), perm);
       return binary(
           right,
           [](const value_type& l, const value_t<Right>& r) { return l * r; },
@@ -3133,6 +3243,11 @@ class Tensor {
       return detail::arena_trivial_binary<Tensor>(
           *this, right, fill, detail::ArenaBinarySparsity::Intersection);
     } else {
+      TA_ON_DEVICE(Tensor, Right) {
+        Tensor result = mult(right);
+        result.scale_to(factor);
+        return result;
+      }
       return binary(right,
                     [factor](const value_type& l, const value_t<Right>& r) {
                       return (l * r) * factor;
@@ -3165,6 +3280,9 @@ class Tensor {
       auto result = mult(right, factor);
       return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
+      TA_ON_DEVICE(Tensor, Right) {
+        return permute_temporary(mult(right, factor), perm);
+      }
       return binary(
           right,
           [factor](const value_type& l, const value_t<Right>& r) {
@@ -3199,6 +3317,11 @@ class Tensor {
     // value-returning kernel now agrees (ArenaBinarySparsity::Intersection).
     // Routing through that kernel would rebuild the whole tile only to
     // materialize explicit zeros where screening had removed cells.
+    TA_ON_DEVICE(Tensor, Right) {
+      TA_ASSERT(nbatch() == 1 && detail::is_range_set_congruent(*this, right));
+      device::mult_to(range_.volume(), right.data(), data(), range_);
+      return *this;
+    }
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
                                     const value_t<Right>& r) { l *= r; });
   }
@@ -3226,6 +3349,7 @@ class Tensor {
     if (empty()) return *this;
 
     // No fallback -- see the unscaled `mult_to` above.
+    TA_ON_DEVICE(Tensor, Right) return mult_to(right).scale_to(factor);
     return inplace_binary(
         right, [factor](value_type& MADNESS_RESTRICT l,
                         const value_t<Right>& r) { (l *= r) *= factor; });
@@ -3245,6 +3369,7 @@ class Tensor {
       result.scale_to(numeric_type(-1));
       return result;
     } else {
+      TA_ON_DEVICE(Tensor) return scale(numeric_type(-1));
       return unary([](const value_type r) { return -r; });
     }
   }
@@ -3268,6 +3393,7 @@ class Tensor {
           "for view inner cells");
       return Tensor{};
     } else {
+      TA_ON_DEVICE(Tensor) return scale(numeric_type(-1), perm);
       return unary([](const value_type l) { return -l; }, perm);
     }
   }
@@ -3282,6 +3408,7 @@ class Tensor {
     if constexpr (is_tensor_view_v<value_type>) {
       return this->scale_to(numeric_type(-1));
     } else {
+      TA_ON_DEVICE(Tensor) return scale_to(numeric_type(-1));
       return inplace_unary([](value_type& MADNESS_RESTRICT l) { l = -l; });
     }
   }

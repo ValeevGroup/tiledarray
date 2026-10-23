@@ -22,8 +22,8 @@
 // Dense matrix-multiply benchmark using the native UMTensor tile type
 // (TA::Tensor backed by device_um_allocator). Companion to the btas-based
 // ta_dense_device.cpp; same shape + reporting, but the tile is bare
-// `UMTensor<T>` -- no `TA::Tile<>` wrapper -- and the data flows through
-// the device tile-op overloads in src/TiledArray/device/tensor.h.
+// `UMTensor<T>` -- no `TA::Tile<>` wrapper -- and TA::Tensor's tile ops run
+// on the device (see src/TiledArray/device/dispatch.h).
 //
 // Usage:
 //   ta_dense_um_tensor Nm Bm Nn Bn Nk Bk [nrepeat=5]

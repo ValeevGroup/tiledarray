@@ -159,18 +159,13 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
         (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n
                                                                        : k));
 
-#ifdef TILEDARRAY_HAS_DEVICE
-    if constexpr (device_executable_v<Tensor<As...>, Tensor<Bs...>,
-                                      Tensor<Cs...>>) {
-      if (execution_space() == ExecutionSpace::Device) {
-        using T = typename Tensor<Cs...>::value_type;
-        device::gemm<T>(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                        T(alpha), A.data(), lda, B.data(), ldb, T(beta),
-                        C.data(), std::max(integer{1}, n), C.range());
-        return;
-      }
+    TA_ON_DEVICE(Tensor<Cs...>, Tensor<As...>, Tensor<Bs...>) {
+      using T = typename Tensor<Cs...>::value_type;
+      device::gemm<T>(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+                      T(alpha), A.data(), lda, B.data(), ldb, T(beta), C.data(),
+                      std::max(integer{1}, n), C.range());
+      return;
     }
-#endif
 
     // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
