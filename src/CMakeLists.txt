@@ -39,6 +39,7 @@ TiledArray/initialize.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/platform.h
+TiledArray/device/dispatch.h
 TiledArray/proc_grid.h
 TiledArray/range.h
 TiledArray/range1.h

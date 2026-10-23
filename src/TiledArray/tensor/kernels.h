@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
 #define TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
 
+#include <TiledArray/device/dispatch.h>
 #include <TiledArray/einsum/index.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/tensor/arena_tensor.h>
@@ -157,6 +158,19 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
         integer{1},
         (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n
                                                                        : k));
+
+#ifdef TILEDARRAY_HAS_DEVICE
+    if constexpr (device_executable_v<Tensor<As...>, Tensor<Bs...>,
+                                      Tensor<Cs...>>) {
+      if (execution_space() == ExecutionSpace::Device) {
+        using T = typename Tensor<Cs...>::value_type;
+        device::gemm<T>(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+                        T(alpha), A.data(), lda, B.data(), ldb, T(beta),
+                        C.data(), std::max(integer{1}, n), C.range());
+        return;
+      }
+    }
+#endif
 
     // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING

@@ -118,6 +118,13 @@ BOOST_AUTO_TEST_CASE(is_device_tile_classification) {
   BOOST_CHECK(is_device_tile_v<TiledArray::Tile<UMTensor<double>>>);
   BOOST_CHECK(is_device_tile_v<typename TArrayD::value_type>);
   BOOST_CHECK(!is_device_tile_v<HostTile>);
+
+  // the device branches in TA::Tensor are reachable only through this trait
+  static_assert(device_executable_v<UMTensor<double>>);
+  static_assert(device_executable_v<UMTensor<std::complex<float>>>);
+  static_assert(!device_executable_v<UMTensor<int>>);
+  static_assert(!device_executable_v<HostTile>);
+  static_assert(!device_executable_v<UMTensor<double>, HostTile>);
 }
 
 BOOST_AUTO_TEST_CASE(direct_assign) {
@@ -557,6 +564,14 @@ BOOST_AUTO_TEST_CASE(contraction_rank4_via_two_indices) {
 }
 
 /// TA::einsum
+BOOST_AUTO_TEST_CASE(general_product_batched) {
+  // b is a fused (Hadamard) index, so BatchedContractReduce folds it into
+  // nbatch > 1 and gemm must run once per batch
+  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+  c_h("b,i,k") = a_h("b,i,j") * b_h("b,j,k");
+  check_close(c, c_h, 1.0e-12);
+}
+
 BOOST_AUTO_TEST_CASE(einsum_matmul) {
   // c(i,k) = a(i,j) * b(j,k) via einsum
   const TiledRange tr2{tr.data()[0], tr.data()[1]};

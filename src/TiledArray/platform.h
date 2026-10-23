@@ -24,9 +24,14 @@
 #ifndef TILEDARRAY_PLATFORM_H__INCLUDED
 #define TILEDARRAY_PLATFORM_H__INCLUDED
 
+#include <TiledArray/error.h>
 #include <TiledArray/fwd.h>
 
 #include <TiledArray/type_traits.h>
+
+#include <madness/world/thread_info.h>
+
+#include <atomic>
 
 namespace TiledArray {
 
@@ -94,6 +99,50 @@ constexpr bool allocates_memory_space(const device_um_allocator<T>& a) {
 
 /// enumerates the execution spaces
 enum class ExecutionSpace { Host, Device };
+
+namespace detail {
+inline std::atomic<ExecutionSpace>& execution_space_accessor() {
+  static std::atomic<ExecutionSpace> val{ExecutionSpace::Device};
+  return val;
+}
+}  // namespace detail
+
+/// \return where ops on tiles in device-accessible (unified) memory run:
+/// Device unless an ExecutionSpaceScope says otherwise. Tiles in host memory
+/// always run on the host.
+inline ExecutionSpace execution_space() {
+  return detail::execution_space_accessor().load();
+}
+
+/// Sets execution_space() for its lifetime and restores the previous value on
+/// destruction; scopes nest.
+/// \code
+/// {
+///   ExecutionSpaceScope host(ExecutionSpace::Host);
+///   c("i,j") = a("i,k") * b("k,j");  // UMTensor tiles computed on the host
+/// }
+/// \endcode
+/// \warning the setting is process-wide and is read when each task runs.
+///          Work still running when the scope ends uses the restored value,
+///          so call `.get()` on returned Futures (e.g. from `dot()`) inside
+///          the scope. Open scopes from the main thread only, after
+///          TA::initialize; the constructor throws otherwise.
+class ExecutionSpaceScope {
+ public:
+  explicit ExecutionSpaceScope(ExecutionSpace space) {
+    if (!madness::is_main_thread())
+      TA_EXCEPTION(
+          "ExecutionSpaceScope: open scopes from the main thread only");
+    previous_ = detail::execution_space_accessor().exchange(space);
+  }
+  ~ExecutionSpaceScope() { detail::execution_space_accessor() = previous_; }
+
+  ExecutionSpaceScope(const ExecutionSpaceScope&) = delete;
+  ExecutionSpaceScope& operator=(const ExecutionSpaceScope&) = delete;
+
+ private:
+  ExecutionSpace previous_;
+};
 
 // customization point: to_execution_space<S>(O) -> void
 // "moves" O to execution space S
