@@ -88,7 +88,9 @@ struct DeviceTensorExpressionsFixture : public TiledRangeFixture {
     }
   }
 
-  // Compare every element of two DistArrays with matching tiles.
+  // Compare every element of two DistArrays with matching tiles: relative to
+  // the element above 1, absolute below, since summation order (thread count,
+  // reduction order) moves near-cancelling elements by ~1e-15 absolute.
   template <typename DeviceArrayT, typename HostArrayT>
   static void check_close(const DeviceArrayT& d, const HostArrayT& h_ref,
                           double tol) {
@@ -98,9 +100,21 @@ struct DeviceTensorExpressionsFixture : public TiledRangeFixture {
       auto h_tile = h_ref.find(it.index()).get();
       BOOST_REQUIRE_EQUAL(d_tile.range(), h_tile.range());
       for (std::size_t k = 0; k < d_tile.size(); ++k) {
-        BOOST_CHECK_CLOSE_FRACTION(d_tile.data()[k], h_tile.data()[k], tol);
+        using std::abs;
+        BOOST_CHECK_SMALL(abs(d_tile.data()[k] - h_tile.data()[k]),
+                          tol * std::max(1.0, abs(h_tile.data()[k])));
       }
     }
+  }
+
+  // eval() computed by the host code, on the same UMTensor operands; compare
+  // with a plain eval() to check the device path against the host path
+  template <typename Eval>
+  static auto on_host(Eval&& eval) {
+    ExecutionSpaceScope host(ExecutionSpace::Host);
+    auto result = eval();
+    GlobalFixture::world->gop.fence();
+    return result;
   }
 
   TArrayD a, b, c;
@@ -563,7 +577,20 @@ BOOST_AUTO_TEST_CASE(contraction_rank4_via_two_indices) {
   check_close(r, r_h, 1.0e-12);
 }
 
-/// TA::einsum
+BOOST_AUTO_TEST_CASE(execution_space_scope) {
+  BOOST_CHECK(execution_space() == ExecutionSpace::Device);
+  {
+    ExecutionSpaceScope host(ExecutionSpace::Host);
+    BOOST_CHECK(execution_space() == ExecutionSpace::Host);
+    {
+      ExecutionSpaceScope device(ExecutionSpace::Device);
+      BOOST_CHECK(execution_space() == ExecutionSpace::Device);
+    }
+    BOOST_CHECK(execution_space() == ExecutionSpace::Host);
+  }
+  BOOST_CHECK(execution_space() == ExecutionSpace::Device);
+}
+
 BOOST_AUTO_TEST_CASE(mixed_allocator_add) {
   // a host operand keeps the op on the host, whatever execution_space() says
   const auto range = tr.make_tile_range(0);
@@ -581,58 +608,50 @@ BOOST_AUTO_TEST_CASE(mixed_allocator_add) {
 BOOST_AUTO_TEST_CASE(complex_expressions) {
   using Z = std::complex<double>;
   using ZArray = DistArray<UMTensor<Z>, DensePolicy>;
-  using ZHostArray = DistArray<Tensor<Z>, DensePolicy>;
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
-  ZArray x(*GlobalFixture::world, tr2), y(*GlobalFixture::world, tr2), z;
-  ZHostArray x_h(*GlobalFixture::world, tr2), y_h(*GlobalFixture::world, tr2),
-      z_h;
+  ZArray x(*GlobalFixture::world, tr2), y(*GlobalFixture::world, tr2);
   std::mt19937 rng(23);
   std::uniform_real_distribution<double> dist(-1.0, 1.0);
-  auto fill = [&](ZArray& d, ZHostArray& h) {
-    for (auto it = d.pmap()->begin(); it != d.pmap()->end(); ++it) {
-      const auto range = d.trange().make_tile_range(*it);
-      UMTensor<Z> d_tile(range);
-      Tensor<Z> h_tile(range);
+  // the calling thread fills every tile, so rng needs no locking
+  for (auto* array : {&x, &y})
+    array->init_tiles<HostExecutor::Thread>([&](const Range& range) {
+      UMTensor<Z> tile(range);
       for (std::size_t k = 0; k < range.volume(); ++k)
-        d_tile.data()[k] = h_tile.data()[k] = Z(dist(rng), dist(rng));
-      d.set(*it, d_tile);
-      h.set(*it, h_tile);
-    }
-  };
-  fill(x, x_h);
-  fill(y, y_h);
+        tile.data()[k] = Z(dist(rng), dist(rng));
+      return tile;
+    });
   GlobalFixture::world->gop.fence();
 
   const Z s(0.5, -2.0);
-  z("i,j") = s * (x("i,j") + y("j,i")) - x("i,k") * y("k,j");
-  z_h("i,j") = s * (x_h("i,j") + y_h("j,i")) - x_h("i,k") * y_h("k,j");
-  GlobalFixture::world->gop.fence();
-  for (auto it = z.begin(); it != z.end(); ++it) {
-    const auto d_tile = it->get();
-    const auto h_tile = z_h.find(it.index()).get();
-    for (std::size_t k = 0; k < d_tile.size(); ++k)
-      BOOST_CHECK_SMALL(std::abs(d_tile.data()[k] - h_tile.data()[k]), 1.0e-12);
-  }
+  auto expr = [&] {
+    ZArray z;
+    z("i,j") = s * (x("i,j") + y("j,i")) - x("i,k") * y("k,j");
+    return z;
+  };
+  check_close(expr(), on_host(expr), 1.0e-12);
 
   // dot does not conjugate, inner_product conjugates its left operand
-  const Z dot = x("i,j").dot(y("i,j")).get();
-  const Z inner = x("i,j").inner_product(y("i,j")).get();
-  const double norm = x("i,j").norm().get();
-  BOOST_CHECK_SMALL(std::abs(dot - x_h("i,j").dot(y_h("i,j")).get()), 1.0e-10);
-  BOOST_CHECK_SMALL(
-      std::abs(inner - x_h("i,j").inner_product(y_h("i,j")).get()), 1.0e-10);
-  BOOST_CHECK_CLOSE_FRACTION(norm, x_h("i,j").norm().get(), 1.0e-12);
-  BOOST_CHECK(std::abs(dot - inner) > 1.0e-6);  // the two really differ
+  auto dot = [&] { return x("i,j").dot(y("i,j")).get(); };
+  auto inner = [&] { return x("i,j").inner_product(y("i,j")).get(); };
+  auto norm = [&] { return x("i,j").norm().get(); };
+  BOOST_CHECK_SMALL(std::abs(dot() - on_host(dot)), 1.0e-10);
+  BOOST_CHECK_SMALL(std::abs(inner() - on_host(inner)), 1.0e-10);
+  BOOST_CHECK_CLOSE_FRACTION(norm(), on_host(norm), 1.0e-12);
+  BOOST_CHECK(std::abs(dot() - inner()) > 1.0e-6);  // the two really differ
 }
 
 BOOST_AUTO_TEST_CASE(general_product_batched) {
   // b is a fused (Hadamard) index, so BatchedContractReduce folds it into
   // nbatch > 1 and gemm must run once per batch
-  BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
-  c_h("b,i,k") = a_h("b,i,j") * b_h("b,j,k");
-  check_close(c, c_h, 1.0e-12);
+  auto expr = [&] {
+    TArrayD r;
+    r("b,i,k") = a("b,i,j") * b("b,j,k");
+    return r;
+  };
+  check_close(expr(), on_host(expr), 1.0e-12);
 }
 
+/// TA::einsum
 BOOST_AUTO_TEST_CASE(einsum_matmul) {
   // c(i,k) = a(i,j) * b(j,k) via einsum
   const TiledRange tr2{tr.data()[0], tr.data()[1]};
