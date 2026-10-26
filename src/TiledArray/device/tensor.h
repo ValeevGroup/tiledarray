@@ -120,7 +120,7 @@ um_tensor_to_ta_tensor(const TiledArray::DistArray<UMTile, Policy>& um_array) {
     auto stream = device::stream_for(tile.range());
     detail::to_host(tile);
     device::sync_madness_task_with(stream);
-    HostTile result(tile.range());
+    HostTile result(tile.range(), typename HostTile::nbatches(tile.nbatch()));
     std::copy_n(tile.data(), tile.total_size(), result.data());
     return result;
   };
@@ -143,7 +143,7 @@ inline std::enable_if_t<!std::is_same_v<UMTile, HostTile>,
 ta_tensor_to_um_tensor(
     const TiledArray::DistArray<HostTile, Policy>& host_array) {
   auto convert_tile = [](const HostTile& tile) {
-    UMTile result(tile.range());
+    UMTile result(tile.range(), typename UMTile::nbatches(tile.nbatch()));
     std::copy_n(tile.data(), tile.total_size(), result.data());
     detail::to_device(result);
     return result;

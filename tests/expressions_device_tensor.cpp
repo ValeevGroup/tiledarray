@@ -1019,6 +1019,35 @@ BOOST_AUTO_TEST_CASE(um_to_ta_then_expression) {
   check_close(sum_from_device, sum_h, tolerance);
 }
 
+BOOST_AUTO_TEST_CASE(convert_batched_tiles) {
+  // tiles with nbatch() > 1 keep every batch through both conversions
+  constexpr std::size_t nbatch = 3;
+  TArrayD um(*GlobalFixture::world, TiledRange{TiledRange1{0, 2, 5}});
+  um.init_tiles([](const Range& range) {
+    TileD tile(range, TileD::nbatches(nbatch));
+    for (std::size_t k = 0; k < tile.total_size(); ++k) tile.data()[k] = k + 1;
+    return tile;
+  });
+  GlobalFixture::world->gop.fence();
+
+  HostArray host =
+      TiledArray::um_tensor_to_ta_tensor<TileD, HostTile, TA::DensePolicy>(um);
+  TArrayD back =
+      TiledArray::ta_tensor_to_um_tensor<TileD, HostTile, TA::DensePolicy>(
+          host);
+  GlobalFixture::world->gop.fence();
+  for (auto it = back.begin(); it != back.end(); ++it) {
+    const HostTile h = host.find(it.index()).get();
+    const TileD u = it->get();
+    BOOST_REQUIRE_EQUAL(h.nbatch(), nbatch);
+    BOOST_REQUIRE_EQUAL(u.nbatch(), nbatch);
+    for (std::size_t k = 0; k < u.total_size(); ++k) {
+      BOOST_CHECK_EQUAL(h.data()[k], k + 1);
+      BOOST_CHECK_EQUAL(u.data()[k], k + 1);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE(bulk_prefetch_round_trip) {
   // to_host / to_device on a DistArray should be no-ops for correctness:
   TiledArray::to_host(a);
