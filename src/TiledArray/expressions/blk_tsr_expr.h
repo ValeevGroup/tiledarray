@@ -235,6 +235,30 @@ class BlkTsrExprBase : public Expr<Derived> {
 #endif  // NDEBUG
   }
 
+  /// Block expression constructor that carries over a result trange lobound
+
+  /// Used by the factories that derive one block expression from another
+  /// (scaling, negation, conjugation): the derived expression refers to the
+  /// same block and must produce the same result trange, so it inherits the
+  /// lobound set by set_trange_lobound() / preserve_lobound() on the source.
+  /// \tparam Index1 An integral range type
+  /// \tparam Index2 An integral range type
+  /// \param array The array object
+  /// \param annotation The array annotation
+  /// \param lower_bound The lower bound of the tile block
+  /// \param upper_bound The upper bound of the tile block
+  /// \param trange_lobound The result trange lobound (null = zeros)
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<Index1> &&
+                TiledArray::detail::is_integral_range_v<Index2>>>
+  BlkTsrExprBase(reference array, const std::string& annotation,
+                 const Index1& lower_bound, const Index2& upper_bound,
+                 const std::optional<Range::index_type>& trange_lobound)
+      : BlkTsrExprBase(array, annotation, lower_bound, upper_bound) {
+    trange_lobound_ = trange_lobound;
+  }
+
   /// Block expression constructor
 
   /// \tparam PairRange Type representing a range of generalized pairs (see
@@ -368,13 +392,18 @@ class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array, Alias>> {
   /// \param annotation The array annotation
   /// \param lower_bound The lower bound of the tile block
   /// \param upper_bound The upper bound of the tile block
+  /// \param trange_lobound The result trange lobound carried over from the
+  ///        block expression this one is derived from (null = zeros)
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
                 TiledArray::detail::is_integral_range_v<Index2>>>
-  BlkTsrExpr(reference array, const std::string& annotation,
-             const Index1& lower_bound, const Index2& upper_bound)
-      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound) {}
+  BlkTsrExpr(
+      reference array, const std::string& annotation, const Index1& lower_bound,
+      const Index2& upper_bound,
+      const std::optional<Range::index_type>& trange_lobound = std::nullopt)
+      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound,
+                        trange_lobound) {}
 
   /// Block expression constructor
 
@@ -485,7 +514,8 @@ class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array, Alias>> {
   ConjBlkTsrExpr<array_type> conj() const {
     return ConjBlkTsrExpr<array_type>(
         BlkTsrExprBase_::array(), BlkTsrExprBase_::annotation(), conj_op(),
-        BlkTsrExprBase_::lower_bound(), BlkTsrExprBase_::upper_bound());
+        BlkTsrExprBase_::lower_bound(), BlkTsrExprBase_::upper_bound(),
+        BlkTsrExprBase_::trange_lobound());
   }
 
 };  // class BlkTsrExpr
@@ -523,13 +553,18 @@ class BlkTsrExpr<const Array, true>
   /// \param annotation The array annotation
   /// \param lower_bound The lower bound of the tile block
   /// \param upper_bound The upper bound of the tile block
+  /// \param trange_lobound The result trange lobound carried over from the
+  ///        block expression this one is derived from (null = zeros)
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
                 TiledArray::detail::is_integral_range_v<Index2>>>
-  BlkTsrExpr(reference array, const std::string& annotation,
-             const Index1& lower_bound, const Index2& upper_bound)
-      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound) {}
+  BlkTsrExpr(
+      reference array, const std::string& annotation, const Index1& lower_bound,
+      const Index2& upper_bound,
+      const std::optional<Range::index_type>& trange_lobound = std::nullopt)
+      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound,
+                        trange_lobound) {}
 
   /// Block expression constructor
 
@@ -552,7 +587,8 @@ class BlkTsrExpr<const Array, true>
   ConjBlkTsrExpr<array_type> conj() const {
     return ConjBlkTsrExpr<array_type>(
         BlkTsrExprBase_::array(), BlkTsrExprBase_::annotation(), conj_op(),
-        BlkTsrExprBase_::lower_bound(), BlkTsrExprBase_::upper_bound());
+        BlkTsrExprBase_::lower_bound(), BlkTsrExprBase_::upper_bound(),
+        BlkTsrExprBase_::trange_lobound());
   }
 
 };  // class BlkTsrExpr<const Array>
@@ -597,14 +633,18 @@ class ScalBlkTsrExpr : public BlkTsrExprBase<ScalBlkTsrExpr<Array, Scalar>> {
   /// \param factor The scaling factor
   /// \param lower_bound The lower bound of the tile block
   /// \param upper_bound The upper bound of the tile block
+  /// \param trange_lobound The result trange lobound carried over from the
+  ///        block expression this one is derived from (null = zeros)
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
                 TiledArray::detail::is_integral_range_v<Index2>>>
-  ScalBlkTsrExpr(reference array, const std::string& annotation,
-                 const scalar_type factor, const Index1& lower_bound,
-                 const Index2& upper_bound)
-      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound),
+  ScalBlkTsrExpr(
+      reference array, const std::string& annotation, const scalar_type factor,
+      const Index1& lower_bound, const Index2& upper_bound,
+      const std::optional<Range::index_type>& trange_lobound = std::nullopt)
+      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound,
+                        trange_lobound),
         factor_(factor) {}
 
   /// Block expression constructor
@@ -644,7 +684,7 @@ inline ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>
 operator*(const BlkTsrExpr<Array, Alias>& expr, const Scalar& factor) {
   return ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>(
       expr.array(), expr.annotation(), factor, expr.lower_bound(),
-      expr.upper_bound());
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Scaled-block expression factor
@@ -662,7 +702,7 @@ inline ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>
 operator*(const Scalar& factor, const BlkTsrExpr<Array, Alias>& expr) {
   return ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>(
       expr.array(), expr.annotation(), factor, expr.lower_bound(),
-      expr.upper_bound());
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Scaled-block expression factor
@@ -680,7 +720,7 @@ inline ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2>> operator*(
     const ScalBlkTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
   return ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2>>(
       expr.array(), expr.annotation(), expr.factor() * factor,
-      expr.lower_bound(), expr.upper_bound());
+      expr.lower_bound(), expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Scaled-block expression factor
@@ -698,7 +738,7 @@ inline ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1>> operator*(
     const Scalar1& factor, const ScalBlkTsrExpr<Array, Scalar2>& expr) {
   return ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1>>(
       expr.array(), expr.annotation(), expr.factor() * factor,
-      expr.lower_bound(), expr.upper_bound());
+      expr.lower_bound(), expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Negated block expression factor
@@ -714,7 +754,7 @@ operator-(const BlkTsrExpr<Array, true>& expr) {
       typename ExprTrait<BlkTsrExpr<Array, true>>::numeric_type numeric_type;
   return ScalBlkTsrExpr<typename std::remove_const<Array>::type, numeric_type>(
       expr.array(), expr.annotation(), -1, expr.lower_bound(),
-      expr.upper_bound());
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Negated scaled-block expression factor
@@ -726,9 +766,9 @@ operator-(const BlkTsrExpr<Array, true>& expr) {
 template <typename Array, typename Scalar>
 inline ScalBlkTsrExpr<Array, Scalar> operator-(
     const ScalBlkTsrExpr<Array, Scalar>& expr) {
-  return ScalBlkTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
-                                       -expr.factor(), expr.lower_bound(),
-                                       expr.upper_bound());
+  return ScalBlkTsrExpr<Array, Scalar>(
+      expr.array(), expr.annotation(), -expr.factor(), expr.lower_bound(),
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Conjugated block tensor expression factory
@@ -742,7 +782,7 @@ inline ConjBlkTsrExpr<typename std::remove_const<Array>::type> conj(
     const BlkTsrExpr<Array, Alias>& expr) {
   return ConjBlkTsrExpr<typename std::remove_const<Array>::type>(
       expr.array(), expr.annotation(), conj_op(), expr.lower_bound(),
-      expr.upper_bound());
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Conjugate-conjugate block tensor expression factory
@@ -753,7 +793,8 @@ inline ConjBlkTsrExpr<typename std::remove_const<Array>::type> conj(
 template <typename Array>
 inline BlkTsrExpr<const Array, true> conj(const ConjBlkTsrExpr<Array>& expr) {
   return BlkTsrExpr<const Array, true>(expr.array(), expr.annotation(),
-                                       expr.lower_bound(), expr.upper_bound());
+                                       expr.lower_bound(), expr.upper_bound(),
+                                       expr.trange_lobound());
 }
 
 /// Conjugated block tensor expression factor
@@ -768,7 +809,7 @@ inline ScalConjBlkTsrExpr<Array, Scalar> conj(
   return ScalConjBlkTsrExpr<Array, Scalar>(
       expr.array(), expr.annotation(),
       conj_op(TiledArray::detail::conj(expr.factor())), expr.lower_bound(),
-      expr.upper_bound());
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Conjugate-conjugate tensor expression factory
@@ -783,7 +824,7 @@ inline ScalBlkTsrExpr<Array, Scalar> conj(
   return ScalBlkTsrExpr<Array, Scalar>(
       expr.array(), expr.annotation(),
       TiledArray::detail::conj(expr.factor().factor()), expr.lower_bound(),
-      expr.upper_bound());
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Scaled block tensor expression factor
@@ -798,9 +839,9 @@ template <typename Array, typename Scalar,
               TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline ScalConjBlkTsrExpr<Array, Scalar> operator*(
     const ConjBlkTsrExpr<const Array>& expr, const Scalar& factor) {
-  return ScalConjBlkTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
-                                           conj_op(factor), expr.lower_bound(),
-                                           expr.upper_bound());
+  return ScalConjBlkTsrExpr<Array, Scalar>(
+      expr.array(), expr.annotation(), conj_op(factor), expr.lower_bound(),
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Scaled block tensor expression factor
@@ -815,9 +856,9 @@ template <typename Array, typename Scalar,
               TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline ScalConjBlkTsrExpr<Array, Scalar> operator*(
     const Scalar& factor, const ConjBlkTsrExpr<Array>& expr) {
-  return ScalConjBlkTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
-                                           conj_op(factor), expr.lower_bound(),
-                                           expr.upper_bound());
+  return ScalConjBlkTsrExpr<Array, Scalar>(
+      expr.array(), expr.annotation(), conj_op(factor), expr.lower_bound(),
+      expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Scaled block tensor expression factor
@@ -835,7 +876,7 @@ inline ScalConjBlkTsrExpr<Array, mult_t<Scalar1, Scalar2>> operator*(
     const ScalConjBlkTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
   return ScalConjBlkTsrExpr<Array, mult_t<Scalar1, Scalar2>>(
       expr.array(), expr.annotation(), conj_op(expr.factor().factor() * factor),
-      expr.lower_bound(), expr.upper_bound());
+      expr.lower_bound(), expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Scaled-tensor expression factor
@@ -853,7 +894,7 @@ inline ScalConjBlkTsrExpr<Array, mult_t<Scalar2, Scalar1>> operator*(
     const Scalar1& factor, const ScalConjBlkTsrExpr<Array, Scalar2>& expr) {
   return ScalConjBlkTsrExpr<Array, mult_t<Scalar2, Scalar1>>(
       expr.array(), expr.annotation(), conj_op(expr.factor().factor() * factor),
-      expr.lower_bound(), expr.upper_bound());
+      expr.lower_bound(), expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Negated-conjugated-tensor expression factor
@@ -868,7 +909,7 @@ operator-(const ConjBlkTsrExpr<Array>& expr) {
   typedef typename ExprTrait<ConjBlkTsrExpr<Array>>::numeric_type numeric_type;
   return ScalConjBlkTsrExpr<Array, numeric_type>(
       expr.array(), expr.annotation(), conj_op<numeric_type>(-1),
-      expr.lower_bound(), expr.upper_bound());
+      expr.lower_bound(), expr.upper_bound(), expr.trange_lobound());
 }
 
 /// Negated-conjugated-tensor expression factor
@@ -882,7 +923,7 @@ inline ScalConjBlkTsrExpr<Array, Scalar> operator-(
     const ScalConjBlkTsrExpr<Array, Scalar>& expr) {
   return ScalConjBlkTsrExpr<Array, Scalar>(
       expr.array(), expr.annotation(), conj_op(-expr.factor().factor()),
-      expr.lower_bound(), expr.upper_bound());
+      expr.lower_bound(), expr.upper_bound(), expr.trange_lobound());
 }
 
 }  // namespace expressions

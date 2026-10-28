@@ -3078,6 +3078,57 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_trange1, F, Fixtures, F) {
   }
 }
 
+// the block expressions derived from a block (scaled, negated, conjugated,
+// and their compositions) refer to the same block and keep its result trange
+// lobound: `2 * a.block(lb, ub, preserve_lobound)` produces the trange that
+// `a.block(lb, ub, preserve_lobound)` does
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_derived_expressions_keep_lobound, F,
+                                 Fixtures, F) {
+  auto& a = F::a;
+  using array_type = std::decay_t<decltype(a)>;
+  const auto lb = std::array{3, 3, 3};
+  const auto ub = std::array{5, 5, 5};
+
+  // the reference: the block itself, with its element coordinates kept
+  array_type ref;
+  BOOST_REQUIRE_NO_THROW(ref("a,b,c") =
+                             a("a,b,c").block(lb, ub, preserve_lobound));
+  const auto& ref_lobound = ref.trange().elements_range().lobound();
+  BOOST_REQUIRE(ref_lobound == a.trange().make_tile_range(lb).lobound());
+  BOOST_REQUIRE(ref_lobound[0] != 0);  // a nonzero lobound, or the test is moot
+
+  auto blk = [&] { return a("a,b,c").block(lb, ub, preserve_lobound); };
+  // every derived form must yield ref's trange, and the derived value
+  auto check = [&](auto&& expr, auto&& expected_expr) {
+    array_type result;
+    BOOST_REQUIRE_NO_THROW(result("a,b,c") = expr);
+    BOOST_CHECK_EQUAL(result.trange(), ref.trange());
+    if (result.trange() == ref.trange()) {
+      // the difference is well-formed only when the tranges agree
+      const auto diff = (result("a,b,c") - expected_expr).norm().get();
+      BOOST_CHECK_SMALL(static_cast<double>(diff), 1e-12);
+    }
+  };
+
+  check(2 * blk(), 2 * ref("a,b,c"));
+  check(blk() * 2, 2 * ref("a,b,c"));
+  check(2 * (3 * blk()), 6 * ref("a,b,c"));
+  check((3 * blk()) * 2, 6 * ref("a,b,c"));
+  check(-blk(), -ref("a,b,c"));
+  check(-(2 * blk()), -2 * ref("a,b,c"));
+  check(blk().conj(), ref("a,b,c").conj());
+  check(conj(blk()), ref("a,b,c").conj());
+  check(conj(conj(blk())), ref("a,b,c"));
+  check(2 * blk().conj(), 2 * ref("a,b,c").conj());
+  check(blk().conj() * 2, 2 * ref("a,b,c").conj());
+  check(2 * (3 * blk().conj()), 6 * ref("a,b,c").conj());
+  check((3 * blk().conj()) * 2, 6 * ref("a,b,c").conj());
+  check(-blk().conj(), -ref("a,b,c").conj());
+  check(-(2 * blk().conj()), -2 * ref("a,b,c").conj());
+  check(conj(2 * blk()), 2 * ref("a,b,c").conj());
+  check(conj(2 * blk().conj()), 2 * ref("a,b,c"));
+}
+
 // corner case: expressions involving empty blocks
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_block_expressions, F, Fixtures, F) {
   auto& a = F::a;
