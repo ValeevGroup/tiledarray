@@ -3127,6 +3127,54 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_derived_expressions_keep_lobound, F,
   check(-(2 * blk().conj()), -2 * ref("a,b,c").conj());
   check(conj(2 * blk()), 2 * ref("a,b,c").conj());
   check(conj(2 * blk().conj()), 2 * ref("a,b,c"));
+  // the right scalar product of a conjugated expression in the reference too
+  check(blk().conj() * 2, ref("a,b,c").conj() * 2);
+
+  // derived forms combined with the block they were derived from, the case
+  // that trips the trange congruence check in binary_eval.h
+  check(blk() + 2 * blk(), 3 * ref("a,b,c"));
+  check(blk() - blk().conj(), ref("a,b,c") - ref("a,b,c").conj());
+  check(-blk() + blk().conj() * 2, -ref("a,b,c") + 2 * ref("a,b,c").conj());
+
+  // a permuted result keeps the lobound of each host mode
+  {
+    array_type ref_perm;
+    ref_perm("c,b,a") = ref("a,b,c");
+    array_type result;
+    BOOST_REQUIRE_NO_THROW(result("c,b,a") = 2 * blk().conj());
+    BOOST_CHECK_EQUAL(result.trange(), ref_perm.trange());
+    if (result.trange() == ref_perm.trange()) {
+      const auto diff =
+          (result("c,b,a") - 2 * ref_perm("c,b,a").conj()).norm().get();
+      BOOST_CHECK_SMALL(static_cast<double>(diff), 1e-12);
+    }
+  }
+
+  // no_alias() keeps the block and its lobound
+  {
+    const auto src = blk();
+    const auto na = blk().no_alias();
+    BOOST_CHECK(na.lower_bound() == src.lower_bound());
+    BOOST_CHECK(na.upper_bound() == src.upper_bound());
+    BOOST_CHECK(na.trange_lobound() == src.trange_lobound());
+  }
+
+  // a lobound of the wrong rank is rejected
+  BOOST_CHECK_THROW(
+      a("a,b,c").block(lb, ub).set_trange_lobound(std::array{0, 0}),
+      TiledArray::Exception);
+
+  // the right scalar product of a conjugated expression is a scaled
+  // conjugation, for blocks and for whole arrays alike
+  using namespace TiledArray::expressions;
+  static_assert(std::is_same_v<decltype(blk().conj() * 2),
+                               ScalConjBlkTsrExpr<array_type, int>>);
+  static_assert(std::is_same_v<decltype(2 * blk().conj()),
+                               ScalConjBlkTsrExpr<array_type, int>>);
+  static_assert(std::is_same_v<decltype(a("a,b,c").conj() * 2),
+                               ScalConjTsrExpr<array_type, int>>);
+  static_assert(std::is_same_v<decltype(2 * a("a,b,c").conj()),
+                               ScalConjTsrExpr<array_type, int>>);
 }
 
 // corner case: expressions involving empty blocks

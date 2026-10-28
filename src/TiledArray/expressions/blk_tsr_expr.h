@@ -126,6 +126,9 @@ class BlkTsrExprBase : public Expr<Derived> {
   /// If non-null, element lobound of the expression trange (else zeros will be
   /// used) Fusing permutation does not affect this (i.e. this refers to the
   /// modes of the host array).
+  /// \note every factory that derives one block expression from another
+  /// (scaling, negation, conjugation, no_alias) must forward this, else the
+  /// derived expression's result trange is rebased to zero
   std::optional<Range::index_type> trange_lobound_;
 
   void check_valid() const {
@@ -218,45 +221,28 @@ class BlkTsrExprBase : public Expr<Derived> {
   /// \param annotation The array annotation
   /// \param lower_bound The lower bound of the tile block
   /// \param upper_bound The upper bound of the tile block
+  /// \param trange_lobound The result trange lobound (null = zeros); a block
+  ///        expression derived from another (scaling, negation, conjugation)
+  ///        refers to the same block and must produce the same result trange,
+  ///        so its factory passes the source's lobound here
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
                 TiledArray::detail::is_integral_range_v<Index2>>>
-  BlkTsrExprBase(reference array, const std::string& annotation,
-                 const Index1& lower_bound, const Index2& upper_bound)
+  BlkTsrExprBase(
+      reference array, const std::string& annotation, const Index1& lower_bound,
+      const Index2& upper_bound,
+      const std::optional<Range::index_type>& trange_lobound = std::nullopt)
       : Expr_(),
         array_(array),
         array_value_(array),
         annotation_(annotation),
         lower_bound_(std::begin(lower_bound), std::end(lower_bound)),
-        upper_bound_(std::begin(upper_bound), std::end(upper_bound)) {
+        upper_bound_(std::begin(upper_bound), std::end(upper_bound)),
+        trange_lobound_(trange_lobound) {
 #ifndef NDEBUG
     check_valid();
 #endif  // NDEBUG
-  }
-
-  /// Block expression constructor that carries over a result trange lobound
-
-  /// Used by the factories that derive one block expression from another
-  /// (scaling, negation, conjugation): the derived expression refers to the
-  /// same block and must produce the same result trange, so it inherits the
-  /// lobound set by set_trange_lobound() / preserve_lobound() on the source.
-  /// \tparam Index1 An integral range type
-  /// \tparam Index2 An integral range type
-  /// \param array The array object
-  /// \param annotation The array annotation
-  /// \param lower_bound The lower bound of the tile block
-  /// \param upper_bound The upper bound of the tile block
-  /// \param trange_lobound The result trange lobound (null = zeros)
-  template <typename Index1, typename Index2,
-            typename = std::enable_if_t<
-                TiledArray::detail::is_integral_range_v<Index1> &&
-                TiledArray::detail::is_integral_range_v<Index2>>>
-  BlkTsrExprBase(reference array, const std::string& annotation,
-                 const Index1& lower_bound, const Index2& upper_bound,
-                 const std::optional<Range::index_type>& trange_lobound)
-      : BlkTsrExprBase(array, annotation, lower_bound, upper_bound) {
-    trange_lobound_ = trange_lobound;
   }
 
   /// Block expression constructor
@@ -326,6 +312,13 @@ class BlkTsrExprBase : public Expr<Derived> {
   Derived& set_trange_lobound(const Index1& trange_lobound) {
     trange_lobound_.emplace(std::begin(trange_lobound),
                             std::end(trange_lobound));
+    // the engines index the lobound by mode, so a mismatched rank would read
+    // out of bounds
+    using std::size;
+    if (size(*trange_lobound_) != size(lower_bound_))
+      TA_EXCEPTION(
+          "The rank of the result trange lobound is not equal to the rank of "
+          "the block.");
     return static_cast<Derived&>(*this);
   }
 
@@ -504,8 +497,10 @@ class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array, Alias>> {
 
   /// \return A non-aliased block tensor expression
   BlkTsrExpr<Array, false> no_alias() const {
-    return BlkTsrExpr<Array, false>(BlkTsrExprBase_::array_,
-                                    BlkTsrExprBase_::annotation_);
+    return BlkTsrExpr<Array, false>(
+        BlkTsrExprBase_::array_, BlkTsrExprBase_::annotation_,
+        BlkTsrExprBase_::lower_bound_, BlkTsrExprBase_::upper_bound_,
+        BlkTsrExprBase_::trange_lobound_);
   }
 
   /// Conjugated block tensor expression factory
