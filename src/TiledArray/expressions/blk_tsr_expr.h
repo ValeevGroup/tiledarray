@@ -838,7 +838,7 @@ template <typename Array, typename Scalar,
           typename std::enable_if<
               TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline ScalConjBlkTsrExpr<Array, Scalar> operator*(
-    const ConjBlkTsrExpr<const Array>& expr, const Scalar& factor) {
+    const ConjBlkTsrExpr<Array>& expr, const Scalar& factor) {
   return ScalConjBlkTsrExpr<Array, Scalar>(
       expr.array(), expr.annotation(), conj_op(factor), expr.lower_bound(),
       expr.upper_bound(), expr.trange_lobound());
