@@ -1,7 +1,7 @@
 # for each dependency track both current and previous id (the variable for the latter must contain PREVIOUS)
 # to be able to auto-update them
 
-set(TA_TRACKED_VGCMAKEKIT_TAG 256d9462bb765787f5acb69be154b26d6efba8b6)
+set(TA_TRACKED_VGCMAKEKIT_TAG 624173e768042eeaf3b4402742271c107994f316)
 
 # N.B. may need to update INSTALL.md manually with the CUDA-specific version
 set(TA_TRACKED_EIGEN_VERSION 3.3.5)
