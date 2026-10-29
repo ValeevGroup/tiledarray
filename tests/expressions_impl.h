@@ -3097,6 +3097,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_derived_expressions_keep_lobound, F,
   BOOST_REQUIRE(ref_lobound == a.trange().make_tile_range(lb).lobound());
   BOOST_REQUIRE(ref_lobound[0] != 0);  // a nonzero lobound, or the test is moot
 
+  using namespace TiledArray::expressions;
   auto blk = [&] { return a("a,b,c").block(lb, ub, preserve_lobound); };
   // every derived form must yield ref's trange, and the derived value
   auto check = [&](auto&& expr, auto&& expected_expr) {
@@ -3106,7 +3107,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_derived_expressions_keep_lobound, F,
     if (result.trange() == ref.trange()) {
       // the difference is well-formed only when the tranges agree
       const auto diff = (result("a,b,c") - expected_expr).norm().get();
-      BOOST_CHECK_SMALL(static_cast<double>(diff), 1e-12);
+      BOOST_CHECK_EQUAL(static_cast<double>(diff), 0.0);
     }
   };
 
@@ -3146,7 +3147,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_derived_expressions_keep_lobound, F,
     if (result.trange() == ref_perm.trange()) {
       const auto diff =
           (result("c,b,a") - 2 * ref_perm("c,b,a").conj()).norm().get();
-      BOOST_CHECK_SMALL(static_cast<double>(diff), 1e-12);
+      BOOST_CHECK_EQUAL(static_cast<double>(diff), 0.0);
     }
   }
 
@@ -3159,14 +3160,35 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_derived_expressions_keep_lobound, F,
     BOOST_CHECK(na.trange_lobound() == src.trange_lobound());
   }
 
-  // a lobound of the wrong rank is rejected
-  BOOST_CHECK_THROW(
-      a("a,b,c").block(lb, ub).set_trange_lobound(std::array{0, 0}),
-      TiledArray::Exception);
+  // assignment through no_alias() on a block works and writes the block
+  {
+    auto& c = F::c;
+    c.fill_local(0.0);
+    BOOST_REQUIRE_NO_THROW(
+        c("a,b,c").block(lb, ub, preserve_lobound).no_alias() = 2 * blk());
+    array_type written;
+    BOOST_REQUIRE_NO_THROW(written("a,b,c") =
+                               c("a,b,c").block(lb, ub, preserve_lobound));
+    BOOST_CHECK_EQUAL(written.trange(), ref.trange());
+    const auto diff = (written("a,b,c") - 2 * ref("a,b,c")).norm().get();
+    BOOST_CHECK_EQUAL(static_cast<double>(diff), 0.0);
+  }
+
+  // a lobound of the wrong rank is rejected, whether set after construction
+  // or passed to the constructor; the setter leaves the expression untouched
+  {
+    auto expr = blk();
+    const auto before = expr.trange_lobound();
+    BOOST_CHECK_THROW(expr.set_trange_lobound(std::array{0, 0}),
+                      TiledArray::Exception);
+    BOOST_CHECK(expr.trange_lobound() == before);
+    BOOST_CHECK_THROW((BlkTsrExpr<array_type, true>(a, "a,b,c", lb, ub,
+                                                    Range::index_type{0, 0})),
+                      TiledArray::Exception);
+  }
 
   // the right scalar product of a conjugated expression is a scaled
   // conjugation, for blocks and for whole arrays alike
-  using namespace TiledArray::expressions;
   static_assert(std::is_same_v<decltype(blk().conj() * 2),
                                ScalConjBlkTsrExpr<array_type, int>>);
   static_assert(std::is_same_v<decltype(2 * blk().conj()),
