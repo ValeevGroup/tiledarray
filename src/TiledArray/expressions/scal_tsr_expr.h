@@ -287,8 +287,8 @@ inline ScalTsrExpr<Array, Scalar> conj(
 template <typename Array, typename Scalar,
           typename std::enable_if<
               TiledArray::detail::is_numeric_v<Scalar> >::type* = nullptr>
-inline ScalConjTsrExpr<Array, Scalar> operator*(
-    const ConjTsrExpr<const Array>& expr, const Scalar& factor) {
+inline ScalConjTsrExpr<Array, Scalar> operator*(const ConjTsrExpr<Array>& expr,
+                                                const Scalar& factor) {
   return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
                                         conj_op(factor));
 }
