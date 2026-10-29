@@ -4,7 +4,6 @@ set(BIN "${CMAKE_PLATFORM_INFO_DIR}/cmake/modules/DetectAlignSize.bin")
 try_compile(DETECT_ALIGN_SIZE_COMPILED
       ${CMAKE_BINARY_DIR}
       SOURCES ${PROJECT_SOURCE_DIR}/cmake/modules/DetectAlignSize.cpp
-      CMAKE_FLAGS ${CMAKE_CXX_FLAGS}
       COPY_FILE "${BIN}"
       COPY_FILE_ERROR copy_error
       OUTPUT_VARIABLE OUTPUT
