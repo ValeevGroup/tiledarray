@@ -61,6 +61,12 @@
 #define TA_UT_LABEL_DISTRIBUTED  *boost::unit_test::label("distributed")
 #define TA_UT_LABEL_SERIAL  *boost::unit_test::label("serial")
 
+// TA_ASSERT_POLICY must be defined before it is tested: undefined macros evaluate to 0 in #if
+#include <TiledArray/config.h>
+#if !defined(TA_ASSERT_POLICY) || !defined(TA_ASSERT_THROW)
+#error "TA_ASSERT_POLICY and TA_ASSERT_THROW must be defined by TiledArray/config.h"
+#endif
+
 #if (TA_ASSERT_POLICY == TA_ASSERT_THROW)
 
 #define BOOST_WARN_TA_ASSERT( S, E ) \
