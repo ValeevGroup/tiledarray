@@ -26,8 +26,8 @@
 //   ta_vector_um_tensor Nm Bm Nn Bn [nrepeat=5]
 //
 // Times each op for nrepeat iterations and reports the average wall time
-// and effective bandwidth (counting one read + one write per element for
-// in-place ops, two reads + one write for binary ops).
+// and effective bandwidth (counting two element accesses for single-operand
+// ops: scale, permute; three for two-operand ops: add, subt, hadamard, axpy).
 
 #include <TiledArray/device/tensor.h>
 #include <tiledarray.h>
