@@ -2682,8 +2682,35 @@ BOOST_AUTO_TEST_CASE(const_block_is_a_view) {
     TArrayUMD result, expected;
     BOOST_REQUIRE_NO_THROW(result("a,d") = cblk() * cblk("d,b,c"));
     BOOST_REQUIRE_NO_THROW(expected("a,d") = ref("a,b,c") * ref("d,b,c"));
-    BOOST_CHECK_EQUAL(norm_of_diff(result("a,d") - expected("a,d")), 0.0);
+    // with more than one rank the two contractions may sum in different
+    // orders, so the floating-point results agree to roundoff only
+    BOOST_CHECK_SMALL(norm_of_diff(result("a,d") - expected("a,d")),
+                      1e-12 * expected("a,d").norm().get());
     BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // the view's evaluation does not outlive its expression: once the
+  // consumers are done and the fence has run, nothing it left behind (a lazy
+  // tile, or the device conversion tile cached in it) holds the array's tiles,
+  // so each local tile of the array is back to its original holders
+  {
+    auto use_counts = [&] {
+      std::vector<std::pair<std::size_t, long>> counts;
+      for (auto ord : *a.pmap())
+        if (!a.is_zero(ord))
+          counts.emplace_back(ord, a.find_local(ord).get().use_count());
+      return counts;
+    };
+    a.world().gop.fence();
+    auto const before = use_counts();
+    {
+      TArrayUMD assigned, summed, contracted;
+      BOOST_REQUIRE_NO_THROW(assigned("a,b,c") = cblk());
+      BOOST_REQUIRE_NO_THROW(summed("a,b,c") = cblk() + 2 * cblk());
+      BOOST_REQUIRE_NO_THROW(contracted("a,d") = cblk() * cblk("d,b,c"));
+    }
+    a.world().gop.fence();
+    BOOST_CHECK(use_counts() == before);
   }
 }
 
