@@ -38,30 +38,55 @@
 namespace TiledArray {
 namespace detail {
 
-/// Prefetch a UMTensor's storage to the device associated with its tile range.
+/// prefetches the \p n elements at \p p to \p device_id
+/// (device::CpuDeviceId for the host) on \p stream, if the device supports it
 template <typename T>
-  requires TiledArray::detail::is_numeric_v<T>
-inline void to_device(const TiledArray::UMTensor<T>& tile) {
-  if (tile.empty()) return;
-  auto stream = device::stream_for(tile.range());
-  if (deviceEnv::instance()->concurrent_managed_access()) {
-    DeviceSafeCall(device::memPrefetchAsync(tile.data(),
-                                            tile.total_size() * sizeof(T),
-                                            stream.device, stream.stream));
-  }
+inline void prefetch(const T* p, std::size_t n, int device_id,
+                     device::stream_t stream) {
+  if (n == 0) return;
+  if (deviceEnv::instance()->concurrent_managed_access())
+    DeviceSafeCall(
+        device::memPrefetchAsync(p, n * sizeof(T), device_id, stream));
 }
 
-/// Prefetch a UMTensor's storage back to the host.
+/// prefetches a UMTensor's storage to the device of the stream its range
+/// maps to
+/// \return that stream
 template <typename T>
   requires TiledArray::detail::is_numeric_v<T>
-inline void to_host(const TiledArray::UMTensor<T>& tile) {
-  if (tile.empty()) return;
-  auto stream = device::stream_for(tile.range());
-  if (deviceEnv::instance()->concurrent_managed_access()) {
-    DeviceSafeCall(
-        device::memPrefetchAsync(tile.data(), tile.total_size() * sizeof(T),
-                                 device::CpuDeviceId, stream.stream));
+inline device::Stream to_device(const TiledArray::UMTensor<T>& tile) {
+  const auto stream = device::stream_for(tile.range());
+  if (!tile.empty())
+    prefetch(tile.data(), tile.total_size(), stream.device, stream.stream);
+  return stream;
+}
+
+/// prefetches a UMTensor's storage back to the host
+/// \return the stream the prefetch is queued on
+template <typename T>
+  requires TiledArray::detail::is_numeric_v<T>
+inline device::Stream to_host(const TiledArray::UMTensor<T>& tile) {
+  const auto stream = device::stream_for(tile.range());
+  if (!tile.empty())
+    prefetch(tile.data(), tile.total_size(), device::CpuDeviceId,
+             stream.stream);
+  return stream;
+}
+
+/// runs \p prefetch_tile on every local nonzero tile of \p array and returns
+/// once all of them have completed; fences the array's world
+template <typename T, typename Policy, typename Prefetch>
+inline void prefetch_local_tiles(
+    TiledArray::DistArray<UMTensor<T>, Policy>& array, Prefetch prefetch_tile) {
+  // a plain task: sync_madness_task_with blocks until the prefetch completes
+  auto task = [prefetch_tile](UMTensor<T>& tile) {
+    device::sync_madness_task_with(prefetch_tile(tile));
+  };
+  auto& world = array.world();
+  for (auto it = array.pmap()->begin(); it != array.pmap()->end(); ++it) {
+    if (!array.is_zero(*it)) world.taskq.add(task, array.find(*it));
   }
+  world.gop.fence();
 }
 
 }  // namespace detail
@@ -70,99 +95,70 @@ inline void to_host(const TiledArray::UMTensor<T>& tile) {
 /// between UMTensor-backed and host-Tensor-backed DistArrays.
 
 /// Prefetch every local tile of `array` to the host. Fences on the
-/// containing world and globally synchronizes the device on exit.
+/// containing world; every prefetch has completed on return.
 template <typename T, typename Policy>
   requires TiledArray::detail::is_numeric_v<T>
 inline void to_host(TiledArray::DistArray<UMTensor<T>, Policy>& array) {
-  auto prefetch = [](UMTensor<T>& tile) {
-    auto stream = device::stream_for(tile.range());
-    detail::to_host(tile);
-    device::sync_madness_task_with(stream);
-  };
-  auto& world = array.world();
-  for (auto it = array.pmap()->begin(); it != array.pmap()->end(); ++it) {
-    if (!array.is_zero(*it)) world.taskq.add(prefetch, array.find(*it));
-  }
-  world.gop.fence();
-  DeviceSafeCall(device::deviceSynchronize());
+  detail::prefetch_local_tiles(
+      array, [](const UMTensor<T>& tile) { return detail::to_host(tile); });
 }
 
 /// Prefetch every local tile of `array` to the device. Fences on the
-/// containing world and globally synchronizes the device on exit.
+/// containing world; every prefetch has completed on return.
 template <typename T, typename Policy>
   requires TiledArray::detail::is_numeric_v<T>
 inline void to_device(TiledArray::DistArray<UMTensor<T>, Policy>& array) {
-  auto prefetch = [](UMTensor<T>& tile) {
-    auto stream = device::stream_for(tile.range());
-    detail::to_device(tile);
-    device::sync_madness_task_with(stream);
-  };
-  auto& world = array.world();
-  for (auto it = array.pmap()->begin(); it != array.pmap()->end(); ++it) {
-    if (!array.is_zero(*it)) world.taskq.add(prefetch, array.find(*it));
-  }
-  world.gop.fence();
-  DeviceSafeCall(device::deviceSynchronize());
+  detail::prefetch_local_tiles(
+      array, [](const UMTensor<T>& tile) { return detail::to_device(tile); });
 }
 
 /// Convert a UMTensor-backed `DistArray` to one backed by a host tile type.
 template <typename UMTile, typename HostTile, typename Policy>
-inline std::enable_if_t<!std::is_same_v<UMTile, HostTile>,
-                        TiledArray::DistArray<HostTile, Policy>>
-um_tensor_to_ta_tensor(const TiledArray::DistArray<UMTile, Policy>& um_array) {
-  auto convert_tile = [](const UMTile& tile) {
-    auto stream = device::stream_for(tile.range());
-    detail::to_host(tile);
-    device::sync_madness_task_with(stream);
-    HostTile result(tile.range(), typename HostTile::nbatches(tile.nbatch()));
-    std::copy_n(tile.data(), tile.total_size(), result.data());
-    return result;
-  };
-  auto out = to_new_tile_type<UMTile>(um_array, convert_tile);
-  um_array.world().gop.fence();
-  return out;
-}
-
-template <typename UMTile, typename HostTile, typename Policy>
-inline std::enable_if_t<std::is_same_v<UMTile, HostTile>,
-                        TiledArray::DistArray<UMTile, Policy>>
-um_tensor_to_ta_tensor(const TiledArray::DistArray<UMTile, Policy>& um_array) {
-  return um_array;
+inline TiledArray::DistArray<HostTile, Policy> um_tensor_to_ta_tensor(
+    const TiledArray::DistArray<UMTile, Policy>& um_array) {
+  // a no-op if the tile types are the same (e.g. in callers generic over the
+  // tile type)
+  if constexpr (std::is_same_v<UMTile, HostTile>)
+    return um_array;
+  else {
+    auto convert_tile = [](const UMTile& tile) {
+      device::sync_madness_task_with(detail::to_host(tile));
+      HostTile result(tile.range(), typename HostTile::nbatches(tile.nbatch()));
+      std::copy_n(tile.data(), tile.total_size(), result.data());
+      return result;
+    };
+    auto out = to_new_tile_type<UMTile>(um_array, convert_tile);
+    um_array.world().gop.fence();
+    return out;
+  }
 }
 
 /// Convert a host-tile-backed `DistArray` to a UMTensor-backed one.
 template <typename UMTile, typename HostTile, typename Policy>
-inline std::enable_if_t<!std::is_same_v<UMTile, HostTile>,
-                        TiledArray::DistArray<UMTile, Policy>>
-ta_tensor_to_um_tensor(
+inline TiledArray::DistArray<UMTile, Policy> ta_tensor_to_um_tensor(
     const TiledArray::DistArray<HostTile, Policy>& host_array) {
-  auto convert_tile = [](const HostTile& tile) {
-    UMTile result(tile.range(), typename UMTile::nbatches(tile.nbatch()));
-    std::copy_n(tile.data(), tile.total_size(), result.data());
-    detail::to_device(result);
-    return result;
-  };
-  auto out = to_new_tile_type<HostTile>(host_array, convert_tile);
-  host_array.world().gop.fence();
-  return out;
-}
-
-template <typename UMTile, typename HostTile, typename Policy>
-inline std::enable_if_t<std::is_same_v<UMTile, HostTile>,
-                        TiledArray::DistArray<UMTile, Policy>>
-ta_tensor_to_um_tensor(
-    const TiledArray::DistArray<HostTile, Policy>& host_array) {
-  return host_array;
+  // a no-op if the tile types are the same
+  if constexpr (std::is_same_v<UMTile, HostTile>)
+    return host_array;
+  else {
+    auto convert_tile = [](const HostTile& tile) {
+      UMTile result(tile.range(), typename UMTile::nbatches(tile.nbatch()));
+      std::copy_n(tile.data(), tile.total_size(), result.data());
+      detail::to_device(result);
+      return result;
+    };
+    auto out = to_new_tile_type<HostTile>(host_array, convert_tile);
+    host_array.world().gop.fence();
+    return out;
+  }
 }
 
 }  // namespace TiledArray
 
-/// MADNESS archive specializations for UMTensor.
-///
-/// `TA::Tensor::serialize(ar)` works on any allocator (the member just walks
-/// `data() + range().volume() * nbatch()`), but UM data may be stale on the
-/// host if a device kernel is in flight. The Store specialization prefetches
-/// the tile back to the host before reading.
+/// MADNESS archive support for UMTensor. UM data may be stale on the host
+/// while a device kernel is in flight, so storing first prefetches the tile to
+/// the host and waits; the format is TA::Tensor::serialize's, which also loads
+/// it.
 namespace madness {
 namespace archive {
 
@@ -170,39 +166,11 @@ template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
   static inline void store(const Archive& ar,
                            const TiledArray::UMTensor<T>& t) {
-    if constexpr (TiledArray::detail::is_numeric_v<T>) {
-      if (!t.empty()) {
-        auto stream = TiledArray::device::stream_for(t.range());
-        TiledArray::detail::to_host(t);
-        TiledArray::device::sync_madness_task_with(stream);
-      }
-    }
-    const bool empty = t.empty();
-    ar & empty;
-    if (!empty) {
-      ar & t.range();
-      ar & t.nbatch();
-      ar& madness::archive::wrap(t.data(), t.range().volume() * t.nbatch());
-    }
-  }
-};
-
-template <class Archive, typename T>
-struct ArchiveLoadImpl<Archive, TiledArray::UMTensor<T>> {
-  static inline void load(const Archive& ar, TiledArray::UMTensor<T>& t) {
-    bool empty = false;
-    ar & empty;
-    if (!empty) {
-      TiledArray::Range range;
-      std::size_t nbatch = 1;
-      ar & range;
-      ar & nbatch;
-      t = TiledArray::UMTensor<T>(
-          std::move(range), typename TiledArray::UMTensor<T>::nbatches(nbatch));
-      ar& madness::archive::wrap(t.data(), t.range().volume() * t.nbatch());
-    } else {
-      t = TiledArray::UMTensor<T>();
-    }
+    if constexpr (TiledArray::detail::is_numeric_v<T>)
+      TiledArray::device::sync_madness_task_with(
+          TiledArray::detail::to_host(t));
+    // a shallow copy, since serialize() is not const
+    TiledArray::UMTensor<T>(t).serialize(ar);
   }
 };
 

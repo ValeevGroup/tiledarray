@@ -1007,6 +1007,15 @@ BOOST_AUTO_TEST_CASE(um_to_ta_round_trip) {
   GlobalFixture::world->gop.fence();
   // Round-trip: device_view should match the original `a`.
   check_close(device_view, a_h, tolerance);
+
+  // same tile type on both sides (as in callers generic over the tile type):
+  // no conversion, the same array comes back
+  BOOST_CHECK(
+      (TiledArray::ta_tensor_to_um_tensor<TileD, TileD, TA::DensePolicy>(a)
+           .id() == a.id()));
+  BOOST_CHECK(
+      (TiledArray::um_tensor_to_ta_tensor<TileD, TileD, TA::DensePolicy>(a)
+           .id() == a.id()));
 }
 
 BOOST_AUTO_TEST_CASE(um_to_ta_then_expression) {

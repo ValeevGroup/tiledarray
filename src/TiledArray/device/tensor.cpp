@@ -62,9 +62,7 @@ struct Launch {
   /// prefetches \p n elements at \p p to this stream's device
   template <typename T>
   void prefetch(const T* p, std::size_t n) const {
-    if (deviceEnv::instance()->concurrent_managed_access())
-      DeviceSafeCall(
-          memPrefetchAsync(p, n * sizeof(T), stream.device, stream.stream));
+    TiledArray::detail::prefetch(p, n, stream.device, stream.stream);
   }
 
   /// makes the enclosing task wait for (or, outside a task, blocks until)
