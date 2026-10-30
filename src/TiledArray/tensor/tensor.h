@@ -4222,6 +4222,8 @@ class Tensor {
   template <typename ReduceOp, typename JoinOp, typename Identity>
   auto reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
               Identity&& identity) const {
+    // a device kernel of this task may still be writing this tensor
+    TA_ON_DEVICE(Tensor) device::synchronize();
     return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
                                  std::forward<JoinOp>(join_op),
                                  std::forward<Identity>(identity), *this);
@@ -4249,6 +4251,8 @@ class Tensor {
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   auto reduce(const Right& other, ReduceOp&& reduce_op, JoinOp&& join_op,
               Identity&& identity) const {
+    // a device kernel of this task may still be writing either tensor
+    TA_ON_DEVICE(Tensor, Right) device::synchronize();
     return detail::tensor_reduce(
         std::forward<ReduceOp>(reduce_op), std::forward<JoinOp>(join_op),
         std::forward<Identity>(identity), *this, other);

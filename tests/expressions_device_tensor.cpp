@@ -277,7 +277,11 @@ BOOST_AUTO_TEST_CASE(reduce_factories) {
   BOOST_CHECK_EQUAL(a("a,b,c").max().get(), a_h("a,b,c").max().get());
   BOOST_CHECK_EQUAL(a("a,b,c").abs_min().get(), a_h("a,b,c").abs_min().get());
   BOOST_CHECK_EQUAL(a("a,b,c").abs_max().get(), a_h("a,b,c").abs_max().get());
-  BOOST_CHECK_NO_THROW(auto _ = a("a,b,c").product().get());
+  // over one 2x2x2 tile: the product of the whole array overflows
+  const std::array<int, 3> lo{0, 0, 0}, up{1, 1, 1};
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").block(lo, up).product().get(),
+                             a_h("a,b,c").block(lo, up).product().get(),
+                             1.0e-12);
 }
 
 BOOST_AUTO_TEST_CASE(reuse_stress) {
