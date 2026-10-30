@@ -3131,6 +3131,18 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(const_block_is_a_view, F, Fixtures, F) {
     BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
   }
 
+  // an assignment of the view into the same block of another array
+  {
+    array_type result = a.clone();
+    BOOST_REQUIRE_NO_THROW(result("a,b,c").block(lb, ub) = 2 * cblk());
+    array_type expected = a.clone();
+    BOOST_REQUIRE_NO_THROW(expected("a,b,c").block(lb, ub) = 2 * ref("a,b,c"));
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - expected("a,b,c")), 0.0);
+    BOOST_REQUIRE_NO_THROW(result("a,b,c").block(lb, ub) = cblk());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - a("a,b,c")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
   // a product with the view as an operand
   {
     array_type result, expected;

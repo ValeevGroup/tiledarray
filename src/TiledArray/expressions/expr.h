@@ -180,12 +180,22 @@ class Expr {
   /// still the operand array's own (a local tile an engine hands through
   /// unchanged, see LazyArrayTile::shares_source) is cloned, so that the
   /// result array never shares a tile with an operand.
+  /// \note the cast may be nonblocking (a lazy tile that evaluates to a
+  /// Future): the Future is returned as is, for the task to forward. Such a
+  /// tile is generated, never shared (see LazyArrayTile::shares_source).
+  /// \note every path that makes an operand's lazy tile a tile of a result
+  /// array must keep it from sharing: the two lazy-tile set_tile overloads
+  /// below do it here; the assignment to a block (eval_to(BlkTsrExpr&)) does
+  /// it with a Shift that clones a non-consumable argument.
   template <typename Result, typename T>
   struct cast_or_clone {
-    Result operator()(const T& tile) const {
+    auto operator()(const T& tile) const {
       TiledArray::Cast<Result, T> cast;
-      if constexpr (requires { tile.shares_source(); }) {
-        if (tile.shares_source()) return TiledArray::clone(cast(tile));
+      using cast_result_type = decltype(cast(tile));
+      if constexpr (requires { tile.shares_source(); } &&
+                    !madness::is_future<cast_result_type>::value) {
+        if (tile.shares_source())
+          return cast_result_type(TiledArray::clone(cast(tile)));
       }
       return cast(tile);
     }

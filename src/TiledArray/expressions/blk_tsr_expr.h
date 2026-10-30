@@ -69,9 +69,16 @@ struct ExprTrait<BlkTsrExpr<Array, Alias>> {
       engine_type;  ///< Expression engine type
 };
 
-/// a block of a const array is a view: when it keeps the array's element
-/// coordinates (preserve_lobound) its engine hands the array's own tiles to
-/// the consuming expression instead of copying them (see BlkTsrEngineTrait)
+/// a const block expression is a view: when it keeps the array's element
+/// coordinates (a zero shift, e.g. preserve_lobound) its engine hands the
+/// array's own tiles to the consuming expression instead of copying them (see
+/// BlkTsrEngineTrait).
+/// \note The constness is that of the TsrExpr the block is taken from, not
+/// only of the array: `std::as_const(a)("i,j").block(...)` is a const block,
+/// and so is `e.block(...)` for any `const TsrExpr<Array>& e`, e.g. an
+/// expression passed by const reference, even when `a` itself is mutable.
+/// Either way, nobody may mutate the array's tiles through tile
+/// access while the expression is being evaluated.
 template <typename Array, bool Alias>
 struct ExprTrait<BlkTsrExpr<const Array, Alias>> {
   typedef Array array_type;               ///< The \c Array type

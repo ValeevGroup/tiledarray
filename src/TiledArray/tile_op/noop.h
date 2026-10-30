@@ -29,6 +29,8 @@
 #include "../tile_interface/clone.h"
 #include "../tile_interface/permute.h"
 
+#include <type_traits>
+
 namespace TiledArray {
 namespace detail {
 
@@ -50,9 +52,12 @@ class Noop {
   static constexpr bool is_consumable = Consumable;
 
   /// true if this op hands its argument through unchanged, so that its result
-  /// shares the argument's data (the consumable Noop; the non-consumable one
-  /// clones)
-  bool is_pass_through() const noexcept { return is_consumable; }
+  /// shares the argument's data (the consumable Noop whose result is its
+  /// argument type; the non-consumable one clones, and a result of another
+  /// type is a converted, fresh tile)
+  bool is_pass_through() const noexcept {
+    return is_consumable && std::is_same_v<Result, Arg>;
+  }
 
  private:
   // Permuting tile evaluation function

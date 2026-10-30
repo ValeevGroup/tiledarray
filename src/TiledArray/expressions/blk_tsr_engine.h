@@ -40,10 +40,11 @@ namespace expressions {
 
 /// The traits of a BlkTsrEngine over `DistArray<Tile, Policy>`.
 ///
-/// \tparam Shares If `true`, the engine is that of a block of a CONST array:
-/// a block that keeps the array's element coordinates (a zero shift) hands the
-/// array's own tiles to its consumer, as the engine of a plain array operand
-/// does, instead of copying them. Its tiles are therefore not consumable (no
+/// \tparam Shares If `true`, the engine is that of a CONST block expression,
+/// `BlkTsrExpr<const Array>`: a block that keeps the array's element
+/// coordinates (a zero shift, see detail::Shift) hands the array's own tiles
+/// to its consumer, as the engine of a plain array operand does, instead of
+/// copying them. Its tiles are therefore not consumable (no
 /// consumer may take them over in place), and an assignment of the block
 /// clones them (see LazyArrayTile::shares_source). A block of a mutable array
 /// always copies, and its copies may be consumed.

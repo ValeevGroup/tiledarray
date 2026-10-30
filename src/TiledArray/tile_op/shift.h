@@ -50,6 +50,12 @@ namespace detail {
 /// copies share the data) instead of cloning it, as Noop does: the result
 /// then shares the argument's data (see is_pass_through()). This is the op of
 /// a block of a const array, whose tiles its consumer must never consume.
+/// The shift is zero whenever the block keeps the array's element coordinates:
+/// a preserve_lobound block, or a block whose first tile is already at the
+/// target lobound (e.g. one that starts at the array's origin).
+/// \note For a deep-copy tile type the hand-through is already a copy, and the
+/// assignment of the block (see LazyArrayTile::shares_source) copies it once
+/// more; wrap such a tile type in TA::Tile, which is shallow-copy.
 template <typename Result, typename Arg, bool Consumable, bool Share = false>
 class Shift {
  public:
