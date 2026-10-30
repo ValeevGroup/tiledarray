@@ -2623,8 +2623,11 @@ BOOST_AUTO_TEST_CASE(const_block_is_a_view) {
       UMTensor const eval_tile =
           static_cast<typename dist_eval_type::eval_type>(lazy.get());
       BOOST_CHECK_EQUAL(eval_tile.range(), parent_tile.range());
-      BOOST_CHECK_EQUAL(static_cast<void const*>(eval_tile.tensor().data()),
-                        static_cast<void const*>(parent_tile.tensor().data()));
+      // only a tile the parent holds on this rank can be shared
+      if (a.is_local(parent_index))
+        BOOST_CHECK_EQUAL(
+            static_cast<void const*>(eval_tile.tensor().data()),
+            static_cast<void const*>(parent_tile.tensor().data()));
     }
     dist_eval.wait();
   }
@@ -2650,8 +2653,9 @@ BOOST_AUTO_TEST_CASE(const_block_is_a_view) {
         parent_index[d] += lb[d];
       UMTensor const parent_tile = a.find(parent_index).get();
       UMTensor const result_tile = result.find(ord).get();
-      BOOST_CHECK_NE(static_cast<void const*>(result_tile.tensor().data()),
-                     static_cast<void const*>(parent_tile.tensor().data()));
+      if (a.is_local(parent_index))  // a remote find is a copy anyway
+        BOOST_CHECK_NE(static_cast<void const*>(result_tile.tensor().data()),
+                       static_cast<void const*>(parent_tile.tensor().data()));
     }
   }
 
