@@ -32,6 +32,7 @@
 #include <madness/world/thread_info.h>
 
 #include <atomic>
+#include <cstddef>
 
 namespace TiledArray {
 
@@ -139,6 +140,10 @@ class ExecutionSpaceScope {
 
   ExecutionSpaceScope(const ExecutionSpaceScope&) = delete;
   ExecutionSpaceScope& operator=(const ExecutionSpaceScope&) = delete;
+
+  // stack only, so that scopes end in the reverse order they began
+  static void* operator new(std::size_t) = delete;
+  static void* operator new[](std::size_t) = delete;
 
  private:
   ExecutionSpace previous_;
