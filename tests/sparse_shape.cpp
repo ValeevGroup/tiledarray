@@ -800,6 +800,33 @@ BOOST_AUTO_TEST_CASE(update_block_screens_with_own_threshold) {
     BOOST_CHECK_EQUAL(scaled.is_zero(i), result.is_zero(i));
 }
 
+BOOST_AUTO_TEST_CASE(serialize_keeps_threshold) {
+  // written under the default threshold ...
+  const auto written_threshold = sparse_shape.init_threshold();
+  const std::size_t buf_size = 1 << 20;
+  auto buf = std::make_unique<unsigned char[]>(buf_size);
+  madness::archive::BufferOutputArchive oar(buf.get(), buf_size);
+  oar & sparse_shape;
+  const std::size_t nbyte = oar.size();
+  oar.close();
+
+  // ... read under another one, into a shape whose unscaled norms are cached
+  auto resetter = set_threshold_to_max();
+  SparseShape<float> result(left);
+  BOOST_REQUIRE(!result.tile_norms().empty());
+  madness::archive::BufferInputArchive iar(buf.get(), nbyte);
+  iar & result;
+  iar.close();
+
+  BOOST_CHECK_EQUAL(result.init_threshold(), written_threshold);
+  BOOST_CHECK(result == sparse_shape);
+  BOOST_CHECK_EQUAL(result.nnz(), sparse_shape.nnz());
+  for (Tensor<float>::size_type i = 0ul; i < tr.tiles_range().volume(); ++i) {
+    BOOST_CHECK_EQUAL(result.is_zero(i), sparse_shape.is_zero(i));
+    BOOST_CHECK_EQUAL(result.tile_norms()[i], sparse_shape.tile_norms()[i]);
+  }
+}
+
 BOOST_AUTO_TEST_CASE(scale) {
   // change default threshold to make sure it's not inherited
   auto resetter = set_threshold_to_max();

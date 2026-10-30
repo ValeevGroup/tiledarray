@@ -1913,7 +1913,11 @@ class SparseShape {
     size_vectors_ = std::move(std::shared_ptr<vector_type>(
         new vector_type[dim], std::default_delete<vector_type[]>()));
     for (unsigned d = 0; d != dim; ++d) ar & size_vectors_.get()[d];
-    ar & zero_tile_count_;
+    // the threshold the norms were screened with: is_zero() must use it, not
+    // the reader's default threshold, or the set of nonzero tiles changes
+    ar & zero_tile_count_ & my_threshold_;
+    // the cached unscaled norms belong to the previous contents
+    tile_norms_unscaled_.reset();
   }
 
   template <typename Archive,
@@ -1923,7 +1927,7 @@ class SparseShape {
     ar & tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();
     for (unsigned d = 0; d != dim; ++d) ar & size_vectors_.get()[d];
-    ar & zero_tile_count_;
+    ar & zero_tile_count_ & my_threshold_;
   }
 
  private:

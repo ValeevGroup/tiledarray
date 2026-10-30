@@ -753,6 +753,68 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
   }
 }
 
+// An array saved under one sparse threshold and read back under another must
+// keep its tiles: the shape carries the threshold its norms were screened with.
+BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
+  using Shape = SparseShape<float>;
+  const float saved_threshold = Shape::threshold();
+  auto set_threshold = [this](float t) {
+    world.gop.serial_invoke([t] { Shape::threshold(t); });
+  };
+
+  // written under a low threshold, with a tile the reader's higher threshold
+  // would screen out
+  set_threshold(1.0e-8f);
+  TiledRange trange{{0, 2, 4}, {0, 3, 6}};
+  Tensor<float> norms(trange.tiles_range(), 0.0f);
+  norms(0, 0) = 1.0e-3f;
+  norms(1, 1) = 1.0f;
+  SpArrayN c(world, trange, Shape(norms, trange, /*do_not_scale=*/true));
+  c.fill(1);
+  world.gop.fence();
+  BOOST_REQUIRE(!c.is_zero({0, 0}));
+
+  char archive_file_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_name);
+  {
+    madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+    c.serialize(oar);
+  }
+  char archive_file_prefix_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_prefix_name);
+  const int nio = 1;
+  {
+    madness::archive::ParallelOutputArchive<> oar(
+        world, archive_file_prefix_name, nio);
+    oar & c;
+  }
+
+  set_threshold(1.0e-2f);
+  for (int parallel = 0; parallel != 2; ++parallel) {
+    decltype(c) cread;
+    if (parallel) {
+      madness::archive::ParallelInputArchive<> iar(
+          world, archive_file_prefix_name, nio);
+      BOOST_REQUIRE_NO_THROW(cread.load(world, iar));
+    } else {
+      madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+      BOOST_REQUIRE_NO_THROW(cread.serialize(iar));
+    }
+    BOOST_CHECK_EQUAL(cread.shape().init_threshold(), 1.0e-8f);
+    BOOST_CHECK(!cread.is_zero({0, 0}));
+    BOOST_REQUIRE(cread.shape() == c.shape());
+    BOOST_CHECK_EQUAL_COLLECTIONS(cread.begin(), cread.end(), c.begin(),
+                                  c.end());
+  }
+
+  set_threshold(saved_threshold);
+  std::remove(archive_file_name);
+  if (world.rank() < nio)
+    std::remove(
+        to_parallel_archive_file_name(archive_file_prefix_name, world.rank())
+            .c_str());
+}
+
 BOOST_AUTO_TEST_CASE(issue_225) {
   TiledRange1 TR0{0, 3, 8, 10};
   TiledRange1 TR1{0, 4, 7, 10};
