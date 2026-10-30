@@ -768,12 +768,13 @@ BOOST_AUTO_TEST_CASE(update_block_screens_with_own_threshold) {
 
   // the update, built under a 1000x looser threshold: it keeps norms that the
   // destination's threshold screens out
-  SparseShape<float>::threshold(threshold * 1e-3f);
   Tensor<float> norms(tr.tiles_range(), 0.0f);
   for (Tensor<float>::size_type i = 0ul; i < norms.size(); ++i)
     norms[i] = i % 3 == 0 ? 0.0f : (i % 3 == 1 ? threshold * 0.1f : 1.0f);
-  const SparseShape<float> update(norms, tr, /* do_not_scale = */ true);
-  reset_threshold();
+  const auto update = [&] {
+    auto resetter = set_threshold(threshold * 1e-3f);
+    return SparseShape<float>(norms, tr, /* do_not_scale = */ true);
+  }();
   BOOST_REQUIRE(!update.is_zero(1));  // kept by the looser threshold
 
   SparseShape<float> result;
@@ -825,6 +826,85 @@ BOOST_AUTO_TEST_CASE(serialize_keeps_threshold) {
     BOOST_CHECK_EQUAL(result.is_zero(i), sparse_shape.is_zero(i));
     BOOST_CHECK_EQUAL(result.tile_norms()[i], sparse_shape.tile_norms()[i]);
   }
+}
+
+BOOST_AUTO_TEST_CASE(update_block_with_stricter_threshold) {
+  const float threshold = SparseShape<float>::threshold();
+  // the destination, built under a 1000x looser threshold
+  const auto dest = [&] {
+    auto resetter = set_threshold(threshold * 1e-3f);
+    return SparseShape<float>(1.0f, tr);
+  }();
+
+  // the update keeps nothing that the destination would screen out, so its
+  // norms are copied unchanged
+  const SparseShape<float> result = dest.update_block(
+      tr.tiles_range().lobound(), tr.tiles_range().upbound(), sparse_shape);
+  BOOST_CHECK_EQUAL(result.init_threshold(), dest.init_threshold());
+  for (Tensor<float>::size_type i = 0ul; i < tr.tiles_range().volume(); ++i) {
+    BOOST_CHECK_EQUAL(result[i], sparse_shape[i]);
+    BOOST_CHECK_EQUAL(result.is_zero(i), sparse_shape.is_zero(i));
+  }
+  BOOST_CHECK_EQUAL(result.nnz(), sparse_shape.nnz());
+}
+
+BOOST_AUTO_TEST_CASE(update_block_partial) {
+  const float threshold = SparseShape<float>::threshold();
+  const SparseShape<float> dest(1.0f, tr);
+
+  // the sub-block [1,4) of the update, built under a 1000x looser threshold
+  Tensor<float> norms(tr.tiles_range(), 0.0f);
+  for (Tensor<float>::size_type i = 0ul; i < norms.size(); ++i)
+    norms[i] = i % 2 == 0 ? threshold * 0.1f : 2.0f;
+  const auto update = [&] {
+    auto resetter = set_threshold(threshold * 1e-3f);
+    return SparseShape<float>(norms, tr, /* do_not_scale = */ true);
+  }();
+  const Range::index lower(GlobalFixture::dim, 1), upper(GlobalFixture::dim, 4);
+  const auto update_blk = update.block(lower, upper);
+
+  const SparseShape<float> result = dest.update_block(lower, upper, update_blk);
+  const BlockRange blk_range(tr.tiles_range(), lower, upper);
+  size_type zero_tile_count = 0ul;
+  for (const auto& idx : tr.tiles_range()) {
+    const float expected = blk_range.includes(idx)
+                               ? (norms(idx) < threshold ? 0.0f : norms(idx))
+                               : dest[idx];
+    BOOST_CHECK_EQUAL(result[idx], expected);
+    BOOST_CHECK_EQUAL(result.is_zero(idx), expected == 0.0f);
+    if (expected == 0.0f) ++zero_tile_count;
+  }
+  BOOST_CHECK_EQUAL(result.nnz(), tr.tiles_range().volume() - zero_tile_count);
+}
+
+BOOST_AUTO_TEST_CASE(serialize_rejects_invalid_threshold) {
+  const std::size_t buf_size = 1 << 20;
+  auto buf = std::make_unique<unsigned char[]>(buf_size);
+  madness::archive::BufferOutputArchive oar(buf.get(), buf_size);
+  oar & sparse_shape;
+  const std::size_t nbyte = oar.size();
+  oar.close();
+
+  // the threshold is the last field of the archive
+  for (const float bad : {std::numeric_limits<float>::quiet_NaN(),
+                          std::numeric_limits<float>::infinity(), -1.0f}) {
+    std::memcpy(buf.get() + nbyte - sizeof(float), &bad, sizeof(float));
+    madness::archive::BufferInputArchive iar(buf.get(), nbyte);
+    SparseShape<float> result;
+    BOOST_CHECK_THROW(iar & result, TiledArray::Exception);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(equality_compares_threshold) {
+  // the same norms, screened with a different threshold
+  const auto other = [&] {
+    auto resetter = set_threshold(sparse_shape.init_threshold() * 1e-3f);
+    return SparseShape<float>(sparse_shape.data(), tr,
+                              /* do_not_scale = */ true);
+  }();
+  BOOST_REQUIRE_EQUAL(other.nnz(), sparse_shape.nnz());
+  BOOST_CHECK(!(other == sparse_shape));
+  BOOST_CHECK(SparseShape<float>(sparse_shape) == sparse_shape);
 }
 
 BOOST_AUTO_TEST_CASE(scale) {

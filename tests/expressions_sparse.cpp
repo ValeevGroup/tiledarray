@@ -54,6 +54,11 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   auto set_threshold = [&world](float t) {
     world.gop.serial_invoke([t] { Shape::threshold(t); });
   };
+  // restores the global threshold however the test exits
+  const auto restore_threshold =
+      std::shared_ptr<void>(nullptr, [set_threshold, saved_threshold](void*) {
+        set_threshold(saved_threshold);
+      });
 
   // dest: 4x2 tiles; the assigned sub-block is tiles [2,4) x [0,2).
   TiledRange dest_tr{{0, 2, 4, 6, 8}, {0, 3, 6}};
@@ -101,8 +106,6 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   });
   BOOST_CHECK(scaled.is_zero({2, 0}));
   BOOST_CHECK(!scaled.is_zero({3, 1}));
-
-  set_threshold(saved_threshold);  // restore global (static) threshold
 }
 
 BOOST_AUTO_TEST_SUITE_END()

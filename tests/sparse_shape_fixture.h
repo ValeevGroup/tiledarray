@@ -96,6 +96,12 @@ struct SparseShapeFixture : public TiledRangeFixture {
     return std::shared_ptr<void>(nullptr, [](void*) { reset_threshold(); });
   }
 
+  /// sets the default threshold to \p t until the returned object is destroyed
+  static auto set_threshold(float t) {
+    SparseShape<float>::threshold(t);
+    return std::shared_ptr<void>(nullptr, [](void*) { reset_threshold(); });
+  }
+
   static auto tweak_threshold() {
     SparseShape<float>::threshold(10 * SparseShape<float>::threshold());
     return std::shared_ptr<void>(nullptr, [](void*) { reset_threshold(); });

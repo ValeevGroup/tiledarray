@@ -761,6 +761,11 @@ BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
   auto set_threshold = [this](float t) {
     world.gop.serial_invoke([t] { Shape::threshold(t); });
   };
+  // restores the global threshold however the test exits
+  const auto restore_threshold =
+      std::shared_ptr<void>(nullptr, [set_threshold, saved_threshold](void*) {
+        set_threshold(saved_threshold);
+      });
 
   // written under a low threshold, with a tile the reader's higher threshold
   // would screen out
@@ -776,13 +781,22 @@ BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
 
   char archive_file_name[] = "tmp.XXXXXX";
   make_unique_filename_template(archive_file_name);
+  char archive_file_prefix_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_prefix_name);
+  const int nio = 1;
+  // removes the archives however the test exits
+  const auto remove_archives =
+      std::shared_ptr<void>(nullptr, [&, rank = world.rank()](void*) {
+        std::remove(archive_file_name);
+        if (rank < nio)
+          std::remove(
+              to_parallel_archive_file_name(archive_file_prefix_name, rank)
+                  .c_str());
+      });
   {
     madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
     c.serialize(oar);
   }
-  char archive_file_prefix_name[] = "tmp.XXXXXX";
-  make_unique_filename_template(archive_file_prefix_name);
-  const int nio = 1;
   {
     madness::archive::ParallelOutputArchive<> oar(
         world, archive_file_prefix_name, nio);
@@ -806,13 +820,6 @@ BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
     BOOST_CHECK_EQUAL_COLLECTIONS(cread.begin(), cread.end(), c.begin(),
                                   c.end());
   }
-
-  set_threshold(saved_threshold);
-  std::remove(archive_file_name);
-  if (world.rank() < nio)
-    std::remove(
-        to_parallel_archive_file_name(archive_file_prefix_name, world.rank())
-            .c_str());
 }
 
 BOOST_AUTO_TEST_CASE(issue_225) {
