@@ -125,6 +125,13 @@ class LazyArrayTile {
   /// \return \c true if this tile is consumable, otherwise \c false .
   bool is_consumable() const { return consume_ || op_->permutation(); }
 
+  /// true if converting this tile yields the source array's own tile (shared
+  /// data) rather than a fresh one: a local tile that the op hands through
+  /// unchanged. Such a tile must not become a tile of another array.
+  bool shares_source() const noexcept {
+    return !consume_ && op_->is_pass_through();
+  }
+
   /// Convert tile to evaluation type using the op object
 #ifdef TILEDARRAY_HAS_DEVICE
 

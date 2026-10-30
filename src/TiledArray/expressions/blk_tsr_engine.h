@@ -38,8 +38,18 @@ class DistArray;
 
 namespace expressions {
 
-template <typename Tile, typename Policy, typename Result, bool Alias>
-struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
+/// The traits of a BlkTsrEngine over `DistArray<Tile, Policy>`.
+///
+/// \tparam Shares If `true`, the engine is that of a block of a CONST array:
+/// a block that keeps the array's element coordinates (a zero shift) hands the
+/// array's own tiles to its consumer, as the engine of a plain array operand
+/// does, instead of copying them. Its tiles are therefore not consumable (no
+/// consumer may take them over in place), and an assignment of the block
+/// clones them (see LazyArrayTile::shares_source). A block of a mutable array
+/// always copies, and its copies may be consumed.
+template <typename Tile, typename Policy, typename Result, bool Alias,
+          bool Shares>
+struct BlkTsrEngineTrait {
   // Argument typedefs
   typedef DistArray<Tile, Policy> array_type;  ///< The array type
 
@@ -51,7 +61,8 @@ struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
       Result,
       typename TiledArray::eval_trait<typename array_type::value_type>::type,
       (!Alias) || TiledArray::eval_trait<
-                      typename array_type::value_type>::is_consumable>
+                      typename array_type::value_type>::is_consumable,
+      Shares>
       op_base_type;  ///< The base tile operation
   typedef TiledArray::detail::UnaryWrapper<op_base_type>
       op_type;  ///< The tile operation
@@ -71,8 +82,26 @@ struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
   typedef typename policy::pmap_interface
       pmap_interface;  ///< Process map interface type
 
-  static constexpr bool consumable = true;
+  static constexpr bool consumable = !Shares;
   static constexpr unsigned int leaves = 1;
+};
+
+template <typename Tile, typename Policy, typename Result, bool Alias>
+struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>>
+    : BlkTsrEngineTrait<Tile, Policy, Result, Alias, false> {};
+
+/// the engine of a block of a const array shares the array's tiles (see
+/// BlkTsrEngineTrait); not for device tiles, whose assignment path does not
+/// clone a shared tile
+template <typename Tile, typename Policy, typename Result, bool Alias>
+struct EngineTrait<BlkTsrEngine<const DistArray<Tile, Policy>, Result, Alias>>
+    : BlkTsrEngineTrait<Tile, Policy, Result, Alias,
+#ifdef TILEDARRAY_HAS_DEVICE
+                        !TiledArray::detail::is_device_tile_v<Tile>
+#else
+                        true
+#endif
+                        > {
 };
 
 template <typename Tile, typename Policy, typename Scalar, typename Result>

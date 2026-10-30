@@ -69,13 +69,16 @@ struct ExprTrait<BlkTsrExpr<Array, Alias>> {
       engine_type;  ///< Expression engine type
 };
 
+/// a block of a const array is a view: when it keeps the array's element
+/// coordinates (preserve_lobound) its engine hands the array's own tiles to
+/// the consuming expression instead of copying them (see BlkTsrEngineTrait)
 template <typename Array, bool Alias>
 struct ExprTrait<BlkTsrExpr<const Array, Alias>> {
   typedef Array array_type;               ///< The \c Array type
   typedef const Array& reference;         ///< \c Array reference type
   typedef numeric_t<Array> numeric_type;  ///< Array base numeric type
   typedef scalar_t<Array> scalar_type;    ///< Array base scalar type
-  typedef BlkTsrEngine<Array, typename Array::eval_type, Alias>
+  typedef BlkTsrEngine<const Array, typename Array::eval_type, Alias>
       engine_type;  ///< Expression engine type
 };
 

@@ -176,6 +176,21 @@ class Expr {
     return (*op)(std::forward<T>(tile));
   }
 
+  /// Converts a lazy tile to the result array's tile type. A tile that is
+  /// still the operand array's own (a local tile an engine hands through
+  /// unchanged, see LazyArrayTile::shares_source) is cloned, so that the
+  /// result array never shares a tile with an operand.
+  template <typename Result, typename T>
+  struct cast_or_clone {
+    Result operator()(const T& tile) const {
+      TiledArray::Cast<Result, T> cast;
+      if constexpr (requires { tile.shares_source(); }) {
+        if (tile.shares_source()) return TiledArray::clone(cast(tile));
+      }
+      return cast(tile);
+    }
+  };
+
   /// Set an array tile with a lazy tile
 
   /// Spawn a task to evaluate a lazy tile and set the \a array tile at
@@ -196,7 +211,7 @@ class Expr {
                               >::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
     array.set(index, array.world().taskq.add(
-                         TiledArray::Cast<typename A::value_type, T>(), tile));
+                         cast_or_clone<typename A::value_type, T>(), tile));
   }
 
 #ifdef TILEDARRAY_HAS_DEVICE

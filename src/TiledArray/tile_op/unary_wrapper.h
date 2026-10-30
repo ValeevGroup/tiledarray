@@ -124,6 +124,16 @@ class UnaryWrapper {
   /// \return A reference to the permutation applied to the result tile
   const BipartitePermutation& permutation() const { return perm_; }
 
+  /// true if the result of this op shares its argument's data: the wrapped
+  /// op hands the argument through (see Noop::is_pass_through,
+  /// Shift::is_pass_through) and no permutation is applied
+  bool is_pass_through() const noexcept {
+    if constexpr (requires { op_.is_pass_through(); })
+      return !perm_ && op_.is_pass_through();
+    else
+      return false;
+  }
+
   /// Apply operator to `arg` and possibly permute the result
 
   /// \param arg The argument

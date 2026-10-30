@@ -49,6 +49,11 @@ class Noop {
 
   static constexpr bool is_consumable = Consumable;
 
+  /// true if this op hands its argument through unchanged, so that its result
+  /// shares the argument's data (the consumable Noop; the non-consumable one
+  /// clones)
+  bool is_pass_through() const noexcept { return is_consumable; }
+
  private:
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation

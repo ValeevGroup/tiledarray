@@ -29,6 +29,8 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+#include <utility>
+
 using namespace TiledArray;
 using TiledArray::detail::Noop;
 using TiledArray::detail::Scal;
@@ -49,21 +51,21 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
 
   ~ArrayEvalImplFixture() {}
 
-  static UnaryWrapper<Noop<TensorI, TensorI, true> > make_array_noop(
+  static UnaryWrapper<Noop<TensorI, TensorI, true>> make_array_noop(
       const Permutation& perm = Permutation()) {
-    return UnaryWrapper<Noop<TensorI, TensorI, true> >(
+    return UnaryWrapper<Noop<TensorI, TensorI, true>>(
         Noop<TensorI, TensorI, true>(), perm);
   }
 
-  static UnaryWrapper<Scal<TensorI, TensorI, int, true> > make_array_scal(
+  static UnaryWrapper<Scal<TensorI, TensorI, int, true>> make_array_scal(
       const int factor, const Permutation& perm = Permutation()) {
-    return UnaryWrapper<Scal<TensorI, TensorI, int, true> >(
+    return UnaryWrapper<Scal<TensorI, TensorI, int, true>>(
         Scal<TensorI, TensorI, int, true>(factor), perm);
   }
 
-  static UnaryWrapper<Scal<TensorI, TensorI, int, false> > make_scal(
+  static UnaryWrapper<Scal<TensorI, TensorI, int, false>> make_scal(
       const int factor, const Permutation& perm = Permutation()) {
-    return UnaryWrapper<Scal<TensorI, TensorI, int, false> >(
+    return UnaryWrapper<Scal<TensorI, TensorI, int, false>>(
         Scal<TensorI, TensorI, int, false>(factor), perm);
   }
 
@@ -180,6 +182,138 @@ BOOST_AUTO_TEST_CASE(eval_permute) {
       BOOST_CHECK_EQUAL(eval_tile[perm * array_tile.range().idx(i)],
                         array_tile[i]);
     }
+  }
+}
+
+// Evaluates the block expression \p expr as a consuming expression (a
+// product, a sum, an assignment) would: through its engine's distributed
+// evaluator, converting each lazy tile to the eval tile.
+template <typename BlkExpr>
+auto block_eval_tiles(BlkExpr const& expr, World& world) {
+  typename BlkExpr::engine_type engine(expr);
+  engine.init(world, {},
+              TiledArray::expressions::BipartiteIndexList(
+                  TiledArray::detail::dummy_annotation(GlobalFixture::dim)));
+  auto dist_eval = engine.make_dist_eval();
+  dist_eval.eval();
+  using dist_eval_type = decltype(dist_eval);
+  std::vector<std::pair<typename dist_eval_type::ordinal_type,
+                        typename dist_eval_type::eval_type>>
+      tiles;
+  for (auto ord : *dist_eval.pmap())
+    tiles.emplace_back(ord, static_cast<typename dist_eval_type::eval_type>(
+                                dist_eval.get(ord).get()));
+  dist_eval.wait();
+  return std::make_pair(dist_eval.trange(), std::move(tiles));
+}
+
+// A block of a CONST array that keeps the parent's element coordinates
+// (preserve_lobound) relocates nothing: a consumer receives the parent's
+// tiles themselves, not copies, exactly as it does for the plain (non-block)
+// array operand. The array being const is the promise that nobody mutates
+// those tiles through tile-level access while the expression is alive.
+BOOST_AUTO_TEST_CASE(const_block_preserve_lobound_shares_tiles) {
+  auto const& tiles_range = tr.tiles_range();
+  container::svector<long> lo(tiles_range.lobound().begin(),
+                              tiles_range.lobound().end());
+  container::svector<long> hi(tiles_range.upbound().begin(),
+                              tiles_range.upbound().end());
+  lo[0] += 1;  // a proper sub-block, so block and parent tile indices differ
+  auto const annot = TiledArray::detail::dummy_annotation(GlobalFixture::dim);
+  auto const [block_trange, tiles] = block_eval_tiles(
+      std::as_const(array)(annot).block(lo, hi, TiledArray::preserve_lobound),
+      array.world());
+  for (auto const& [ord, eval_tile] : tiles) {
+    auto parent_index = block_trange.tiles_range().idx(ord);
+    for (std::size_t d = 0; d < parent_index.size(); ++d)
+      parent_index[d] += lo[d];
+    TArrayI::value_type const parent_tile = array.find(parent_index);
+    BOOST_CHECK_EQUAL(eval_tile.range(), parent_tile.range());
+    BOOST_CHECK_EQUAL(static_cast<void const*>(eval_tile.data()),
+                      static_cast<void const*>(parent_tile.data()));
+  }
+}
+
+// The same block of a MUTABLE array keeps producing copies: its consumers
+// may take its tiles over (consume them in place), which must not reach the
+// array.
+BOOST_AUTO_TEST_CASE(mutable_block_preserve_lobound_copies_tiles) {
+  auto const& tiles_range = tr.tiles_range();
+  container::svector<long> lo(tiles_range.lobound().begin(),
+                              tiles_range.lobound().end());
+  container::svector<long> hi(tiles_range.upbound().begin(),
+                              tiles_range.upbound().end());
+  lo[0] += 1;
+  auto const annot = TiledArray::detail::dummy_annotation(GlobalFixture::dim);
+  auto const [block_trange, tiles] = block_eval_tiles(
+      array(annot).block(lo, hi, TiledArray::preserve_lobound), array.world());
+  for (auto const& [ord, eval_tile] : tiles) {
+    auto parent_index = block_trange.tiles_range().idx(ord);
+    for (std::size_t d = 0; d < parent_index.size(); ++d)
+      parent_index[d] += lo[d];
+    TArrayI::value_type const parent_tile = array.find(parent_index);
+    BOOST_CHECK_EQUAL(eval_tile.range(), parent_tile.range());
+    BOOST_CHECK_NE(static_cast<void const*>(eval_tile.data()),
+                   static_cast<void const*>(parent_tile.data()));
+    BOOST_REQUIRE_EQUAL(eval_tile.size(), parent_tile.size());
+    for (std::size_t i = 0ul; i < eval_tile.size(); ++i)
+      BOOST_CHECK_EQUAL(eval_tile[i], parent_tile[i]);
+  }
+}
+
+// Assigning a const block to an array gives that array its own tiles: the
+// shared tiles the block hands its consumers must not become the tiles of a
+// mutable array.
+BOOST_AUTO_TEST_CASE(assignment_of_const_block_does_not_alias) {
+  auto const& tiles_range = tr.tiles_range();
+  container::svector<long> lo(tiles_range.lobound().begin(),
+                              tiles_range.lobound().end());
+  container::svector<long> hi(tiles_range.upbound().begin(),
+                              tiles_range.upbound().end());
+  lo[0] += 1;
+  auto const annot = TiledArray::detail::dummy_annotation(GlobalFixture::dim);
+  TArrayI result;
+  BOOST_REQUIRE_NO_THROW(result(annot) = std::as_const(array)(annot).block(
+                             lo, hi, TiledArray::preserve_lobound));
+  for (auto const& ord : *result.pmap()) {
+    auto parent_index = result.trange().tiles_range().idx(ord);
+    for (std::size_t d = 0; d < parent_index.size(); ++d)
+      parent_index[d] += lo[d];
+    TArrayI::value_type const result_tile = result.find(ord);
+    TArrayI::value_type const parent_tile = array.find(parent_index);
+    BOOST_CHECK_EQUAL(result_tile.range(), parent_tile.range());
+    BOOST_CHECK_NE(static_cast<void const*>(result_tile.data()),
+                   static_cast<void const*>(parent_tile.data()));
+    BOOST_REQUIRE_EQUAL(result_tile.size(), parent_tile.size());
+    for (std::size_t i = 0ul; i < result_tile.size(); ++i)
+      BOOST_CHECK_EQUAL(result_tile[i], parent_tile[i]);
+  }
+}
+
+// A block rebased to the origin relocates every tile's range; the parent's
+// own tiles keep their ranges and the values are unchanged.
+BOOST_AUTO_TEST_CASE(block_rebased_relocates_tiles) {
+  auto const& tiles_range = tr.tiles_range();
+  container::svector<long> lo(tiles_range.lobound().begin(),
+                              tiles_range.lobound().end());
+  container::svector<long> hi(tiles_range.upbound().begin(),
+                              tiles_range.upbound().end());
+  lo[0] += 1;
+  auto const annot = TiledArray::detail::dummy_annotation(GlobalFixture::dim);
+  auto const [block_trange, tiles] =
+      block_eval_tiles(array(annot).block(lo, hi), array.world());
+  for (auto const& [ord, eval_tile] : tiles) {
+    auto const block_index = block_trange.tiles_range().idx(ord);
+    auto parent_index = block_index;
+    for (std::size_t d = 0; d < parent_index.size(); ++d)
+      parent_index[d] += lo[d];
+    TArrayI::value_type const parent_tile = array.find(parent_index);
+    BOOST_CHECK_EQUAL(eval_tile.range(),
+                      block_trange.make_tile_range(block_index));
+    BOOST_CHECK_EQUAL(parent_tile.range(), tr.make_tile_range(parent_index));
+    BOOST_REQUIRE_EQUAL(eval_tile.size(), parent_tile.size());
+    for (std::size_t i = 0ul; i < eval_tile.size(); ++i)
+      BOOST_CHECK_EQUAL(eval_tile[i], parent_tile[i]);
   }
 }
 
