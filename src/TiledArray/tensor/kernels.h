@@ -158,12 +158,13 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
         integer{1},
         (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n
                                                                        : k));
+    const integer ldc = std::max(integer{1}, n);
 
     TA_ON_DEVICE(Tensor<Cs...>, Tensor<As...>, Tensor<Bs...>) {
       using T = typename Tensor<Cs...>::value_type;
       device::gemm<T>(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
                       T(alpha), A.data(), lda, B.data(), ldb, T(beta), C.data(),
-                      std::max(integer{1}, n), C.range());
+                      ldc, C.range());
       return;
     }
 
@@ -184,7 +185,7 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
       }
       non_distributed::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
                             k, alpha, A.data(), lda, B.data(), ldb,
-                            twostep ? numeric_type(0) : beta, C.data(), n);
+                            twostep ? numeric_type(0) : beta, C.data(), ldc);
 
       if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
           TiledArray::TileOpsLogger<T>::get_instance().gemm) {
@@ -233,7 +234,6 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
       }
     }
 #else   // TA_ENABLE_TILE_OPS_LOGGING
-    const integer ldc = std::max(integer{1}, n);
     math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
                      alpha, A.data(), lda, B.data(), ldb, beta, C.data(), ldc);
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
