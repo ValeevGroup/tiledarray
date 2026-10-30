@@ -372,4 +372,36 @@ BOOST_AUTO_TEST_CASE(block_assignment_result_has_the_default_map) {
   array.world().gop.fence();
 }
 
+// An array whose tiles an assignment sent to other ranks can be dropped right
+// after the assignment, with no fence: the tiles still in flight do not land
+// on a destroyed array. Both an array assigned from a block (its tiles move
+// from the block's map to the default map) and an array a block of which is
+// assigned (the block's tiles move to the array's map).
+BOOST_AUTO_TEST_CASE(block_assignment_result_can_be_dropped_at_once) {
+  auto const& tiles_range = tr.tiles_range();
+  container::svector<long> lo(tiles_range.lobound().begin(),
+                              tiles_range.lobound().end());
+  container::svector<long> hi(tiles_range.upbound().begin(),
+                              tiles_range.upbound().end());
+  lo[0] += 1;
+  container::svector<long> zero(lo.size(), 0), extent(lo.size());
+  for (std::size_t d = 0; d < lo.size(); ++d) extent[d] = hi[d] - lo[d];
+  std::string annot;
+  for (unsigned int d = 0; d < GlobalFixture::dim; ++d)
+    annot += (d ? ",a" : "a") + std::to_string(d);
+
+  for (int repeat = 0; repeat != 50; ++repeat) {
+    {
+      TArrayI result;
+      result(annot) = array(annot).block(lo, hi);
+    }
+    {
+      TArrayI result;
+      result(annot) = array(annot).block(lo, hi);
+      result(annot).block(zero, extent) = array(annot).block(lo, hi);
+    }
+  }
+  array.world().gop.fence();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
