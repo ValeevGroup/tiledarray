@@ -186,7 +186,9 @@ class UnaryWrapper {
     //        auto op_consume = [this](auto&& arg) {
     //          return op_.consume(std::forward<decltype(arg)>(arg));
     //        };
-    auto op_consume = [this](eval_t<A>& arg) { return op_.consume(arg); };
+    // N.B. capture a copy of op_: if cast_arg is a Future this runs as a task,
+    // possibly after this wrapper (owned by an evaluator) is gone
+    auto op_consume = [op = op_](eval_t<A>& arg) { return op.consume(arg); };
     return (perm_ ? detail::invoke(op_, std::move(cast_arg), perm_)
                   : (arg.is_consumable()
                          ? detail::invoke(op_consume, cast_arg)
@@ -206,7 +208,9 @@ class UnaryWrapper {
     //        auto op_consume = [this](auto&& arg) {
     //          return op_.consume(std::forward<decltype(arg)>(arg));
     //        };
-    auto op_consume = [this](eval_t<A>& arg) { return op_.consume(arg); };
+    // N.B. capture a copy of op_: if cast_arg is a Future this runs as a task,
+    // possibly after this wrapper (owned by an evaluator) is gone
+    auto op_consume = [op = op_](eval_t<A>& arg) { return op.consume(arg); };
     return (perm_ ? detail::invoke(op_, std::move(cast_arg), perm_)
                   : detail::invoke(op_consume, cast_arg));
   }

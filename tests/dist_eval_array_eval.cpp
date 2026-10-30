@@ -31,6 +31,9 @@
 
 #include <boost/mpl/list.hpp>
 
+#include <chrono>
+#include <thread>
+
 #include <utility>
 
 using namespace TiledArray;
@@ -66,10 +69,16 @@ class GeneratedTile {
   {
     return TensorI(range_, value(range_));
   }
+  // the Future is fulfilled by a task that finishes late, after the
+  // evaluator that requested it is done, so that whatever the request
+  // chains onto the Future must not depend on the evaluator still existing
   explicit operator madness::Future<TensorI>() const
     requires Async
   {
-    return madness::Future<TensorI>(TensorI(range_, value(range_)));
+    return TiledArray::get_default_world().taskq.add([range = range_] {
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      return TensorI(range, value(range));
+    });
   }
 
   template <typename Archive>
@@ -487,6 +496,17 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(assignment_of_lazy_tiles, LazyTile, LazyTiles) {
     BOOST_REQUIRE_NO_THROW(result(annot) = std::as_const(lazy)(annot).block(
                                lo, hi, TiledArray::preserve_lobound));
     check(result);
+  }
+  // lazy tiles as the operands of a binary op
+  {
+    TArrayI result;
+    BOOST_REQUIRE_NO_THROW(result(annot) = lazy(annot) + lazy(annot));
+    for (auto const& ord : *result.pmap()) {
+      TArrayI::value_type const tile = result.find(ord);
+      auto const expected = 2 * LazyTile::value(tile.range());
+      for (std::size_t i = 0ul; i < tile.size(); ++i)
+        BOOST_CHECK_EQUAL(tile[i], expected);
+    }
   }
 }
 
