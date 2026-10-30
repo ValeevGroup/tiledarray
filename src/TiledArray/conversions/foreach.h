@@ -483,7 +483,8 @@ inline std::enable_if_t<is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// function will fence before AND after the data is modified
 template <typename Tile, typename Policy, typename Op,
           typename = typename std::enable_if<!TiledArray::detail::is_array<
-              typename std::decay<Op>::type>::value>::type>
+              typename std::decay<Op>::type>::value>::type,
+          typename = typename std::enable_if<detail::is_invocable<Op, Tile&>::value>::type>
 inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
     DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
   // The tile data is being modified in place, which means we may need to
@@ -496,6 +497,68 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
   // must also fence after to prevent remote ranks start work on unprocessed
   // tiles
   if (fence) arg.world().gop.fence();
+}
+
+/// Modify each element of an Array object
+
+/// This function modifies the elements of a \c DistArray object with a const reference to the
+/// index of the current element. This allows the user to modify specific elements of the array
+/// based on their indices. Users must provide a function/functor that modifies each element. The provided function
+/// should take a reference to a \c Tile object and a reference to a \c std::vector<std::size_t>
+/// representing the indices of the current element within the tile. For example,
+/// to copy the upper triangular elements of a nxnxn array to a c++ vector of size n^3:
+/// \code
+/// std::vector<double> vec(n*n*n);
+/// forall(array, [&vec] (auto& tile, const auto& index) {
+///   size_t i = index[0], j = index[1], k = index[2];
+///   if (i <= j && j <= k) {
+///     vec[i*n*n+j*n+k] = tile[index];
+///   } else {
+///     vec[i*n*n+j*n+k] = 0.0;
+///   }
+/// });
+/// \endcode
+/// Similarly, to set each upper triangular element of a nxnxn array to the square root of values in a c++ vector of size n^3:
+/// \code
+/// vector<double> vec(n*n*n);
+/// std::generate(v.begin(), v.end(), std::rand);
+/// forall(array, [&vec] (Tile& tile, index_type& index) {
+///   size_t i = index[0], j = index[1], k = index[2];
+///   if (i <= j && j <= k) {
+///     tile[index] = std::sqrt(vec[i*n*n+j*n+k]);
+///   } else {
+///     tile[index] = 0.0;
+///   }
+/// });
+/// \endcode
+/// The expected signature of the element operation is:
+/// \code
+/// void op(Tile& tile, Range::index_type& index);
+/// \endcode
+/// \tparam Tile The tile type of \c arg
+/// \tparam Policy The policy type of \c arg
+/// \tparam Op Mutating element operation
+/// \param arg The argument array to be modified
+/// \param op The mutating element function
+/// \param fence If \c true, this function will fence before and after the data is modified
+template <typename Tile, typename Policy, typename Op,
+          typename = typename std::enable_if<!TiledArray::detail::is_array<
+              typename std::decay<Op>::type>::value>::type,
+          typename = typename std::enable_if<detail::is_invocable<Op, Tile&,
+              const Range::index_type&>::value>::type>
+inline void foreach_inplace(
+    DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
+
+  // wrap Op into a shallow-copy copyable handle
+  auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
+
+  // Use foreach_inplace to iterate over tiles and modify elements
+  foreach_inplace(
+    arg,
+    [op = std::move(op_shared_handle)](Tile& tile) mutable {
+        for (const Range::index_type& index : tile.range())
+            op(tile, index);
+    }, fence); // Fence before and after the data is modified
 }
 
 /// Apply a function to each tile of a sparse Array
@@ -590,7 +653,8 @@ inline std::enable_if_t<!is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// function will fence before AND after the data is modified
 template <typename Tile, typename Policy, typename Op,
           typename = typename std::enable_if<!TiledArray::detail::is_array<
-              typename std::decay<Op>::type>::value>::type>
+              typename std::decay<Op>::type>::value>::type,
+          typename = typename std::enable_if<detail::is_invocable<Op, Tile&>::value>::type>
 inline std::enable_if_t<!is_dense_v<Policy>, void> foreach_inplace(
     DistArray<Tile, Policy>& arg, Op&& op, bool fence = true) {
   // The tile data is being modified in place, which means we may need to
@@ -632,7 +696,8 @@ inline std::
 }
 
 /// This function takes two input tiles and put result into the left tile
-template <typename LeftTile, typename RightTile, typename Policy, typename Op>
+template <typename LeftTile, typename RightTile, typename Policy, typename Op,
+          typename = typename std::enable_if<detail::is_invocable<Op, LeftTile&, const RightTile>::value>::type>
 inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
     DistArray<LeftTile, Policy>& left,
     const DistArray<RightTile, Policy>& right, Op&& op, bool fence = true) {
@@ -678,7 +743,8 @@ inline std::
 }
 
 /// This function takes two input tiles and put result into the left tile
-template <typename LeftTile, typename RightTile, typename Policy, typename Op>
+template <typename LeftTile, typename RightTile, typename Policy, typename Op,
+          typename = typename std::enable_if<detail::is_invocable<Op, LeftTile&, const RightTile>::value>::type>
 inline std::enable_if_t<!is_dense_v<Policy>, void> foreach_inplace(
     DistArray<LeftTile, Policy>& left,
     const DistArray<RightTile, Policy>& right, Op&& op,
