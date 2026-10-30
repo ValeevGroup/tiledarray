@@ -66,7 +66,9 @@ class TensorImpl : private NO_DEFAULTS {
   /// \param pmap The tile-process map
   /// \param replicate_shape if true, will replicate the shape from rank 0, else
   ///        will use as is, but assert that the data is _bitwise_ identical
-  ///        between ranks
+  ///        between ranks; either way, a shape that has a threshold (e.g.
+  ///        SparseShape::init_threshold()) must have the same one on every
+  ///        rank (asserted)
   /// \throw TiledArray::Exception When the size of shape is not equal to
   /// zero
   TensorImpl(World& world, const trange_type& trange, const shape_type& shape,
@@ -78,9 +80,13 @@ class TensorImpl : private NO_DEFAULTS {
         pmap_(pmap) {
     local_nnz_ = -1;
     // ensure that shapes are identical on every rank
-    if (replicate_shape && !shape.is_dense())
+    if (replicate_shape && !shape.is_dense()) {
       world.gop.broadcast_serializable(*shape_, 0);
-    else
+      // the broadcast would silently replace this rank's threshold with
+      // rank 0's; an SPMD program screens with the same one on every rank
+      if constexpr (requires { shape.init_threshold(); })
+        TA_ASSERT(shape_->init_threshold() == shape.init_threshold());
+    } else
       TA_ASSERT(is_replicated(world, *shape_));
     // Validate input data.
     TA_ASSERT(pmap_);

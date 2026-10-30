@@ -28,6 +28,7 @@
 #include <array_fixture.h>
 #include "../src/TiledArray/dist_array.h"
 #include "archive_file_utils.h"
+#include "sparse_threshold_guard.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
@@ -750,6 +751,66 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
     std::remove(
         to_parallel_archive_file_name(archive_file_prefix_name, world.rank())
             .c_str());
+  }
+}
+
+// An array saved under one sparse threshold and read back under another must
+// keep its tiles: the shape carries the threshold its norms were screened with.
+BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
+  using Shape = SparseShape<float>;
+
+  // written under a low threshold, with a tile the reader's higher threshold
+  // would screen out
+  const test::ScopedSparseThreshold<float> threshold(1.0e-8f, world);
+  TiledRange trange{{0, 2, 4}, {0, 3, 6}};
+  Tensor<float> norms(trange.tiles_range(), 0.0f);
+  norms(0, 0) = 1.0e-3f;
+  norms(1, 1) = 1.0f;
+  SpArrayN c(world, trange, Shape(norms, trange, /*do_not_scale=*/true));
+  c.fill(1);
+  world.gop.fence();
+  BOOST_REQUIRE(!c.is_zero({0, 0}));
+
+  char archive_file_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_name);
+  char archive_file_prefix_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_prefix_name);
+  const int nio = 1;
+  // removes the archives however the test exits
+  const auto remove_archives =
+      std::shared_ptr<void>(nullptr, [&, rank = world.rank()](void*) {
+        std::remove(archive_file_name);
+        if (rank < nio)
+          std::remove(
+              to_parallel_archive_file_name(archive_file_prefix_name, rank)
+                  .c_str());
+      });
+  {
+    madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+    c.serialize(oar);
+  }
+  {
+    madness::archive::ParallelOutputArchive<> oar(
+        world, archive_file_prefix_name, nio);
+    oar & c;
+  }
+
+  threshold.set(1.0e-2f);
+  for (int parallel = 0; parallel != 2; ++parallel) {
+    decltype(c) cread;
+    if (parallel) {
+      madness::archive::ParallelInputArchive<> iar(
+          world, archive_file_prefix_name, nio);
+      BOOST_REQUIRE_NO_THROW(cread.load(world, iar));
+    } else {
+      madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+      BOOST_REQUIRE_NO_THROW(cread.serialize(iar));
+    }
+    BOOST_CHECK_EQUAL(cread.shape().init_threshold(), 1.0e-8f);
+    BOOST_CHECK(!cread.is_zero({0, 0}));
+    BOOST_REQUIRE(cread.shape() == c.shape());
+    BOOST_CHECK_EQUAL_COLLECTIONS(cread.begin(), cread.end(), c.begin(),
+                                  c.end());
   }
 }
 
