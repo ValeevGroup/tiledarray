@@ -69,6 +69,12 @@ class CP_ALS : public CP<Tile, Policy> {
     first_gemm_dim_last.pop_back();
 
     this->norm_reference = norm2(tref);
+    this->norm_ref_sq = this->norm_reference * this->norm_reference;
+  }
+
+  void set_factor_matrices(std::vector<DistArray<Tile, Policy>>& factors) {
+    cp_factors = factors;
+    factors_set = true;
   }
 
  protected:
@@ -77,6 +83,7 @@ class CP_ALS : public CP<Tile, Policy> {
   std::string ref_indices, first_gemm_dim_one, first_gemm_dim_last;
   std::vector<typename Tile::value_type> lambda;
   TiledRange1 rank_trange1;
+  bool factors_set = false;
 
   /// This function constructs the initial CP facotr matrices
   /// stores them in CP::cp_factors vector.
@@ -93,6 +100,8 @@ class CP_ALS : public CP<Tile, Policy> {
             rank_trange, reference.trange().data()[i]);
         cp_factors.emplace_back(factor);
       }
+    } else if (factors_set) {
+      // Do nothing and don't throw an error.
     } else {
       TA_EXCEPTION("Currently no implementation to increase or change rank");
     }
