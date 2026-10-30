@@ -27,6 +27,7 @@
 #ifdef TILEDARRAY_HAS_DEVICE
 
 #include <TiledArray/conversions/to_new_tile_type.h>
+#include <TiledArray/device/dispatch.h>
 #include <TiledArray/external/device.h>
 #include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tensor/type_traits.h>
@@ -36,13 +37,6 @@
 
 namespace TiledArray {
 namespace detail {
-
-/// UMTensor lives in unified memory; it is identified as a device_tile and
-/// the expression engine must route its tile ops through
-/// madness::add_device_task.
-template <typename T>
-struct is_device_tile<TiledArray::UMTensor<T>>
-    : public std::bool_constant<TiledArray::detail::is_numeric_v<T>> {};
 
 /// Prefetch a UMTensor's storage to the device associated with its tile range.
 template <typename T>
@@ -224,8 +218,6 @@ extern template class Tensor<std::complex<double>,
                              device_um_allocator<std::complex<double>>>;
 extern template class Tensor<std::complex<float>,
                              device_um_allocator<std::complex<float>>>;
-extern template class Tensor<int, device_um_allocator<int>>;
-extern template class Tensor<long, device_um_allocator<long>>;
 
 }  // namespace TiledArray
 

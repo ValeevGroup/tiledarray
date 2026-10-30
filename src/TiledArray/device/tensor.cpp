@@ -44,8 +44,6 @@ template class Tensor<std::complex<double>,
                       device_um_allocator<std::complex<double>>>;
 template class Tensor<std::complex<float>,
                       device_um_allocator<std::complex<float>>>;
-template class Tensor<int, device_um_allocator<int>>;
-template class Tensor<long, device_um_allocator<long>>;
 
 namespace device {
 

@@ -26,6 +26,7 @@
 #include <TiledArray/fwd.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/platform.h>
+#include <TiledArray/tensor/type_traits.h>
 
 #include <complex>
 #include <type_traits>
@@ -70,6 +71,15 @@ inline constexpr bool is_device_tensor_v<T> =
      std::is_same_v<typename T::value_type, double> ||
      std::is_same_v<typename T::value_type, std::complex<float>> ||
      std::is_same_v<typename T::value_type, std::complex<double>>);
+
+/// UMTensor tiles of the element types the device kernels support are device
+/// tiles: the expression engine normally routes their tile ops through
+/// madness::add_device_task; under a Host scope, eval_tile runs them directly
+/// (see dist_eval). Defined here, next to the trait it uses, so that every
+/// translation unit that uses TA::Tensor sees it.
+template <typename T>
+struct is_device_tile<UMTensor<T>>
+    : public std::bool_constant<is_device_tensor_v<UMTensor<T>>> {};
 #endif
 
 }  // namespace detail

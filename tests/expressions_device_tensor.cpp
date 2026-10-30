@@ -133,6 +133,8 @@ BOOST_AUTO_TEST_CASE(is_device_tile_classification) {
   BOOST_CHECK(is_device_tile_v<TiledArray::Tile<UMTensor<double>>>);
   BOOST_CHECK(is_device_tile_v<typename TArrayD::value_type>);
   BOOST_CHECK(!is_device_tile_v<HostTile>);
+  // no device kernels for integers, so their tile ops skip the device task
+  BOOST_CHECK(!is_device_tile_v<UMTensor<int>>);
 
   // the device branches in TA::Tensor are reachable only through this trait
   static_assert(device_executable_v<UMTensor<double>>);
