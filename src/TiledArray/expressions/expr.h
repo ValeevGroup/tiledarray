@@ -37,6 +37,7 @@
 #include "../tile_op/unary_reduction.h"
 #include "../tile_op/unary_wrapper.h"
 #include "TiledArray/config.h"
+#include "TiledArray/pmap/block_pmap.h"
 #include "TiledArray/tile.h"
 #include "TiledArray/tile_interface/trace.h"
 #include "expr_engine.h"
@@ -408,12 +409,20 @@ class Expr {
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
     dist_eval.eval();
 
-    // Create the result array
+    // Create the result array, on the map the expression was evaluated on,
+    // unless that is a block's map that follows the block's parent (see
+    // BlkTsrEngineBase::make_parent_pmap()): a new array gets the default map
+    // for its tiled range rather than one tied to another array's.
+    auto result_pmap = dist_eval.pmap();
+    if (!pmap && std::dynamic_pointer_cast<const TiledArray::detail::BlockPmap>(
+                     result_pmap))
+      result_pmap = A::policy_type::default_pmap(
+          dist_eval.world(), dist_eval.trange().tiles_range().volume());
     A result(dist_eval.world(), dist_eval.trange(), dist_eval.shape(),
-             dist_eval.pmap());
+             result_pmap);
 
     // Move the data from dist_eval into the result array. There is no
-    // communication in this step.
+    // communication in this step unless the result's map was replaced above.
     for (const auto index : *dist_eval.pmap()) {
       if (dist_eval.is_zero(index)) continue;
       auto tile_contents = dist_eval.get(index);

@@ -189,65 +189,187 @@ BOOST_AUTO_TEST_CASE(eval_permute) {
 // another rank. (A map a consumer imposes, such as SUMMA's, still wins.) The
 // ownership follows the parent through a permutation of the result too.
 BOOST_AUTO_TEST_CASE(block_evaluates_where_the_parent_holds_its_tiles) {
+  using TiledArray::detail::BlockPmap;
+  auto& world = array.world();
   auto const& tiles_range = tr.tiles_range();
   container::svector<long> lo(tiles_range.lobound().begin(),
                               tiles_range.lobound().end());
   container::svector<long> hi(tiles_range.upbound().begin(),
                               tiles_range.upbound().end());
   lo[0] += 1;  // a proper sub-block, so block and parent tile indices differ
-  // annotations "a0,a1,..." and the same with the first two labels swapped
-  std::string annot, swapped_annot;
-  for (unsigned int d = 0; d < GlobalFixture::dim; ++d) {
-    auto label = [](unsigned int i) { return "a" + std::to_string(i); };
-    unsigned int const sd = (d == 0 ? 1 : (d == 1 ? 0 : d));
-    annot += (d ? "," : "") + label(d);
-    swapped_annot += (d ? "," : "") + label(sd);
-  }
-  // the parent's tiles inside the block that this rank holds
-  std::size_t parent_local_in_block = 0;
-  {
-    BlockRange const blk(tiles_range, lo, hi);
-    for (auto const& ord : blk)
-      if (array.is_local(ord)) ++parent_local_in_block;
-  }
+  BlockRange const block(tiles_range, lo, hi);
 
-  auto check_follows_parent = [&](auto const& expr, auto const& target_annot,
-                                  Permutation const& result_to_source) {
+  auto label = [](unsigned int i) { return "a" + std::to_string(i); };
+  // the annotation of the result whose mode d is the parent's mode
+  // source_mode[d]
+  auto annotation = [&](container::svector<unsigned int> const& source_mode) {
+    std::string result;
+    for (unsigned int d = 0; d < source_mode.size(); ++d)
+      result += (d ? "," : "") + label(source_mode[d]);
+    return result;
+  };
+  container::svector<unsigned int> identity(GlobalFixture::dim);
+  for (unsigned int d = 0; d < identity.size(); ++d) identity[d] = d;
+  auto const annot = annotation(identity);
+
+  // the evaluator of block expression expr, for the result annotated by the
+  // parent's modes source_mode, with no map imposed
+  auto make_dist_eval = [&](auto const& expr, auto const& source_mode) {
     typename TiledArray::expressions::ExprTrait<
         std::decay_t<decltype(expr)>>::engine_type engine(expr);
-    engine.init(array.world(), {},
-                TiledArray::expressions::BipartiteIndexList(target_annot));
-    auto dist_eval = engine.make_dist_eval();
+    engine.init(
+        world, {},
+        TiledArray::expressions::BipartiteIndexList(annotation(source_mode)));
+    return engine.make_dist_eval();
+  };
+
+  // the parent's tile index of the result's tile with ordinal ord; the
+  // permutation is applied by hand here, independently of the engine's
+  auto parent_index = [&](auto const& dist_eval, std::size_t ord,
+                          auto const& source_mode) {
+    auto const result_index = dist_eval.trange().tiles_range().idx(ord);
+    auto index = result_index;
+    for (std::size_t d = 0; d < index.size(); ++d)
+      index[source_mode[d]] = result_index[d] + lo[source_mode[d]];
+    return index;
+  };
+
+  auto check_follows_parent = [&](auto const& parent, auto const& expr,
+                                  auto const& source_mode) {
+    auto dist_eval = make_dist_eval(expr, source_mode);
+    BOOST_CHECK(std::dynamic_pointer_cast<const BlockPmap>(dist_eval.pmap()));
     std::size_t local = 0;
     for (auto ord : *dist_eval.pmap()) {
       ++local;
-      auto block_index = dist_eval.trange().tiles_range().idx(ord);
-      if (result_to_source) block_index = result_to_source * block_index;
-      auto parent_index = block_index;
-      for (std::size_t d = 0; d < parent_index.size(); ++d)
-        parent_index[d] += lo[d];
-      BOOST_CHECK(array.is_local(parent_index));
+      BOOST_CHECK(parent.is_local(parent_index(dist_eval, ord, source_mode)));
     }
+    std::size_t parent_local_in_block = 0;
+    for (auto const& ord : block)
+      if (parent.is_local(ord)) ++parent_local_in_block;
     BOOST_CHECK_EQUAL(local, parent_local_in_block);
   };
 
-  // the block as a consumer with no map of its own sees it
-  check_follows_parent(array(annot).block(lo, hi), annot, Permutation());
+  check_follows_parent(array, array(annot).block(lo, hi), identity);
   check_follows_parent(
+      array,
       std::as_const(array)(annot).block(lo, hi, TiledArray::preserve_lobound),
-      annot, Permutation());
+      identity);
+  check_follows_parent(array, 2 * array(annot).block(lo, hi), identity);
 
-  // a permuted result (the first two modes swapped): the result's tile
-  // (i1, i0, ...) is the source's (i0, i1, ...), and must live where the
-  // parent holds the source tile
+  // a permuted result: with modes 0 and 1 swapped the permutation is its own
+  // inverse, so also cycle 3 modes, which tells a permutation from its inverse
   if constexpr (GlobalFixture::dim >= 2) {
-    container::svector<unsigned int> p(GlobalFixture::dim);
-    for (std::size_t d = 0; d < p.size(); ++d) p[d] = d;
-    std::swap(p[0], p[1]);
-    Permutation const swap01(p.begin(), p.end());
-    check_follows_parent(array(annot).block(lo, hi), swapped_annot,
-                         swap01.inv());
+    auto swapped = identity;
+    std::swap(swapped[0], swapped[1]);
+    check_follows_parent(array, array(annot).block(lo, hi), swapped);
   }
+  if constexpr (GlobalFixture::dim >= 3) {
+    auto cycled = identity;
+    std::rotate(cycled.begin(), cycled.begin() + 1, cycled.begin() + 3);
+    check_follows_parent(array, array(annot).block(lo, hi), cycled);
+    check_follows_parent(array, 2 * array(annot).block(lo, hi), cycled);
+  }
+
+  // a sparse parent: zero tiles have owners too
+  TSpArrayI sparse;
+  {
+    Tensor<float> norms(tiles_range, 0.0f);
+    for (std::size_t i = 0; i < norms.size(); ++i)
+      if (i % 3) norms[i] = 1.0f;
+    sparse = TSpArrayI(world, tr, SparseShape<float>(norms, tr));
+    sparse.fill(1);
+  }
+  check_follows_parent(sparse, sparse(annot).block(lo, hi), identity);
+
+  // each tile of an evaluator not following the parent has exactly one owner
+  auto check_one_owner_each = [&](auto const& dist_eval) {
+    BOOST_CHECK(!std::dynamic_pointer_cast<const BlockPmap>(dist_eval.pmap()));
+    BOOST_CHECK(!dist_eval.pmap()->is_replicated());
+    std::size_t local = 0;
+    for ([[maybe_unused]] auto ord : *dist_eval.pmap()) ++local;
+    world.gop.sum(local);
+    BOOST_CHECK_EQUAL(local, block.volume());
+  };
+
+  // a replicated parent: no rank is the owner of a tile, so the default map
+  // over the block's tiles
+  {
+    TArrayI replicated(world, tr,
+                       std::make_shared<TiledArray::detail::ReplicatedPmap>(
+                           world, tiles_range.volume()));
+    replicated.fill(1);
+    check_one_owner_each(
+        make_dist_eval(replicated(annot).block(lo, hi), identity));
+    // each element of the block counted once
+    std::size_t block_elements = 1;
+    for (std::size_t d = 0; d < GlobalFixture::dim; ++d)
+      block_elements *=
+          tr.dim(d).tile(hi[d] - 1).second - tr.dim(d).tile(lo[d]).first;
+    BOOST_CHECK_EQUAL(
+        replicated(annot).block(lo, hi).squared_norm().get(),
+        static_cast<decltype(replicated(annot).squared_norm().get())>(
+            block_elements));
+  }
+
+  // a parent in another World: its map's ranks are not ranks of this world,
+  // so the default map over the block's tiles
+  {
+    // the split is a blocking MPI collective: let pending work finish first
+    world.gop.fence();
+    World this_rank(madness::blocking_invoke(
+        &SafeMPI::Intracomm::Split, world.mpi.comm(), world.rank(), 0));
+    {
+      TArrayI other(this_rank, tr);
+      other.fill(1);
+      check_one_owner_each(
+          make_dist_eval(other(annot).block(lo, hi), identity));
+    }
+    this_rank.gop.fence();
+  }
+  world.gop.fence();
+}
+
+// An array assigned from a block expression gets the default map for its
+// tiled range, not the map the block evaluated on (which follows the parent's),
+// and holds the parent's tiles.
+BOOST_AUTO_TEST_CASE(block_assignment_result_has_the_default_map) {
+  auto const& tiles_range = tr.tiles_range();
+  container::svector<long> lo(tiles_range.lobound().begin(),
+                              tiles_range.lobound().end());
+  container::svector<long> hi(tiles_range.upbound().begin(),
+                              tiles_range.upbound().end());
+  lo[0] += 1;
+  std::string annot;
+  for (unsigned int d = 0; d < GlobalFixture::dim; ++d)
+    annot += (d ? ",a" : "a") + std::to_string(d);
+
+  auto check = [&](auto const& parent) {
+    std::decay_t<decltype(parent)> result;
+    result(annot) = parent(annot).block(lo, hi);
+    BOOST_CHECK(
+        std::dynamic_pointer_cast<const TiledArray::detail::BlockedPmap>(
+            result.pmap()));
+    for (auto ord : *result.pmap()) {
+      auto index = result.trange().tiles_range().idx(ord);
+      for (std::size_t d = 0; d < index.size(); ++d) index[d] += lo[d];
+      BOOST_CHECK_EQUAL(result.is_zero(ord), parent.is_zero(index));
+      if (result.is_zero(ord)) continue;
+      auto const tile = result.find(ord).get();
+      auto const parent_tile = parent.find(index).get();
+      BOOST_CHECK(std::equal(tile.begin(), tile.end(), parent_tile.begin(),
+                             parent_tile.end()));
+    }
+  };
+
+  check(array);
+
+  Tensor<float> norms(tiles_range, 0.0f);
+  for (std::size_t i = 0; i < norms.size(); ++i)
+    if (i % 3) norms[i] = 1.0f;
+  TSpArrayI sparse(array.world(), tr, SparseShape<float>(norms, tr));
+  sparse.fill(1);
+  check(sparse);
+  array.world().gop.fence();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

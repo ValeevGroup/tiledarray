@@ -29,7 +29,7 @@
 #include <TiledArray/expressions/fwd.h>
 #include <TiledArray/expressions/leaf_engine.h>
 #include <TiledArray/permutation.h>
-#include <TiledArray/pmap/user_pmap.h>
+#include <TiledArray/pmap/block_pmap.h>
 #include <TiledArray/tile_op/shift.h>
 
 namespace TiledArray {
@@ -281,31 +281,26 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
   }
 
   /// The process map under which every tile of the block's result is owned
-  /// by the rank that holds its source tile in the parent array: the result
-  /// ordinal is mapped back through the result permutation (if any) and the
-  /// block's lower bound to the parent's tile ordinal, whose owner the
-  /// parent's map gives. A plain array operand evaluates on its own map;
-  /// this is the block's equivalent.
+  /// by the rank that holds its source tile in the parent array (a
+  /// detail::BlockPmap). A plain array operand evaluates on its own map; this
+  /// is the block's equivalent. Unlike the plain operand's map, it is not kept
+  /// by an array assigned from the expression (see Expr::eval_to()).
+  ///
+  /// Falls back to the default map over the block's tiles if the parent's map
+  /// is replicated (every rank holds every tile, so nothing is fetched either
+  /// way, but each tile must still have one owner) or the parent lives in
+  /// another World (the ranks its map gives are not ranks of \p world).
   std::shared_ptr<const pmap_interface> make_parent_pmap(World& world) const {
-    auto const& result_tiles = trange_.tiles_range();
-    auto const result_volume = result_tiles.volume();
-    Permutation const result_to_source =
-        perm_ ? outer(perm_).inv() : Permutation();
-    // owns the parent's map and the ranges it needs: the engine is transient
-    auto owner = [parent_pmap = array_.pmap(),
-                  parent_tiles = array_.trange().tiles_range(), result_tiles,
-                  result_to_source, lower = lower_bound_](size_type i) {
-      auto index = result_tiles.idx(i);
-      if (result_to_source) index = result_to_source * index;
-      for (std::size_t d = 0; d < index.size(); ++d) index[d] += lower[d];
-      return parent_pmap->owner(parent_tiles.ordinal(index));
-    };
-    size_type local_size = 0;
-    auto const rank = static_cast<size_type>(world.rank());
-    for (size_type i = 0; i < result_volume; ++i)
-      if (owner(i) == rank) ++local_size;
-    return std::make_shared<const TiledArray::detail::UserPmap>(
-        world, result_volume, local_size, std::move(owner));
+    auto const& parent_pmap = array_.pmap();
+    if (parent_pmap->is_replicated() || &array_.world() != &world)
+      return policy::default_pmap(world, trange_.tiles_range().volume());
+    Range::index_type block_lobound(lower_bound_.size());
+    for (std::size_t d = 0; d < lower_bound_.size(); ++d)
+      block_lobound[d] = static_cast<Range::index1_type>(lower_bound_[d]);
+    return std::make_shared<const TiledArray::detail::BlockPmap>(
+        world, parent_pmap, array_.trange().tiles_range(),
+        trange_.tiles_range(), std::move(block_lobound),
+        perm_ ? outer(perm_).inv() : Permutation());
   }
 
   /// Construct the distributed evaluator for array

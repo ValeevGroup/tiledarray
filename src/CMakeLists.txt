@@ -143,6 +143,7 @@ TiledArray/math/transpose.h
 TiledArray/math/vector_op.h
 TiledArray/math/scalapack.h
 TiledArray/math/linalg/rank-local.h
+TiledArray/pmap/block_pmap.h
 TiledArray/pmap/blocked_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h
