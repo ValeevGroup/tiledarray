@@ -66,7 +66,9 @@ class TensorImpl : private NO_DEFAULTS {
   /// \param pmap The tile-process map
   /// \param replicate_shape if true, will replicate the shape from rank 0, else
   ///        will use as is, but assert that the data is _bitwise_ identical
-  ///        between ranks
+  ///        between ranks; either way, a shape that has a threshold (e.g.
+  ///        SparseShape::init_threshold()) must have the same one on every
+  ///        rank (asserted)
   /// \throw TiledArray::Exception When the size of shape is not equal to
   /// zero
   TensorImpl(World& world, const trange_type& trange, const shape_type& shape,

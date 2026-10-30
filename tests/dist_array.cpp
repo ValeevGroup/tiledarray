@@ -28,6 +28,7 @@
 #include <array_fixture.h>
 #include "../src/TiledArray/dist_array.h"
 #include "archive_file_utils.h"
+#include "sparse_threshold_guard.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
@@ -757,19 +758,10 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
 // keep its tiles: the shape carries the threshold its norms were screened with.
 BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
   using Shape = SparseShape<float>;
-  const float saved_threshold = Shape::threshold();
-  auto set_threshold = [this](float t) {
-    world.gop.serial_invoke([t] { Shape::threshold(t); });
-  };
-  // restores the global threshold however the test exits
-  const auto restore_threshold =
-      std::shared_ptr<void>(nullptr, [set_threshold, saved_threshold](void*) {
-        set_threshold(saved_threshold);
-      });
 
   // written under a low threshold, with a tile the reader's higher threshold
   // would screen out
-  set_threshold(1.0e-8f);
+  const test::ScopedSparseThreshold<float> threshold(1.0e-8f, world);
   TiledRange trange{{0, 2, 4}, {0, 3, 6}};
   Tensor<float> norms(trange.tiles_range(), 0.0f);
   norms(0, 0) = 1.0e-3f;
@@ -803,7 +795,7 @@ BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
     oar & c;
   }
 
-  set_threshold(1.0e-2f);
+  threshold.set(1.0e-2f);
   for (int parallel = 0; parallel != 2; ++parallel) {
     decltype(c) cread;
     if (parallel) {

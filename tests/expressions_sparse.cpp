@@ -24,6 +24,7 @@
  */
 
 #include "expressions_fixture.h"
+#include "sparse_threshold_guard.h"
 
 typedef ExpressionsFixture<TiledArray::Tensor<int>, TA::SparsePolicy>
     EF_TAspTensorI;
@@ -45,20 +46,8 @@ BOOST_AUTO_TEST_SUITE(expressions_sparse_block_assign_suite)
 BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   using Shape = SparseShape<float>;
   auto& world = *GlobalFixture::world;
-  const float saved_threshold = Shape::threshold();
-
-  // The global (static) sparse threshold must be changed consistently on all
-  // ranks; use the documented gop.serial_invoke idiom (see
-  // SparseShape::threshold and conversions/truncate.h) rather than a bare
-  // setter call.
-  auto set_threshold = [&world](float t) {
-    world.gop.serial_invoke([t] { Shape::threshold(t); });
-  };
-  // restores the global threshold however the test exits
-  const auto restore_threshold =
-      std::shared_ptr<void>(nullptr, [set_threshold, saved_threshold](void*) {
-        set_threshold(saved_threshold);
-      });
+  // the global (static) sparse threshold must be changed on every rank at once
+  const TA::test::ScopedSparseThreshold<float> threshold(1.0e-8f, world);
 
   // dest: 4x2 tiles; the assigned sub-block is tiles [2,4) x [0,2).
   TiledRange dest_tr{{0, 2, 4, 6, 8}, {0, 3, 6}};
@@ -67,7 +56,6 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   // src (built under a LOW threshold) keeps two tiles: a small-norm one that
   // the destination's higher threshold will screen, and a large-norm one it
   // will not.
-  set_threshold(1.0e-8f);
   Tensor<float> src_norms(blk_tr.tiles_range(), 0.0f);
   src_norms(0, 0) = 1.0e-3f;  // below dest threshold -> must be dropped
   src_norms(1, 1) = 1.0f;     // above dest threshold -> must be kept
@@ -78,7 +66,7 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   world.gop.fence();
 
   // dest: all-ones sparse array pre-sized under a HIGHER threshold.
-  set_threshold(1.0e-2f);
+  threshold.set(1.0e-2f);
   TSpArrayD dest(world, dest_tr);  // SparseShape(1, trange): every tile nonzero
   dest.fill(0.0);
   world.gop.fence();

@@ -34,6 +34,7 @@
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/val_array.h>
+#include <cmath>
 #include <typeinfo>
 
 namespace TiledArray {
