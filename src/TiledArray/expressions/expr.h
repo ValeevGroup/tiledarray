@@ -233,7 +233,7 @@ class Expr {
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
     array.set(index, madness::add_device_task(
                          array.world(),
-                         TiledArray::Cast<typename A::value_type, T>(), tile));
+                         cast_or_clone<typename A::value_type, T>(), tile));
   }
 #endif
 

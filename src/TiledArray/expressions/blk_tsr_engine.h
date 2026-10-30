@@ -91,18 +91,10 @@ struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>>
     : BlkTsrEngineTrait<Tile, Policy, Result, Alias, false> {};
 
 /// the engine of a block of a const array shares the array's tiles (see
-/// BlkTsrEngineTrait); not for device tiles, whose assignment path does not
-/// clone a shared tile
+/// BlkTsrEngineTrait)
 template <typename Tile, typename Policy, typename Result, bool Alias>
 struct EngineTrait<BlkTsrEngine<const DistArray<Tile, Policy>, Result, Alias>>
-    : BlkTsrEngineTrait<Tile, Policy, Result, Alias,
-#ifdef TILEDARRAY_HAS_DEVICE
-                        !TiledArray::detail::is_device_tile_v<Tile>
-#else
-                        true
-#endif
-                        > {
-};
+    : BlkTsrEngineTrait<Tile, Policy, Result, Alias, true> {};
 
 template <typename Tile, typename Policy, typename Scalar, typename Result>
 struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar, Result>> {
