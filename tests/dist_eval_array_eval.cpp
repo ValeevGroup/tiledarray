@@ -546,6 +546,18 @@ BOOST_AUTO_TEST_CASE(block_evaluates_where_the_parent_holds_its_tiles) {
     return engine.make_dist_eval();
   };
 
+  // whether the engine of expr reports that it chose its map for an operand
+  // only, with map pmap imposed on it (none if null)
+  auto serves_operand =
+      [&](auto const& expr,
+          std::shared_ptr<const TiledArray::Pmap> const& pmap = {}) {
+        typename TiledArray::expressions::ExprTrait<
+            std::decay_t<decltype(expr)>>::engine_type engine(expr);
+        engine.init(world, pmap,
+                    TiledArray::expressions::BipartiteIndexList(annot));
+        return engine.pmap_serves_operand();
+      };
+
   // the parent's tile index of the result's tile with ordinal ord; the
   // permutation is applied by hand here, independently of the engine's
   auto parent_index = [&](auto const& dist_eval, std::size_t ord,
@@ -578,6 +590,19 @@ BOOST_AUTO_TEST_CASE(block_evaluates_where_the_parent_holds_its_tiles) {
       std::as_const(array)(annot).block(lo, hi, TiledArray::preserve_lobound),
       identity);
   check_follows_parent(array, 2 * array(annot).block(lo, hi), identity);
+
+  // such a map serves the block operand only, so an array assigned from the
+  // expression does not keep it (see Expr::eval_to()); this holds through a
+  // unary and a binary expression, whose map is that of its (left) operand
+  BOOST_CHECK(serves_operand(array(annot).block(lo, hi)));
+  BOOST_CHECK(serves_operand(2 * array(annot).block(lo, hi)));
+  BOOST_CHECK(
+      serves_operand(array(annot).block(lo, hi) + array(annot).block(lo, hi)));
+  // ... but not the plain array's own map, nor a map imposed on the block
+  BOOST_CHECK(!serves_operand(array(annot)));
+  BOOST_CHECK(!serves_operand(array(annot).block(lo, hi),
+                              std::make_shared<TiledArray::detail::BlockedPmap>(
+                                  world, block.volume())));
 
   // a permuted result: with modes 0 and 1 swapped the permutation is its own
   // inverse, so also cycle 3 modes, which tells a permutation from its inverse
@@ -623,6 +648,7 @@ BOOST_AUTO_TEST_CASE(block_evaluates_where_the_parent_holds_its_tiles) {
     replicated.fill(1);
     check_one_owner_each(
         make_dist_eval(replicated(annot).block(lo, hi), identity));
+    BOOST_CHECK(!serves_operand(replicated(annot).block(lo, hi)));
     // each element of the block counted once
     std::size_t block_elements = 1;
     for (std::size_t d = 0; d < GlobalFixture::dim; ++d)
@@ -646,6 +672,7 @@ BOOST_AUTO_TEST_CASE(block_evaluates_where_the_parent_holds_its_tiles) {
       other.fill(1);
       check_one_owner_each(
           make_dist_eval(other(annot).block(lo, hi), identity));
+      BOOST_CHECK(!serves_operand(other(annot).block(lo, hi)));
     }
     this_rank.gop.fence();
   }

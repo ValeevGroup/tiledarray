@@ -37,7 +37,6 @@
 #include "../tile_op/unary_reduction.h"
 #include "../tile_op/unary_wrapper.h"
 #include "TiledArray/config.h"
-#include "TiledArray/pmap/block_pmap.h"
 #include "TiledArray/tile.h"
 #include "TiledArray/tile_interface/trace.h"
 #include "expr_engine.h"
@@ -435,13 +434,12 @@ class Expr {
     dist_eval.eval();
 
     // Create the result array, on the map the expression was evaluated on,
-    // unless that is a block's map that follows the block's parent (see
-    // BlkTsrEngineBase::make_parent_pmap()): a new array gets the default map
-    // for its tiled range rather than one tied to another array's.
+    // unless the expression chose that map for an operand only (see
+    // ExprEngine::pmap_serves_operand(), e.g. a block's map that follows its
+    // parent array's): a new array gets the default map for its tiled range
+    // rather than one tied to another array's.
     auto result_pmap = dist_eval.pmap();
-    const bool remap =
-        !pmap && std::dynamic_pointer_cast<const TiledArray::detail::BlockPmap>(
-                     result_pmap);
+    const bool remap = engine.pmap_serves_operand();
     if (remap)
       result_pmap = A::policy_type::default_pmap(
           dist_eval.world(), dist_eval.trange().tiles_range().volume());
