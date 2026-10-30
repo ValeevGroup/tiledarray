@@ -23,6 +23,7 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
+#include <TiledArray/device/blas.h>
 #include <TiledArray/device/tensor.h>
 #include <TiledArray/einsum/tiledarray.h>
 #include <tiledarray.h>
@@ -1054,6 +1055,20 @@ BOOST_AUTO_TEST_CASE(bulk_prefetch_round_trip) {
   TiledArray::to_device(a);
   GlobalFixture::world->gop.fence();
   check_close(a, a_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(stream_for_outside_device_task) {
+  // outside a device task, work on a tile goes to the stream that its range's
+  // offset picks, so concurrent plain tasks spread over all the streams
+  auto& env = *deviceEnv::instance();
+  for (const Range& r :
+       {Range(std::array<long, 2>{0, 0}, std::array<long, 2>{2, 2}),
+        Range(std::array<long, 2>{0, 1}, std::array<long, 2>{2, 3})}) {
+    const device::Stream want =
+        env.stream(r.offset() % env.num_streams_total());
+    BOOST_CHECK(device::stream_for(r) == want);
+    BOOST_CHECK(&blasqueue_for(r) == &BLASQueuePool::queue(want));
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

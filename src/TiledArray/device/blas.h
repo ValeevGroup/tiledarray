@@ -54,16 +54,20 @@ struct BLASQueuePool {
   static std::vector<std::unique_ptr<blas::Queue>> queues_;
 };
 
-/// maps a (tile) Range to blas::Queue; if had already pushed work into a
-/// device::Stream (as indicated by madness_task_current_stream() )
-/// will return that Stream instead
+/// maps a (tile) Range to blas::Queue; if the enclosing device task had
+/// already pushed work into a device::Stream (as indicated by
+/// madness_task_current_stream() ) will return that Stream instead
 /// @param[in] range will determine the device::Stream to compute an object
 /// associated with this Range object
 /// @return the device::Stream to use for creating tasks generating work
 /// associated with Range \p range
 template <typename Range>
 blas::Queue &blasqueue_for(const Range &range) {
-  auto stream_opt = device::madness_task_current_stream();
+  // outside a device task the thread-local current stream is always set, so
+  // only a device task's stream is reused
+  auto stream_opt = device::detail::madness_task_stream_opt_ptr_accessor()
+                        ? device::madness_task_current_stream()
+                        : std::nullopt;
   if (!stream_opt) {
     auto stream_ord =
         range.offset() % device::Env::instance()->num_streams_total();
