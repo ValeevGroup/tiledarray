@@ -25,7 +25,11 @@
 #include <TiledArray/device/kernel/mult_kernel.h>
 #include <TiledArray/external/librett.h>
 
+#include <algorithm>
 #include <complex>
+#include <limits>
+#include <numeric>
+#include <vector>
 
 namespace TiledArray {
 
@@ -70,6 +74,22 @@ struct Launch {
   void finish() const { sync_madness_task_with(stream); }
 };
 
+/// blaspp's device calls take int lengths
+constexpr integer max_blas_length = std::numeric_limits<int>::max();
+
+/// calls \p f(offset, length) for consecutive pieces of [0, n) that are
+/// short enough for blaspp
+template <typename F>
+void for_each_blas_chunk(integer n, F&& f) {
+  for (integer i = 0; i < n; i += max_blas_length)
+    f(i, std::min(max_blas_length, n - i));
+}
+
+/// the number of pieces for_each_blas_chunk splits [0, n) into
+integer blas_chunk_count(integer n) {
+  return (n + max_blas_length - 1) / max_blas_length;
+}
+
 }  // namespace
 
 template <typename T>
@@ -92,7 +112,9 @@ void copy(integer n, const T* x, T* y, const Range& range) {
   const Launch launch(range);
   launch.prefetch(x, n);
   launch.prefetch(y, n);
-  ::blas::copy(n, x, 1, y, 1, launch.queue);
+  for_each_blas_chunk(n, [&](integer i, integer m) {
+    ::blas::copy(m, x + i, 1, y + i, 1, launch.queue);
+  });
   launch.finish();
 }
 
@@ -100,7 +122,9 @@ template <typename T>
 void scal(integer n, T alpha, T* x, const Range& range) {
   const Launch launch(range);
   launch.prefetch(x, n);
-  ::blas::scal(n, alpha, x, 1, launch.queue);
+  for_each_blas_chunk(n, [&](integer i, integer m) {
+    ::blas::scal(m, alpha, x + i, 1, launch.queue);
+  });
   launch.finish();
 }
 
@@ -109,7 +133,9 @@ void axpy(integer n, T alpha, const T* x, T* y, const Range& range) {
   const Launch launch(range);
   launch.prefetch(x, n);
   launch.prefetch(y, n);
-  ::blas::axpy(n, alpha, x, 1, y, 1, launch.queue);
+  for_each_blas_chunk(n, [&](integer i, integer m) {
+    ::blas::axpy(m, alpha, x + i, 1, y + i, 1, launch.queue);
+  });
   launch.finish();
 }
 
@@ -151,11 +177,15 @@ T dot(integer n, const T* x, const T* y, const Range& range) {
   const Launch launch(range);
   launch.prefetch(x, n);
   launch.prefetch(y, n);
-  T result(0);
-  ::blas::dotu(n, x, 1, y, 1, &result, launch.queue);
-  launch.queue.sync();  // result is written on the host by the stream
+  // one partial result per chunk, written on the host by the stream
+  std::vector<T> partial(blas_chunk_count(n));
+  for_each_blas_chunk(n, [&](integer i, integer m) {
+    ::blas::dotu(m, x + i, 1, y + i, 1, &partial[i / max_blas_length],
+                 launch.queue);
+  });
+  launch.queue.sync();
   launch.finish();
-  return result;
+  return std::accumulate(partial.begin(), partial.end(), T(0));
 }
 
 template <typename T>
@@ -163,11 +193,15 @@ T inner_product(integer n, const T* x, const T* y, const Range& range) {
   const Launch launch(range);
   launch.prefetch(x, n);
   launch.prefetch(y, n);
-  T result(0);
-  ::blas::dot(n, x, 1, y, 1, &result, launch.queue);
-  launch.queue.sync();  // result is written on the host by the stream
+  // one partial result per chunk, written on the host by the stream
+  std::vector<T> partial(blas_chunk_count(n));
+  for_each_blas_chunk(n, [&](integer i, integer m) {
+    ::blas::dot(m, x + i, 1, y + i, 1, &partial[i / max_blas_length],
+                launch.queue);
+  });
+  launch.queue.sync();
   launch.finish();
-  return result;
+  return std::accumulate(partial.begin(), partial.end(), T(0));
 }
 
 void synchronize() {

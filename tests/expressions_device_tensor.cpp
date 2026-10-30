@@ -1073,4 +1073,35 @@ BOOST_AUTO_TEST_CASE(stream_for_outside_device_task) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+// Tiles with more than INT_MAX elements. Each case needs about 18 GB of
+// unified memory, so the suite runs only when named, e.g.
+// --run_test=device_tensor_large_suite
+BOOST_AUTO_TEST_SUITE(device_tensor_large_suite, *boost::unit_test::disabled())
+
+BOOST_AUTO_TEST_CASE(blas1_past_int_max) {
+  // blaspp's device calls take int lengths, so these kernels run in chunks
+  const long e = 216;
+  const Range range{e, e, e, e};
+  const auto n = range.volume();
+  BOOST_REQUIRE_GT(n, std::numeric_limits<int>::max());
+  UMTensor<float> x(range);
+  std::fill_n(x.data(), n, 1.0f);
+  x.data()[n - 1] = 3.0f;  // the last element lies past the first chunk
+
+  const double want = double(n - 1) + 9.0;
+  BOOST_CHECK_CLOSE_FRACTION(x.squared_norm(), want, 1.0e-3);
+  BOOST_CHECK_CLOSE_FRACTION(x.dot(x), want, 1.0e-3);
+  BOOST_CHECK_CLOSE_FRACTION(x.inner_product(x), want, 1.0e-3);
+
+  UMTensor<float> y = x.clone();  // copy
+  BOOST_CHECK_EQUAL(y.data()[n - 1], 3.0f);
+  y.scale_to(2.0f);  // scal
+  BOOST_CHECK_EQUAL(y.data()[n - 1], 6.0f);
+  y.add_to(x);  // axpy
+  BOOST_CHECK_EQUAL(y.data()[0], 3.0f);
+  BOOST_CHECK_EQUAL(y.data()[n - 1], 9.0f);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 #endif  // TILEDARRAY_HAS_DEVICE
