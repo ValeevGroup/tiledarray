@@ -161,6 +161,11 @@ void mult_to(integer n, const T* a, T* c, const Range& range) {
 template <typename T>
 void permute(const T* in, T* out, const Range& in_range,
              const Permutation& perm) {
+  // librett indexes with 32-bit integers
+  if (in_range.volume() >
+      static_cast<std::size_t>(std::numeric_limits<int>::max()))
+    TA_EXCEPTION(
+        "device::permute: librett cannot permute more than INT_MAX elements");
   // ponytail: librett builds and destroys a plan per call; cache plans by
   // (extents, perm) if permutes show up in profiles
   const Launch launch(in_range);

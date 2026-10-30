@@ -124,6 +124,7 @@ template <typename T>
 void mult_to(integer n, const T* a, T* c, const Range& range);
 
 /// out = perm ^ in, where \p in spans \p in_range
+/// \throw TiledArray::Exception if \p in_range has more than INT_MAX elements
 template <typename T>
 void permute(const T* in, T* out, const Range& in_range,
              const Permutation& perm);

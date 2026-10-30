@@ -1102,6 +1102,13 @@ BOOST_AUTO_TEST_CASE(blas1_past_int_max) {
   BOOST_CHECK_EQUAL(y.data()[n - 1], 9.0f);
 }
 
+BOOST_AUTO_TEST_CASE(permute_past_int_max_throws) {
+  // librett indexes with 32-bit integers
+  const long e = 216;
+  const UMTensor<float> x(Range{e, e, e, e});
+  BOOST_CHECK_THROW(x.permute(Permutation{3, 2, 1, 0}), TiledArray::Exception);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 #endif  // TILEDARRAY_HAS_DEVICE
