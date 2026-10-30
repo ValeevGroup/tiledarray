@@ -269,8 +269,9 @@ auto block_eval_tiles(BlkExpr const& expr, World& world) {
 // tiles themselves, not copies, exactly as it does for the plain (non-block)
 // array operand. The array being const is the promise that nobody mutates
 // those tiles through tile-level access while the expression is alive.
-// Only a tile the parent holds on this rank can be shared; a tile fetched
-// from another rank is a copy by construction, and is checked by value.
+// Only a tile the parent holds on this rank can be shared; with no map
+// imposed the block evaluates where the parent holds its tiles, so every tile
+// is one (see block_evaluates_where_the_parent_holds_its_tiles).
 BOOST_AUTO_TEST_CASE(const_block_preserve_lobound_shares_tiles) {
   auto const& tiles_range = tr.tiles_range();
   container::svector<long> lo(tiles_range.lobound().begin(),
@@ -288,15 +289,10 @@ BOOST_AUTO_TEST_CASE(const_block_preserve_lobound_shares_tiles) {
       parent_index[d] += lo[d];
     TArrayI::value_type const parent_tile = array.find(parent_index);
     BOOST_CHECK_EQUAL(eval_tile.range(), parent_tile.range());
-    if (array.is_local(parent_index)) {
-      // same buffer: no copy was made
-      BOOST_CHECK_EQUAL(static_cast<void const*>(eval_tile.data()),
-                        static_cast<void const*>(parent_tile.data()));
-    } else {
-      BOOST_REQUIRE_EQUAL(eval_tile.size(), parent_tile.size());
-      for (std::size_t i = 0ul; i < eval_tile.size(); ++i)
-        BOOST_CHECK_EQUAL(eval_tile[i], parent_tile[i]);
-    }
+    BOOST_CHECK(array.is_local(parent_index));
+    // same buffer: no copy was made
+    BOOST_CHECK_EQUAL(static_cast<void const*>(eval_tile.data()),
+                      static_cast<void const*>(parent_tile.data()));
   }
 }
 
