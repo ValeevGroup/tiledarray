@@ -89,6 +89,19 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   BOOST_CHECK(dest.is_zero({2, 0}));   // 1e-3 < 1e-2 -> screened out
   BOOST_CHECK(!dest.is_zero({3, 1}));  // 1.0  >= 1e-2 -> kept
 
+  // The dropped tile must also be zero in the shape's norms, not just below
+  // its threshold: scaling by 100 would otherwise lift the leftover 1e-3 norm
+  // over 1e-2, and the scaled expression would ask dest for a tile it does
+  // not hold (ArrayImpl::find_local asserts !is_zero).
+  BOOST_CHECK_EQUAL(dest.shape().data()(2, 0), 0.0f);
+  TSpArrayD scaled;
+  BOOST_CHECK_NO_THROW({
+    scaled("i,j") = 100.0 * dest("i,j");
+    world.gop.fence();
+  });
+  BOOST_CHECK(scaled.is_zero({2, 0}));
+  BOOST_CHECK(!scaled.is_zero({3, 1}));
+
   set_threshold(saved_threshold);  // restore global (static) threshold
 }
 

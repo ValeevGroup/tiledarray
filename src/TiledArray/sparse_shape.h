@@ -684,7 +684,7 @@ class SparseShape {
   /// \param upper_bound The upper bound of the sub-block to be updated
   /// \param other The shape that will be used to update the sub-block
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
-  /// the data result_tile_norms of \c other ; note that result constructed using the same threshold as used to construct this
+  /// the tile norms of \c other, screened with the threshold of this (a norm of \c other below it, which \c other may have kept under a looser threshold, becomes zero)
   /// \post `result.init_threshold() == this->init_threshold()`
   // clang-format on
   template <typename Index1, typename Index2,
@@ -702,14 +702,16 @@ class SparseShape {
     result_tile_norms_blk.inplace_binary(
         other.tile_norms_,
         [threshold, &zero_tile_count](value_type& l, const value_type r) {
+          // screen the incoming norm with this shape's threshold
+          const value_type rs = r < threshold ? value_type(0) : r;
           // Update the zero tile count for the result
-          if ((l < threshold) && (r >= threshold))
-            ++zero_tile_count;
-          else if ((l >= threshold) && (r < threshold))
+          if ((l < threshold) && (rs >= threshold))
             --zero_tile_count;
+          else if ((l >= threshold) && (rs < threshold))
+            ++zero_tile_count;
 
           // Update the tile norm value
-          l = r;
+          l = rs;
         });
 
     return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count,
@@ -745,7 +747,7 @@ class SparseShape {
   /// \param bounds The {lower,upper} bounds of the sub-block
   /// \param other The shape that will be used to update the sub-block
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
-  /// the data result_tile_norms of \c other; note that result constructed using the same threshold as used to construct this
+  /// the tile norms of \c other, screened with the threshold of this (a norm of \c other below it, which \c other may have kept under a looser threshold, becomes zero)
   /// \post `result.init_threshold() == this->init_threshold()`
   // clang-format on
   template <typename PairRange,
@@ -761,14 +763,16 @@ class SparseShape {
     result_tile_norms_blk.inplace_binary(
         other.tile_norms_,
         [threshold, &zero_tile_count](value_type& l, const value_type r) {
+          // screen the incoming norm with this shape's threshold
+          const value_type rs = r < threshold ? value_type(0) : r;
           // Update the zero tile count for the result
-          if ((l < threshold) && (r >= threshold))
-            ++zero_tile_count;
-          else if ((l >= threshold) && (r < threshold))
+          if ((l < threshold) && (rs >= threshold))
             --zero_tile_count;
+          else if ((l >= threshold) && (rs < threshold))
+            ++zero_tile_count;
 
           // Update the tile norm value
-          l = r;
+          l = rs;
         });
 
     return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count,

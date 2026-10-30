@@ -760,6 +760,46 @@ BOOST_AUTO_TEST_CASE(mask) {
       tolerance);
 }
 
+BOOST_AUTO_TEST_CASE(update_block_screens_with_own_threshold) {
+  const float threshold = SparseShape<float>::threshold();
+  // the destination: every tile nonzero, at the default threshold
+  const SparseShape<float> dest(1.0f, tr);
+  BOOST_REQUIRE_EQUAL(dest.init_threshold(), threshold);
+
+  // the update, built under a 1000x looser threshold: it keeps norms that the
+  // destination's threshold screens out
+  SparseShape<float>::threshold(threshold * 1e-3f);
+  Tensor<float> norms(tr.tiles_range(), 0.0f);
+  for (Tensor<float>::size_type i = 0ul; i < norms.size(); ++i)
+    norms[i] = i % 3 == 0 ? 0.0f : (i % 3 == 1 ? threshold * 0.1f : 1.0f);
+  const SparseShape<float> update(norms, tr, /* do_not_scale = */ true);
+  reset_threshold();
+  BOOST_REQUIRE(!update.is_zero(1));  // kept by the looser threshold
+
+  SparseShape<float> result;
+  BOOST_REQUIRE_NO_THROW(result = dest.update_block(tr.tiles_range().lobound(),
+                                                    tr.tiles_range().upbound(),
+                                                    update));
+  BOOST_CHECK_EQUAL(result.init_threshold(), dest.init_threshold());
+
+  size_type zero_tile_count = 0ul;
+  for (Tensor<float>::size_type i = 0ul; i < tr.tiles_range().volume(); ++i) {
+    const float expected = norms[i] < threshold ? 0.0f : norms[i];
+    // a screened tile has a zero norm, not merely a sub-threshold one
+    BOOST_CHECK_EQUAL(result[i], expected);
+    BOOST_CHECK_EQUAL(result.is_zero(i), expected == 0.0f);
+    if (expected == 0.0f) ++zero_tile_count;
+  }
+  BOOST_CHECK_CLOSE(result.sparsity(),
+                    float(zero_tile_count) / float(tr.tiles_range().volume()),
+                    tolerance);
+
+  // scaling up must not resurrect a screened tile
+  const auto scaled = result.scale(1.0e6f);
+  for (Tensor<float>::size_type i = 0ul; i < tr.tiles_range().volume(); ++i)
+    BOOST_CHECK_EQUAL(scaled.is_zero(i), result.is_zero(i));
+}
+
 BOOST_AUTO_TEST_CASE(scale) {
   // change default threshold to make sure it's not inherited
   auto resetter = set_threshold_to_max();
