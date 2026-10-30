@@ -28,6 +28,8 @@
 
 #include <TiledArray/expressions/fwd.h>
 #include <TiledArray/expressions/leaf_engine.h>
+#include <TiledArray/permutation.h>
+#include <TiledArray/pmap/block_pmap.h>
 #include <TiledArray/tile_op/shift.h>
 
 namespace TiledArray {
@@ -290,12 +292,49 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
     return TiledRange(trange_data.begin(), trange_data.end());
   }
 
+  /// Initialize the distribution of the block's evaluator: the process map a
+  /// consumer imposes (e.g. SUMMA's phase map) if any, else the map under
+  /// which the block evaluates where the parent array holds its tiles (see
+  /// make_parent_pmap()), so that no tile is fetched from another rank, else
+  /// the default map over the block's tiles.
   void init_distribution(World* world,
                          const std::shared_ptr<const pmap_interface>& pmap) {
+    if (pmap) {
+      ExprEngine_::init_distribution(world, pmap);
+      return;
+    }
+    if (auto parent_pmap = make_parent_pmap(*world)) {
+      ExprEngine_::init_distribution(world, parent_pmap);
+      // a map for this operand only, not for an array holding the result
+      ExprEngine_::pmap_serves_operand_ = true;
+      return;
+    }
     ExprEngine_::init_distribution(
-        world,
-        (pmap ? pmap
-              : policy::default_pmap(*world, trange_.tiles_range().volume())));
+        world, policy::default_pmap(*world, trange_.tiles_range().volume()));
+  }
+
+  /// The process map under which every tile of the block's result is owned
+  /// by the rank that holds its source tile in the parent array (a
+  /// detail::BlockPmap). A plain array operand evaluates on its own map; this
+  /// is the block's equivalent. Unlike the plain operand's map, it is not kept
+  /// by an array assigned from the expression (see
+  /// ExprEngine::pmap_serves_operand() and Expr::eval_to()).
+  ///
+  /// \return the map, or null if following the parent is not meaningful: if
+  /// the parent's map is replicated (every rank holds every tile, so nothing
+  /// is fetched either way, but each tile must still have one owner) or the
+  /// parent lives in another World (the ranks its map gives are not ranks of
+  /// \p world).
+  std::shared_ptr<const pmap_interface> make_parent_pmap(World& world) const {
+    auto const& parent_pmap = array_.pmap();
+    if (parent_pmap->is_replicated() || &array_.world() != &world) return {};
+    Range::index_type block_lobound(lower_bound_.size());
+    for (std::size_t d = 0; d < lower_bound_.size(); ++d)
+      block_lobound[d] = static_cast<Range::index1_type>(lower_bound_[d]);
+    return std::make_shared<const TiledArray::detail::BlockPmap>(
+        world, parent_pmap, array_.trange().tiles_range(),
+        trange_.tiles_range(), std::move(block_lobound),
+        perm_ ? outer(perm_).inv() : Permutation());
   }
 
   /// Construct the distributed evaluator for array

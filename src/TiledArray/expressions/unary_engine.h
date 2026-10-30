@@ -150,6 +150,7 @@ class UnaryEngine : ExprEngine<Derived> {
                          const std::shared_ptr<const pmap_interface>& pmap) {
     arg_.init_distribution(world, pmap);
     ExprEngine_::init_distribution(world, arg_.pmap());
+    ExprEngine_::pmap_serves_operand_ = arg_.pmap_serves_operand();
   }
 
   /// Non-permuting tiled range factory function
