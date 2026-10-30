@@ -30,6 +30,7 @@ jobs:
       CCACHE_DIR : ${{github.workspace}}/build/.ccache
       CCACHE_COMPRESS : true
       CCACHE_COMPRESSLEVEL : 6
+      CCACHE_MAXSIZE : 600M
       OMPI_MCA_btl_vader_single_copy_mechanism : none
       PARSEC_MCA_bind_threads : 0
       BUILD_CONFIG : >
@@ -71,14 +72,14 @@ jobs:
       shell: cmake -P {0}
       run: |
         string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-        message("::set-output name=timestamp::${current_date}")
+        file(APPEND "$ENV{GITHUB_OUTPUT}" "timestamp=${current_date}\n")
     - name: Setup ccache cache files
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/.ccache
-        key: ${{ matrix.config.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+        key: ccache-${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.task_backend }}-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
         restore-keys: |
-          ${{ matrix.config.name }}-ccache-
+          ccache-${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.task_backend }}-
 
     - name: "Configure build: ${{ env.BUILD_CONFIG }}"
       shell: bash
