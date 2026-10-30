@@ -25,6 +25,8 @@
 #include <unistd.h>
 #include <cstdio>
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 #include <string>
 
 namespace TiledArray::test {
@@ -38,10 +40,11 @@ namespace TiledArray::test {
 /// \return The per-rank file name
 inline std::string to_parallel_archive_file_name(const char* prefix_name,
                                                  int rank) {
-  char buf[256];
-  MADNESS_ASSERT(strlen(prefix_name) + 7 <= sizeof(buf));
-  snprintf(buf, sizeof(buf), "%s.%5.5d", prefix_name, rank);
-  return buf;
+  MADNESS_ASSERT(rank >= 0);
+  // same as the archive's "%s.%5.5d", without a fixed-size buffer
+  std::ostringstream oss;
+  oss << prefix_name << '.' << std::setw(5) << std::setfill('0') << rank;
+  return oss.str();
 }
 
 /// Replace the trailing `XXXXXX` in \p name_template with a unique suffix.
