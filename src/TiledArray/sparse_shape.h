@@ -692,30 +692,11 @@ class SparseShape {
                                         detail::is_integral_range_v<Index2>>>
   SparseShape update_block(const Index1& lower_bound, const Index2& upper_bound,
                            const SparseShape& other) const {
-    Tensor<value_type> result_tile_norms = tile_norms_.clone();
-
-    auto result_tile_norms_blk =
-        result_tile_norms.block(lower_bound, upper_bound);
-    const value_type threshold = my_threshold_;
-    madness::AtomicInt zero_tile_count;
-    zero_tile_count = zero_tile_count_;
-    result_tile_norms_blk.inplace_binary(
-        other.tile_norms_,
-        [threshold, &zero_tile_count](value_type& l, const value_type r) {
-          // screen the incoming norm with this shape's threshold
-          const value_type rs = r < threshold ? value_type(0) : r;
-          // Update the zero tile count for the result
-          if ((l < threshold) && (rs >= threshold))
-            --zero_tile_count;
-          else if ((l >= threshold) && (rs < threshold))
-            ++zero_tile_count;
-
-          // Update the tile norm value
-          l = rs;
-        });
-
-    return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count,
-                        my_threshold_);
+    return update_block_impl(
+        [&](Tensor<value_type>& norms) {
+          return norms.block(lower_bound, upper_bound);
+        },
+        other);
   }
 
   // clang-format off
@@ -727,7 +708,8 @@ class SparseShape {
   /// \param upper_bound The upper bound of the sub-block to be updated
   /// \param other The shape that will be used to update the sub-block
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
-  /// the data result_tile_norms of \c other.
+  /// the tile norms of \c other, screened with the threshold of this (a norm of \c other below it, which \c other may have kept under a looser threshold, becomes zero)
+  /// \post `result.init_threshold() == this->init_threshold()`
   // clang-format on
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<std::is_integral_v<Index1> &&
@@ -754,29 +736,8 @@ class SparseShape {
             typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   SparseShape update_block(const PairRange& bounds,
                            const SparseShape& other) const {
-    Tensor<value_type> result_tile_norms = tile_norms_.clone();
-
-    auto result_tile_norms_blk = result_tile_norms.block(bounds);
-    const value_type threshold = my_threshold_;
-    madness::AtomicInt zero_tile_count;
-    zero_tile_count = zero_tile_count_;
-    result_tile_norms_blk.inplace_binary(
-        other.tile_norms_,
-        [threshold, &zero_tile_count](value_type& l, const value_type r) {
-          // screen the incoming norm with this shape's threshold
-          const value_type rs = r < threshold ? value_type(0) : r;
-          // Update the zero tile count for the result
-          if ((l < threshold) && (rs >= threshold))
-            --zero_tile_count;
-          else if ((l >= threshold) && (rs < threshold))
-            ++zero_tile_count;
-
-          // Update the tile norm value
-          l = rs;
-        });
-
-    return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count,
-                        my_threshold_);
+    return update_block_impl(
+        [&](Tensor<value_type>& norms) { return norms.block(bounds); }, other);
   }
 
   // clang-format off
@@ -786,7 +747,8 @@ class SparseShape {
   /// \param bounds The {lower,upper} bounds of the sub-block
   /// \param other The shape that will be used to update the sub-block
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
-  /// the data result_tile_norms of \c other.
+  /// the tile norms of \c other, screened with the threshold of this (a norm of \c other below it, which \c other may have kept under a looser threshold, becomes zero)
+  /// \post `result.init_threshold() == this->init_threshold()`
   // clang-format on
   template <typename Index,
             typename = std::enable_if_t<std::is_integral_v<Index>>>
@@ -800,9 +762,11 @@ class SparseShape {
   /// Bitwise comparison
 
   /// \param other a SparseShape object
-  /// \return true if this object and @c other object are bitwise identical
+  /// \return true if this object and @c other object are bitwise identical,
+  /// including the thresholds they screen with
   inline bool operator==(const SparseShape<T>& other) const {
-    bool equal = this->zero_tile_count_ == other.zero_tile_count_;
+    bool equal = this->zero_tile_count_ == other.zero_tile_count_ &&
+                 this->my_threshold_ == other.my_threshold_;
     if (equal) {
       const unsigned int dim = tile_norms_.range().rank();
       for (unsigned d = 0; d != dim && equal; ++d) {
@@ -1916,6 +1880,9 @@ class SparseShape {
     // the threshold the norms were screened with: is_zero() must use it, not
     // the reader's default threshold, or the set of nonzero tiles changes
     ar & zero_tile_count_ & my_threshold_;
+    if (!(std::isfinite(my_threshold_) && my_threshold_ >= value_type(0)))
+      TA_EXCEPTION(
+          "SparseShape::serialize: the archive holds an invalid threshold");
     // the cached unscaled norms belong to the previous contents
     tile_norms_unscaled_.reset();
   }
@@ -1931,6 +1898,40 @@ class SparseShape {
   }
 
  private:
+  /// implements update_block
+
+  /// \param make_block returns the block of its tile norms argument that is to
+  /// be updated
+  /// \param other the shape whose norms are copied into the block
+  template <typename MakeBlock>
+  SparseShape update_block_impl(MakeBlock&& make_block,
+                                const SparseShape& other) const {
+    Tensor<value_type> result_tile_norms = tile_norms_.clone();
+
+    auto result_tile_norms_blk = make_block(result_tile_norms);
+    const value_type threshold = my_threshold_;
+    madness::AtomicInt zero_tile_count;
+    zero_tile_count = zero_tile_count_;
+    result_tile_norms_blk.inplace_binary(
+        other.tile_norms_,
+        [threshold, &zero_tile_count](value_type& l, const value_type r) {
+          TA_ASSERT(!std::isnan(r));
+          // screen the incoming norm with this shape's threshold
+          const value_type rs = r < threshold ? value_type(0) : r;
+          // Update the zero tile count for the result
+          if ((l < threshold) && (rs >= threshold))
+            --zero_tile_count;
+          else if ((l >= threshold) && (rs < threshold))
+            ++zero_tile_count;
+
+          // Update the tile norm value
+          l = rs;
+        });
+
+    return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count,
+                        my_threshold_);
+  }
+
   template <typename Factor>
   static value_type to_abs_factor(const Factor factor) {
     using std::abs;
@@ -1984,14 +1985,17 @@ inline std::basic_ostream<Char, CharTraits>& operator<<(
 
 /// @param world the World object
 /// @param[in] shape the SparseShape object
-/// @return true if \c shape is bitwise identical across \c world
+/// @return true if \c shape, including its threshold, is bitwise identical
+/// across \c world
 /// @note must be invoked on every rank of World
 template <typename T>
 bool is_replicated(World& world, const SparseShape<T>& shape) {
   const auto volume = shape.data().size();
   std::vector<T> data(shape.data().data(), shape.data().data() + volume);
-  world.gop.max(data.data(), volume);
-  bool result = true;
+  data.push_back(shape.init_threshold());
+  world.gop.max(data.data(), data.size());
+  bool result = data.back() == shape.init_threshold();
+  data.pop_back();
   for (size_t i = 0; i != data.size(); ++i) {
     if (data[i] != shape.data()[i]) {
       result = false;

@@ -78,9 +78,13 @@ class TensorImpl : private NO_DEFAULTS {
         pmap_(pmap) {
     local_nnz_ = -1;
     // ensure that shapes are identical on every rank
-    if (replicate_shape && !shape.is_dense())
+    if (replicate_shape && !shape.is_dense()) {
       world.gop.broadcast_serializable(*shape_, 0);
-    else
+      // the broadcast would silently replace this rank's threshold with
+      // rank 0's; an SPMD program screens with the same one on every rank
+      if constexpr (requires { shape.init_threshold(); })
+        TA_ASSERT(shape_->init_threshold() == shape.init_threshold());
+    } else
       TA_ASSERT(is_replicated(world, *shape_));
     // Validate input data.
     TA_ASSERT(pmap_);
