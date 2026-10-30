@@ -637,12 +637,27 @@ BOOST_AUTO_TEST_CASE(complex_expressions) {
   };
   check_close(expr(), on_host(expr), 1.0e-12);
 
+  // conjugation has no device kernel: the device branch synchronizes, then
+  // runs the host code
+  auto conj = [&] {
+    ZArray z;
+    z("i,j") = x("i,j").conj();
+    return z;
+  };
+  auto scaled_conj = [&] {
+    ZArray z;
+    z("i,j") = 2.0 * x("i,j").conj();
+    return z;
+  };
+  check_close(conj(), on_host(conj), 1.0e-12);
+  check_close(scaled_conj(), on_host(scaled_conj), 1.0e-12);
+
   // dot does not conjugate, inner_product conjugates its left operand
   auto dot = [&] { return x("i,j").dot(y("i,j")).get(); };
   auto inner = [&] { return x("i,j").inner_product(y("i,j")).get(); };
   auto norm = [&] { return x("i,j").norm().get(); };
-  BOOST_CHECK_SMALL(std::abs(dot() - on_host(dot)), 1.0e-10);
-  BOOST_CHECK_SMALL(std::abs(inner() - on_host(inner)), 1.0e-10);
+  BOOST_CHECK_SMALL(std::abs(dot() - on_host(dot)), 1.0e-12);
+  BOOST_CHECK_SMALL(std::abs(inner() - on_host(inner)), 1.0e-12);
   BOOST_CHECK_CLOSE_FRACTION(norm(), on_host(norm), 1.0e-12);
   BOOST_CHECK(std::abs(dot() - inner()) > 1.0e-6);  // the two really differ
 }
