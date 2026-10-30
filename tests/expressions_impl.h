@@ -3078,6 +3078,83 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_trange1, F, Fixtures, F) {
   }
 }
 
+// a block of a CONST array that keeps the array's element coordinates is a
+// view: its consumers read the array's tiles in place. The array must come
+// through unchanged whatever the consumer does with the tiles it gets (an
+// in-place accumulation into the left operand, an assignment that then owns
+// the result), and the values must be those of the copying (mutable) block.
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(const_block_is_a_view, F, Fixtures, F) {
+  auto& a = F::a;
+  using array_type = std::decay_t<decltype(a)>;
+  const auto lb = std::array{3, 3, 3};
+  const auto ub = std::array{5, 5, 5};
+
+  // the reference: the copying block of the mutable array
+  array_type ref;
+  BOOST_REQUIRE_NO_THROW(ref("a,b,c") =
+                             a("a,b,c").block(lb, ub, preserve_lobound));
+  BOOST_REQUIRE(ref.trange().elements_range().lobound()[0] != 0);
+
+  using namespace TiledArray::expressions;
+  auto cblk = [&](std::string const& annot = "a,b,c") {
+    return std::as_const(a)(annot).block(lb, ub, preserve_lobound);
+  };
+  auto norm_of_diff = [](auto&& expr) {
+    return static_cast<double>(expr.norm().get());
+  };
+
+  // assignment: the result owns its tiles and has the block's value
+  {
+    array_type result;
+    BOOST_REQUIRE_NO_THROW(result("a,b,c") = cblk());
+    BOOST_CHECK_EQUAL(result.trange(), ref.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - ref("a,b,c")), 0.0);
+  }
+
+  // the view as the left operand of an in-place-capable binary op, with the
+  // same view on the right: the array must not be touched
+  {
+    array_type result;
+    BOOST_REQUIRE_NO_THROW(result("a,b,c") = cblk() + 2 * cblk());
+    BOOST_CHECK_EQUAL(result.trange(), ref.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - 3 * ref("a,b,c")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // a permuted assignment of the view
+  {
+    array_type result, expected;
+    BOOST_REQUIRE_NO_THROW(result("c,b,a") = cblk());
+    BOOST_REQUIRE_NO_THROW(expected("c,b,a") = ref("a,b,c"));
+    BOOST_CHECK_EQUAL(result.trange(), expected.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("c,b,a") - expected("c,b,a")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // an assignment of the view into the same block of another array
+  {
+    array_type result = a.clone();
+    BOOST_REQUIRE_NO_THROW(result("a,b,c").block(lb, ub) = 2 * cblk());
+    array_type expected = a.clone();
+    BOOST_REQUIRE_NO_THROW(expected("a,b,c").block(lb, ub) = 2 * ref("a,b,c"));
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - expected("a,b,c")), 0.0);
+    BOOST_REQUIRE_NO_THROW(result("a,b,c").block(lb, ub) = cblk());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - a("a,b,c")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // a product with the view as an operand
+  {
+    array_type result, expected;
+    BOOST_REQUIRE_NO_THROW(result("a,d") = cblk() * cblk("d,b,c").conj());
+    BOOST_REQUIRE_NO_THROW(expected("a,d") =
+                               ref("a,b,c") * ref("d,b,c").conj());
+    BOOST_CHECK_EQUAL(result.trange(), expected.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,d") - expected("a,d")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+}
+
 // the block expressions derived from a block (scaled, negated, conjugated,
 // and their compositions) refer to the same block and keep its result trange
 // lobound: `2 * a.block(lb, ub, preserve_lobound)` produces the trange that

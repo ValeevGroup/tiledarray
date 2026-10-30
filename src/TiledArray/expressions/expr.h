@@ -176,6 +176,31 @@ class Expr {
     return (*op)(std::forward<T>(tile));
   }
 
+  /// Converts a lazy tile to the result array's tile type. A tile that is
+  /// still the operand array's own (a local tile an engine hands through
+  /// unchanged, see LazyArrayTile::shares_source) is cloned, so that the
+  /// result array never shares a tile with an operand.
+  /// \note the cast may be nonblocking (a lazy tile that evaluates to a
+  /// Future): the Future is returned as is, for the task to forward. Such a
+  /// tile is generated, never shared (see LazyArrayTile::shares_source).
+  /// \note every path that makes an operand's lazy tile a tile of a result
+  /// array must keep it from sharing: the two lazy-tile set_tile overloads
+  /// below do it here; the assignment to a block (eval_to(BlkTsrExpr&)) does
+  /// it with a Shift that clones a non-consumable argument.
+  template <typename Result, typename T>
+  struct cast_or_clone {
+    auto operator()(const T& tile) const {
+      TiledArray::Cast<Result, T> cast;
+      using cast_result_type = decltype(cast(tile));
+      if constexpr (requires { tile.shares_source(); } &&
+                    !madness::is_future<cast_result_type>::value) {
+        if (tile.shares_source())
+          return cast_result_type(TiledArray::clone(cast(tile)));
+      }
+      return cast(tile);
+    }
+  };
+
   /// Set an array tile with a lazy tile
 
   /// Spawn a task to evaluate a lazy tile and set the \a array tile at
@@ -196,7 +221,7 @@ class Expr {
                               >::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
     array.set(index, array.world().taskq.add(
-                         TiledArray::Cast<typename A::value_type, T>(), tile));
+                         cast_or_clone<typename A::value_type, T>(), tile));
   }
 
 #ifdef TILEDARRAY_HAS_DEVICE
@@ -218,7 +243,7 @@ class Expr {
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
     array.set(index, madness::add_device_task(
                          array.world(),
-                         TiledArray::Cast<typename A::value_type, T>(), tile));
+                         cast_or_clone<typename A::value_type, T>(), tile));
   }
 #endif
 

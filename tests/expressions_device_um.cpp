@@ -32,6 +32,11 @@
 #include <tiledarray.h>
 #include "unit_test_config.h"
 
+#include <array>
+#include <string>
+#include <utility>
+#include <vector>
+
 using namespace TiledArray;
 
 struct UMExpressionsFixture : public TiledRangeFixture {
@@ -2585,6 +2590,128 @@ BOOST_AUTO_TEST_CASE(dot_contr) {
   for (int i = 0; i != 3; ++i)
     BOOST_REQUIRE_NO_THROW(
         (a("a,b,c") * b("d,b,c")).dot(b("d,e,f") * a("a,e,f")));
+}
+
+// a block of a const array that keeps the array's element coordinates
+// (preserve_lobound) is a view on device too: the consuming expression reads
+// the array's own tiles, no consumer takes them over in place, and an
+// assignment of the block gives the result its own tiles
+BOOST_AUTO_TEST_CASE(const_block_is_a_view) {
+  const auto& ca = a;
+  const auto lb = std::array{3, 3, 3};
+  const auto ub = std::array{5, 5, 5};
+  using TiledArray::expressions::BipartiteIndexList;
+
+  // the consumer of the view gets the array's own tile
+  {
+    auto expr = ca("a,b,c").block(lb, ub, preserve_lobound);
+    typename decltype(expr)::engine_type engine(expr);
+    engine.init(*GlobalFixture::world, {}, BipartiteIndexList("a,b,c"));
+    auto dist_eval = engine.make_dist_eval();
+    dist_eval.eval();
+    using dist_eval_type = decltype(dist_eval);
+    std::vector<std::pair<typename dist_eval_type::ordinal_type,
+                          Future<typename dist_eval_type::value_type>>>
+        tiles;
+    for (auto ord : *dist_eval.pmap())
+      tiles.emplace_back(ord, dist_eval.get(ord));
+    for (auto& [ord, lazy] : tiles) {
+      auto parent_index = dist_eval.trange().tiles_range().idx(ord);
+      for (std::size_t d = 0; d < parent_index.size(); ++d)
+        parent_index[d] += lb[d];
+      UMTensor const parent_tile = a.find(parent_index).get();
+      UMTensor const eval_tile =
+          static_cast<typename dist_eval_type::eval_type>(lazy.get());
+      BOOST_CHECK_EQUAL(eval_tile.range(), parent_tile.range());
+      // only a tile the parent holds on this rank can be shared
+      if (a.is_local(parent_index))
+        BOOST_CHECK_EQUAL(
+            static_cast<void const*>(eval_tile.tensor().data()),
+            static_cast<void const*>(parent_tile.tensor().data()));
+    }
+    dist_eval.wait();
+  }
+
+  // the reference: the copying block of the mutable array
+  TArrayUMD ref;
+  BOOST_REQUIRE_NO_THROW(ref("a,b,c") =
+                             a("a,b,c").block(lb, ub, preserve_lobound));
+  auto cblk = [&](std::string const& annot = "a,b,c") {
+    return ca(annot).block(lb, ub, preserve_lobound);
+  };
+  auto norm_of_diff = [](auto&& expr) { return expr.norm().get(); };
+
+  // assignment: the result owns its tiles and has the block's value
+  {
+    TArrayUMD result;
+    BOOST_REQUIRE_NO_THROW(result("a,b,c") = cblk());
+    BOOST_CHECK_EQUAL(result.trange(), ref.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - ref("a,b,c")), 0.0);
+    for (auto ord : *result.pmap()) {
+      auto parent_index = result.trange().tiles_range().idx(ord);
+      for (std::size_t d = 0; d < parent_index.size(); ++d)
+        parent_index[d] += lb[d];
+      UMTensor const parent_tile = a.find(parent_index).get();
+      UMTensor const result_tile = result.find(ord).get();
+      if (a.is_local(parent_index))  // a remote find is a copy anyway
+        BOOST_CHECK_NE(static_cast<void const*>(result_tile.tensor().data()),
+                       static_cast<void const*>(parent_tile.tensor().data()));
+    }
+  }
+
+  // the view as the left operand of an in-place-capable binary op: the
+  // array must not be touched
+  {
+    TArrayUMD result;
+    BOOST_REQUIRE_NO_THROW(result("a,b,c") = cblk() + 2 * cblk());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - 3 * ref("a,b,c")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // a permuted assignment of the view
+  {
+    TArrayUMD result, expected;
+    BOOST_REQUIRE_NO_THROW(result("c,b,a") = cblk());
+    BOOST_REQUIRE_NO_THROW(expected("c,b,a") = ref("a,b,c"));
+    BOOST_CHECK_EQUAL(norm_of_diff(result("c,b,a") - expected("c,b,a")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // a product with the view as both operands
+  {
+    TArrayUMD result, expected;
+    BOOST_REQUIRE_NO_THROW(result("a,d") = cblk() * cblk("d,b,c"));
+    BOOST_REQUIRE_NO_THROW(expected("a,d") = ref("a,b,c") * ref("d,b,c"));
+    // with more than one rank the two contractions may sum in different
+    // orders, so the floating-point results agree to roundoff only
+    BOOST_CHECK_SMALL(norm_of_diff(result("a,d") - expected("a,d")),
+                      1e-12 * expected("a,d").norm().get());
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // the view's evaluation does not outlive its expression: once the
+  // consumers are done and the fence has run, nothing it left behind (a lazy
+  // tile, or the device conversion tile cached in it) holds the array's tiles,
+  // so each local tile of the array is back to its original holders
+  {
+    auto use_counts = [&] {
+      std::vector<std::pair<std::size_t, long>> counts;
+      for (auto ord : *a.pmap())
+        if (!a.is_zero(ord))
+          counts.emplace_back(ord, a.find_local(ord).get().use_count());
+      return counts;
+    };
+    a.world().gop.fence();
+    auto const before = use_counts();
+    {
+      TArrayUMD assigned, summed, contracted;
+      BOOST_REQUIRE_NO_THROW(assigned("a,b,c") = cblk());
+      BOOST_REQUIRE_NO_THROW(summed("a,b,c") = cblk() + 2 * cblk());
+      BOOST_REQUIRE_NO_THROW(contracted("a,d") = cblk() * cblk("d,b,c"));
+    }
+    a.world().gop.fence();
+    BOOST_CHECK(use_counts() == before);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
