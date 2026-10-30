@@ -29,6 +29,9 @@
 #include "../tile_interface/permute.h"
 #include "../tile_interface/shift.h"
 
+#include <algorithm>
+#include <type_traits>
+
 namespace TiledArray {
 namespace detail {
 
@@ -42,19 +45,45 @@ namespace detail {
 /// consumed
 /// \note Input tiles can be consumed only if their type matches the result
 /// type.
-template <typename Result, typename Arg, bool Consumable>
+/// \tparam Share If `true`, a zero shift of a non-consumable argument hands
+/// the argument through (a shallow copy, for a tile type like TA::Tensor whose
+/// copies share the data) instead of cloning it, as Noop does: the result
+/// then shares the argument's data (see is_pass_through()). This is the op of
+/// a block of a const array, whose tiles its consumer must never consume.
+/// The shift is zero whenever the block keeps the array's element coordinates:
+/// a preserve_lobound block, or a block whose first tile is already at the
+/// target lobound (e.g. one that starts at the array's origin).
+/// \note For a deep-copy tile type the hand-through is already a copy, and the
+/// assignment of the block (see LazyArrayTile::shares_source) copies it once
+/// more; wrap such a tile type in TA::Tile, which is shallow-copy.
+template <typename Result, typename Arg, bool Consumable, bool Share = false>
 class Shift {
  public:
-  typedef Shift<Result, Arg, Consumable> Shift_;  ///< This object type
-  typedef Arg argument_type;                      ///< The argument type
-  typedef Result result_type;                     ///< The result tile type
+  typedef Shift<Result, Arg, Consumable, Share> Shift_;  ///< This object type
+  typedef Arg argument_type;                             ///< The argument type
+  typedef Result result_type;  ///< The result tile type
 
   /// Indicates whether it is *possible* to consume the left tile
   static constexpr bool is_consumable =
       Consumable && std::is_same<result_type, argument_type>::value;
 
+  /// true if this op would hand a non-consumable argument through unchanged,
+  /// so that its result shares the argument's data: a zero shift in sharing
+  /// mode (see \p Share)
+  bool is_pass_through() const noexcept {
+    if constexpr (Share && std::is_same_v<result_type, argument_type>)
+      return is_zero_shift();
+    else
+      return false;
+  }
+
  private:
   container::svector<long> range_shift_;
+
+  bool is_zero_shift() const noexcept {
+    return std::all_of(range_shift_.begin(), range_shift_.end(),
+                       [](long s) { return s == 0l; });
+  }
 
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation
@@ -75,6 +104,11 @@ class Shift {
 
   template <bool C, typename = void>
   auto eval(const argument_type& arg) const {
+    if constexpr (Share && std::is_same_v<result_type, argument_type>) {
+      // nothing to relocate: hand the tile through (a shallow copy for a
+      // shallow-copy tile type) instead of cloning it
+      if (is_zero_shift()) return result_type(arg);
+    }
     TiledArray::Shift<result_type, argument_type> shift;
     return shift(arg, range_shift_);
   }

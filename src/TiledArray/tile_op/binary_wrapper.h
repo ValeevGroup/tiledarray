@@ -219,10 +219,13 @@ class BinaryWrapper {
   auto operator()(L&& left, R&& right) const {
     auto eval_left = invoke_cast(std::forward<L>(left));
     auto eval_right = invoke_cast(std::forward<R>(right));
-    auto continuation = [this](
+    // N.B. the continuation runs as a task once the lazy tiles are evaluated,
+    // possibly after this wrapper (owned by an evaluator) is gone: it carries
+    // its own copy
+    auto continuation = [self = *this](
                             madness::future_to_ref_t<decltype(eval_left)> l,
                             madness::future_to_ref_t<decltype(eval_right)> r) {
-      return BinaryWrapper_::operator()(l, r);
+      return self(l, r);
     };
     return detail::invoke(continuation, std::move(eval_left),
                           std::move(eval_right));
@@ -246,10 +249,12 @@ class BinaryWrapper {
                                               right_is_consumable)>* = nullptr>
   auto operator()(L&& left, R&& right) const {
     auto eval_left = invoke_cast(std::forward<L>(left));
-    auto continuation = [this](madness::future_to_ref_t<decltype(eval_left)> l,
-                               R&& r) {
-      return BinaryWrapper_::operator()(l, std::forward<R>(r));
-    };
+    // N.B. the continuation runs as a task once the lazy tiles are evaluated,
+    // possibly after this wrapper (owned by an evaluator) is gone: it carries
+    // its own copy
+    auto continuation = [self = *this](
+                            madness::future_to_ref_t<decltype(eval_left)> l,
+                            R&& r) { return self(l, std::forward<R>(r)); };
     return detail::invoke(continuation, std::move(eval_left),
                           std::forward<R>(right));
   }
@@ -271,10 +276,14 @@ class BinaryWrapper {
                        (left_is_consumable || right_is_consumable)>* = nullptr>
   auto operator()(L&& left, R&& right) const {
     auto eval_right = invoke_cast(std::forward<R>(right));
-    auto continuation =
-        [this](L&& l, madness::future_to_ref_t<decltype(eval_right)> r) {
-          return BinaryWrapper_::operator()(std::forward<L>(l), r);
-        };
+    // N.B. the continuation runs as a task once the lazy tiles are evaluated,
+    // possibly after this wrapper (owned by an evaluator) is gone: it carries
+    // its own copy
+    auto continuation = [self = *this](
+                            L&& l,
+                            madness::future_to_ref_t<decltype(eval_right)> r) {
+      return self(std::forward<L>(l), r);
+    };
     return detail::invoke(continuation, std::forward<L>(left),
                           std::move(eval_right));
   }
@@ -301,11 +310,14 @@ class BinaryWrapper {
       return detail::invoke(op_, std::move(eval_left), std::move(eval_right),
                             perm_);
 
-    auto op_left = [this](eval_t<L>& _left, eval_t<R>& _right) {
-      return op_.consume_left(_left, _right);
+    // N.B. the consuming op runs as a task once the lazy tiles are evaluated,
+    // possibly after this wrapper (owned by an evaluator) is gone: it carries
+    // its own copy of op_
+    auto op_left = [op = op_](eval_t<L>& _left, eval_t<R>& _right) {
+      return op.consume_left(_left, _right);
     };
-    auto op_right = [this](eval_t<L>& _left, eval_t<R>& _right) {
-      return op_.consume_right(_left, _right);
+    auto op_right = [op = op_](eval_t<L>& _left, eval_t<R>& _right) {
+      return op.consume_right(_left, _right);
     };
     // Override consumable
     if (is_consumable_tile<eval_t<L>>::value && left.is_consumable())
