@@ -700,6 +700,29 @@ BOOST_AUTO_TEST_CASE(expression_general_product_block_operands) {
   BOOST_CHECK_SMALL(diff_norm(w, w_ref, "b,i,k"), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_block_inner_permuted) {
+  // ToT general product of a BLOCK view whose inner modes must be permuted
+  // explicitly while the product permutes its outer modes implicitly:
+  //   C("b,i,k;m,n") = A.block("b,i,j;n,m") * B("b,j,k;m,n")
+  // outer: b fused, j contracted, i/k free; inner: Hadamard over m,n
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_b{{0, 2}, {0, 2, 5}, {0, 3, 4}};     // b, j, k
+  auto a = make_patterned_tot_array(world, tr_a, {2, 3}, 1.0);
+  auto b = make_patterned_tot_array(world, tr_b, {3, 2}, 2.0);
+
+  // materialized block as the reference operand
+  TArrayToT ab, c_ref, c;
+  ab("b,i,j;n,m") = a("b,i,j;n,m").block({0, 0, 0}, {1, 2, 2});
+  c_ref("b,i,k;m,n") = ab("b,i,j;n,m") * b("b,j,k;m,n");
+
+  BOOST_REQUIRE_NO_THROW(c("b,i,k;m,n") =
+                             a("b,i,j;n,m").block({0, 0, 0}, {1, 2, 2}) *
+                             b("b,j,k;m,n"));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(expression_general_product_into_block) {
   // general product assigned INTO a block view of the result:
   //   W.block = A * B (b fused, j contracted)

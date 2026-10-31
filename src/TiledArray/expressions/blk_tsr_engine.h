@@ -499,10 +499,13 @@ class BlkTsrEngine
     const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
 
     // Initialize the permuted range shift vector
-    auto outer_perm = outer(perm);
-    TA_ASSERT(outer_perm.size() == rank);
+    // an empty outer permutation is the identity: only the inner modes of
+    // a nested tile are permuted explicitly (the consumer permutes the
+    // outer modes implicitly)
+    const auto outer_perm = outer(perm);
+    TA_ASSERT(outer_perm.size() == rank || outer_perm.size() == 0);
     for (unsigned int d = 0u; d < rank; ++d) {
-      const auto perm_d = outer_perm[d];
+      const auto perm_d = outer_perm.size() == 0 ? d : outer_perm[d];
       const auto lower_d = lower[d];
       const auto upper_d = upper[d];
       if (lower_d != upper_d) {
@@ -664,10 +667,13 @@ class ScalBlkTsrEngine
     const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
 
     // Initialize the permuted range shift vector
-    auto outer_perm = outer(perm);
-    TA_ASSERT(outer_perm.size() == rank);
+    // an empty outer permutation is the identity: only the inner modes of
+    // a nested tile are permuted explicitly (the consumer permutes the
+    // outer modes implicitly)
+    const auto outer_perm = outer(perm);
+    TA_ASSERT(outer_perm.size() == rank || outer_perm.size() == 0);
     for (unsigned int d = 0u; d < rank; ++d) {
-      const auto perm_d = outer_perm[d];
+      const auto perm_d = outer_perm.size() == 0 ? d : outer_perm[d];
       const auto lower_d = lower[d];
       const auto upper_d = upper[d];
       if (lower_d != upper_d) {
