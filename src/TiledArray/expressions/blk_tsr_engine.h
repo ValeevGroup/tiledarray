@@ -364,6 +364,44 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
     return ss.str();
   }
 
+ protected:
+  /// Range shift factory function
+
+  /// Computes the shift that moves the block's tiles from the host array's
+  /// coordinates to those of the target of this expression.
+  /// \param outer_perm The permutation applied to the outer modes of the
+  /// tiles; empty (the identity) if the tiles' outer modes are not permuted
+  /// explicitly, e.g. when the consumer permutes them implicitly but the
+  /// inner modes of a nested tile explicitly (see ExprEngine::make_op())
+  /// \return The range shift, referring to the modes of the permuted tiles
+  container::svector<long> make_range_shift(
+      const Permutation& outer_perm = {}) const {
+    const unsigned int rank = trange_.tiles_range().rank();
+    TA_ASSERT(outer_perm.size() == rank || outer_perm.size() == 0);
+
+    container::svector<long> range_shift(rank, 0l);
+
+    // Get temporary data pointers
+    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
+    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
+    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
+
+    for (unsigned int d = 0u; d < rank; ++d) {
+      const auto lower_d = lower[d];
+      const auto upper_d = upper[d];
+      if (lower_d != upper_d) {
+        // element lobound of the block in the host
+        const long base_d = trange[d].tile(lower_d).first;
+        // element lobound of the target of this expression
+        const long target_base_d = trange_lobound_ ? (*trange_lobound_)[d] : 0l;
+        const auto perm_d = outer_perm.size() == 0 ? d : outer_perm[d];
+        range_shift[perm_d] = target_base_d - base_d;
+      }
+    }
+
+    return range_shift;
+  }
+
 };  // class BlkTsrEngineBase
 
 /// Tensor expression engine
@@ -450,33 +488,7 @@ class BlkTsrEngine
 
   /// \return The tile operation
   op_type make_tile_op() const {
-    const unsigned int rank = trange_.tiles_range().rank();
-
-    // Construct and allocate memory for the shift range
-    container::svector<long> range_shift;
-    range_shift.reserve(rank);
-
-    // Get temporary data pointers
-    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
-    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
-    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
-
-    // Initialize the range shift vector
-    for (unsigned int d = 0u; d < rank; ++d) {
-      const auto lower_d = lower[d];
-      const auto upper_d = upper[d];
-      if (lower_d != upper_d) {
-        // element lobound of the block in the host
-        const auto base_d = trange[d].tile(lower_d).first;
-        // element lobound of the target of this expression
-        const auto target_base_d =
-            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
-        range_shift.emplace_back(target_base_d - base_d);
-      } else {
-        range_shift.emplace_back(0l);
-      }
-    }
-
+    const auto range_shift = this->make_range_shift();
     return op_type(op_base_type(range_shift));
   }
 
@@ -488,32 +500,7 @@ class BlkTsrEngine
             typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
                 std::remove_reference_t<Perm>>>>
   op_type make_tile_op(Perm&& perm) const {
-    const unsigned int rank = trange_.tiles_range().rank();
-
-    // Construct and allocate memory for the shift range
-    container::svector<long> range_shift(rank, 0l);
-
-    // Get temporary data pointers
-    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
-    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
-    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
-
-    // Initialize the permuted range shift vector
-    auto outer_perm = outer(perm);
-    TA_ASSERT(outer_perm.size() == rank);
-    for (unsigned int d = 0u; d < rank; ++d) {
-      const auto perm_d = outer_perm[d];
-      const auto lower_d = lower[d];
-      const auto upper_d = upper[d];
-      if (lower_d != upper_d) {
-        // element lobound of the block in the host
-        const auto base_d = trange[d].tile(lower_d).first;
-        // element lobound of the target of this expression
-        const auto target_base_d = trange_lobound_ ? (*trange_lobound_)[d] : 0;
-        range_shift[perm_d] = target_base_d - base_d;
-      }
-    }
-
+    const auto range_shift = this->make_range_shift(outer(perm));
     return op_type(op_base_type(range_shift), std::forward<Perm>(perm));
   }
 
@@ -616,32 +603,7 @@ class ScalBlkTsrEngine
 
   /// \return The tile operation
   op_type make_tile_op() const {
-    const unsigned int rank = trange_.tiles_range().rank();
-
-    // Construct and allocate memory for the shift range
-    std::vector<long> range_shift;
-    range_shift.reserve(rank);
-
-    // Get temporary data pointers
-    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
-    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
-    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
-
-    // Construct the inverse permutation
-    for (unsigned int d = 0u; d < rank; ++d) {
-      const auto lower_d = lower[d];
-      const auto upper_d = upper[d];
-      if (lower_d != upper_d) {
-        // element lobound of the block in the host
-        const auto base_d = trange[d].tile(lower_d).first;
-        // element lobound of the target of this expression
-        const auto target_base_d =
-            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
-        range_shift.emplace_back(target_base_d - base_d);
-      } else
-        range_shift.emplace_back(0);
-    }
-
+    const auto range_shift = this->make_range_shift();
     return op_type(op_base_type(range_shift, factor_));
   }
 
@@ -653,33 +615,7 @@ class ScalBlkTsrEngine
             typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
                 std::remove_reference_t<Perm>>>>
   op_type make_tile_op(Perm&& perm) const {
-    const unsigned int rank = trange_.tiles_range().rank();
-
-    // Construct and allocate memory for the shift range
-    container::svector<long> range_shift(rank, 0l);
-
-    // Get temporary data pointers
-    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
-    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
-    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
-
-    // Initialize the permuted range shift vector
-    auto outer_perm = outer(perm);
-    TA_ASSERT(outer_perm.size() == rank);
-    for (unsigned int d = 0u; d < rank; ++d) {
-      const auto perm_d = outer_perm[d];
-      const auto lower_d = lower[d];
-      const auto upper_d = upper[d];
-      if (lower_d != upper_d) {
-        // element lobound of the block in the host
-        const auto base_d = trange[d].tile(lower_d).first;
-        // element lobound of the target of this expression
-        const auto target_base_d =
-            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
-        range_shift[perm_d] = target_base_d - base_d;
-      }
-    }
-
+    const auto range_shift = this->make_range_shift(outer(perm));
     return op_type(op_base_type(range_shift, factor_),
                    std::forward<Perm>(perm));
   }
