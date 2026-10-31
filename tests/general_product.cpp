@@ -705,22 +705,44 @@ BOOST_AUTO_TEST_CASE(expression_general_product_tot_block_inner_permuted) {
   // explicitly while the product permutes its outer modes implicitly:
   //   C("b,i,k;m,n") = A.block("b,i,j;n,m") * B("b,j,k;m,n")
   // outer: b fused, j contracted, i/k free; inner: Hadamard over m,n
+  // the block starts past the first tile in b and i, by different element
+  // offsets (2 and 1), so the tiles' range shift is nontrivial in each mode
   auto& world = TA::get_default_world();
-  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
-  TA::TiledRange tr_a{{0, 2, 4}, {0, 2, 3}, {0, 2, 5}};  // b, i, j
+  TA::TiledRange tr_a{{0, 2, 4}, {0, 1, 3}, {0, 2, 5}};  // b, i, j
   TA::TiledRange tr_b{{0, 2}, {0, 2, 5}, {0, 3, 4}};     // b, j, k
   auto a = make_patterned_tot_array(world, tr_a, {2, 3}, 1.0);
   auto b = make_patterned_tot_array(world, tr_b, {3, 2}, 2.0);
+  const std::vector<std::size_t> lo{1, 1, 0}, hi{2, 2, 2};
 
   // materialized block as the reference operand
   TArrayToT ab, c_ref, c;
-  ab("b,i,j;n,m") = a("b,i,j;n,m").block({0, 0, 0}, {1, 2, 2});
+  ab("b,i,j;n,m") = a("b,i,j;n,m").block(lo, hi);
   c_ref("b,i,k;m,n") = ab("b,i,j;n,m") * b("b,j,k;m,n");
-
   BOOST_REQUIRE_NO_THROW(c("b,i,k;m,n") =
-                             a("b,i,j;n,m").block({0, 0, 0}, {1, 2, 2}) *
-                             b("b,j,k;m,n"));
+                             a("b,i,j;n,m").block(lo, hi) * b("b,j,k;m,n"));
   BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+
+  // scaled block (ScalBlkTsrEngine)
+  TArrayToT c_scal_ref, c_scal;
+  c_scal_ref("b,i,k;m,n") = 2.0 * c_ref("b,i,k;m,n");
+  BOOST_REQUIRE_NO_THROW(c_scal("b,i,k;m,n") =
+                             (2.0 * a("b,i,j;n,m").block(lo, hi)) *
+                             b("b,j,k;m,n"));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c_scal, c_scal_ref), 1e-10);
+
+  // block that keeps the host's coordinates (trange_lobound_ is set); B is
+  // laid out over the same b and j element ranges
+  TA::TiledRange tr_b_lo{{2, 4}, {0, 2, 5}, {0, 3, 4}};  // b, j, k
+  auto b_lo = make_patterned_tot_array(world, tr_b_lo, {3, 2}, 2.0);
+  TArrayToT ab_lo, c_lo_ref, c_lo;
+  ab_lo("b,i,j;n,m") =
+      a("b,i,j;n,m").block(lo, hi, TiledArray::preserve_lobound);
+  c_lo_ref("b,i,k;m,n") = ab_lo("b,i,j;n,m") * b_lo("b,j,k;m,n");
+  BOOST_REQUIRE_NO_THROW(
+      c_lo("b,i,k;m,n") =
+          a("b,i,j;n,m").block(lo, hi, TiledArray::preserve_lobound) *
+          b_lo("b,j,k;m,n"));
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c_lo, c_lo_ref), 1e-10);
 }
 
 BOOST_AUTO_TEST_CASE(expression_general_product_into_block) {
