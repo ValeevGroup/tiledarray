@@ -59,14 +59,17 @@ template <typename T>
 inline constexpr bool is_device_tensor_v = false;
 
 #ifdef TILEDARRAY_HAS_DEVICE
+// N.B. the host branch of a dispatched op reads the same memory, so this
+// relies on device memory spaces also being host-accessible (true of
+// Device_UM, the only one allocator_memory_space_v maps to today)
 template <typename T>
   requires requires {
     typename T::value_type;
     typename T::allocator_type;
   }
 inline constexpr bool is_device_tensor_v<T> =
-    std::is_same_v<typename T::allocator_type,
-                   device_um_allocator<typename T::value_type>> &&
+    overlap(allocator_memory_space_v<typename T::allocator_type>,
+            MemorySpace::Device) &&
     (std::is_same_v<typename T::value_type, float> ||
      std::is_same_v<typename T::value_type, double> ||
      std::is_same_v<typename T::value_type, std::complex<float>> ||

@@ -98,6 +98,17 @@ constexpr bool allocates_memory_space(const device_um_allocator<T>& a) {
 }
 #endif
 
+/// the memory space allocator type \c A allocates in, known at compile time
+/// (unlike allocates_memory_space, which takes an allocator object);
+/// specialize for new allocators
+template <typename A>
+inline constexpr MemorySpace allocator_memory_space_v = MemorySpace::Host;
+#ifdef TILEDARRAY_HAS_DEVICE
+template <typename T>
+inline constexpr MemorySpace allocator_memory_space_v<device_um_allocator<T>> =
+    MemorySpace::Device_UM;
+#endif
+
 /// enumerates the execution spaces
 enum class ExecutionSpace { Host, Device };
 
