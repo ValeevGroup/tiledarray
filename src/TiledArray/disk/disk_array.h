@@ -77,7 +77,7 @@ class DiskArrayWriter {
   DiskArrayWriter(World& world, const TiledRange& trange,
                   const shape_type& shape,
                   const std::shared_ptr<const pmap_interface>& pmap = {})
-      : array_(world, trange, shape, pmap), state_(std::make_shared<State>()) {}
+      : array_(world, trange, shape, pmap) {}
 
   /// Writes a tile to disk and makes it tile \p ord of the array.
 
@@ -96,26 +96,15 @@ class DiskArrayWriter {
           "DiskArrayWriter::set: the tile is not owned by this process");
     if (array_.is_zero(ord))
       TA_EXCEPTION("DiskArrayWriter::set: the tile is zero in the shape");
-    array_.set(ord, DiskTile<Tile>(tile, state_->store()));
+    // the tile goes to disk as it becomes an element of the array
+    array_.set(ord, DiskTile<Tile>(tile));
   }
 
   /// \return the array; tiles not set (yet) are unset
   const array_type& array() const { return array_; }
 
  private:
-  struct State {
-    std::mutex mtx;
-    std::shared_ptr<detail::DiskStore> store_;
-    /// \return this process's scratch file, created on first use
-    std::shared_ptr<detail::DiskStore> store() {
-      std::scoped_lock lock(mtx);
-      if (!store_) store_ = std::make_shared<detail::DiskStore>();
-      return store_;
-    }
-  };
-
   array_type array_;
-  std::shared_ptr<State> state_;
 };
 
 /// Copies an array to disk.

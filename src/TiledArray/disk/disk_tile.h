@@ -23,6 +23,7 @@
 #define TILEDARRAY_DISK_DISK_TILE_H__INCLUDED
 
 #include <TiledArray/disk/store.h>
+#include <TiledArray/distributed_storage.h>
 #include <TiledArray/error.h>
 #include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/tile_interface/clone.h>
@@ -32,6 +33,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <mutex>
 #include <type_traits>
 #include <utility>
 
@@ -49,10 +51,14 @@ namespace TiledArray {
 /// A DiskTile is in one of three states:
 /// - \e empty (default-constructed);
 /// - <em>on disk</em>: it refers to a byte range of a detail::DiskStore, a
-///   scratch file private to the process that wrote it. Copies share the
-///   store, which lives until the last tile referring to it is gone;
+///   scratch file private to the process that wrote it. This is the state
+///   of a tile that is an element of an array, on the process that owns the
+///   element. Copies share the bytes, which are given back to the store
+///   when the last copy is gone;
 /// - <em>in memory</em>: it holds a \p Tile . This is the state of a tile
-///   received from another process.
+///   that is on its own: one just made from a \p Tile , or one received
+///   from another process. It goes to disk when it is made an element of an
+///   array (see array_element_traits).
 ///
 /// The scratch file is local to the node of the process that wrote it and
 /// cannot be reached from anywhere else. Accordingly, serializing an on-disk
@@ -94,6 +100,12 @@ class DiskTile {
     detail::disk_io_count_tiles(1, 0);
   }
 
+  /// Makes a tile that holds \p tile in memory. It goes to disk when it is
+  /// made an element of an array (see array_element_traits).
+  /// \param tile the tile to hold; shares its data until then
+  explicit DiskTile(const Tile& tile)
+      : mem_(std::make_shared<const Tile>(tile)) {}
+
   /// Evaluates this tile: reads it from disk, or copies the tile held in
   /// memory. Either way the result shares no data with this tile or with any
   /// other evaluation of it, so the caller is free to modify it.
@@ -115,6 +127,12 @@ class DiskTile {
 
   /// \return true if this tile's data is in a scratch file (of this process)
   bool on_disk() const { return static_cast<bool>(extent_); }
+
+  /// \return the tile held in memory; must not be on_disk() or empty()
+  const Tile& in_memory_tile() const {
+    if (!mem_) TA_EXCEPTION("DiskTile: the tile is not held in memory");
+    return *mem_;
+  }
 
   /// \return the scratch file this tile is in; null unless on_disk()
   std::shared_ptr<detail::DiskStore> store() const {
@@ -212,6 +230,59 @@ class DiskTile {
 
   std::shared_ptr<const Extent> extent_;  ///< set iff on disk
   std::shared_ptr<const Tile> mem_;       ///< set iff in memory
+};
+
+namespace detail {
+
+/// What a disk-backed array keeps for its tiles on one process: its scratch
+/// file, created when the first tile is written.
+class DiskArrayState {
+ public:
+  /// \return the scratch file, creating it if this is the first use
+  std::shared_ptr<DiskStore> store() {
+    std::scoped_lock lock(mtx_);
+    if (!store_) store_ = std::make_shared<DiskStore>();
+    return store_;
+  }
+  /// \return the scratch file, or null if nothing has been written yet
+  std::shared_ptr<DiskStore> store_if_any() const {
+    std::scoped_lock lock(mtx_);
+    return store_;
+  }
+
+ private:
+  mutable std::mutex mtx_;
+  std::shared_ptr<DiskStore> store_;
+};
+
+}  // namespace detail
+
+/// A DiskTile goes to disk when it becomes an element of an array.
+
+/// A DiskTile that is on its own holds its data in memory: one just made
+/// from a tile, or one received from another process. When it is made an
+/// element of an array, on the process that owns that element, it is
+/// written to the array's scratch file. Every tile of an array is in the
+/// array's own file: a tile that is on disk in another file is copied.
+template <typename Tile>
+struct array_element_traits<DiskTile<Tile>> {
+  static constexpr bool transforms_on_insertion = true;
+  using state_type = detail::DiskArrayState;
+
+  static std::shared_ptr<state_type> make_state() {
+    return std::make_shared<state_type>();
+  }
+
+  static DiskTile<Tile> on_insertion(DiskTile<Tile>&& tile,
+                                     const std::shared_ptr<state_type>& state) {
+    if (tile.empty()) return std::move(tile);
+    if (tile.on_disk()) {
+      if (tile.store() == state->store_if_any()) return std::move(tile);
+      // in another array's file: copy
+      return DiskTile<Tile>(static_cast<Tile>(tile), state->store());
+    }
+    return DiskTile<Tile>(tile.in_memory_tile(), state->store());
+  }
 };
 
 namespace detail {

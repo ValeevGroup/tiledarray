@@ -2,12 +2,15 @@
 
 A `TiledArray::DiskArray<Tile, Policy>` is an array whose tiles are kept in scratch files and read when they are needed. It trades I/O for memory: an array that is alive but rarely used occupies (almost) no memory while it is on disk.
 
-A disk-backed array is an ordinary `DistArray` whose tile type is `TiledArray::DiskTile<Tile>`, a [lazy tile](@ref User-Defined-Lazy-Tiles) that evaluates to `Tile`. It can appear wherever an expression accepts an array argument; it cannot be the target of an expression.
+A disk-backed array is an ordinary `DistArray` whose tile type is `TiledArray::DiskTile<Tile>`, a [lazy tile](@ref User-Defined-Lazy-Tiles) that evaluates to `Tile`. It can appear wherever an expression accepts an array argument, and it can be the target of an assignment, whole or by block.
+
+The rule that governs where the data is: **a `DiskTile` is on disk while it is an element of an array, on the process that owns that element, and in memory while it is on its own** (just made from a tile, or in transit to or from another process).
 
 ## When to use one
 
 * For large arrays that are read occasionally: integrals or intermediates built once and consumed by a few later steps.
-* Not for arrays that are updated in place, rebuilt often, or read by nearly every operation. Tiles are written once and never modified, and every use of a tile is a read from disk.
+* For arrays assembled piece by piece, e.g. by a loop over batches, that would not fit in memory whole.
+* Not for arrays that are updated in place or read by nearly every operation. A tile on disk is never modified, only replaced, and every use of a tile is a read from disk.
 
 ## Moving an array to disk and back
 
@@ -34,9 +37,34 @@ blk("i,j") = d("i,j").block({0, 0}, {2, 2});
 
 Nested (tensor-of-tensors) arrays are supported, with the usual nested annotations (`d("i,j;a,b")`).
 
-## Building an array directly on disk
+## Assigning to a disk-backed array
 
-To produce an array that never fits in memory, build it tile by tile:
+A disk-backed array can be the result of an expression:
+
+```cpp
+TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> d;
+d("i,k") = a("i,j") * b("j,k");  // each tile goes to disk as it is produced
+```
+
+and it can be assembled by assigning to its blocks, starting from an initialized array with an all-zero (sparse) shape:
+
+```cpp
+TA::Tensor<float> zero(trange.tiles_range(), 0.0f);
+TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> d(
+    world, trange, TA::SparseShape<float>(zero, trange, true));
+for (auto [lo, hi] : batches) {   // tile bounds of each batch
+  TA::TSpArrayD part = compute_batch(lo, hi);   // in memory
+  d("i,j,k").block(lo, hi, TA::preserve_lobound) = part("i,j,k");
+}
+```
+
+Each assignment extends the shape by the batch's nonzero tiles and writes only the batch's tiles; tiles assigned earlier stay where they are. The array is readable between batches. Assigning to a block again replaces its tiles, and the space of the replaced tiles is reused once nothing refers to them any more (after the next `fence`). Assembling by block requires a sparse policy: a dense array would need every tile to exist beforehand.
+
+Batches that must be accumulated into the same tiles cannot be assembled on disk this way: assignment replaces, it does not add.
+
+## Building an array tile by tile
+
+To produce an array from tiles you generate yourself:
 
 ```cpp
 TA::DiskArrayWriter<TA::Tensor<double>, TA::SparsePolicy> writer(
@@ -49,11 +77,13 @@ world.gop.fence();
 auto d = writer.array();
 ```
 
-Each process sets the tiles it owns; `set` may be called from several threads. With a sparse policy the shape is fixed when the writer is constructed.
+Each process sets the tiles it owns; `set` may be called from several threads. With a sparse policy the shape is fixed when the writer is constructed. (The writer is a convenience: `array.set(ord, TA::DiskTile<Tile>(tile))` has the same effect, since a tile goes to disk when it is made an element of an array.)
 
 ## Where the data lives
 
-Each process writes the tiles it owns to a scratch file in the scratch directory, which should be on a filesystem local to the node. The scratch directory is, in order of precedence:
+Each array has one scratch file on each process that owns some of its tiles, holding exactly the tiles of that array owned by that process. The file is created when the process stores its first tile and is released when the array, and every copy of its tiles, is gone. An array that replaces another by block assignment continues the same file. Space of tiles that are gone is reused by later writes. A tile that is already on disk in another array's file and is made an element of this one (`e.set(i, d.find(i))`) is copied.
+
+Scratch files are placed in the scratch directory, which should be on a filesystem local to the node. The scratch directory is, in order of precedence:
 
 1. the directory given to `TiledArray::set_disk_scratch_dir()`;
 2. the value of the `TA_DISK_SCRATCH_DIR` environment variable;
@@ -79,7 +109,8 @@ Writing or reading a tile temporarily needs a buffer of the size of the tile in 
 
 ## Limitations
 
-* Tiles are immutable: there is no way to update a tile on disk. Space is reclaimed only when the whole array is destroyed.
+* A tile on disk is immutable: it can be replaced (by assignment), not updated in place or accumulated into.
 * There is no restart: scratch files do not outlive the process.
 * An evaluated tile is entirely in memory; a tile is the unit of I/O.
-* A disk-backed array cannot be the result of an expression. Evaluate into an ordinary array, then call `to_disk`.
+* A tile is in memory from when it is produced until it has been stored, and again whenever it is evaluated.
+* Assignment from an expression whose lazy tiles evaluate asynchronously (to a `madness::Future`) is not supported.

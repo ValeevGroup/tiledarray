@@ -275,6 +275,55 @@ struct DiskArrayFixture {
                                                       xd = TA::to_disk(x);
 };
 
+/// An initialized, all-zero disk-backed array with the structure of \p like:
+/// what a batch loop assembles its result into.
+template <typename Tile>
+TA::DiskArray<Tile, TA::SparsePolicy> zero_disk_array(
+    const TA::DistArray<Tile, TA::SparsePolicy>& like) {
+  TA::Tensor<float> zero(like.trange().tiles_range(), 0.0f);
+  TA::DiskArray<Tile, TA::SparsePolicy> result(
+      like.world(), like.trange(),
+      TA::SparseShape<float>(zero, like.trange(), true), like.pmap());
+  like.world().gop.fence();
+  return result;
+}
+
+/// \return the [lo, hi) tile bounds of the slab of \p tr with tile \p t of
+/// mode \p mode
+std::pair<std::vector<std::size_t>, std::vector<std::size_t>> slab(
+    const TA::TiledRange& tr, std::size_t mode, std::size_t t) {
+  std::vector<std::size_t> lo(tr.rank(), 0), hi(tr.rank());
+  for (std::size_t d = 0; d < tr.rank(); ++d)
+    hi[d] = static_cast<std::size_t>(tr.dim(d).tile_extent());
+  lo[mode] = t;
+  hi[mode] = t + 1;
+  return {lo, hi};
+}
+
+/// \return whether every tile of \p d owned by this process is on disk, all
+/// in one scratch file
+template <typename Array>
+bool local_tiles_in_one_file(const Array& d) {
+  std::shared_ptr<TA::detail::DiskStore> store;
+  for (auto it = d.pmap()->begin(); it != d.pmap()->end(); ++it) {
+    if (d.is_zero(*it)) continue;
+    auto const tile = d.find_local(*it).get();
+    if (!tile.on_disk()) return false;
+    if (!store) store = tile.store();
+    if (tile.store() != store) return false;
+  }
+  return true;
+}
+
+/// \return the number of nonzero tiles of \p a
+template <typename Array>
+std::size_t count_nonzero_tiles(const Array& a) {
+  std::size_t n = 0;
+  for (std::size_t ord = 0; ord < a.trange().tiles_range().volume(); ++ord)
+    if (!a.is_zero(ord)) ++n;
+  return n;
+}
+
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(disk_tile_suite)
@@ -910,6 +959,213 @@ BOOST_AUTO_TEST_CASE(store_released_with_last_tile) {
   BOOST_CHECK(!watch.expired());
   d2.reset();
   BOOST_CHECK(watch.expired());
+}
+
+// a tile is in memory while it is on its own, and on disk as an element of
+// an array, on the process that owns the element
+BOOST_FIXTURE_TEST_CASE(tile_spills_on_joining_array, DiskArrayFixture) {
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  TA::DiskTile<TA::Tensor<double>> const free_standing(t);
+  BOOST_CHECK(!free_standing.on_disk());
+  BOOST_CHECK(!free_standing.empty());
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(free_standing), t));
+
+  // set as values: locally owned tiles directly, the others through their
+  // owners
+  TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> d(world, g.trange(),
+                                                        g.shape(), g.pmap());
+  reset_global_disk_io_stats(world);
+  // each tile is set by the process after its owner (its owner at 1 rank)
+  for (std::size_t ord = 0; ord < g.trange().tiles_range().volume(); ++ord) {
+    if (g.is_zero(ord)) continue;
+    const int setter = (d.owner(ord) + 1) % world.size();
+    if (world.rank() != setter) continue;
+    d.set(ord, TA::DiskTile<TA::Tensor<double>>(g.find(ord).get()));
+  }
+  world.gop.fence();
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_written,
+                    count_nonzero_tiles(g));
+  FlatArray r;
+  r("q,p,k") = d("q,p,k");
+  BOOST_CHECK(close(r, g, "q,p,k"));
+}
+
+// a disk-backed array assembled by block assignments from a batch loop
+BOOST_FIXTURE_TEST_CASE(block_assign_flat, DiskArrayFixture) {
+  auto dest = zero_disk_array(g);
+  FlatArray ref;
+  ref("q,p,k") = 2.0 * g("q,p,k");
+
+  reset_global_disk_io_stats(world);
+  const std::size_t nk = g.trange().dim(2).tile_extent();
+  for (std::size_t kt = 0; kt < nk; ++kt) {
+    auto const [lo, hi] = slab(g.trange(), 2, kt);
+    FlatArray part;  // an in-memory batch result, on its own process map
+    part("q,p,k") = 2.0 * g("q,p,k").block(lo, hi, TA::preserve_lobound);
+    dest("q,p,k").block(lo, hi, TA::preserve_lobound) = part("q,p,k");
+    world.gop.fence();
+
+    // readable between batches: what has been assigned so far is there
+    FlatArray so_far, so_far_ref;
+    so_far("q,p,k") = dest("q,p,k").block(lo, hi, TA::preserve_lobound);
+    so_far_ref("q,p,k") = ref("q,p,k").block(lo, hi, TA::preserve_lobound);
+    BOOST_CHECK(close(so_far, so_far_ref, "q,p,k"));
+  }
+
+  // every tile is on its owner's disk, all of a process's in one file
+  BOOST_CHECK(local_tiles_in_one_file(dest));
+  FlatArray r;
+  reset_global_disk_io_stats(world);
+  r("q,p,k") = dest("q,p,k");
+  BOOST_CHECK(close(r, ref, "q,p,k"));
+}
+
+// assembling writes each tile once and reads nothing back: earlier batches
+// are not rewritten when a later one is assigned
+BOOST_FIXTURE_TEST_CASE(block_assign_io, DiskArrayFixture) {
+  auto dest = zero_disk_array(g);
+  reset_global_disk_io_stats(world);
+  const std::size_t nk = g.trange().dim(2).tile_extent();
+  for (std::size_t kt = 0; kt < nk; ++kt) {
+    auto const [lo, hi] = slab(g.trange(), 2, kt);
+    FlatArray part;
+    part("q,p,k") = g("q,p,k").block(lo, hi, TA::preserve_lobound);
+    dest("q,p,k").block(lo, hi, TA::preserve_lobound) = part("q,p,k");
+    world.gop.fence();
+  }
+  auto const st = global_disk_io_stats(world);
+  BOOST_CHECK_EQUAL(st.tiles_written, count_nonzero_tiles(g));
+  BOOST_CHECK_EQUAL(st.tiles_read, 0u);
+}
+
+BOOST_FIXTURE_TEST_CASE(block_assign_tot, DiskArrayFixture) {
+  auto dest = zero_disk_array(tot);
+  reset_global_disk_io_stats(world);
+  const std::size_t ni = tot.trange().dim(0).tile_extent();
+  for (std::size_t it = 0; it < ni; ++it) {
+    auto const [lo, hi] = slab(tot.trange(), 0, it);
+    ToTArray part;
+    part("i,j,p;a") = tot("i,j,p;a").block(lo, hi, TA::preserve_lobound);
+    dest("i,j,p;a").block(lo, hi, TA::preserve_lobound) = part("i,j,p;a");
+    world.gop.fence();
+  }
+  auto const st = global_disk_io_stats(world);
+  BOOST_CHECK_EQUAL(st.tiles_written, count_nonzero_tiles(tot));
+  BOOST_CHECK_EQUAL(st.tiles_read, 0u);
+  BOOST_CHECK(local_tiles_in_one_file(dest));
+  ToTArray r;
+  r("i,j,p;a") = dest("i,j,p;a");
+  BOOST_CHECK(close(r, tot, "i,j,p;a"));
+}
+
+// the target of a block assignment may be annotated in another order than
+// the right-hand side
+BOOST_FIXTURE_TEST_CASE(block_assign_permuted, DiskArrayFixture) {
+  auto dest = zero_disk_array(x);  // (p,k)
+  FlatArray xt;
+  xt("k,p") = x("p,k");
+  const std::size_t np = x.trange().dim(0).tile_extent();
+  for (std::size_t pt = 0; pt < np; ++pt) {
+    auto const [lo, hi] = slab(x.trange(), 0, pt);
+    std::vector<std::size_t> lo_t{lo[1], lo[0]}, hi_t{hi[1], hi[0]};
+    FlatArray part;
+    part("k,p") = xt("k,p").block(lo_t, hi_t, TA::preserve_lobound);
+    dest("p,k").block(lo, hi, TA::preserve_lobound) = part("k,p");
+    world.gop.fence();
+  }
+  FlatArray r;
+  r("p,k") = dest("p,k");
+  BOOST_CHECK(close(r, x, "p,k"));
+}
+
+// a block may be assigned from an expression that reads the array itself:
+// the tiles being replaced stay readable until they have been replaced
+BOOST_FIXTURE_TEST_CASE(block_assign_from_itself, DiskArrayFixture) {
+  auto d = TA::to_disk(x);
+  auto const [lo, hi] = slab(x.trange(), 0, 1);
+  d("p,k").block(lo, hi) = 3.0 * d("p,k").block(lo, hi);
+  world.gop.fence();
+  FlatArray ref = x.clone();
+  ref("p,k").block(lo, hi) = 3.0 * x("p,k").block(lo, hi);
+  FlatArray r;
+  r("p,k") = d("p,k");
+  BOOST_CHECK(close(r, ref, "p,k"));
+  BOOST_CHECK(local_tiles_in_one_file(d));
+}
+
+// replacing a block reuses the space of the tiles it replaces
+BOOST_FIXTURE_TEST_CASE(block_reassign_reuses_space, DiskArrayFixture) {
+  auto d = TA::to_disk(g);
+  world.gop.fence();
+  std::shared_ptr<TA::detail::DiskStore> store;
+  for (auto it = d.pmap()->begin(); it != d.pmap()->end() && !store; ++it)
+    if (!d.is_zero(*it)) store = d.find_local(*it).get().store();
+  const std::size_t size0 = store ? store->size() : 0;
+  const std::size_t used0 = store ? store->bytes_in_use() : 0;
+
+  for (int repeat = 0; repeat < 3; ++repeat) {
+    auto const [lo, hi] = slab(g.trange(), 2, 0);
+    FlatArray part;
+    part("q,p,k") = g("q,p,k").block(lo, hi, TA::preserve_lobound);
+    d("q,p,k").block(lo, hi, TA::preserve_lobound) = part("q,p,k");
+    world.gop.fence();  // the replaced array (and its tiles) is gone now
+  }
+  if (store) {
+    BOOST_CHECK_EQUAL(store->bytes_in_use(), used0);
+    // the file holds at most one extra generation of the block, not three
+    BOOST_CHECK(store->size() <= size0 + used0);
+  }
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  FlatArray r;
+  r("q,p,k") = d("q,p,k");
+  BOOST_CHECK(close(r, g, "q,p,k"));
+}
+
+// the result of an expression can be a disk-backed array
+BOOST_FIXTURE_TEST_CASE(whole_assign, DiskArrayFixture) {
+  TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> d;
+  FlatArray ref;
+  ref("q,l,k") = g("q,p,l") * x("p,k");
+  reset_global_disk_io_stats(world);
+  d("q,l,k") = g("q,p,l") * x("p,k");
+  world.gop.fence();
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_written,
+                    count_nonzero_tiles(ref));
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  FlatArray r;
+  r("q,l,k") = d("q,l,k");
+  BOOST_CHECK(close(r, ref, "q,l,k"));
+
+  // nested, and from a disk-backed argument
+  TA::DiskArray<ArenaToT, TA::SparsePolicy> dt;
+  dt("i,j,p;a") = 2.0 * totd("i,j,p;a");
+  world.gop.fence();
+  ToTArray tref, tr;
+  tref("i,j,p;a") = 2.0 * tot("i,j,p;a");
+  tr("i,j,p;a") = dt("i,j,p;a");
+  BOOST_CHECK(close(tr, tref, "i,j,p;a"));
+  BOOST_CHECK(local_tiles_in_one_file(dt));
+}
+
+// every tile of an array lives in that array's own file: a tile that is on
+// disk in another array's file is copied when it is made an element
+BOOST_FIXTURE_TEST_CASE(foreign_tile_is_copied_in, DiskArrayFixture) {
+  TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> e(world, x.trange(),
+                                                        x.shape(), x.pmap());
+  for (auto it = xd.pmap()->begin(); it != xd.pmap()->end(); ++it)
+    if (!xd.is_zero(*it)) e.set(*it, xd.find_local(*it));
+  world.gop.fence();
+  BOOST_CHECK(local_tiles_in_one_file(e));
+  bool own_file = true;
+  for (auto it = e.pmap()->begin(); it != e.pmap()->end(); ++it)
+    if (!e.is_zero(*it))
+      own_file = own_file && e.find_local(*it).get().store() !=
+                                 xd.find_local(*it).get().store();
+  BOOST_CHECK(own_file);
+  FlatArray r;
+  r("p,k") = e("p,k");
+  BOOST_CHECK(close(r, x, "p,k"));
 }
 
 // a tile requested by a process that does not own it is read from disk
