@@ -21,6 +21,7 @@
  */
 
 #include "TiledArray/disk/disk_tile.h"
+#include "TiledArray/disk/disk_array.h"
 #include "TiledArray/disk/store.h"
 #include "TiledArray/tensor/arena_einsum.h"
 #include "TiledArray/tensor/arena_tensor.h"
@@ -193,6 +194,79 @@ ArenaToT tot_tile(const TA::Range& r, std::size_t n, double seed) {
   }
   return t;
 }
+
+/// Flat array with deterministic, seed-shifted values.
+template <typename Policy = TA::SparsePolicy>
+TA::DistArray<TA::Tensor<double>, Policy> make_flat(TA::World& world,
+                                                    const TA::TiledRange& tr,
+                                                    double seed) {
+  TA::DistArray<TA::Tensor<double>, Policy> flat(world, tr);
+  flat.init_tiles([=](TA::Range const& r) {
+    TA::Tensor<double> t(r);
+    for (std::size_t o = 0; o < t.range().volume(); ++o)
+      t.data()[o] =
+          seed + 0.001 * static_cast<double>((o + 3 * r.lobound()[0]) % 17);
+    return t;
+  });
+  world.gop.fence();
+  return flat;
+}
+
+/// \return true if \p result equals \p ref (both annotated by \p annot) to
+/// within rounding.
+template <typename Array>
+bool close(const Array& result, const Array& ref, const std::string& annot) {
+  Array diff;
+  diff(annot) = result(annot) - ref(annot);
+  const double nref = TA::norm2(ref);
+  return nref > 0.0 && TA::norm2(diff) <= 1e-12 * nref;
+}
+
+/// Disk I/O counters summed over all ranks.
+TA::DiskIOStats global_disk_io_stats(TA::World& world) {
+  auto const s = TA::disk_io_stats();
+  std::size_t c[4] = {s.tiles_written, s.tiles_read, s.bytes_written,
+                      s.bytes_read};
+  world.gop.sum(c, 4);
+  TA::DiskIOStats g;
+  g.tiles_written = c[0];
+  g.tiles_read = c[1];
+  g.bytes_written = c[2];
+  g.bytes_read = c[3];
+  return g;
+}
+
+/// Zeroes the disk I/O counters on all ranks (collective).
+void reset_global_disk_io_stats(TA::World& world) {
+  world.gop.fence();
+  TA::reset_disk_io_stats();
+  world.gop.fence();
+}
+
+/// The arrays the expression tests share, in memory and on disk.
+struct DiskArrayFixture {
+  TA::World& world = TA::get_default_world();
+  TA::TiledRange1 const tr_i{0, 2, 4, 6, 8}, tr_p{0, 8, 16, 24}, tr_k{0, 5, 10};
+  ToTArray tot = make_tot(
+      world, TA::TiledRange{tr_i, tr_i, tr_p},
+      [](std::size_t) { return TA::Range{6}; }, 1.0);
+  ToTArray tot2 = make_tot(
+      world, TA::TiledRange{tr_i, tr_i, tr_p},
+      [](std::size_t) { return TA::Range{6}; }, 0.3);
+  ToTArray s = make_tot(
+      world, TA::TiledRange{tr_i, tr_i},
+      [](std::size_t) {
+        return TA::Range{6, 6};
+      },
+      0.7);
+  FlatArray g = make_flat(world, TA::TiledRange{tr_p, tr_p, tr_k}, 0.5);
+  FlatArray x = make_flat(world, TA::TiledRange{tr_p, tr_k}, 0.2);
+  TA::DiskArray<ArenaToT, TA::SparsePolicy> totd = TA::to_disk(tot),
+                                            tot2d = TA::to_disk(tot2),
+                                            sd = TA::to_disk(s);
+  TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> gd = TA::to_disk(g),
+                                                      xd = TA::to_disk(x);
+};
 
 }  // namespace
 
@@ -487,6 +561,191 @@ BOOST_AUTO_TEST_CASE(tile_outlives_store_owner) {
   d.reset();
   BOOST_CHECK(copy.on_disk());
   BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(copy), t));
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_flat_contraction, DiskArrayFixture) {
+  FlatArray ref, r;
+  ref("q,l,k") = g("q,p,l") * x("p,k");
+  r("q,l,k") = gd("q,p,l") * x("p,k");
+  BOOST_CHECK(close(r, ref, "q,l,k"));
+  r("q,l,k") = g("q,p,l") * xd("p,k");
+  BOOST_CHECK(close(r, ref, "q,l,k"));
+  r("q,l,k") = gd("q,p,l") * xd("p,k");
+  BOOST_CHECK(close(r, ref, "q,l,k"));
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_flat_general, DiskArrayFixture) {
+  FlatArray ref, r;
+  ref("q,r,k") = g("q,p,k") * g("p,r,k");
+  r("q,r,k") = gd("q,p,k") * gd("p,r,k");
+  BOOST_CHECK(close(r, ref, "q,r,k"));
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_flat_binary, DiskArrayFixture) {
+  FlatArray ref, r;
+  ref("k,p") = 3.0 * x("p,k") - 2.0 * x("p,k");
+  r("k,p") = 3.0 * xd("p,k") - 2.0 * x("p,k");
+  BOOST_CHECK(close(r, ref, "k,p"));
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_flat_materialize, DiskArrayFixture) {
+  FlatArray r;
+  r("p,k") = xd("p,k");
+  BOOST_CHECK(close(r, x, "p,k"));
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_mixed_half_transform, DiskArrayFixture) {
+  const std::string tc = "i,j,q,k;a";
+  ToTArray ref, r;
+  ref(tc) = tot("i,j,p;a") * g("q,p,k");
+  r(tc) = tot("i,j,p;a") * gd("q,p,k");
+  BOOST_CHECK(close(r, ref, tc));
+  r(tc) = totd("i,j,p;a") * g("q,p,k");
+  BOOST_CHECK(close(r, ref, tc));
+  r(tc) = totd("i,j,p;a") * gd("q,p,k");
+  BOOST_CHECK(close(r, ref, tc));
+  r(tc) = (gd("q,p,k") * totd("i,j,p;a")).set_shape(ref.shape());
+  BOOST_CHECK(close(r, ref, tc));
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_tot_materialize, DiskArrayFixture) {
+  ToTArray r;
+  r("i,j,p;a") = totd("i,j,p;a");
+  BOOST_CHECK(close(r, tot, "i,j,p;a"));
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_tot_binary_permuted, DiskArrayFixture) {
+  ToTArray ref, r;
+  ref("j,i,p;a") = 2.0 * tot("i,j,p;a") - tot2("i,j,p;a");
+  r("j,i,p;a") = 2.0 * totd("i,j,p;a") - tot2("i,j,p;a");
+  BOOST_CHECK(close(r, ref, "j,i,p;a"));
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_dot_inner, DiskArrayFixture) {
+  {  // outer indices fused
+    FlatArray ref, r;
+    ref("i,j,p") = tot("i,j,p;a").dot_inner(tot2("i,j,p;a"));
+    r("i,j,p") = totd("i,j,p;a").dot_inner(tot2("i,j,p;a"));
+    BOOST_CHECK(close(r, ref, "i,j,p"));
+  }
+  {  // one outer index contracted
+    FlatArray ref, r;
+    ref("i,j") = tot("i,j,p;a").dot_inner(tot2("i,j,p;a"));
+    r("i,j") = totd("i,j,p;a").dot_inner(tot2d("i,j,p;a"));
+    BOOST_CHECK(close(r, ref, "i,j"));
+  }
+  {  // outer contraction
+    FlatArray ref, r;
+    ref("i,k") = tot("i,j,p;a").dot_inner(tot2("j,k,p;a"));
+    r("i,k") = totd("i,j,p;a").dot_inner(tot2d("j,k,p;a"));
+    BOOST_CHECK(close(r, ref, "i,k"));
+  }
+}
+
+BOOST_FIXTURE_TEST_CASE(expr_tot_tot, DiskArrayFixture) {
+  ToTArray ref, r;
+  ref("i,j,p;a") = tot("i,j,p;b") * s("i,j;a,b");
+  r("i,j,p;a") = totd("i,j,p;b") * sd("i,j;a,b");
+  BOOST_CHECK(close(r, ref, "i,j,p;a"));
+}
+
+BOOST_FIXTURE_TEST_CASE(materialize_block, DiskArrayFixture) {
+  // tiles p in {1,2} x k in {0}: 2 of the 6 tiles
+  FlatArray ref, r;
+  ref("p,k") = x("p,k").block({1, 0}, {3, 1});
+  reset_global_disk_io_stats(world);
+  r("p,k") = xd("p,k").block({1, 0}, {3, 1});
+  world.gop.fence();
+  BOOST_CHECK(close(r, ref, "p,k"));
+  // only the tiles of the block are read
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_read, 2u);
+}
+
+BOOST_AUTO_TEST_CASE(dense_policy) {
+  auto& world = TA::get_default_world();
+  using DenseArray = TA::DistArray<TA::Tensor<double>, TA::DensePolicy>;
+  TA::TiledRange1 const tr_p{0, 8, 16, 24}, tr_k{0, 5, 10};
+  DenseArray const g =
+      make_flat<TA::DensePolicy>(world, TA::TiledRange{tr_p, tr_p, tr_k}, 0.5);
+  DenseArray const x =
+      make_flat<TA::DensePolicy>(world, TA::TiledRange{tr_p, tr_k}, 0.2);
+  auto const gd = TA::to_disk(g);
+  DenseArray r, ref;
+  r("q,p,k") = gd("q,p,k");
+  BOOST_CHECK(close(r, g, "q,p,k"));
+  ref("q,l,k") = g("q,p,l") * x("p,k");
+  r("q,l,k") = gd("q,p,l") * x("p,k");
+  BOOST_CHECK(close(r, ref, "q,l,k"));
+}
+
+BOOST_FIXTURE_TEST_CASE(writer_tile_at_a_time, DiskArrayFixture) {
+  TA::DiskArrayWriter<TA::Tensor<double>, TA::SparsePolicy> writer(
+      world, g.trange(), g.shape(), g.pmap());
+  for (auto it = g.pmap()->begin(); it != g.pmap()->end(); ++it)
+    if (!g.is_zero(*it)) writer.set(*it, g.find_local(*it).get());
+  world.gop.fence();
+  FlatArray r;
+  r("q,p,k") = writer.array()("q,p,k");
+  BOOST_CHECK(close(r, g, "q,p,k"));
+}
+
+BOOST_AUTO_TEST_CASE(rank_without_tiles) {
+  // a sparse array all of whose nonzero tiles are owned by rank 0
+  auto& world = TA::get_default_world();
+  TA::TiledRange const tr{{0, 8, 16, 24}, {0, 5, 10}};
+  FlatArray const dense = make_flat(world, tr, 0.2);
+  TA::Tensor<float> norms(tr.tiles_range(), 0.0f);
+  for (std::size_t ord = 0; ord < tr.tiles_range().volume(); ++ord)
+    if (dense.pmap()->owner(ord) == 0) norms[ord] = 1.0f;
+  TA::SparseShape<float> const shape(norms, tr, /* do_not_scale = */ true);
+  FlatArray x(world, tr, shape, dense.pmap());
+  for (auto it = x.pmap()->begin(); it != x.pmap()->end(); ++it)
+    if (!x.is_zero(*it)) x.set(*it, dense.find_local(*it).get());
+  world.gop.fence();
+
+  reset_global_disk_io_stats(world);
+  auto const xd = TA::to_disk(x);
+  // a rank that owns nothing writes nothing
+  if (world.rank() != 0) {
+    BOOST_CHECK_EQUAL(TA::disk_io_stats().tiles_written, 0u);
+    BOOST_CHECK_EQUAL(TA::disk_io_stats().bytes_written, 0u);
+  }
+  FlatArray r;
+  r("p,k") = xd("p,k");
+  BOOST_CHECK(close(r, x, "p,k"));
+  FlatArray c, cref;
+  cref("p,q") = x("p,k") * x("q,k");
+  c("p,q") = xd("p,k") * xd("q,k");
+  BOOST_CHECK(close(c, cref, "p,q"));
+}
+
+BOOST_FIXTURE_TEST_CASE(to_disk_preserves_structure, DiskArrayFixture) {
+  BOOST_CHECK(gd.trange() == g.trange());
+  BOOST_CHECK(gd.pmap() == g.pmap());
+  bool same_shape = true;
+  for (std::size_t ord = 0; ord < g.trange().tiles_range().volume(); ++ord)
+    same_shape = same_shape && gd.is_zero(ord) == g.is_zero(ord) &&
+                 gd.is_local(ord) == g.is_local(ord);
+  BOOST_CHECK(same_shape);
+  BOOST_CHECK(totd.trange() == tot.trange());
+}
+
+BOOST_AUTO_TEST_CASE(no_file_left) {
+  auto& world = TA::get_default_world();
+  ScratchDirGuard scratch("arrays-r" + std::to_string(world.rank()));
+  {
+    TA::TiledRange const tr{{0, 8, 16, 24}, {0, 5, 10}};
+    FlatArray const x = make_flat(world, tr, 0.2);
+    auto const xd = TA::to_disk(x);
+    // scratch files have no name: nothing to find while the array is alive
+    BOOST_CHECK(scratch.empty());
+    FlatArray r;
+    r("p,k") = xd("p,k");
+    BOOST_CHECK(close(r, x, "p,k"));
+    world.gop.fence();
+  }
+  world.gop.fence();
+  BOOST_CHECK(scratch.empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
