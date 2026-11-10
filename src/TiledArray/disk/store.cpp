@@ -33,6 +33,7 @@
 #include <string>
 #include <vector>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 namespace TiledArray {
@@ -108,9 +109,14 @@ void reset_disk_io_stats() {
 
 namespace detail {
 
-std::size_t& disk_io_chunk() {
-  static std::size_t chunk = std::size_t{1} << 30;
+std::atomic<std::size_t>& disk_io_chunk() {
+  static std::atomic<std::size_t> chunk{std::size_t{1} << 30};
   return chunk;
+}
+
+std::filesystem::path disk_scratch_dir_setting() {
+  std::scoped_lock lock(scratch_dir_mutex());
+  return scratch_dir_setting();
 }
 
 void disk_io_count_tiles(std::size_t n_written, std::size_t n_read) {
@@ -119,11 +125,23 @@ void disk_io_count_tiles(std::size_t n_written, std::size_t n_read) {
 }
 
 DiskStore::DiskStore() {
-  auto const dir = disk_scratch_dir();
+  std::filesystem::path dir;
+  try {
+    dir = disk_scratch_dir();
+  } catch (const std::filesystem::filesystem_error& e) {
+    // no usable system temporary directory
+    throw TiledArray::Exception(
+        std::string("TiledArray: disk-backed array I/O: cannot determine the "
+                    "scratch directory: ") +
+        e.what());
+  }
   std::string templ = (dir / "ta-disk-XXXXXX").string();
   std::vector<char> name(templ.begin(), templ.end());
   name.push_back('\0');
-  fd_ = ::mkstemp(name.data());
+  // close-on-exec, set as the file is created: a child process must not
+  // inherit the descriptor, which would let it read the data and would keep
+  // the file's space allocated for as long as the child lives
+  fd_ = ::mkostemp(name.data(), O_CLOEXEC);
   if (fd_ == -1)
     io_failure("cannot create a scratch file in " + dir.string(), errno);
   // no name from here on: private to this process, gone when it is
@@ -163,7 +181,7 @@ std::size_t DiskStore::append(const void* data, std::size_t n) {
   std::size_t done = 0;
   while (done < n) {
     const std::size_t request =
-        std::min(n - done, std::max<std::size_t>(disk_io_chunk(), 1));
+        std::min(n - done, std::max<std::size_t>(disk_io_chunk().load(), 1));
     const ssize_t w =
         ::pwrite(fd_, p + done, request, static_cast<off_t>(offset + done));
     if (w < 0 && errno == EINTR) continue;
@@ -185,7 +203,8 @@ void DiskStore::read(std::size_t offset, void* data, std::size_t n) const {
   char* p = static_cast<char*>(data);
   std::size_t done = 0;
   while (done < n) {
-    const std::size_t request = std::min(n - done, disk_io_chunk());
+    const std::size_t request =
+        std::min(n - done, std::max<std::size_t>(disk_io_chunk().load(), 1));
     const ssize_t r =
         ::pread(fd_, p + done, request, static_cast<off_t>(offset + done));
     if (r < 0) {

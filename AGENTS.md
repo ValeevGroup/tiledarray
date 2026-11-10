@@ -53,6 +53,9 @@ Core library lives under `src/TiledArray/`:
   `HashPmap`, `ReplicatedPmap`).
 - `math/` — BLAS/LAPACK wrappers, optional ScaLAPACK, CG solver, etc.
 - `conversions/` — interop with `Eigen`, `btas::Tensor`, row-major arrays.
+- `disk/` — disk-backed arrays: `DiskTile` (a lazy tile kept in a per-process
+  scratch file) and `DiskArray`. See
+  `doc/dox/dev/Disk-Backed-Arrays.md`.
 - `device/`, `host/` — GPU (CUDA/HIP) and host-side tile kernels; device
   code is gated by `TILEDARRAY_HAS_DEVICE`.
 - `external/` — adapters for MADNESS, Eigen, BTAS, device runtimes, TTG.
@@ -615,6 +618,7 @@ Set at runtime, read during `initialize` or first use:
 | `TA_SUMMA_MAX_DEPTH` | (none) | Caps SUMMA pipeline depth. |
 | `TA_DEVICE_NUM_STREAMS` / `TA_CUDA_NUM_STREAMS` / `TA_HIP_NUM_STREAMS` | impl | Number of device streams per rank. CUDA unit tests require `=1`. |
 | `TA_DEVICE_LEGACY_UM_CONVERSION` | unset | Opt into the pre-Umpire unified-memory conversion path for `btas_um_tensor`. |
+| `TA_DISK_SCRATCH_DIR` | system temp dir | Directory for the scratch files of disk-backed arrays (`disk/store.h`); overridden by `TiledArray::set_disk_scratch_dir()`. Should be node-local and not memory-backed. |
 | `TA_UT_DISTRIBUTED` | unset | Set by CTest for np≥2 runs; test fixtures branch on it. |
 
 ## Documentation

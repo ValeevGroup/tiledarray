@@ -467,8 +467,6 @@ class ArrayImpl : public TensorImpl<Policy>,
   ///         array_element_traits)
   const auto& element_state() const { return data_.element_state(); }
 
- private:
- public:
   static madness::AtomicInt cleanup_counter_;
 
   /// Array deleter function

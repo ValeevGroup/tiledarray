@@ -22,6 +22,7 @@
 #ifndef TILEDARRAY_DISK_STORE_H__INCLUDED
 #define TILEDARRAY_DISK_STORE_H__INCLUDED
 
+#include <atomic>
 #include <cstddef>
 #include <filesystem>
 #include <map>
@@ -64,9 +65,15 @@ void reset_disk_io_stats();
 namespace detail {
 
 /// The largest single read/write request made to the operating system;
-/// longer transfers are split. Exposed so that tests can exercise the
-/// splitting without multi-GiB data.
-std::size_t& disk_io_chunk();
+/// longer transfers are split (a value of 0 is taken as 1). Exposed so that
+/// tests can exercise the splitting without multi-GiB data.
+std::atomic<std::size_t>& disk_io_chunk();
+
+/// \return the directory given to set_disk_scratch_dir(), empty if none is
+///         in effect. Unlike disk_scratch_dir() this is the setting itself,
+///         not what it resolves to: it is what to hand back to
+///         set_disk_scratch_dir() to restore an earlier state.
+std::filesystem::path disk_scratch_dir_setting();
 
 /// Records \p n tiles written (\p n may be 0) and \p m tiles read.
 void disk_io_count_tiles(std::size_t n_written, std::size_t n_read);
@@ -84,9 +91,10 @@ void disk_io_count_tiles(std::size_t n_written, std::size_t n_read);
 /// of the same sizes is replaced. All members are thread-safe.
 class DiskStore {
  public:
-  /// Creates the scratch file.
+  /// Creates the scratch file. Its descriptor is not inherited by child
+  /// processes.
   /// \throw TiledArray::Exception naming the scratch directory if the file
-  ///        cannot be created
+  ///        cannot be created, or if there is no scratch directory to use
   DiskStore();
   ~DiskStore();
   DiskStore(const DiskStore&) = delete;
@@ -94,6 +102,10 @@ class DiskStore {
 
   /// Writes \p n bytes starting at \p data , into released space if some
   /// fits (the first that does), else at the end of the file.
+  /// \note finding released space is a linear scan of the released ranges,
+  ///       done under the lock that serializes this bookkeeping (not the
+  ///       I/O): its cost grows with the fragmentation of the file. The file
+  ///       itself never shrinks.
   /// \return the offset of the written bytes
   /// \throw TiledArray::Exception if the write fails (e.g. the disk is full)
   std::size_t append(const void* data, std::size_t n);

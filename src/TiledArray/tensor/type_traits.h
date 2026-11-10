@@ -211,7 +211,14 @@ struct evaluated_tile<
 /// A lazy tile is not itself a tensor (\c is_tensor_helper is false for
 /// it), so this does not overlap the specialization above.
 /// \note A tile type made lazy only by specializing \c eval_trait , without
-/// declaring \c eval_type and a conversion to it, is not recognized here.
+/// declaring \c eval_type and a conversion to it, is not recognized here:
+/// for such a type \c is_lazy_tile is true and this trait is false.
+/// \warning Hence \c is_tensor_of_tensor<T> does not imply \c
+/// is_tensor_helper<T> (nor \c is_nested_tensor<T> ): for a lazy tile \c T the
+/// former describes the tile \c T evaluates to, and \c T itself has no tensor
+/// interface
+/// (\c data() , \c range() , element access, ...). Code that goes on to use
+/// that interface must hold an evaluated tile, or test for it too.
 template <typename T>
 struct is_tensor_of_tensor_helper<
     T, std::enable_if_t<
@@ -247,6 +254,9 @@ inline constexpr const bool is_tensor_v = is_tensor<Ts...>::value;
 template <>
 struct is_tensor_of_tensor<> : public std::false_type {};
 
+/// \note true also for a lazy tile that evaluates to a tensor of tensors,
+/// which is not itself a tensor: see the \c is_tensor_of_tensor_helper
+/// specialization for lazy tiles.
 template <typename T>
 struct is_tensor_of_tensor<T> {
   static constexpr bool value = is_tensor_of_tensor_helper<T>::value;

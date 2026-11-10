@@ -23,6 +23,9 @@
 #include <TiledArray/platform.h>
 #include <TiledArray/pmap/pmap.h>
 
+#include <exception>
+#include <memory>
+
 namespace TiledArray {
 
 /// Customization point: what becoming an element of an array does to a tile.
@@ -92,6 +95,11 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
       accessor;  ///< Local element accessor type
   typedef typename container_type::const_accessor
       const_accessor;  ///< Local element const accessor type
+  /// The state this container keeps for its elements (see
+  /// array_element_traits); null unless the element type transforms on
+  /// insertion.
+  typedef std::shared_ptr<typename array_element_traits<value_type>::state_type>
+      element_state_ptr;
 
  private:
   const size_type max_size_;  ///< The maximum number of elements that can be
@@ -99,7 +107,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
   std::shared_ptr<const pmap_interface>
       pmap_;  ///< The process map that defines the element distribution
   mutable container_type data_;  ///< The local data container
-  std::shared_ptr<typename array_element_traits<value_type>::state_type>
+  element_state_ptr
       element_state_;  ///< State kept for the tiles (see array_element_traits)
 
   // tracing/defensive driving artifacts
@@ -120,31 +128,42 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
   /// Assigns a future with the transformed value of another once that one is
   /// assigned (see array_element_traits)
   struct TransformOnSet : public madness::CallbackInterface {
-    TransformOnSet(
-        const future& from, const future& to,
-        const std::shared_ptr<
-            typename array_element_traits<value_type>::state_type>& state)
+    TransformOnSet(const future& from, const future& to,
+                   const element_state_ptr& state)
         : from_(from), to_(to), state_(state) {}
     virtual ~TransformOnSet() = default;
     virtual void notify() {
-      to_.set(array_element_traits<value_type>::on_insertion(
-          value_type(from_.get()), state_));
-      delete this;
+      const std::unique_ptr<TransformOnSet> self(this);
+      // A failure here cannot be reported to anyone who could act on it: this
+      // runs inside the assignment of from_, by whoever assigns it, and to_
+      // -- the element of the array -- would stay unassigned, so that every
+      // later use of the tile would wait forever. Stop instead.
+      try {
+        to_.set(array_element_traits<value_type>::on_insertion(
+            value_type(from_.get()), state_));
+      } catch (const std::exception& e) {
+        madness::print_error(
+            "TiledArray: a tile could not be made an element of an array: ",
+            e.what(), "\n");
+        std::terminate();
+      } catch (...) {
+        madness::print_error(
+            "TiledArray: a tile could not be made an element of an array\n");
+        std::terminate();
+      }
     }
 
    private:
     future from_;
     future to_;
-    std::shared_ptr<typename array_element_traits<value_type>::state_type>
-        state_;
+    element_state_ptr state_;
   };
 
   static auto make_element_state() {
     if constexpr (array_element_traits<value_type>::transforms_on_insertion)
       return array_element_traits<value_type>::make_state();
     else
-      return std::shared_ptr<
-          typename array_element_traits<value_type>::state_type>{};
+      return element_state_ptr{};
   }
 
   /// Makes \p f element \p i , which must be local
@@ -351,8 +370,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
   /// receive any element, including from other processes.
   DistributedStorage(World& world, size_type max_size,
                      const std::shared_ptr<const pmap_interface>& pmap,
-                     const std::shared_ptr<typename array_element_traits<
-                         value_type>::state_type>& element_state = {})
+                     const element_state_ptr& element_state = {})
       : WorldObject_(world),
         max_size_(max_size),
         pmap_(pmap),
@@ -381,11 +399,6 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
 #endif
     WorldObject_::process_pending();
   }
-
-  /// The state this array keeps for its tiles (see array_element_traits);
-  /// null unless the tile type transforms on insertion.
-  typedef std::shared_ptr<typename array_element_traits<value_type>::state_type>
-      element_state_ptr;
 
   /// \return the state this array keeps for its tiles
   const element_state_ptr& element_state() const { return element_state_; }

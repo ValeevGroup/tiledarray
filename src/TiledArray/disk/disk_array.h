@@ -23,12 +23,7 @@
 #define TILEDARRAY_DISK_DISK_ARRAY_H__INCLUDED
 
 #include <TiledArray/disk/disk_tile.h>
-#include <TiledArray/disk/store.h>
 #include <TiledArray/dist_array.h>
-
-#include <cstddef>
-#include <memory>
-#include <mutex>
 
 namespace TiledArray {
 
@@ -46,90 +41,23 @@ namespace TiledArray {
 /// \code
 /// a("i,j") = d("i,j").block(lo, hi);
 /// \endcode
-/// A DiskArray is produced by to_disk() or tile by tile with a
-/// DiskArrayWriter. Its tiles are written once and never modified.
+/// A DiskArray is produced by assigning to it, whole or by block,
+/// \code
+/// DiskArray<Tile, Policy> d;
+/// d("i,j") = a("i,j");
+/// \endcode
+/// or tile by tile, by setting its tiles: a tile goes to disk when it is
+/// made an element of the array, on the process that owns it:
+/// \code
+/// d.set(ord, DiskTile<Tile>(tile));
+/// \endcode
+/// Its tiles are written once and never modified.
 ///
 /// Every process keeps the tiles it owns in a scratch file on its own node
 /// (see set_disk_scratch_dir()); the files are private to the process, are
 /// gone when the array is, and do not outlive the process.
 template <typename Tile, typename Policy>
 using DiskArray = DistArray<DiskTile<Tile>, Policy>;
-
-/// Builds a DiskArray tile by tile, so that the data never has to be in
-/// memory all at once.
-
-/// Construct one on every process (collectively, like a DistArray), then on
-/// each process set() the tiles that process owns. The scratch file of a
-/// process is created by its first set(): a process that sets no tile
-/// creates no file. Copies of a writer refer to the same array.
-template <typename Tile, typename Policy>
-class DiskArrayWriter {
- public:
-  using array_type = DiskArray<Tile, Policy>;
-  using shape_type = typename array_type::shape_type;
-  using pmap_interface = typename array_type::pmap_interface;
-
-  /// \param world the world of the array
-  /// \param trange the tiled range of the array
-  /// \param shape the shape of the array; for a sparse policy it is final:
-  ///        exactly its nonzero tiles are to be set
-  /// \param pmap the process map of the array (default: the default map)
-  DiskArrayWriter(World& world, const TiledRange& trange,
-                  const shape_type& shape,
-                  const std::shared_ptr<const pmap_interface>& pmap = {})
-      : array_(world, trange, shape, pmap) {}
-
-  /// Writes a tile to disk and makes it tile \p ord of the array.
-
-  /// May be called from several threads at once (for different tiles).
-  /// \param ord the ordinal index of the tile; must be owned by this process
-  ///        and nonzero in the shape, and must not have been set before
-  /// \param tile the tile; it is not kept
-  /// \throw TiledArray::Exception if \p ord is not owned by this process or
-  ///        is zero in the shape (nothing is written then), or if the tile
-  ///        cannot be written
-  void set(std::size_t ord, const Tile& tile) {
-    // checked in every build: a tile set on the wrong process would be
-    // written here, shipped to its owner, and kept there in memory
-    if (!array_.is_local(ord))
-      TA_EXCEPTION(
-          "DiskArrayWriter::set: the tile is not owned by this process");
-    if (array_.is_zero(ord))
-      TA_EXCEPTION("DiskArrayWriter::set: the tile is zero in the shape");
-    // the tile goes to disk as it becomes an element of the array
-    array_.set(ord, DiskTile<Tile>(tile));
-  }
-
-  /// \return the array; tiles not set (yet) are unset
-  const array_type& array() const { return array_; }
-
- private:
-  array_type array_;
-};
-
-/// Copies an array to disk.
-
-/// The result has the tiled range, shape and process map of \p array ; every
-/// process writes the tiles it owns to a scratch file on its own node. This
-/// is a collective operation. \p array itself is not changed: to release its
-/// memory, drop it (and every other reference to its tiles) afterwards. At no
-/// point is a second copy of the data in memory.
-/// \param array the array to copy; must be initialized, with every nonzero
-///        tile set (or being computed)
-/// \return the disk-backed copy
-/// \throw TiledArray::Exception if a tile cannot be written
-template <typename Tile, typename Policy>
-DiskArray<Tile, Policy> to_disk(const DistArray<Tile, Policy>& array) {
-  DiskArrayWriter<Tile, Policy> writer(array.world(), array.trange(),
-                                       array.shape(), array.pmap());
-  for (auto it = array.pmap()->begin(); it != array.pmap()->end(); ++it) {
-    const auto ord = *it;
-    if (array.is_zero(ord)) continue;
-    writer.set(ord, array.find_local(ord).get());
-  }
-  array.world().gop.fence();
-  return writer.array();
-}
 
 }  // namespace TiledArray
 

@@ -17,9 +17,10 @@ The rule that governs where the data is: **a `DiskTile` is on disk while it is a
 ```cpp
 TA::TArrayD a = ...;
 
-// copy to disk: same tiled range, shape and process map
-auto d = TA::to_disk(a);
-a = TA::TArrayD{};  // release the memory
+// copy to disk: an ordinary assignment to a disk-backed array
+TA::DiskArray<TA::Tensor<double>, TA::DensePolicy> d;
+d("i,j") = a("i,j");
+a = TA::TArrayD{};  // release the memory (once the tiles are written)
 
 // use it as an argument: tiles are read as the expression needs them
 TA::TArrayD c;
@@ -33,7 +34,7 @@ TA::TArrayD blk;
 blk("i,j") = d("i,j").block({0, 0}, {2, 2});
 ```
 
-`to_disk` is a collective operation. It does not modify its argument; the memory is released when the original array (and any other reference to its tiles) is dropped. At no point are two copies of the data in memory.
+The assignment does not modify its argument; the memory is released when the original array (and any other reference to its tiles) is dropped. At no point are two copies of the array in memory: each tile is written as the assignment produces it (see "Memory" below).
 
 Nested (tensor-of-tensors) arrays are supported, with the usual nested annotations (`d("i,j;a,b")`).
 
@@ -64,20 +65,19 @@ Batches that must be accumulated into the same tiles cannot be assembled on disk
 
 ## Building an array tile by tile
 
-To produce an array from tiles you generate yourself:
+To produce an array from tiles you generate yourself, set them: a tile goes to disk when it is made an element of an array.
 
 ```cpp
-TA::DiskArrayWriter<TA::Tensor<double>, TA::SparsePolicy> writer(
+TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> d(
     world, trange, shape /*, pmap */);
-for (auto it = writer.array().pmap()->begin();
-     it != writer.array().pmap()->end(); ++it)
-  if (!writer.array().is_zero(*it))
-    writer.set(*it, make_tile(*it));  // written at once; not kept in memory
+for (auto it = d.pmap()->begin(); it != d.pmap()->end(); ++it)
+  if (!d.is_zero(*it))
+    // written at once; not kept in memory
+    d.set(*it, TA::DiskTile<TA::Tensor<double>>(make_tile(*it)));
 world.gop.fence();
-auto d = writer.array();
 ```
 
-Each process sets the tiles it owns; `set` may be called from several threads. With a sparse policy the shape is fixed when the writer is constructed. (The writer is a convenience: `array.set(ord, TA::DiskTile<Tile>(tile))` has the same effect, since a tile goes to disk when it is made an element of an array.)
+Each process should set the tiles it owns: a tile set on another process is sent to its owner, which writes it. `set` may be called from several threads (for different tiles). With a sparse policy the shape is fixed when the array is constructed.
 
 ## Where the data lives
 
@@ -93,7 +93,7 @@ Scratch files are placed in the scratch directory, which should be on a filesyst
 
 Each disk-backed array holds one open file per process for as long as it lives, so the number of disk-backed arrays alive at once is bounded by the process's limit on open files.
 
-A scratch file is private to the process that created it: it is unlinked as soon as it is created, so it has no name, it cannot be opened by another process, and its space is reclaimed when the array is destroyed or when the process ends, however it ends. Nothing needs to be cleaned up after a crash. A consequence is that a scratch file is not visible in the directory; use `disk_io_stats()` to see how much has been written.
+A scratch file is private to the process that created it: it is unlinked as soon as it is created, so it has no name, it cannot be opened by another process, it is not inherited by a child process, and its space is reclaimed when the array is destroyed or when the process ends, however it ends. Nothing needs to be cleaned up after a crash. A consequence is that a scratch file is not visible in the directory; use `disk_io_stats()` to see how much has been written.
 
 No shared filesystem is assumed or needed. When a process needs a tile owned by another process, the owner reads the tile and sends its data; the tile that arrives is held in memory by the receiver. A contraction therefore reads each tile of a disk-backed argument once on its owner, and at most once more to send it.
 
@@ -105,7 +105,7 @@ Writing or reading a tile temporarily needs a buffer of the size of the tile in 
 
 ## Failures
 
-Running out of disk space, or any other I/O error, raises a `TiledArray::Exception`. When that happens while tiles are being stored by an assignment, the exception is raised inside the runtime's tasks and the program terminates; it cannot be caught and recovered from. Make sure the scratch directory has room for the arrays placed there.
+Running out of disk space, or any other I/O error, raises a `TiledArray::Exception`. When that happens while tiles are being stored by an assignment, the exception is raised inside the runtime's tasks and the program terminates; it cannot be caught and recovered from. The same holds for a tile set with a future (`array.set(i, future)`): the tile is stored when the future is assigned, and a failure then terminates the program rather than leave the array with a tile that never arrives. Make sure the scratch directory has room for the arrays placed there.
 
 ## Accounting
 
