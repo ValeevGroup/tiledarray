@@ -32,6 +32,7 @@ TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
 TiledArray/dense_shape.h
+TiledArray/disk/disk_tile.h
 TiledArray/disk/store.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h

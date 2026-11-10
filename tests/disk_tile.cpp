@@ -20,6 +20,7 @@
  *  Tests of disk-backed (lazy) tiles and arrays.
  */
 
+#include "TiledArray/disk/disk_tile.h"
 #include "TiledArray/disk/store.h"
 #include "TiledArray/tensor/arena_einsum.h"
 #include "TiledArray/tensor/arena_tensor.h"
@@ -27,6 +28,7 @@
 #include "unit_test_config.h"
 
 #include <algorithm>
+#include <complex>
 #include <cstddef>
 #include <cstdlib>
 #include <filesystem>
@@ -34,6 +36,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -144,6 +147,51 @@ std::vector<char> pattern(std::size_t n, int seed) {
   for (std::size_t i = 0; i < n; ++i)
     v[i] = static_cast<char>((i * 31 + seed * 17) % 251);
   return v;
+}
+
+/// Element-wise equality of two flat tiles.
+template <typename T>
+bool same_tile(const TA::Tensor<T>& a, const TA::Tensor<T>& b) {
+  if (a.empty() || b.empty()) return a.empty() == b.empty();
+  return a.range() == b.range() &&
+         std::equal(a.data(), a.data() + a.range().volume(), b.data());
+}
+
+/// Cell-by-cell equality of two arena tensor-of-tensors tiles.
+bool same_tile(const ArenaToT& a, const ArenaToT& b) {
+  if (a.empty() || b.empty()) return a.empty() == b.empty();
+  if (a.range() != b.range()) return false;
+  for (std::size_t o = 0; o < a.range().volume(); ++o) {
+    const ArenaInner& x = a.data()[o];
+    const ArenaInner& y = b.data()[o];
+    if (static_cast<bool>(x) != static_cast<bool>(y)) return false;
+    if (!x) continue;
+    if (x.range() != y.range()) return false;
+    if (!std::equal(x.data(), x.data() + x.range().volume(), y.data()))
+      return false;
+  }
+  return true;
+}
+
+TA::Tensor<double> flat_tile(const TA::Range& r, double seed) {
+  TA::Tensor<double> t(r);
+  for (std::size_t o = 0; o < r.volume(); ++o)
+    t.data()[o] = seed + 0.001 * static_cast<double>(o % 17);
+  return t;
+}
+
+/// An arena ToT tile over \p r with inner Range{n}; the first cell is left
+/// empty.
+ArenaToT tot_tile(const TA::Range& r, std::size_t n, double seed) {
+  ArenaToT t = TA::detail::arena_outer_init<ArenaToT>(
+      r, 1, [n](std::size_t o) { return o == 0 ? TA::Range{} : TA::Range{n}; });
+  for (std::size_t o = 0; o < t.range().volume(); ++o) {
+    ArenaInner& c = t.data()[o];
+    if (!c) continue;
+    for (std::size_t a = 0; a < c.range().volume(); ++a)
+      c.data()[a] = seed + 0.001 * static_cast<double>((o * 7 + a) % 13);
+  }
+  return t;
 }
 
 }  // namespace
@@ -314,6 +362,131 @@ BOOST_AUTO_TEST_CASE(io_stats) {
   BOOST_CHECK(s.seconds_reading >= 0.0);
   BOOST_CHECK_EQUAL(s.tiles_written, 0u);  // counted by DiskTile, not the store
   BOOST_CHECK_EQUAL(s.tiles_read, 0u);
+}
+
+BOOST_AUTO_TEST_CASE(tile_roundtrip_flat) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  TA::DiskTile<TA::Tensor<double>> const d(t, store);
+  BOOST_CHECK(d.on_disk());
+  BOOST_CHECK(!d.empty());
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(d), t));
+  // a second tile in the same store does not disturb the first
+  auto const t2 = flat_tile(TA::Range{3, 3}, 2.0);
+  TA::DiskTile<TA::Tensor<double>> const d2(t2, store);
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(d), t));
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(d2), t2));
+  // default-constructed: empty, not on disk
+  TA::DiskTile<TA::Tensor<double>> const e;
+  BOOST_CHECK(e.empty());
+  BOOST_CHECK(!e.on_disk());
+}
+
+BOOST_AUTO_TEST_CASE(tile_roundtrip_tot) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = tot_tile(TA::Range{2, 3}, 4, 1.0);
+  BOOST_REQUIRE(!t.data()[0]);  // the fixture's empty inner cell
+  TA::DiskTile<ArenaToT> const d(t, store);
+  BOOST_CHECK(same_tile(static_cast<ArenaToT>(d), t));
+}
+
+BOOST_AUTO_TEST_CASE(tile_roundtrip_complex) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  TA::Tensor<std::complex<double>> t(TA::Range{3, 2});
+  for (std::size_t o = 0; o < 6; ++o)
+    t.data()[o] = std::complex<double>(1.0 + o, -0.5 * o);
+  TA::DiskTile<TA::Tensor<std::complex<double>>> const d(t, store);
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<std::complex<double>>>(d), t));
+}
+
+BOOST_AUTO_TEST_CASE(tile_is_lazy) {
+  using D = TA::DiskTile<TA::Tensor<double>>;
+  static_assert(TA::is_lazy_tile_v<D>);
+  static_assert(std::is_same_v<TA::eval_trait<D>::type, TA::Tensor<double>>);
+  static_assert(TA::detail::is_tensor_of_tensor_v<TA::DiskTile<ArenaToT>>);
+  static_assert(!TA::detail::is_tensor_of_tensor_v<D>);
+  BOOST_CHECK(true);
+}
+
+BOOST_AUTO_TEST_CASE(tile_no_caching) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  TA::reset_disk_io_stats();
+  TA::DiskTile<TA::Tensor<double>> const d(t, store);
+  BOOST_CHECK_EQUAL(TA::disk_io_stats().tiles_written, 1u);
+  for (int i = 0; i < 3; ++i)
+    BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(d), t));
+  // every evaluation goes to disk: nothing is kept in the tile
+  BOOST_CHECK_EQUAL(TA::disk_io_stats().tiles_read, 3u);
+}
+
+BOOST_AUTO_TEST_CASE(tile_serialize_counts_without_reading) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = tot_tile(TA::Range{2, 3}, 4, 1.0);
+  TA::DiskTile<ArenaToT> d(t, store);
+  TA::reset_disk_io_stats();
+  madness::archive::BufferOutputArchive count;
+  count & d;
+  BOOST_CHECK(count.count_only());
+  BOOST_CHECK_EQUAL(count.size(), d.serialized_size());
+  // sizing a message costs no disk read
+  BOOST_CHECK_EQUAL(TA::disk_io_stats().tiles_read, 0u);
+  BOOST_CHECK_EQUAL(TA::disk_io_stats().bytes_read, 0u);
+}
+
+BOOST_AUTO_TEST_CASE(tile_serialize_roundtrip) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = tot_tile(TA::Range{2, 3}, 4, 1.0);
+  TA::DiskTile<ArenaToT> d(t, store);
+  std::vector<unsigned char> buf(d.serialized_size());
+  TA::reset_disk_io_stats();
+  madness::archive::BufferOutputArchive out(buf.data(), buf.size());
+  out & d;
+  BOOST_CHECK_EQUAL(out.size(), buf.size());
+  // shipping a tile reads it from disk exactly once
+  BOOST_CHECK_EQUAL(TA::disk_io_stats().tiles_read, 1u);
+
+  // what arrives holds its data in memory: it needs no file
+  madness::archive::BufferInputArchive in(buf.data(), buf.size());
+  TA::DiskTile<ArenaToT> u;
+  in & u;
+  BOOST_CHECK(!u.on_disk());
+  BOOST_CHECK(!u.empty());
+  store.reset();
+  d = TA::DiskTile<ArenaToT>{};
+  TA::reset_disk_io_stats();
+  BOOST_CHECK(same_tile(static_cast<ArenaToT>(u), t));
+  BOOST_CHECK_EQUAL(TA::disk_io_stats().tiles_read, 0u);
+
+  // and it can be shipped onward
+  std::vector<unsigned char> buf2(u.serialized_size());
+  BOOST_CHECK_EQUAL(buf2.size(), buf.size());
+  madness::archive::BufferOutputArchive out2(buf2.data(), buf2.size());
+  out2 & u;
+  BOOST_CHECK(buf2 == buf);
+
+  // an empty tile survives the trip as an empty tile
+  TA::DiskTile<ArenaToT> e;
+  std::vector<unsigned char> ebuf(e.serialized_size());
+  madness::archive::BufferOutputArchive eout(ebuf.data(), ebuf.size());
+  eout & e;
+  madness::archive::BufferInputArchive ein(ebuf.data(), ebuf.size());
+  TA::DiskTile<ArenaToT> e2(t, std::make_shared<TA::detail::DiskStore>());
+  ein & e2;
+  BOOST_CHECK(e2.empty());
+}
+
+BOOST_AUTO_TEST_CASE(tile_outlives_store_owner) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  auto d = std::make_unique<TA::DiskTile<TA::Tensor<double>>>(t, store);
+  TA::DiskTile<TA::Tensor<double>> const copy = *d;
+  // the creator's handle and the original tile go away; the copy keeps the
+  // scratch file alive
+  store.reset();
+  d.reset();
+  BOOST_CHECK(copy.on_disk());
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(copy), t));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
