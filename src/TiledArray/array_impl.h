@@ -463,6 +463,18 @@ class ArrayImpl : public TensorImpl<Policy>,
   storage_type data_;  ///< Tile container
 
  public:
+  /// \return the state this array keeps for its tiles (see
+  ///         array_element_traits)
+  const auto& element_state() const { return data_.element_state(); }
+
+  /// Makes this array share the element state of \p other , the array it is
+  /// about to replace. Must be called before any tile is set.
+  void inherit_element_state(const ArrayImpl_& other) {
+    data_.set_element_state(other.data_.element_state());
+  }
+
+ private:
+ public:
   static madness::AtomicInt cleanup_counter_;
 
   /// Array deleter function

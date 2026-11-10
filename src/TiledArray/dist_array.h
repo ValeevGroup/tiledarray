@@ -669,6 +669,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// should not rely on this function.
   madness::uniqueidT id() const { return impl_ref().id(); }
 
+  /// Makes this array share with \p other the state an array keeps for its
+  /// tiles (see array_element_traits); for an array of DiskTile's that is
+  /// its scratch file. Used when a new array replaces \p other (assignment
+  /// to a block does that), so that the two are one array to their tiles.
+  /// Must be called before any tile of this array is set.
+  /// \param other the array this one is about to replace
+  void inherit_element_state(const DistArray& other) {
+    impl_ref().inherit_element_state(other.impl_ref());
+  }
+
   /// Begin iterator factory function
 
   /// \return An iterator to the first local tile.

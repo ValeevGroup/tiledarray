@@ -25,6 +25,28 @@
 
 namespace TiledArray {
 
+/// Customization point: what becoming an element of an array does to a tile.
+
+/// By default nothing: a tile is stored in an array as it is given. A tile
+/// type that needs to do something at that moment -- DiskTile moves its data
+/// to disk -- specializes this trait with
+/// \code
+///   static constexpr bool transforms_on_insertion = true;
+///   // state an array keeps for its tiles on each process, shared with the
+///   // arrays that replace it (e.g. by assignment to a block)
+///   using state_type = ...;
+///   static std::shared_ptr<state_type> make_state();
+///   // called on the process that owns the element, with the tile about to
+///   // be stored; returns the tile to store
+///   static T on_insertion(T&& tile, const std::shared_ptr<state_type>&);
+/// \endcode
+/// \tparam T a tile type
+template <typename T, typename Enabler = void>
+struct array_element_traits {
+  static constexpr bool transforms_on_insertion = false;
+  using state_type = void;
+};
+
 /// Describes how to get remote data
 enum class RemoteDataGetPolicy {
   /// no caching = each get will trigger data fetch
@@ -77,6 +99,8 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
   std::shared_ptr<const pmap_interface>
       pmap_;  ///< The process map that defines the element distribution
   mutable container_type data_;  ///< The local data container
+  std::shared_ptr<typename array_element_traits<value_type>::state_type>
+      element_state_;  ///< State kept for the tiles (see array_element_traits)
 
   // tracing/defensive driving artifacts
   mutable std::atomic<std::size_t>
@@ -93,6 +117,26 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
                                  ///< ranks
 #endif
 
+  static auto make_element_state() {
+    if constexpr (array_element_traits<value_type>::transforms_on_insertion)
+      return array_element_traits<value_type>::make_state();
+    else
+      return std::shared_ptr<
+          typename array_element_traits<value_type>::state_type>{};
+  }
+
+  /// Makes \p f element \p i , which must be local
+  void set_local(size_type i, const future& f) {
+    const_accessor acc;
+    if (!data_.insert(acc, typename container_type::datumT(i, f))) {
+      // The element was already in the container, so set it with f.
+      future existing_f = acc->second;
+      acc.release();
+      TA_ASSERT(!existing_f.probe() && "Tile has already been assigned.");
+      existing_f.set(f);
+    }
+  }
+
   // not allowed
   DistributedStorage(const DistributedStorage_&);
   DistributedStorage_& operator=(const DistributedStorage_&);
@@ -105,7 +149,11 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
     // Check that the future has not been set already.
     TA_ASSERT(!f.probe() && "Tile has already been assigned.");
 
-    f.set(std::forward<Value>(value));
+    if constexpr (array_element_traits<value_type>::transforms_on_insertion)
+      f.set(array_element_traits<value_type>::on_insertion(
+          value_type(std::forward<Value>(value)), element_state_));
+    else
+      f.set(std::forward<Value>(value));
   }
 
   void get_handler(const size_type i,
@@ -280,7 +328,8 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
       : WorldObject_(world),
         max_size_(max_size),
         pmap_(pmap),
-        data_((max_size / world.size()) + 11)
+        data_((max_size / world.size()) + 11),
+        element_state_(make_element_state())
 #ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
         ,
         ngets_served_per_rank_(world.size()),
@@ -303,6 +352,20 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
     }
 #endif
     WorldObject_::process_pending();
+  }
+
+  /// The state this array keeps for its tiles (see array_element_traits);
+  /// null unless the tile type transforms on insertion.
+  typedef std::shared_ptr<typename array_element_traits<value_type>::state_type>
+      element_state_ptr;
+
+  /// \return the state this array keeps for its tiles
+  const element_state_ptr& element_state() const { return element_state_; }
+
+  /// Makes this array share the state of the array it is about to replace.
+  /// Must be called before any element is set.
+  void set_element_state(const element_state_ptr& state) {
+    element_state_ = state;
   }
 
   virtual ~DistributedStorage() {
@@ -501,6 +564,24 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
   void set(size_type i, const future& f) {
     TA_ASSERT(i < max_size_);
     if (is_local(i)) {
+      if constexpr (array_element_traits<value_type>::transforms_on_insertion) {
+        // The future itself would become the element, with nothing left to
+        // run when it is assigned: store a future of the transformed tile
+        // instead.
+        if (f.probe()) {
+          set_local(i, future(array_element_traits<value_type>::on_insertion(
+                           value_type(f.get()), element_state_)));
+        } else {
+          set_local(i,
+                    WorldObject_::get_world().taskq.add(
+                        [state = element_state_](const value_type& v) {
+                          return array_element_traits<value_type>::on_insertion(
+                              value_type(v), state);
+                        },
+                        f, madness::TaskAttributes::hipri()));
+        }
+        return;
+      }
       const_accessor acc;
       if (!data_.insert(acc, typename container_type::datumT(i, f))) {
         // The element was already in the container, so set it with f.

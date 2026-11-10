@@ -91,11 +91,21 @@ class Shift {
   template <typename Perm, typename = std::enable_if_t<
                                TiledArray::detail::is_permutation_v<Perm>>>
   result_type eval(const argument_type& arg, const Perm& perm) const {
-    TiledArray::Permute<result_type, argument_type> permute;
-    TiledArray::ShiftTo<result_type, result_type> shift_to;
-    result_type result = permute(arg, perm);
-    shift_to(result, range_shift_);
-    return result;
+    if constexpr (is_lazy_tile<result_type>::value) {
+      // a lazy result is made from its evaluated tile; it cannot be permuted
+      // or shifted itself. Do both on the evaluated tile, then convert.
+      TiledArray::Permute<argument_type, argument_type> permute;
+      TiledArray::ShiftTo<argument_type, argument_type> shift_to;
+      argument_type result = permute(arg, perm);
+      shift_to(result, range_shift_);
+      return result_type(result);
+    } else {
+      TiledArray::Permute<result_type, argument_type> permute;
+      TiledArray::ShiftTo<result_type, result_type> shift_to;
+      result_type result = permute(arg, perm);
+      shift_to(result, range_shift_);
+      return result;
+    }
   }
 
   // Non-permuting tile evaluation functions

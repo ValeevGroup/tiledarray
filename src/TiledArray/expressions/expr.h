@@ -201,6 +201,52 @@ class Expr {
     }
   };
 
+  /// Makes a tile of a result array whose tiles are lazy (and are made
+  /// from their evaluated tile, see array_element_traits) from a tile \c T
+  /// of the evaluated expression: evaluates \c T if it is lazy -- cloning
+  /// if it still shares the operand's data, like cast_or_clone -- and wraps
+  /// the evaluated tile.
+  template <typename Result, typename T>
+  struct wrap_evaluated {
+    Result operator()(const T& tile) const {
+      using evaluated_type = typename eval_trait<Result>::type;
+      if constexpr (std::is_same_v<evaluated_type, T>) {
+        return Result(tile);
+      } else {
+        auto evaluated = cast_or_clone<evaluated_type, T>()(tile);
+        static_assert(
+            !madness::is_future<decltype(evaluated)>::value,
+            "Assignment of asynchronously evaluated lazy tiles to an array of "
+            "lazy tiles is not supported.");
+        return Result(evaluated);
+      }
+    }
+  };
+
+  /// Set a tile of an array of lazy tiles with an evaluated tile
+
+  /// The tile is wrapped in the array's tile type; what becoming an element
+  /// then does to it is up to the array (see array_element_traits).
+  /// \tparam A The array type
+  /// \tparam I The index type
+  /// \tparam T The evaluated tile type
+  /// \param array The result array
+  /// \param index The tile index
+  /// \param tile The evaluated tile
+  template <
+      typename A, typename I, typename T,
+      typename std::enable_if<!std::is_same<typename A::value_type, T>::value &&
+                              !is_lazy_tile<T>::value &&
+                              is_lazy_tile<typename A::value_type>::value
+#ifdef TILEDARRAY_HAS_DEVICE
+                              && !::TiledArray::detail::is_device_tile_v<T>
+#endif
+                              >::type* = nullptr>
+  void set_tile(A& array, const I& index, const Future<T>& tile) const {
+    array.set(index, array.world().taskq.add(
+                         wrap_evaluated<typename A::value_type, T>(), tile));
+  }
+
   /// Set an array tile with a lazy tile
 
   /// Spawn a task to evaluate a lazy tile and set the \a array tile at
@@ -220,8 +266,15 @@ class Expr {
 #endif
                               >::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
-    array.set(index, array.world().taskq.add(
-                         cast_or_clone<typename A::value_type, T>(), tile));
+    if constexpr (is_lazy_tile<typename A::value_type>::value) {
+      // the result's tiles are themselves lazy (made from their evaluated
+      // tile, see array_element_traits): evaluate, then wrap
+      array.set(index, array.world().taskq.add(
+                           wrap_evaluated<typename A::value_type, T>(), tile));
+    } else {
+      array.set(index, array.world().taskq.add(
+                           cast_or_clone<typename A::value_type, T>(), tile));
+    }
   }
 
 #ifdef TILEDARRAY_HAS_DEVICE
@@ -401,7 +454,11 @@ class Expr {
   /// \param tsr The tensor to be assigned
   template <typename A, bool Alias>
   void eval_to(TsrExpr<A, Alias>& tsr) const {
-    static_assert(!is_lazy_tile<typename A::value_type>::value,
+    // a lazy tile can be assigned only if it is made from its evaluated
+    // tile when it joins an array (see array_element_traits)
+    static_assert(!is_lazy_tile<typename A::value_type>::value ||
+                      array_element_traits<
+                          typename A::value_type>::transforms_on_insertion,
                   "Assignment to an array of lazy tiles is not supported.");
 
     // Get the target world
@@ -491,7 +548,11 @@ class Expr {
         EngineTrait<engine_type>::consumable>
         shift_op_type;
     typedef TiledArray::detail::UnaryWrapper<shift_op_type> op_type;
-    static_assert(!is_lazy_tile<typename A::value_type>::value,
+    // a lazy tile can be assigned only if it is made from its evaluated
+    // tile when it joins an array (see array_element_traits)
+    static_assert(!is_lazy_tile<typename A::value_type>::value ||
+                      array_element_traits<
+                          typename A::value_type>::transforms_on_insertion,
                   "Assignment to an array of lazy tiles is not supported.");
 
 #ifndef NDEBUG
@@ -543,6 +604,8 @@ class Expr {
              tsr.array().shape().update_block(
                  tsr.lower_bound(), tsr.upper_bound(), dist_eval.shape()),
              tsr.array().pmap());
+    // `result` replaces tsr.array(): to their tiles the two are one array
+    result.inherit_element_state(tsr.array());
 
     // NOTE: The tiles from the original array and the sub-block are copied
     // in two separate steps because the two tensors have different data
