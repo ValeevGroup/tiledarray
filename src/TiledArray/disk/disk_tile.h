@@ -80,17 +80,17 @@ class DiskTile {
   /// \param tile the tile to store
   /// \param store the scratch file to append the tile to
   /// \throw TiledArray::Exception if the write fails
-  DiskTile(const Tile& tile, std::shared_ptr<detail::DiskStore> store)
-      : store_(std::move(store)) {
-    if (!store_)
+  DiskTile(const Tile& tile, std::shared_ptr<detail::DiskStore> store) {
+    if (!store)
       TA_EXCEPTION("DiskTile: constructed from a tile without a store");
     madness::archive::BufferOutputArchive count;
     count & tile;
-    nbytes_ = count.size();
-    const std::unique_ptr<unsigned char[]> buffer(new unsigned char[nbytes_]);
-    madness::archive::BufferOutputArchive out(buffer.get(), nbytes_);
+    const std::size_t nbytes = count.size();
+    const std::unique_ptr<unsigned char[]> buffer(new unsigned char[nbytes]);
+    madness::archive::BufferOutputArchive out(buffer.get(), nbytes);
     out & tile;
-    offset_ = store_->append(buffer.get(), nbytes_);
+    const std::size_t offset = store->append(buffer.get(), nbytes);
+    extent_ = std::make_shared<const Extent>(std::move(store), offset, nbytes);
     detail::disk_io_count_tiles(1, 0);
   }
 
@@ -102,26 +102,31 @@ class DiskTile {
     // a deep copy: copying a tile may be shallow, and whoever evaluates a
     // lazy tile may work on the result in place
     if (mem_) return TiledArray::clone(*mem_);
-    if (!store_) TA_EXCEPTION("DiskTile: an empty tile cannot be evaluated");
+    if (!extent_) TA_EXCEPTION("DiskTile: an empty tile cannot be evaluated");
     const auto buffer = read_bytes();
-    madness::archive::BufferInputArchive in(buffer.get(), nbytes_);
+    madness::archive::BufferInputArchive in(buffer.get(), extent_->nbytes);
     Tile tile;
     in & tile;
     return tile;
   }
 
   /// \return true if this tile holds no data
-  bool empty() const { return !store_ && !mem_; }
+  bool empty() const { return !extent_ && !mem_; }
 
   /// \return true if this tile's data is in a scratch file (of this process)
-  bool on_disk() const { return static_cast<bool>(store_); }
+  bool on_disk() const { return static_cast<bool>(extent_); }
+
+  /// \return the scratch file this tile is in; null unless on_disk()
+  std::shared_ptr<detail::DiskStore> store() const {
+    return extent_ ? extent_->store : nullptr;
+  }
 
   /// \return the number of bytes this tile occupies in a MADNESS buffer
   ///         archive
   std::size_t serialized_size() const {
     std::size_t n = flag_size();
-    if (store_)
-      n += nbytes_;
+    if (extent_)
+      n += extent_->nbytes;
     else if (mem_) {
       madness::archive::BufferOutputArchive count;
       count&* mem_;
@@ -153,10 +158,10 @@ class DiskTile {
         if (ar.count_only()) {
           // only the size is wanted: known since the tile was written
           ar.store(static_cast<const unsigned char*>(nullptr),
-                   static_cast<long>(nbytes_));
+                   static_cast<long>(extent_->nbytes));
         } else {
           const auto buffer = read_bytes();
-          ar.store(buffer.get(), static_cast<long>(nbytes_));
+          ar.store(buffer.get(), static_cast<long>(extent_->nbytes));
         }
       } else {
         const Tile tile = static_cast<Tile>(*this);
@@ -165,8 +170,7 @@ class DiskTile {
     } else {
       bool has_data = false;
       ar & has_data;
-      store_.reset();
-      offset_ = nbytes_ = 0;
+      extent_.reset();
       if (has_data) {
         Tile tile;
         ar & tile;
@@ -187,16 +191,27 @@ class DiskTile {
 
   /// Reads this (on-disk) tile's bytes from its store.
   std::unique_ptr<unsigned char[]> read_bytes() const {
-    std::unique_ptr<unsigned char[]> buffer(new unsigned char[nbytes_]);
-    store_->read(offset_, buffer.get(), nbytes_);
+    std::unique_ptr<unsigned char[]> buffer(new unsigned char[extent_->nbytes]);
+    extent_->store->read(extent_->offset, buffer.get(), extent_->nbytes);
     detail::disk_io_count_tiles(0, 1);
     return buffer;
   }
 
-  std::shared_ptr<detail::DiskStore> store_;  ///< set iff on disk
-  std::size_t offset_ = 0;  ///< offset of this tile's bytes in \c store_
-  std::size_t nbytes_ = 0;  ///< # of bytes of this tile in \c store_
-  std::shared_ptr<const Tile> mem_;  ///< set iff in memory
+  /// The bytes of a tile in a store. Shared by the copies of a tile; gives
+  /// the bytes back to the store when the last copy is gone.
+  struct Extent {
+    Extent(std::shared_ptr<detail::DiskStore> s, std::size_t o, std::size_t n)
+        : store(std::move(s)), offset(o), nbytes(n) {}
+    ~Extent() { store->release(offset, nbytes); }
+    Extent(const Extent&) = delete;
+    Extent& operator=(const Extent&) = delete;
+    std::shared_ptr<detail::DiskStore> store;
+    std::size_t offset;
+    std::size_t nbytes;
+  };
+
+  std::shared_ptr<const Extent> extent_;  ///< set iff on disk
+  std::shared_ptr<const Tile> mem_;       ///< set iff in memory
 };
 
 namespace detail {

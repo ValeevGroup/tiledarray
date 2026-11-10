@@ -24,6 +24,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <map>
 #include <mutex>
 
 namespace TiledArray {
@@ -75,7 +76,12 @@ void disk_io_count_tiles(std::size_t n_written, std::size_t n_read);
 /// The file is created in disk_scratch_dir() and unlinked immediately, so it
 /// has no name: no other process can open it, and its space is reclaimed by
 /// the operating system when this object is destroyed or the process dies,
-/// however it dies. The store is append-only. All members are thread-safe.
+/// however it dies.
+///
+/// Data is written with append(), which returns where it went, and its
+/// space is given back with release(); released space is reused by later
+/// writes before the file is extended, so the file does not grow while data
+/// of the same sizes is replaced. All members are thread-safe.
 class DiskStore {
  public:
   /// Creates the scratch file.
@@ -86,23 +92,34 @@ class DiskStore {
   DiskStore(const DiskStore&) = delete;
   DiskStore& operator=(const DiskStore&) = delete;
 
-  /// Appends \p n bytes starting at \p data .
-  /// \return the offset of the appended bytes
+  /// Writes \p n bytes starting at \p data , into released space if some
+  /// fits (the first that does), else at the end of the file.
+  /// \return the offset of the written bytes
   /// \throw TiledArray::Exception if the write fails (e.g. the disk is full)
   std::size_t append(const void* data, std::size_t n);
+
+  /// Gives back the \p n bytes at \p offset , which must be a range (or part
+  /// of one) returned by append() and not yet released. They must not be
+  /// read afterwards.
+  void release(std::size_t offset, std::size_t n);
 
   /// Reads \p n bytes at \p offset into \p data .
   /// \throw TiledArray::Exception if the range was not appended in full or
   ///        the read fails
   void read(std::size_t offset, void* data, std::size_t n) const;
 
-  /// \return the number of bytes appended so far
+  /// \return the extent of the file: the largest offset written so far
   std::size_t size() const;
+
+  /// \return the number of bytes written and not released
+  std::size_t bytes_in_use() const;
 
  private:
   int fd_ = -1;
-  mutable std::mutex mtx_;  // guards size_
+  mutable std::mutex mtx_;  // guards the members below
   std::size_t size_ = 0;
+  std::size_t in_use_ = 0;
+  std::map<std::size_t, std::size_t> free_;  // offset -> length, coalesced
 };
 
 }  // namespace detail

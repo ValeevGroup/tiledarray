@@ -29,6 +29,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -144,8 +145,18 @@ std::size_t DiskStore::append(const void* data, std::size_t n) {
   std::size_t offset;
   {
     std::scoped_lock lock(mtx_);
-    offset = size_;
-    size_ += n;
+    auto it = free_.begin();
+    while (it != free_.end() && it->second < n) ++it;  // first fit
+    if (it != free_.end()) {
+      offset = it->first;
+      const std::size_t left = it->second - n;
+      free_.erase(it);
+      if (left != 0) free_.emplace(offset + n, left);
+    } else {
+      offset = size_;
+      size_ += n;
+    }
+    in_use_ += n;
   }
   auto const t0 = std::chrono::steady_clock::now();
   const char* p = static_cast<const char*>(data);
@@ -189,9 +200,37 @@ void DiskStore::read(std::size_t offset, void* data, std::size_t n) const {
   counters().ns_reading += elapsed_ns(t0);
 }
 
+void DiskStore::release(std::size_t offset, std::size_t n) {
+  if (n == 0) return;
+  std::scoped_lock lock(mtx_);
+  TA_ASSERT(offset + n <= size_ && n <= in_use_);
+  in_use_ -= n;
+  // merge with the free range that follows, then with the one that precedes
+  auto next = free_.lower_bound(offset);
+  TA_ASSERT(next == free_.end() || offset + n <= next->first);
+  if (next != free_.end() && next->first == offset + n) {
+    n += next->second;
+    next = free_.erase(next);
+  }
+  if (next != free_.begin()) {
+    auto prev = std::prev(next);
+    TA_ASSERT(prev->first + prev->second <= offset);
+    if (prev->first + prev->second == offset) {
+      prev->second += n;
+      return;
+    }
+  }
+  free_.emplace(offset, n);
+}
+
 std::size_t DiskStore::size() const {
   std::scoped_lock lock(mtx_);
   return size_;
+}
+
+std::size_t DiskStore::bytes_in_use() const {
+  std::scoped_lock lock(mtx_);
+  return in_use_;
 }
 
 }  // namespace detail

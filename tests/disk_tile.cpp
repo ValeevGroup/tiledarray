@@ -763,6 +763,69 @@ BOOST_AUTO_TEST_CASE(no_file_left) {
   BOOST_CHECK(scratch.empty());
 }
 
+// space freed in a store is reused by later writes
+BOOST_AUTO_TEST_CASE(store_reuses_freed_space) {
+  TA::detail::DiskStore store;
+  auto const a = pattern(100, 1), b = pattern(100, 2), c = pattern(100, 3);
+  auto const oa = store.append(a.data(), a.size());
+  auto const ob = store.append(b.data(), b.size());
+  auto const oc = store.append(c.data(), c.size());
+  BOOST_CHECK_EQUAL(store.size(), 300u);
+  BOOST_CHECK_EQUAL(store.bytes_in_use(), 300u);
+
+  store.release(ob, 100);
+  BOOST_CHECK_EQUAL(store.bytes_in_use(), 200u);
+  // a write that fits goes into the hole: the file does not grow
+  auto const d = pattern(60, 4);
+  auto const od = store.append(d.data(), d.size());
+  BOOST_CHECK_EQUAL(od, ob);
+  BOOST_CHECK_EQUAL(store.size(), 300u);
+  // the rest of the hole is still free
+  auto const e = pattern(40, 5);
+  BOOST_CHECK_EQUAL(store.append(e.data(), e.size()), ob + 60);
+  BOOST_CHECK_EQUAL(store.size(), 300u);
+  // one that does not fit extends the file
+  auto const f = pattern(10, 6);
+  BOOST_CHECK_EQUAL(store.append(f.data(), f.size()), 300u);
+
+  // neighbours are untouched
+  std::vector<char> r(100);
+  store.read(oa, r.data(), 100);
+  BOOST_CHECK(r == a);
+  store.read(oc, r.data(), 100);
+  BOOST_CHECK(r == c);
+  std::vector<char> rd(60);
+  store.read(od, rd.data(), 60);
+  BOOST_CHECK(rd == d);
+
+  // adjacent freed ranges merge: 100 + 100 serve one 200-byte write
+  store.release(oa, 100);
+  store.release(od, 60);
+  store.release(ob + 60, 40);
+  auto const g = pattern(200, 7);
+  BOOST_CHECK_EQUAL(store.append(g.data(), g.size()), 0u);
+  BOOST_CHECK_EQUAL(store.size(), 310u);
+}
+
+// a tile's space is given back when its last copy is gone
+BOOST_AUTO_TEST_CASE(tile_releases_space_with_last_copy) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  auto d1 = std::make_unique<TA::DiskTile<TA::Tensor<double>>>(t, store);
+  const auto used = store->bytes_in_use();
+  BOOST_CHECK(used > 0);
+  auto d2 = std::make_unique<TA::DiskTile<TA::Tensor<double>>>(*d1);
+  d1.reset();
+  BOOST_CHECK_EQUAL(store->bytes_in_use(), used);  // a copy still refers to it
+  d2.reset();
+  BOOST_CHECK_EQUAL(store->bytes_in_use(), 0u);
+  // and is reused: writing the same tile again does not grow the file
+  const auto size_before = store->size();
+  TA::DiskTile<TA::Tensor<double>> const d3(t, store);
+  BOOST_CHECK_EQUAL(store->size(), size_before);
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(d3), t));
+}
+
 // evaluating a tile that holds its data in memory (one received from another
 // process) gives an independent tile each time, as evaluating an on-disk tile
 // does: consumers of a lazy tile are entitled to modify what they are given
