@@ -958,7 +958,7 @@ BOOST_AUTO_TEST_CASE(tile_serialize_generic_archive) {
 BOOST_AUTO_TEST_CASE(tile_misuse_throws) {
   using D = TA::DiskTile<TA::Tensor<double>>;
   auto const t = flat_tile(TA::Range{4, 5}, 1.0);
-  BOOST_CHECK_THROW(static_cast<TA::Tensor<double>>(D{}), TA::Exception);
+  BOOST_CHECK_THROW((void)static_cast<TA::Tensor<double>>(D{}), TA::Exception);
   BOOST_CHECK_THROW((void)D(t, nullptr), TA::Exception);
 }
 
