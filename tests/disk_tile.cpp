@@ -27,6 +27,10 @@
 #include "TiledArray/tensor/arena_tensor.h"
 #include "tiledarray.h"
 
+#ifdef TILEDARRAY_HAS_DEVICE
+#include <TiledArray/device/btas_um_tensor.h>
+#endif
+
 #include <madness/world/vector_archive.h>
 #include "unit_test_config.h"
 
@@ -1443,5 +1447,134 @@ BOOST_FIXTURE_TEST_CASE(streaming_contraction, DiskArrayFixture,
   BOOST_CHECK(nread >= ntiles);
   BOOST_CHECK(nread <= 2 * ntiles);
 }
+
+#ifdef TILEDARRAY_HAS_DEVICE
+
+// Disk-backed arrays of device (GPU) tiles: the tile on disk is the
+// serialized device tile; evaluating it gives a device tile again.
+namespace {
+
+using UMTensor = TA::Tile<TA::btasUMTensorVarray<double>>;
+using UMArray = TA::DistArray<UMTensor, TA::DensePolicy>;
+using UMDiskArray = TA::DiskArray<UMTensor, TA::DensePolicy>;
+
+UMArray make_um(TA::World& world, const TA::TiledRange& tr, double seed) {
+  UMArray a(world, tr);
+  for (auto it = a.pmap()->begin(); it != a.pmap()->end(); ++it) {
+    UMTensor tile(tr.make_tile_range(*it));
+    for (std::size_t i = 0; i < tile.size(); ++i)
+      tile.at_ordinal(i) =
+          seed + 0.001 * static_cast<double>((i + 5 * (*it)) % 19);
+    a.set(*it, tile);
+  }
+  world.gop.fence();
+  return a;
+}
+
+bool um_close(const UMArray& result, const UMArray& ref,
+              const std::string& annot) {
+  UMArray diff;
+  diff(annot) = result(annot) - ref(annot);
+  const double nref = TA::norm2(ref);
+  return nref > 0.0 && TA::norm2(diff) <= 1e-12 * nref;
+}
+
+struct DeviceDiskFixture {
+  TA::World& world = TA::get_default_world();
+  TA::TiledRange const tr{{0, 3, 6}, {0, 4, 8}, {0, 2, 5}};
+  UMArray a = make_um(world, tr, 1.0);
+  UMArray b = make_um(world, tr, 0.3);
+};
+
+}  // namespace
+
+BOOST_FIXTURE_TEST_CASE(device_to_disk_and_back, DeviceDiskFixture) {
+  static_assert(TA::is_lazy_tile_v<TA::DiskTile<UMTensor>>);
+  reset_global_disk_io_stats(world);
+  auto const ad = TA::to_disk(a);
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_written,
+                    tr.tiles_range().volume());
+  BOOST_CHECK(local_tiles_in_one_file(ad));
+  UMArray r;
+  r("i,j,k") = ad("i,j,k");
+  BOOST_CHECK(um_close(r, a, "i,j,k"));
+  // by block: only the block's tiles are read
+  reset_global_disk_io_stats(world);
+  UMArray rb, rb_ref;
+  rb("i,j,k") = ad("i,j,k").block({1, 0, 0}, {2, 2, 1});
+  rb_ref("i,j,k") = a("i,j,k").block({1, 0, 0}, {2, 2, 1});
+  world.gop.fence();
+  BOOST_CHECK(um_close(rb, rb_ref, "i,j,k"));
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_read, 2u);
+}
+
+BOOST_FIXTURE_TEST_CASE(device_disk_argument, DeviceDiskFixture) {
+  auto const ad = TA::to_disk(a);
+  auto const bd = TA::to_disk(b);
+  UMArray ref, r;
+  // binary op with a permuted read
+  ref("k,j,i") = 2.0 * a("i,j,k") - b("i,j,k");
+  r("k,j,i") = 2.0 * ad("i,j,k") - b("i,j,k");
+  BOOST_CHECK(um_close(r, ref, "k,j,i"));
+  // contraction, one and both arguments on disk
+  UMArray cref, c;
+  cref("i,l") = a("i,j,k") * b("l,j,k");
+  c("i,l") = ad("i,j,k") * b("l,j,k");
+  BOOST_CHECK(um_close(c, cref, "i,l"));
+  c("i,l") = ad("i,j,k") * bd("l,j,k");
+  BOOST_CHECK(um_close(c, cref, "i,l"));
+}
+
+BOOST_FIXTURE_TEST_CASE(device_assign_to_disk, DeviceDiskFixture) {
+  // whole
+  UMDiskArray d;
+  UMArray ref;
+  ref("i,j,k") = a("i,j,k") + b("i,j,k");
+  reset_global_disk_io_stats(world);
+  d("i,j,k") = a("i,j,k") + b("i,j,k");
+  world.gop.fence();
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_written,
+                    tr.tiles_range().volume());
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  UMArray r;
+  r("i,j,k") = d("i,j,k");
+  BOOST_CHECK(um_close(r, ref, "i,j,k"));
+
+  // block, and compound
+  std::vector<std::size_t> lo{0, 1, 0}, hi{2, 2, 2};
+  d("i,j,k").block(lo, hi) = 3.0 * b("i,j,k").block(lo, hi);
+  ref("i,j,k").block(lo, hi) = 3.0 * b("i,j,k").block(lo, hi);
+  world.gop.fence();
+  d("i,j,k") += a("i,j,k");
+  ref("i,j,k") += a("i,j,k");
+  world.gop.fence();
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  r("i,j,k") = d("i,j,k");
+  BOOST_CHECK(um_close(r, ref, "i,j,k"));
+}
+
+BOOST_FIXTURE_TEST_CASE(device_remote_fetch, DeviceDiskFixture,
+                        TA_UT_LABEL_DISTRIBUTED) {
+  auto const ad = TA::to_disk(a);
+  reset_global_disk_io_stats(world);
+  std::size_t nfetched = 0;
+  bool ok = true;
+  for (std::size_t ord = 0; ord < tr.tiles_range().volume(); ++ord) {
+    if (ad.is_local(ord)) continue;
+    auto const fetched = ad.find(ord).get();
+    ++nfetched;
+    ok = ok && !fetched.on_disk() && !fetched.empty();
+    auto const tile = static_cast<UMTensor>(fetched);
+    auto const src = a.find(ord).get();
+    for (std::size_t i = 0; i < tile.size() && ok; ++i)
+      ok = tile.at_ordinal(i) == src.at_ordinal(i);
+  }
+  world.gop.fence();
+  BOOST_CHECK(ok);
+  world.gop.sum(nfetched);
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_read, nfetched);
+}
+
+#endif  // TILEDARRAY_HAS_DEVICE
 
 BOOST_AUTO_TEST_SUITE_END()

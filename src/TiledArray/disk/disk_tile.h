@@ -113,7 +113,10 @@ class DiskTile {
   explicit operator Tile() const {
     // a deep copy: copying a tile may be shallow, and whoever evaluates a
     // lazy tile may work on the result in place
-    if (mem_) return TiledArray::clone(*mem_);
+    if (mem_) {
+      using TiledArray::clone;  // and whatever the tile type itself provides
+      return clone(*mem_);
+    }
     if (!extent_) TA_EXCEPTION("DiskTile: an empty tile cannot be evaluated");
     const auto buffer = read_bytes();
     madness::archive::BufferInputArchive in(buffer.get(), extent_->nbytes);

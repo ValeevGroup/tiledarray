@@ -233,16 +233,20 @@ class Expr {
   /// \param array The result array
   /// \param index The tile index
   /// \param tile The evaluated tile
-  template <
-      typename A, typename I, typename T,
-      typename std::enable_if<!std::is_same<typename A::value_type, T>::value &&
-                              !is_lazy_tile<T>::value &&
-                              is_lazy_tile<typename A::value_type>::value
-#ifdef TILEDARRAY_HAS_DEVICE
-                              && !::TiledArray::detail::is_device_tile_v<T>
-#endif
-                              >::type* = nullptr>
+  template <typename A, typename I, typename T,
+            typename std::enable_if<
+                !std::is_same<typename A::value_type, T>::value &&
+                !is_lazy_tile<T>::value &&
+                is_lazy_tile<typename A::value_type>::value>::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
+#ifdef TILEDARRAY_HAS_DEVICE
+    if constexpr (::TiledArray::detail::is_device_tile_v<T>) {
+      array.set(index, madness::add_device_task(
+                           array.world(),
+                           wrap_evaluated<typename A::value_type, T>(), tile));
+      return;
+    }
+#endif
     array.set(index, array.world().taskq.add(
                          wrap_evaluated<typename A::value_type, T>(), tile));
   }
@@ -294,9 +298,16 @@ class Expr {
                 is_lazy_tile<T>::value &&
                 ::TiledArray::detail::is_device_tile_v<T>>::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
-    array.set(index, madness::add_device_task(
-                         array.world(),
-                         cast_or_clone<typename A::value_type, T>(), tile));
+    if constexpr (is_lazy_tile<typename A::value_type>::value) {
+      // see the non-device overload
+      array.set(index, madness::add_device_task(
+                           array.world(),
+                           wrap_evaluated<typename A::value_type, T>(), tile));
+    } else {
+      array.set(index, madness::add_device_task(
+                           array.world(),
+                           cast_or_clone<typename A::value_type, T>(), tile));
+    }
   }
 #endif
 
