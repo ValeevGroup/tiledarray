@@ -178,6 +178,34 @@ struct is_tensor_of_tensor_helper<
           detail::remove_cvr_t<typename T::value_type>>::value;
 };
 
+namespace lazy_nesting {
+/// The \c eval_type a lazy tile declares, or \c T itself if it declares none
+/// (or names itself). Reads the member directly rather than through \c
+/// eval_trait : this trait is asked about a lazy tile while \c eval_trait of
+/// that very tile is still being instantiated.
+template <typename T, typename = void>
+struct declared_eval_type {
+  using type = T;
+};
+template <typename T>
+struct declared_eval_type<T, std::void_t<typename T::eval_type>> {
+  using type = detail::remove_cvr_t<typename T::eval_type>;
+};
+}  // namespace lazy_nesting
+
+/// A lazy tile is as nested as the tile it evaluates to: an array of lazy
+/// tiles is annotated, and its expressions are typed, by its evaluated tile.
+/// A lazy tile is not itself a tensor (\c is_tensor_helper is false for
+/// it), so this does not overlap the specialization above.
+template <typename T>
+struct is_tensor_of_tensor_helper<
+    T,
+    std::enable_if_t<
+        !is_tensor_helper<T>::value &&
+        !std::is_same_v<T, typename lazy_nesting::declared_eval_type<T>::type>>>
+    : public is_tensor_of_tensor_helper<
+          typename lazy_nesting::declared_eval_type<T>::type> {};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template <>
