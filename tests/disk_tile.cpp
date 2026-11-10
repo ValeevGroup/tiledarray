@@ -20,15 +20,24 @@
  *  Tests of disk-backed (lazy) tiles and arrays.
  */
 
+#include "TiledArray/disk/store.h"
 #include "TiledArray/tensor/arena_einsum.h"
 #include "TiledArray/tensor/arena_tensor.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdlib>
+#include <filesystem>
 #include <functional>
 #include <memory>
+#include <string>
+#include <thread>
 #include <utility>
+#include <vector>
+
+#include <unistd.h>
 
 namespace TA = TiledArray;
 
@@ -111,6 +120,32 @@ TA::DistArray<Lazy<Tile>, TA::SparsePolicy> wrap_tiles(
   return result;
 }
 
+/// A fresh, empty directory under the system temp directory, removed on
+/// destruction; while alive it is the scratch directory.
+struct ScratchDirGuard {
+  std::filesystem::path prev = TA::disk_scratch_dir();
+  std::filesystem::path dir;
+  explicit ScratchDirGuard(const std::string& tag) {
+    dir = std::filesystem::temp_directory_path() /
+          ("ta-disk-test-" + tag + "-" + std::to_string(::getpid()));
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    TA::set_disk_scratch_dir(dir);
+  }
+  ~ScratchDirGuard() {
+    TA::set_disk_scratch_dir(prev);
+    std::filesystem::remove_all(dir);
+  }
+  bool empty() const { return std::filesystem::is_empty(dir); }
+};
+
+std::vector<char> pattern(std::size_t n, int seed) {
+  std::vector<char> v(n);
+  for (std::size_t i = 0; i < n; ++i)
+    v[i] = static_cast<char>((i * 31 + seed * 17) % 251);
+  return v;
+}
+
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(disk_tile_suite)
@@ -141,6 +176,144 @@ BOOST_AUTO_TEST_CASE(lazy_tot_annotation) {
   d("i,j;a") = r("i,j;a") - tot("i,j;a");
   BOOST_CHECK_EQUAL(TA::norm2(d), 0.0);
   BOOST_CHECK(TA::norm2(tot) > 0.0);
+}
+
+BOOST_AUTO_TEST_CASE(store_roundtrip) {
+  TA::detail::DiskStore store;
+  auto const a = pattern(10, 1), b = pattern(1000, 2), c = pattern(3, 3);
+  BOOST_CHECK_EQUAL(store.append(a.data(), a.size()), 0u);
+  BOOST_CHECK_EQUAL(store.append(b.data(), b.size()), 10u);
+  BOOST_CHECK_EQUAL(store.append(c.data(), c.size()), 1010u);
+  BOOST_CHECK_EQUAL(store.size(), 1013u);
+  std::vector<char> rb(b.size()), ra(a.size()), rc(c.size());
+  store.read(10, rb.data(), rb.size());
+  store.read(0, ra.data(), ra.size());
+  store.read(1010, rc.data(), rc.size());
+  BOOST_CHECK(ra == a);
+  BOOST_CHECK(rb == b);
+  BOOST_CHECK(rc == c);
+}
+
+BOOST_AUTO_TEST_CASE(store_chunked_io) {
+  // requests larger than the chunk size (as a tile over 2 GiB would be
+  // against the default) are split and reassembled
+  auto const prev = TA::detail::disk_io_chunk();
+  TA::detail::disk_io_chunk() = 7;
+  {
+    TA::detail::DiskStore store;
+    auto const a = pattern(1000, 5);
+    BOOST_CHECK_EQUAL(store.append(a.data(), a.size()), 0u);
+    std::vector<char> r(a.size());
+    store.read(0, r.data(), r.size());
+    BOOST_CHECK(r == a);
+    std::vector<char> mid(100);
+    store.read(450, mid.data(), mid.size());
+    BOOST_CHECK(std::equal(mid.begin(), mid.end(), a.begin() + 450));
+  }
+  TA::detail::disk_io_chunk() = prev;
+}
+
+BOOST_AUTO_TEST_CASE(store_concurrent) {
+  TA::detail::DiskStore store;
+  const int nthreads = 8, nper = 200;
+  std::vector<std::vector<std::size_t>> offsets(nthreads,
+                                                std::vector<std::size_t>(nper));
+  auto size_of = [](int t, int i) { return std::size_t(1 + (t * 7 + i) % 97); };
+  std::vector<std::thread> threads;
+  for (int t = 0; t < nthreads; ++t)
+    threads.emplace_back([&, t] {
+      for (int i = 0; i < nper; ++i) {
+        auto const p = pattern(size_of(t, i), t * 1000 + i);
+        offsets[t][i] = store.append(p.data(), p.size());
+        // read back something written earlier while others are appending
+        if (i > 0) {
+          auto const q = pattern(size_of(t, i - 1), t * 1000 + i - 1);
+          std::vector<char> r(q.size());
+          store.read(offsets[t][i - 1], r.data(), r.size());
+          if (r != q) std::abort();
+        }
+      }
+    });
+  for (auto& th : threads) th.join();
+  std::size_t total = 0;
+  bool all_equal = true;
+  for (int t = 0; t < nthreads; ++t)
+    for (int i = 0; i < nper; ++i) {
+      auto const p = pattern(size_of(t, i), t * 1000 + i);
+      std::vector<char> r(p.size());
+      store.read(offsets[t][i], r.data(), r.size());
+      all_equal = all_equal && r == p;
+      total += p.size();
+    }
+  BOOST_CHECK(all_equal);
+  BOOST_CHECK_EQUAL(store.size(), total);
+}
+
+BOOST_AUTO_TEST_CASE(store_leaves_no_file) {
+  ScratchDirGuard scratch("nofile");
+  {
+    TA::detail::DiskStore store;
+    auto const a = pattern(100, 1);
+    store.append(a.data(), a.size());
+    // the file has no name: nothing to find, nothing to leave behind
+    BOOST_CHECK(scratch.empty());
+  }
+  BOOST_CHECK(scratch.empty());
+}
+
+BOOST_AUTO_TEST_CASE(store_bad_dir_throws) {
+  auto const prev = TA::disk_scratch_dir();
+  const std::string bad = "/nonexistent-ta-disk-dir/scratch";
+  TA::set_disk_scratch_dir(bad);
+  bool threw = false;
+  try {
+    TA::detail::DiskStore store;
+  } catch (TA::Exception& e) {
+    threw = true;
+    BOOST_CHECK(std::string(e.what()).find(bad) != std::string::npos);
+  }
+  BOOST_CHECK(threw);
+  TA::set_disk_scratch_dir(prev);
+}
+
+BOOST_AUTO_TEST_CASE(scratch_dir_resolution) {
+  auto const prev = TA::disk_scratch_dir();
+  const char* const prev_env = std::getenv("TA_DISK_SCRATCH_DIR");
+  const std::string saved_env = prev_env ? prev_env : "";
+
+  // nothing set: the environment variable, else the system temp directory
+  TA::set_disk_scratch_dir({});
+  ::unsetenv("TA_DISK_SCRATCH_DIR");
+  BOOST_CHECK(TA::disk_scratch_dir() == std::filesystem::temp_directory_path());
+  ::setenv("TA_DISK_SCRATCH_DIR", "/tmp/ta-env-dir", 1);
+  BOOST_CHECK(TA::disk_scratch_dir() ==
+              std::filesystem::path("/tmp/ta-env-dir"));
+  // an explicit setting wins over the environment
+  TA::set_disk_scratch_dir("/tmp/ta-set-dir");
+  BOOST_CHECK(TA::disk_scratch_dir() ==
+              std::filesystem::path("/tmp/ta-set-dir"));
+
+  if (prev_env)
+    ::setenv("TA_DISK_SCRATCH_DIR", saved_env.c_str(), 1);
+  else
+    ::unsetenv("TA_DISK_SCRATCH_DIR");
+  TA::set_disk_scratch_dir(prev);
+}
+
+BOOST_AUTO_TEST_CASE(io_stats) {
+  TA::detail::DiskStore store;
+  auto const a = pattern(100, 1);
+  TA::reset_disk_io_stats();
+  store.append(a.data(), a.size());
+  std::vector<char> r(40);
+  store.read(10, r.data(), r.size());
+  auto const s = TA::disk_io_stats();
+  BOOST_CHECK_EQUAL(s.bytes_written, 100u);
+  BOOST_CHECK_EQUAL(s.bytes_read, 40u);
+  BOOST_CHECK(s.seconds_writing >= 0.0);
+  BOOST_CHECK(s.seconds_reading >= 0.0);
+  BOOST_CHECK_EQUAL(s.tiles_written, 0u);  // counted by DiskTile, not the store
+  BOOST_CHECK_EQUAL(s.tiles_read, 0u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

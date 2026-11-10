@@ -32,6 +32,7 @@ TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
 TiledArray/dense_shape.h
+TiledArray/disk/store.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
 TiledArray/error.h
@@ -208,6 +209,7 @@ TiledArray/util/vector.h
 
 set(TILEDARRAY_SOURCE_FILES
         TiledArray/array_impl.cpp
+        TiledArray/disk/store.cpp
         TiledArray/dist_array.cpp
         TiledArray/range.cpp
         TiledArray/sparse_shape.cpp
