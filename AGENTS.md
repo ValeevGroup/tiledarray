@@ -177,8 +177,12 @@ There is no Python-level test driver; `tests/` is all C++.
 - **GPU support is off by default.** `TA_CUDA=OFF`, `TA_HIP=OFF`; there is
   no SYCL backend. When either is ON, `TILEDARRAY_HAS_DEVICE` is defined
   and `device/`, LibreTT, and Umpire-managed unified memory get wired in.
-  CI does **not** exercise GPU paths, so device changes need local
-  validation.
+  GitHub Actions (`.github/workflows/ci.yml`) is CPU-only. GPU coverage
+  comes from a privately hosted GitLab CI (`.gitlab-ci.yml`), whose one
+  CUDA cell (`TA_CUDA=ON`, `RelWithDebInfo`, `cuda` runner) builds the
+  library and examples and runs `check_serial-tiledarray`, i.e. the unit
+  tests at np=1 only. Its status shows on GitHub PRs. HIP builds and
+  multi-rank device runs are not covered and need local validation.
 - **ScaLAPACK (`TA_SCALAPACK=ON`) is off by default.** When on, it's
   resolved via `external/scalapackpp.cmake`; failures typically surface
   at link time rather than configure.
@@ -627,9 +631,10 @@ The `doc/` tree builds those; user-facing install/build notes live in
 ## Reviewing a PR
 
 Guidance for agents doing PR review — focused on regressions CI won't
-catch because its matrix is narrow (no GPUs, no ScaLAPACK on every cell,
-no alternate task backends on every cell). Flag these; don't nitpick
-style (`.clang-format` is the source of truth).
+catch because its matrix is narrow (GitHub Actions is CPU-only; the
+private GitLab CI has one CUDA cell, serial tests only; no HIP; no
+ScaLAPACK on every cell; no alternate task backends on every cell). Flag
+these; don't nitpick style (`.clang-format` is the source of truth).
 
 - **Raw MPI calls** outside `SafeMPI` / `World::mpi` — breaks
   `-DENABLE_MPI=OFF` and bypasses error checking.
@@ -655,9 +660,10 @@ style (`.clang-format` is the source of truth).
   `external/versions.cmake` — confirm the motivating MADNESS commit is
   merged and that TA still builds against it cleanly on both
   `Pthreads` and `PaRSEC` backends.
-- **Device path changes without a GPU build run.** CI has no GPU cell;
-  ask the author to confirm `-DTA_CUDA=ON` or `-DTA_HIP=ON` still builds
-  and the device-tagged tests pass locally.
+- **Device path changes without a multi-rank or HIP run.** The GitLab
+  CUDA cell runs only np=1; ask the author to confirm the device tests
+  pass at np=2 and, for changes that touch HIP code, that `-DTA_HIP=ON`
+  still builds.
 - **New tests appended out of order** in `tests/CMakeLists.txt`. The
   order is load-bearing — fixtures set up by earlier cases are consumed
   by later ones. New tests go near related tests, not at the end by
