@@ -179,16 +179,29 @@ struct is_tensor_of_tensor_helper<
 };
 
 namespace lazy_nesting {
-/// The \c eval_type a lazy tile declares, or \c T itself if it declares none
-/// (or names itself). Reads the member directly rather than through \c
-/// eval_trait : this trait is asked about a lazy tile while \c eval_trait of
-/// that very tile is still being instantiated.
+/// The tile a lazy tile evaluates to, or \c T itself if \c T is not a lazy
+/// tile. A lazy tile is recognized as \c is_lazy_tile recognizes one that
+/// declares its laziness in the class: it names an \c eval_type and has a
+/// conversion operator to it (or to a \c madness::Future of it). A type that
+/// merely names an \c eval_type -- \c DistArray does -- is not one.
+///
+/// This does not go through \c eval_trait / \c is_lazy_tile , and tests for
+/// the conversion operator itself rather than for convertibility: this trait
+/// is asked about a lazy tile while \c eval_trait of that very tile is still
+/// being instantiated, and convertibility would look at the constructors of
+/// the tensor type, which consult this trait.
 template <typename T, typename = void>
-struct declared_eval_type {
+struct evaluated_tile {
   using type = T;
 };
 template <typename T>
-struct declared_eval_type<T, std::void_t<typename T::eval_type>> {
+struct evaluated_tile<
+    T,
+    std::enable_if_t<
+        has_conversion_operator_v<
+            T, detail::remove_cvr_t<typename T::eval_type>> ||
+        has_conversion_operator_v<
+            T, madness::Future<detail::remove_cvr_t<typename T::eval_type>>>>> {
   using type = detail::remove_cvr_t<typename T::eval_type>;
 };
 }  // namespace lazy_nesting
@@ -197,14 +210,15 @@ struct declared_eval_type<T, std::void_t<typename T::eval_type>> {
 /// tiles is annotated, and its expressions are typed, by its evaluated tile.
 /// A lazy tile is not itself a tensor (\c is_tensor_helper is false for
 /// it), so this does not overlap the specialization above.
+/// \note A tile type made lazy only by specializing \c eval_trait , without
+/// declaring \c eval_type and a conversion to it, is not recognized here.
 template <typename T>
 struct is_tensor_of_tensor_helper<
-    T,
-    std::enable_if_t<
-        !is_tensor_helper<T>::value &&
-        !std::is_same_v<T, typename lazy_nesting::declared_eval_type<T>::type>>>
+    T, std::enable_if_t<
+           !is_tensor_helper<T>::value &&
+           !std::is_same_v<T, typename lazy_nesting::evaluated_tile<T>::type>>>
     : public is_tensor_of_tensor_helper<
-          typename lazy_nesting::declared_eval_type<T>::type> {};
+          typename lazy_nesting::evaluated_tile<T>::type> {};
 
 ////////////////////////////////////////////////////////////////////////////////
 

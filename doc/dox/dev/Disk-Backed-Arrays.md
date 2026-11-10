@@ -59,6 +59,10 @@ Each process writes the tiles it owns to a scratch file in the scratch directory
 2. the value of the `TA_DISK_SCRATCH_DIR` environment variable;
 3. the system temporary directory.
 
+**Check where the system temporary directory lives before relying on the default.** On many Linux systems, and on most compute nodes, `/tmp` is a memory-backed filesystem (tmpfs): a "disk-backed" array placed there still occupies memory, just not the process's own, and nothing is gained. Point the scratch directory at a node-local disk. It should not be on a network filesystem either: besides being slow, some (NFS) keep a renamed copy of an unlinked open file, which would survive a crash.
+
+Each disk-backed array holds one open file per process for as long as it lives, so the number of disk-backed arrays alive at once is bounded by the process's limit on open files.
+
 A scratch file is private to the process that created it: it is unlinked as soon as it is created, so it has no name, it cannot be opened by another process, and its space is reclaimed when the array is destroyed or when the process ends, however it ends. Nothing needs to be cleaned up after a crash. A consequence is that a scratch file is not visible in the directory; use `disk_io_stats()` to see how much has been written.
 
 No shared filesystem is assumed or needed. When a process needs a tile owned by another process, the owner reads the tile and sends its data; the tile that arrives is held in memory by the receiver. A contraction therefore reads each tile of a disk-backed argument once on its owner, and at most once more to send it.

@@ -25,6 +25,7 @@
 #include <TiledArray/disk/store.h>
 #include <TiledArray/error.h>
 #include <TiledArray/tensor/type_traits.h>
+#include <TiledArray/tile_interface/clone.h>
 #include <TiledArray/type_traits.h>
 
 #include <madness/world/buffer_archive.h>
@@ -81,7 +82,8 @@ class DiskTile {
   /// \throw TiledArray::Exception if the write fails
   DiskTile(const Tile& tile, std::shared_ptr<detail::DiskStore> store)
       : store_(std::move(store)) {
-    TA_ASSERT(store_);
+    if (!store_)
+      TA_EXCEPTION("DiskTile: constructed from a tile without a store");
     madness::archive::BufferOutputArchive count;
     count & tile;
     nbytes_ = count.size();
@@ -93,10 +95,14 @@ class DiskTile {
   }
 
   /// Evaluates this tile: reads it from disk, or copies the tile held in
-  /// memory. Must not be called on an empty tile.
+  /// memory. Either way the result shares no data with this tile or with any
+  /// other evaluation of it, so the caller is free to modify it.
+  /// \throw TiledArray::Exception if this tile is empty
   explicit operator Tile() const {
-    if (mem_) return *mem_;
-    TA_ASSERT(store_);
+    // a deep copy: copying a tile may be shallow, and whoever evaluates a
+    // lazy tile may work on the result in place
+    if (mem_) return TiledArray::clone(*mem_);
+    if (!store_) TA_EXCEPTION("DiskTile: an empty tile cannot be evaluated");
     const auto buffer = read_bytes();
     madness::archive::BufferInputArchive in(buffer.get(), nbytes_);
     Tile tile;

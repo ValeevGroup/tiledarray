@@ -26,6 +26,8 @@
 #include "TiledArray/tensor/arena_einsum.h"
 #include "TiledArray/tensor/arena_tensor.h"
 #include "tiledarray.h"
+
+#include <madness/world/vector_archive.h>
 #include "unit_test_config.h"
 
 #include <algorithm>
@@ -78,6 +80,11 @@ class InMemLazyTile {
 
  private:
   std::shared_ptr<Tile> tile_;
+};
+
+/// Names an eval_type but does not convert to it: not a lazy tile.
+struct NamesEvalTypeOnly {
+  using eval_type = TA::Tensor<TA::ArenaTensor<double, TA::Range>>;
 };
 
 }  // namespace test
@@ -281,6 +288,14 @@ BOOST_AUTO_TEST_CASE(lazy_tile_nestedness) {
   // ... but it is not itself a tensor
   static_assert(
       !TA::detail::is_tensor_v<test::InMemLazyTile<TA::Tensor<double>>>);
+  // only a lazy TILE is looked through: an array (or any other type that
+  // merely names an eval_type, without converting to it) is not a tensor of
+  // tensors, whatever its tiles are
+  static_assert(!TA::detail::is_tensor_of_tensor_v<ToTArray>);
+  static_assert(
+      !TA::detail::is_tensor_of_tensor_v<
+          TA::DistArray<test::InMemLazyTile<ArenaToT>, TA::SparsePolicy>>);
+  static_assert(!TA::detail::is_tensor_of_tensor_v<test::NamesEvalTypeOnly>);
   BOOST_CHECK(true);
 }
 
@@ -748,6 +763,92 @@ BOOST_AUTO_TEST_CASE(no_file_left) {
   BOOST_CHECK(scratch.empty());
 }
 
+// evaluating a tile that holds its data in memory (one received from another
+// process) gives an independent tile each time, as evaluating an on-disk tile
+// does: consumers of a lazy tile are entitled to modify what they are given
+BOOST_AUTO_TEST_CASE(tile_in_memory_evaluations_independent) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  TA::DiskTile<TA::Tensor<double>> d(t, store);
+  std::vector<unsigned char> buf(d.serialized_size());
+  madness::archive::BufferOutputArchive out(buf.data(), buf.size());
+  out & d;
+  madness::archive::BufferInputArchive in(buf.data(), buf.size());
+  TA::DiskTile<TA::Tensor<double>> u;
+  in & u;
+  BOOST_REQUIRE(!u.on_disk());
+
+  auto first = static_cast<TA::Tensor<double>>(u);
+  first.data()[0] += 100.0;  // a consumer working in place
+  auto const second = static_cast<TA::Tensor<double>>(u);
+  BOOST_CHECK(same_tile(second, t));
+  BOOST_CHECK(first.data() != second.data());
+}
+
+// serialization through an archive that is not a MADNESS buffer archive
+BOOST_AUTO_TEST_CASE(tile_serialize_generic_archive) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  auto const t = tot_tile(TA::Range{2, 3}, 4, 1.0);
+  TA::DiskTile<ArenaToT> d(t, store);
+  std::vector<unsigned char> v;
+  {
+    madness::archive::VectorOutputArchive out(v);
+    out & d;
+  }
+  madness::archive::VectorInputArchive in(v);
+  TA::DiskTile<ArenaToT> u;
+  in & u;
+  BOOST_CHECK(!u.on_disk());
+  BOOST_CHECK(same_tile(static_cast<ArenaToT>(u), t));
+}
+
+// misuse is an error in every build, not only where assertions are on
+BOOST_AUTO_TEST_CASE(tile_misuse_throws) {
+  using D = TA::DiskTile<TA::Tensor<double>>;
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  BOOST_CHECK_THROW(static_cast<TA::Tensor<double>>(D{}), TA::Exception);
+  BOOST_CHECK_THROW((void)D(t, nullptr), TA::Exception);
+}
+
+BOOST_FIXTURE_TEST_CASE(writer_misuse_throws, DiskArrayFixture) {
+  TA::Tensor<float> norms(g.trange().tiles_range(), 1.0f);
+  norms[0] = 0.0f;  // tile 0 is zero
+  TA::SparseShape<float> const shape(norms, g.trange(), true);
+  TA::DiskArrayWriter<TA::Tensor<double>, TA::SparsePolicy> writer(
+      world, g.trange(), shape, g.pmap());
+  auto const tile = flat_tile(g.trange().make_tile_range(0), 1.0);
+  // a zero tile cannot be set
+  if (writer.array().is_local(0))
+    BOOST_CHECK_THROW(writer.set(0, tile), TA::Exception);
+  // nor can a tile owned by another process
+  for (std::size_t ord = 1; ord < g.trange().tiles_range().volume(); ++ord)
+    if (!writer.array().is_local(ord)) {
+      BOOST_CHECK_THROW(
+          writer.set(ord, flat_tile(g.trange().make_tile_range(ord), 1.0)),
+          TA::Exception);
+      break;
+    }
+  // no tile was written by the rejected calls
+  for (auto it = g.pmap()->begin(); it != g.pmap()->end(); ++it)
+    if (*it != 0) writer.set(*it, g.find_local(*it).get());
+  world.gop.fence();
+}
+
+// the scratch file is released when the last tile referring to it is gone
+BOOST_AUTO_TEST_CASE(store_released_with_last_tile) {
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  std::weak_ptr<TA::detail::DiskStore> const watch = store;
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  auto d1 = std::make_unique<TA::DiskTile<TA::Tensor<double>>>(t, store);
+  auto d2 = std::make_unique<TA::DiskTile<TA::Tensor<double>>>(*d1);
+  store.reset();
+  BOOST_CHECK(!watch.expired());
+  d1.reset();
+  BOOST_CHECK(!watch.expired());
+  d2.reset();
+  BOOST_CHECK(watch.expired());
+}
+
 // a tile requested by a process that does not own it is read from disk
 // exactly once, by its owner
 BOOST_FIXTURE_TEST_CASE(remote_fetch_reads_once, DiskArrayFixture,
@@ -767,7 +868,7 @@ BOOST_FIXTURE_TEST_CASE(remote_fetch_reads_once, DiskArrayFixture,
   world.gop.fence();
   BOOST_CHECK(all_equal);
   world.gop.sum(nfetched);
-  BOOST_CHECK(nfetched > 0);
+  if (world.size() > 1) BOOST_CHECK(nfetched > 0);
   BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_read, nfetched);
 }
 
@@ -786,7 +887,7 @@ BOOST_FIXTURE_TEST_CASE(remote_fetch_tot, DiskArrayFixture,
   world.gop.fence();
   BOOST_CHECK(all_equal);
   world.gop.sum(nfetched);
-  BOOST_CHECK(nfetched > 0);
+  if (world.size() > 1) BOOST_CHECK(nfetched > 0);
   BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_read, nfetched);
 }
 

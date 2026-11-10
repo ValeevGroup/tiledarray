@@ -85,10 +85,17 @@ class DiskArrayWriter {
   /// \param ord the ordinal index of the tile; must be owned by this process
   ///        and nonzero in the shape, and must not have been set before
   /// \param tile the tile; it is not kept
-  /// \throw TiledArray::Exception if the tile cannot be written
+  /// \throw TiledArray::Exception if \p ord is not owned by this process or
+  ///        is zero in the shape (nothing is written then), or if the tile
+  ///        cannot be written
   void set(std::size_t ord, const Tile& tile) {
-    TA_ASSERT(array_.is_local(ord));
-    TA_ASSERT(!array_.is_zero(ord));
+    // checked in every build: a tile set on the wrong process would be
+    // written here, shipped to its owner, and kept there in memory
+    if (!array_.is_local(ord))
+      TA_EXCEPTION(
+          "DiskArrayWriter::set: the tile is not owned by this process");
+    if (array_.is_zero(ord))
+      TA_EXCEPTION("DiskArrayWriter::set: the tile is zero in the shape");
     array_.set(ord, DiskTile<Tile>(tile, state_->store()));
   }
 
@@ -118,7 +125,8 @@ class DiskArrayWriter {
 /// is a collective operation. \p array itself is not changed: to release its
 /// memory, drop it (and every other reference to its tiles) afterwards. At no
 /// point is a second copy of the data in memory.
-/// \param array the array to copy
+/// \param array the array to copy; must be initialized, with every nonzero
+///        tile set (or being computed)
 /// \return the disk-backed copy
 /// \throw TiledArray::Exception if a tile cannot be written
 template <typename Tile, typename Policy>
