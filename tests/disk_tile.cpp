@@ -1264,6 +1264,126 @@ BOOST_AUTO_TEST_CASE(store_failed_write_releases_space, TA_UT_LABEL_SERIAL) {
   BOOST_CHECK(r == c);
 }
 
+// compound assignment to a disk-backed array: the array is read, combined
+// and replaced
+BOOST_FIXTURE_TEST_CASE(compound_assign_whole, DiskArrayFixture) {
+  auto d = TA::to_disk(x);
+  FlatArray ref = x.clone();
+  d("p,k") += x("p,k");
+  ref("p,k") += x("p,k");
+  world.gop.fence();
+  d("p,k") -= 0.5 * x("p,k");
+  ref("p,k") -= 0.5 * x("p,k");
+  world.gop.fence();
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  FlatArray r;
+  r("p,k") = d("p,k");
+  BOOST_CHECK(close(r, ref, "p,k"));
+
+  // nested
+  auto dt = TA::to_disk(tot);
+  ToTArray tref = tot.clone();
+  dt("i,j,p;a") += tot2("i,j,p;a");
+  tref("i,j,p;a") += tot2("i,j,p;a");
+  world.gop.fence();
+  ToTArray tr;
+  tr("i,j,p;a") = dt("i,j,p;a");
+  BOOST_CHECK(close(tr, tref, "i,j,p;a"));
+}
+
+// compound assignment to a block: accumulating batches into the same tiles
+BOOST_FIXTURE_TEST_CASE(compound_assign_block, DiskArrayFixture) {
+  auto d = TA::to_disk(g);
+  FlatArray ref = g.clone();
+  auto const [lo, hi] = slab(g.trange(), 2, 1);
+  for (int pass = 0; pass < 3; ++pass) {
+    FlatArray part;
+    part("q,p,k") = (1.0 + pass) * g("q,p,k").block(lo, hi);
+    d("q,p,k").block(lo, hi) += part("q,p,k");
+    ref("q,p,k").block(lo, hi) += part("q,p,k");
+    world.gop.fence();
+  }
+  d("q,p,k").block(lo, hi) -= g("q,p,k").block(lo, hi);
+  ref("q,p,k").block(lo, hi) -= g("q,p,k").block(lo, hi);
+  world.gop.fence();
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  FlatArray r;
+  r("q,p,k") = d("q,p,k");
+  BOOST_CHECK(close(r, ref, "q,p,k"));
+
+  // accumulation into a block of an array that starts all-zero
+  auto acc = zero_disk_array(x);
+  auto const [xlo, xhi] = slab(x.trange(), 0, 0);
+  FlatArray xref, xpart;
+  xpart("p,k") = x("p,k").block(xlo, xhi, TA::preserve_lobound);
+  acc("p,k").block(xlo, xhi, TA::preserve_lobound) = xpart("p,k");
+  world.gop.fence();
+  acc("p,k").block(xlo, xhi, TA::preserve_lobound) += xpart("p,k");
+  world.gop.fence();
+  FlatArray a2, a2ref;
+  a2("p,k") = acc("p,k").block(xlo, xhi);
+  a2ref("p,k") = 2.0 * x("p,k").block(xlo, xhi);
+  BOOST_CHECK(close(a2, a2ref, "p,k"));
+}
+
+// a block with no tiles: assigning to it, or from it, changes nothing
+BOOST_FIXTURE_TEST_CASE(zero_volume_block, DiskArrayFixture) {
+  auto d = TA::to_disk(x);
+  std::vector<std::size_t> lo{1, 0}, hi{1, 2};  // no tiles along p
+  reset_global_disk_io_stats(world);
+  FlatArray empty_part;
+  BOOST_REQUIRE_NO_THROW(empty_part("p,k") = x("p,k").block(lo, hi));
+  BOOST_REQUIRE_NO_THROW(d("p,k").block(lo, hi) = empty_part("p,k"));
+  world.gop.fence();
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_written, 0u);
+  FlatArray from_empty;
+  BOOST_REQUIRE_NO_THROW(from_empty("p,k") = d("p,k").block(lo, hi));
+  world.gop.fence();
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_read, 0u);
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  FlatArray r;
+  r("p,k") = d("p,k");
+  BOOST_CHECK(close(r, x, "p,k"));
+}
+
+// a replicated disk-backed array: every process has every tile, on its own
+// disk
+BOOST_FIXTURE_TEST_CASE(replicated, DiskArrayFixture) {
+  auto d = TA::to_disk(x);
+  d.make_replicated();
+  world.gop.fence();
+  // (with a single process there is nothing to replicate)
+  if (world.size() > 1) BOOST_CHECK(d.pmap()->is_replicated());
+  const std::size_t ntiles = count_nonzero_tiles(x);
+  std::size_t n_on_disk = 0;
+  bool all_equal = true;
+  for (std::size_t ord = 0; ord < x.trange().tiles_range().volume(); ++ord) {
+    if (d.is_zero(ord)) continue;
+    BOOST_REQUIRE(d.is_local(ord));
+    auto const tile = d.find_local(ord).get();
+    if (tile.on_disk()) ++n_on_disk;
+    all_equal = all_equal && same_tile(static_cast<TA::Tensor<double>>(tile),
+                                       x.find(ord).get());
+  }
+  BOOST_CHECK_EQUAL(n_on_disk, ntiles);
+  BOOST_CHECK(all_equal);
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  // usable as an argument
+  FlatArray ref, r;
+  ref("p,q") = x("p,k") * x("q,k");
+  r("p,q") = d("p,k") * x("q,k");
+  BOOST_CHECK(close(r, ref, "p,q"));
+
+  // nested
+  auto dt = TA::to_disk(s);
+  dt.make_replicated();
+  world.gop.fence();
+  BOOST_CHECK(local_tiles_in_one_file(dt));
+  ToTArray tr;
+  tr("i,j;a,b") = dt("i,j;a,b");
+  BOOST_CHECK(close(tr, s, "i,j;a,b"));
+}
+
 // a tile requested by a process that does not own it is read from disk
 // exactly once, by its owner
 BOOST_FIXTURE_TEST_CASE(remote_fetch_reads_once, DiskArrayFixture,
