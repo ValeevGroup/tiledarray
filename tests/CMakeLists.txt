@@ -22,6 +22,14 @@
 #  Jul 19, 2013
 #
 
+# Use the Boost.Test library, rather than the header-only variant of the
+# framework, if and only if the library the tests link is a shared one; this
+# sets BOOST_TEST_DYN_LINK in unit_test_config.h.
+include(${CMAKE_CURRENT_SOURCE_DIR}/BoostTestLinkage.cmake)
+if (Boost_IS_MODULARIZED)
+  ta_boost_test_is_shared(Boost::unit_test_framework BOOST_TEST_DYN_LINK)
+endif()
+
 CONFIGURE_FILE(
   ${CMAKE_CURRENT_SOURCE_DIR}/unit_test_config.h.in
   ${PROJECT_BINARY_DIR}/tests/unit_test_config.h
