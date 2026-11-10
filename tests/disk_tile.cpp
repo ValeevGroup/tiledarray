@@ -139,10 +139,11 @@ TA::DistArray<Lazy<Tile>, TA::SparsePolicy> wrap_tiles(
   return result;
 }
 
-/// Copies \p array to disk tile by tile: a disk-backed array with the same
-/// TiledRange, shape and process map, each process setting the tiles it owns.
+/// \return a copy of \p array on disk, made tile by tile: a disk-backed array
+/// with the same TiledRange, shape and process map, each process setting the
+/// tiles it owns.
 template <typename Tile, typename Policy>
-TA::DiskArray<Tile, Policy> to_disk(const TA::DistArray<Tile, Policy>& array) {
+TA::DiskArray<Tile, Policy> on_disk(const TA::DistArray<Tile, Policy>& array) {
   TA::DiskArray<Tile, Policy> result(array.world(), array.trange(),
                                      array.shape(), array.pmap());
   for (auto it = array.pmap()->begin(); it != array.pmap()->end(); ++it) {
@@ -293,11 +294,11 @@ struct DiskArrayFixture {
       0.7);
   FlatArray g = make_flat(world, TA::TiledRange{tr_p, tr_p, tr_k}, 0.5);
   FlatArray x = make_flat(world, TA::TiledRange{tr_p, tr_k}, 0.2);
-  TA::DiskArray<ArenaToT, TA::SparsePolicy> totd = to_disk(tot),
-                                            tot2d = to_disk(tot2),
-                                            sd = to_disk(s);
-  TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> gd = to_disk(g),
-                                                      xd = to_disk(x);
+  TA::DiskArray<ArenaToT, TA::SparsePolicy> totd = on_disk(tot),
+                                            tot2d = on_disk(tot2),
+                                            sd = on_disk(s);
+  TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> gd = on_disk(g),
+                                                      xd = on_disk(x);
 };
 
 /// An initialized, all-zero disk-backed array with the structure of \p like:
@@ -795,7 +796,7 @@ BOOST_AUTO_TEST_CASE(dense_policy) {
       make_flat<TA::DensePolicy>(world, TA::TiledRange{tr_p, tr_p, tr_k}, 0.5);
   DenseArray const x =
       make_flat<TA::DensePolicy>(world, TA::TiledRange{tr_p, tr_k}, 0.2);
-  auto const gd = to_disk(g);
+  auto const gd = on_disk(g);
   DenseArray r, ref;
   r("q,p,k") = gd("q,p,k");
   BOOST_CHECK(close(r, g, "q,p,k"));
@@ -819,7 +820,7 @@ BOOST_AUTO_TEST_CASE(rank_without_tiles) {
   world.gop.fence();
 
   reset_global_disk_io_stats(world);
-  auto const xd = to_disk(x);
+  auto const xd = on_disk(x);
   // a rank that owns nothing writes nothing
   if (world.rank() != 0) {
     BOOST_CHECK_EQUAL(TA::disk_io_stats().tiles_written, 0u);
@@ -840,7 +841,7 @@ BOOST_AUTO_TEST_CASE(no_file_left) {
   {
     TA::TiledRange const tr{{0, 8, 16, 24}, {0, 5, 10}};
     FlatArray const x = make_flat(world, tr, 0.2);
-    auto const xd = to_disk(x);
+    auto const xd = on_disk(x);
     // scratch files have no name: nothing to find while the array is alive
     BOOST_CHECK(scratch.empty());
     FlatArray r;
@@ -1098,7 +1099,7 @@ BOOST_FIXTURE_TEST_CASE(block_assign_permuted, DiskArrayFixture) {
 // a block may be assigned from an expression that reads the array itself:
 // the tiles being replaced stay readable until they have been replaced
 BOOST_FIXTURE_TEST_CASE(block_assign_from_itself, DiskArrayFixture) {
-  auto d = to_disk(x);
+  auto d = on_disk(x);
   auto const [lo, hi] = slab(x.trange(), 0, 1);
   d("p,k").block(lo, hi) = 3.0 * d("p,k").block(lo, hi);
   world.gop.fence();
@@ -1112,7 +1113,7 @@ BOOST_FIXTURE_TEST_CASE(block_assign_from_itself, DiskArrayFixture) {
 
 // replacing a block reuses the space of the tiles it replaces
 BOOST_FIXTURE_TEST_CASE(block_reassign_reuses_space, DiskArrayFixture) {
-  auto d = to_disk(g);
+  auto d = on_disk(g);
   world.gop.fence();
   std::shared_ptr<TA::detail::DiskStore> store;
   for (auto it = d.pmap()->begin(); it != d.pmap()->end() && !store; ++it)
@@ -1281,7 +1282,7 @@ BOOST_AUTO_TEST_CASE(store_failed_write_releases_space, TA_UT_LABEL_SERIAL) {
 // compound assignment to a disk-backed array: the array is read, combined
 // and replaced
 BOOST_FIXTURE_TEST_CASE(compound_assign_whole, DiskArrayFixture) {
-  auto d = to_disk(x);
+  auto d = on_disk(x);
   FlatArray ref = x.clone();
   d("p,k") += x("p,k");
   ref("p,k") += x("p,k");
@@ -1295,7 +1296,7 @@ BOOST_FIXTURE_TEST_CASE(compound_assign_whole, DiskArrayFixture) {
   BOOST_CHECK(close(r, ref, "p,k"));
 
   // nested
-  auto dt = to_disk(tot);
+  auto dt = on_disk(tot);
   ToTArray tref = tot.clone();
   dt("i,j,p;a") += tot2("i,j,p;a");
   tref("i,j,p;a") += tot2("i,j,p;a");
@@ -1307,7 +1308,7 @@ BOOST_FIXTURE_TEST_CASE(compound_assign_whole, DiskArrayFixture) {
 
 // compound assignment to a block: accumulating batches into the same tiles
 BOOST_FIXTURE_TEST_CASE(compound_assign_block, DiskArrayFixture) {
-  auto d = to_disk(g);
+  auto d = on_disk(g);
   FlatArray ref = g.clone();
   auto const [lo, hi] = slab(g.trange(), 2, 1);
   for (int pass = 0; pass < 3; ++pass) {
@@ -1342,7 +1343,7 @@ BOOST_FIXTURE_TEST_CASE(compound_assign_block, DiskArrayFixture) {
 
 // a block with no tiles: assigning to it, or from it, changes nothing
 BOOST_FIXTURE_TEST_CASE(zero_volume_block, DiskArrayFixture) {
-  auto d = to_disk(x);
+  auto d = on_disk(x);
   std::vector<std::size_t> lo{1, 0}, hi{1, 2};  // no tiles along p
   reset_global_disk_io_stats(world);
   FlatArray empty_part;
@@ -1363,7 +1364,7 @@ BOOST_FIXTURE_TEST_CASE(zero_volume_block, DiskArrayFixture) {
 // a replicated disk-backed array: every process has every tile, on its own
 // disk
 BOOST_FIXTURE_TEST_CASE(replicated, DiskArrayFixture) {
-  auto d = to_disk(x);
+  auto d = on_disk(x);
   d.make_replicated();
   world.gop.fence();
   // (with a single process there is nothing to replicate)
@@ -1389,7 +1390,7 @@ BOOST_FIXTURE_TEST_CASE(replicated, DiskArrayFixture) {
   BOOST_CHECK(close(r, ref, "p,q"));
 
   // nested
-  auto dt = to_disk(s);
+  auto dt = on_disk(s);
   dt.make_replicated();
   world.gop.fence();
   BOOST_CHECK(local_tiles_in_one_file(dt));
@@ -1498,10 +1499,10 @@ struct DeviceDiskFixture {
 
 }  // namespace
 
-BOOST_FIXTURE_TEST_CASE(device_to_disk_and_back, DeviceDiskFixture) {
+BOOST_FIXTURE_TEST_CASE(device_on_disk_and_back, DeviceDiskFixture) {
   static_assert(TA::is_lazy_tile_v<TA::DiskTile<UMTensor>>);
   reset_global_disk_io_stats(world);
-  auto const ad = to_disk(a);
+  auto const ad = on_disk(a);
   BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_written,
                     tr.tiles_range().volume());
   BOOST_CHECK(local_tiles_in_one_file(ad));
@@ -1519,8 +1520,8 @@ BOOST_FIXTURE_TEST_CASE(device_to_disk_and_back, DeviceDiskFixture) {
 }
 
 BOOST_FIXTURE_TEST_CASE(device_disk_argument, DeviceDiskFixture) {
-  auto const ad = to_disk(a);
-  auto const bd = to_disk(b);
+  auto const ad = on_disk(a);
+  auto const bd = on_disk(b);
   UMArray ref, r;
   // binary op with a permuted read
   ref("k,j,i") = 2.0 * a("i,j,k") - b("i,j,k");
@@ -1535,7 +1536,7 @@ BOOST_FIXTURE_TEST_CASE(device_disk_argument, DeviceDiskFixture) {
   BOOST_CHECK(um_close(c, cref, "i,l"));
 }
 
-BOOST_FIXTURE_TEST_CASE(device_assign_to_disk, DeviceDiskFixture) {
+BOOST_FIXTURE_TEST_CASE(device_assign, DeviceDiskFixture) {
   // whole
   UMDiskArray d;
   UMArray ref;
@@ -1565,7 +1566,7 @@ BOOST_FIXTURE_TEST_CASE(device_assign_to_disk, DeviceDiskFixture) {
 
 BOOST_FIXTURE_TEST_CASE(device_remote_fetch, DeviceDiskFixture,
                         TA_UT_LABEL_DISTRIBUTED) {
-  auto const ad = to_disk(a);
+  auto const ad = on_disk(a);
   reset_global_disk_io_stats(world);
   std::size_t nfetched = 0;
   bool ok = true;
