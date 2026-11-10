@@ -748,4 +748,64 @@ BOOST_AUTO_TEST_CASE(no_file_left) {
   BOOST_CHECK(scratch.empty());
 }
 
+// a tile requested by a process that does not own it is read from disk
+// exactly once, by its owner
+BOOST_FIXTURE_TEST_CASE(remote_fetch_reads_once, DiskArrayFixture,
+                        TA_UT_LABEL_DISTRIBUTED) {
+  reset_global_disk_io_stats(world);
+  std::size_t nfetched = 0;
+  bool all_equal = true;
+  for (std::size_t ord = 0; ord < gd.trange().tiles_range().volume(); ++ord) {
+    if (gd.is_zero(ord) || gd.is_local(ord)) continue;
+    auto const fetched = gd.find(ord).get();
+    ++nfetched;
+    // what arrives holds its data in memory and evaluates to the source
+    all_equal =
+        all_equal && !fetched.on_disk() && !fetched.empty() &&
+        same_tile(static_cast<TA::Tensor<double>>(fetched), g.find(ord).get());
+  }
+  world.gop.fence();
+  BOOST_CHECK(all_equal);
+  world.gop.sum(nfetched);
+  BOOST_CHECK(nfetched > 0);
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_read, nfetched);
+}
+
+BOOST_FIXTURE_TEST_CASE(remote_fetch_tot, DiskArrayFixture,
+                        TA_UT_LABEL_DISTRIBUTED) {
+  reset_global_disk_io_stats(world);
+  std::size_t nfetched = 0;
+  bool all_equal = true;
+  for (std::size_t ord = 0; ord < totd.trange().tiles_range().volume(); ++ord) {
+    if (totd.is_zero(ord) || totd.is_local(ord)) continue;
+    auto const fetched = totd.find(ord).get();
+    ++nfetched;
+    all_equal = all_equal && !fetched.on_disk() &&
+                same_tile(static_cast<ArenaToT>(fetched), tot.find(ord).get());
+  }
+  world.gop.fence();
+  BOOST_CHECK(all_equal);
+  world.gop.sum(nfetched);
+  BOOST_CHECK(nfetched > 0);
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_read, nfetched);
+}
+
+// a contraction reads each tile of a disk-backed argument once where it is
+// used locally and once more if it is shipped: never more often
+BOOST_FIXTURE_TEST_CASE(streaming_contraction, DiskArrayFixture,
+                        TA_UT_LABEL_DISTRIBUTED) {
+  FlatArray ref, r;
+  ref("q,l,k") = g("q,p,l") * x("p,k");
+  std::size_t ntiles = 0;
+  for (std::size_t ord = 0; ord < gd.trange().tiles_range().volume(); ++ord)
+    if (!gd.is_zero(ord)) ++ntiles;
+  reset_global_disk_io_stats(world);
+  r("q,l,k") = gd("q,p,l") * x("p,k");
+  world.gop.fence();
+  BOOST_CHECK(close(r, ref, "q,l,k"));
+  auto const nread = global_disk_io_stats(world).tiles_read;
+  BOOST_CHECK(nread >= ntiles);
+  BOOST_CHECK(nread <= 2 * ntiles);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

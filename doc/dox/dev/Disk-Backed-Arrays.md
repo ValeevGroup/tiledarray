@@ -1,0 +1,81 @@
+# Disk-Backed Arrays {#Disk-Backed-Arrays}
+
+A `TiledArray::DiskArray<Tile, Policy>` is an array whose tiles are kept in scratch files and read when they are needed. It trades I/O for memory: an array that is alive but rarely used occupies (almost) no memory while it is on disk.
+
+A disk-backed array is an ordinary `DistArray` whose tile type is `TiledArray::DiskTile<Tile>`, a [lazy tile](@ref User-Defined-Lazy-Tiles) that evaluates to `Tile`. It can appear wherever an expression accepts an array argument; it cannot be the target of an expression.
+
+## When to use one
+
+* For large arrays that are read occasionally: integrals or intermediates built once and consumed by a few later steps.
+* Not for arrays that are updated in place, rebuilt often, or read by nearly every operation. Tiles are written once and never modified, and every use of a tile is a read from disk.
+
+## Moving an array to disk and back
+
+```cpp
+TA::TArrayD a = ...;
+
+// copy to disk: same tiled range, shape and process map
+auto d = TA::to_disk(a);
+a = TA::TArrayD{};  // release the memory
+
+// use it as an argument: tiles are read as the expression needs them
+TA::TArrayD c;
+c("i,k") = d("i,j") * b("j,k");
+
+// bring it back, whole ...
+TA::TArrayD a2;
+a2("i,j") = d("i,j");
+// ... or by tile block, which reads only the tiles of the block
+TA::TArrayD blk;
+blk("i,j") = d("i,j").block({0, 0}, {2, 2});
+```
+
+`to_disk` is a collective operation. It does not modify its argument; the memory is released when the original array (and any other reference to its tiles) is dropped. At no point are two copies of the data in memory.
+
+Nested (tensor-of-tensors) arrays are supported, with the usual nested annotations (`d("i,j;a,b")`).
+
+## Building an array directly on disk
+
+To produce an array that never fits in memory, build it tile by tile:
+
+```cpp
+TA::DiskArrayWriter<TA::Tensor<double>, TA::SparsePolicy> writer(
+    world, trange, shape /*, pmap */);
+for (auto it = writer.array().pmap()->begin();
+     it != writer.array().pmap()->end(); ++it)
+  if (!writer.array().is_zero(*it))
+    writer.set(*it, make_tile(*it));  // written at once; not kept in memory
+world.gop.fence();
+auto d = writer.array();
+```
+
+Each process sets the tiles it owns; `set` may be called from several threads. With a sparse policy the shape is fixed when the writer is constructed.
+
+## Where the data lives
+
+Each process writes the tiles it owns to a scratch file in the scratch directory, which should be on a filesystem local to the node. The scratch directory is, in order of precedence:
+
+1. the directory given to `TiledArray::set_disk_scratch_dir()`;
+2. the value of the `TA_DISK_SCRATCH_DIR` environment variable;
+3. the system temporary directory.
+
+A scratch file is private to the process that created it: it is unlinked as soon as it is created, so it has no name, it cannot be opened by another process, and its space is reclaimed when the array is destroyed or when the process ends, however it ends. Nothing needs to be cleaned up after a crash. A consequence is that a scratch file is not visible in the directory; use `disk_io_stats()` to see how much has been written.
+
+No shared filesystem is assumed or needed. When a process needs a tile owned by another process, the owner reads the tile and sends its data; the tile that arrives is held in memory by the receiver. A contraction therefore reads each tile of a disk-backed argument once on its owner, and at most once more to send it.
+
+## Memory
+
+A tile is in memory from the moment an expression evaluates it until the expression is done with it. A contraction evaluates the tiles of an argument a batch at a time (one SUMMA iteration), so the argument is never in memory as a whole; how many batches are in flight at once is controlled by the `TA_SUMMA_MAX_DEPTH` environment variable. Smaller tiles along the contracted indices give finer batches.
+
+Writing or reading a tile temporarily needs a buffer of the size of the tile in addition to the tile itself.
+
+## Accounting
+
+`TiledArray::disk_io_stats()` returns the number of tiles and bytes written and read by the calling process, and the time spent doing so; `TiledArray::reset_disk_io_stats()` zeroes the counters.
+
+## Limitations
+
+* Tiles are immutable: there is no way to update a tile on disk. Space is reclaimed only when the whole array is destroyed.
+* There is no restart: scratch files do not outlive the process.
+* An evaluated tile is entirely in memory; a tile is the unit of I/O.
+* A disk-backed array cannot be the result of an expression. Evaluate into an ordinary array, then call `to_disk`.
