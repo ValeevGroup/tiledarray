@@ -22,6 +22,14 @@
 #  Jul 19, 2013
 #
 
+# Use the Boost.Test library, rather than the header-only variant of the
+# framework, if and only if the library the tests link is a shared one; this
+# sets BOOST_TEST_DYN_LINK in unit_test_config.h.
+include(${CMAKE_CURRENT_SOURCE_DIR}/BoostTestLinkage.cmake)
+if (Boost_IS_MODULARIZED)
+  ta_boost_test_is_shared(Boost::unit_test_framework BOOST_TEST_DYN_LINK)
+endif()
+
 CONFIGURE_FILE(
   ${CMAKE_CURRENT_SOURCE_DIR}/unit_test_config.h.in
   ${PROJECT_BINARY_DIR}/tests/unit_test_config.h
@@ -145,26 +153,6 @@ endif()
 # if Boost is modularized, need to explicitly state that we need Boost::test module
 if (Boost_IS_MODULARIZED)
   target_link_libraries(${executable} PRIVATE Boost::unit_test_framework)
-  # If that is a shared library the tests must use it rather than the
-  # header-only variant of the framework (see unit_test_config.h): with both
-  # in one executable the framework's global objects are defined twice, in the
-  # executable and in the library, and are destroyed twice at exit.
-  get_target_property(_ta_boost_utf_type Boost::unit_test_framework TYPE)
-  set(_ta_boost_utf_is_shared FALSE)
-  if (_ta_boost_utf_type STREQUAL "SHARED_LIBRARY")
-    set(_ta_boost_utf_is_shared TRUE)
-  elseif (_ta_boost_utf_type STREQUAL "UNKNOWN_LIBRARY")
-    foreach (_prop IMPORTED_LOCATION IMPORTED_LOCATION_RELEASE
-                   IMPORTED_LOCATION_DEBUG IMPORTED_LOCATION_NOCONFIG)
-      get_target_property(_loc Boost::unit_test_framework ${_prop})
-      if (_loc MATCHES "\\.(so|dylib)(\\.[0-9.]+)?$")
-        set(_ta_boost_utf_is_shared TRUE)
-      endif()
-    endforeach()
-  endif()
-  if (_ta_boost_utf_is_shared)
-    target_compile_definitions(${executable} PRIVATE BOOST_TEST_DYN_LINK=1)
-  endif()
 endif()
 # Add include directories and compiler flags for ta_test
 target_include_directories(${executable} PRIVATE
