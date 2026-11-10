@@ -124,6 +124,16 @@ class UnaryWrapper {
   /// \return A reference to the permutation applied to the result tile
   const BipartitePermutation& permutation() const { return perm_; }
 
+  /// true if the result of this op shares its argument's data: the wrapped
+  /// op hands the argument through (see Noop::is_pass_through,
+  /// Shift::is_pass_through) and no permutation is applied
+  bool is_pass_through() const noexcept {
+    if constexpr (requires { op_.is_pass_through(); })
+      return !perm_ && op_.is_pass_through();
+    else
+      return false;
+  }
+
   /// Apply operator to `arg` and possibly permute the result
 
   /// \param arg The argument
@@ -176,7 +186,9 @@ class UnaryWrapper {
     //        auto op_consume = [this](auto&& arg) {
     //          return op_.consume(std::forward<decltype(arg)>(arg));
     //        };
-    auto op_consume = [this](eval_t<A>& arg) { return op_.consume(arg); };
+    // N.B. capture a copy of op_: if cast_arg is a Future this runs as a task,
+    // possibly after this wrapper (owned by an evaluator) is gone
+    auto op_consume = [op = op_](eval_t<A>& arg) { return op.consume(arg); };
     return (perm_ ? detail::invoke(op_, std::move(cast_arg), perm_)
                   : (arg.is_consumable()
                          ? detail::invoke(op_consume, cast_arg)
@@ -196,7 +208,9 @@ class UnaryWrapper {
     //        auto op_consume = [this](auto&& arg) {
     //          return op_.consume(std::forward<decltype(arg)>(arg));
     //        };
-    auto op_consume = [this](eval_t<A>& arg) { return op_.consume(arg); };
+    // N.B. capture a copy of op_: if cast_arg is a Future this runs as a task,
+    // possibly after this wrapper (owned by an evaluator) is gone
+    auto op_consume = [op = op_](eval_t<A>& arg) { return op.consume(arg); };
     return (perm_ ? detail::invoke(op_, std::move(cast_arg), perm_)
                   : detail::invoke(op_consume, cast_arg));
   }

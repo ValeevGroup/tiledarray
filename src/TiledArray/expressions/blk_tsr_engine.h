@@ -28,6 +28,8 @@
 
 #include <TiledArray/expressions/fwd.h>
 #include <TiledArray/expressions/leaf_engine.h>
+#include <TiledArray/permutation.h>
+#include <TiledArray/pmap/block_pmap.h>
 #include <TiledArray/tile_op/shift.h>
 
 namespace TiledArray {
@@ -38,8 +40,19 @@ class DistArray;
 
 namespace expressions {
 
-template <typename Tile, typename Policy, typename Result, bool Alias>
-struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
+/// The traits of a BlkTsrEngine over `DistArray<Tile, Policy>`.
+///
+/// \tparam Shares If `true`, the engine is that of a CONST block expression,
+/// `BlkTsrExpr<const Array>`: a block that keeps the array's element
+/// coordinates (a zero shift, see detail::Shift) hands the array's own tiles
+/// to its consumer, as the engine of a plain array operand does, instead of
+/// copying them. Its tiles are therefore not consumable (no
+/// consumer may take them over in place), and an assignment of the block
+/// clones them (see LazyArrayTile::shares_source). A block of a mutable array
+/// always copies, and its copies may be consumed.
+template <typename Tile, typename Policy, typename Result, bool Alias,
+          bool Shares>
+struct BlkTsrEngineTrait {
   // Argument typedefs
   typedef DistArray<Tile, Policy> array_type;  ///< The array type
 
@@ -51,7 +64,8 @@ struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
       Result,
       typename TiledArray::eval_trait<typename array_type::value_type>::type,
       (!Alias) || TiledArray::eval_trait<
-                      typename array_type::value_type>::is_consumable>
+                      typename array_type::value_type>::is_consumable,
+      Shares>
       op_base_type;  ///< The base tile operation
   typedef TiledArray::detail::UnaryWrapper<op_base_type>
       op_type;  ///< The tile operation
@@ -71,9 +85,19 @@ struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
   typedef typename policy::pmap_interface
       pmap_interface;  ///< Process map interface type
 
-  static constexpr bool consumable = true;
+  static constexpr bool consumable = !Shares;
   static constexpr unsigned int leaves = 1;
 };
+
+template <typename Tile, typename Policy, typename Result, bool Alias>
+struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>>
+    : BlkTsrEngineTrait<Tile, Policy, Result, Alias, false> {};
+
+/// the engine of a block of a const array shares the array's tiles (see
+/// BlkTsrEngineTrait)
+template <typename Tile, typename Policy, typename Result, bool Alias>
+struct EngineTrait<BlkTsrEngine<const DistArray<Tile, Policy>, Result, Alias>>
+    : BlkTsrEngineTrait<Tile, Policy, Result, Alias, true> {};
 
 template <typename Tile, typename Policy, typename Scalar, typename Result>
 struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar, Result>> {
@@ -268,12 +292,49 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
     return TiledRange(trange_data.begin(), trange_data.end());
   }
 
+  /// Initialize the distribution of the block's evaluator: the process map a
+  /// consumer imposes (e.g. SUMMA's phase map) if any, else the map under
+  /// which the block evaluates where the parent array holds its tiles (see
+  /// make_parent_pmap()), so that no tile is fetched from another rank, else
+  /// the default map over the block's tiles.
   void init_distribution(World* world,
                          const std::shared_ptr<const pmap_interface>& pmap) {
+    if (pmap) {
+      ExprEngine_::init_distribution(world, pmap);
+      return;
+    }
+    if (auto parent_pmap = make_parent_pmap(*world)) {
+      ExprEngine_::init_distribution(world, parent_pmap);
+      // a map for this operand only, not for an array holding the result
+      ExprEngine_::pmap_serves_operand_ = true;
+      return;
+    }
     ExprEngine_::init_distribution(
-        world,
-        (pmap ? pmap
-              : policy::default_pmap(*world, trange_.tiles_range().volume())));
+        world, policy::default_pmap(*world, trange_.tiles_range().volume()));
+  }
+
+  /// The process map under which every tile of the block's result is owned
+  /// by the rank that holds its source tile in the parent array (a
+  /// detail::BlockPmap). A plain array operand evaluates on its own map; this
+  /// is the block's equivalent. Unlike the plain operand's map, it is not kept
+  /// by an array assigned from the expression (see
+  /// ExprEngine::pmap_serves_operand() and Expr::eval_to()).
+  ///
+  /// \return the map, or null if following the parent is not meaningful: if
+  /// the parent's map is replicated (every rank holds every tile, so nothing
+  /// is fetched either way, but each tile must still have one owner) or the
+  /// parent lives in another World (the ranks its map gives are not ranks of
+  /// \p world).
+  std::shared_ptr<const pmap_interface> make_parent_pmap(World& world) const {
+    auto const& parent_pmap = array_.pmap();
+    if (parent_pmap->is_replicated() || &array_.world() != &world) return {};
+    Range::index_type block_lobound(lower_bound_.size());
+    for (std::size_t d = 0; d < lower_bound_.size(); ++d)
+      block_lobound[d] = static_cast<Range::index1_type>(lower_bound_[d]);
+    return std::make_shared<const TiledArray::detail::BlockPmap>(
+        world, parent_pmap, array_.trange().tiles_range(),
+        trange_.tiles_range(), std::move(block_lobound),
+        perm_ ? outer(perm_).inv() : Permutation());
   }
 
   /// Construct the distributed evaluator for array
@@ -301,6 +362,44 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
     TiledArray::detail::print_array(ss, upper_bound_);
     ss << "] ";
     return ss.str();
+  }
+
+ protected:
+  /// Range shift factory function
+
+  /// Computes the shift that moves the block's tiles from the host array's
+  /// coordinates to those of the target of this expression.
+  /// \param outer_perm The permutation applied to the outer modes of the
+  /// tiles; empty (the identity) if the tiles' outer modes are not permuted
+  /// explicitly, e.g. when the consumer permutes them implicitly but the
+  /// inner modes of a nested tile explicitly (see ExprEngine::make_op())
+  /// \return The range shift, referring to the modes of the permuted tiles
+  container::svector<long> make_range_shift(
+      const Permutation& outer_perm = {}) const {
+    const unsigned int rank = trange_.tiles_range().rank();
+    TA_ASSERT(outer_perm.size() == rank || outer_perm.size() == 0);
+
+    container::svector<long> range_shift(rank, 0l);
+
+    // Get temporary data pointers
+    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
+    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
+    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
+
+    for (unsigned int d = 0u; d < rank; ++d) {
+      const auto lower_d = lower[d];
+      const auto upper_d = upper[d];
+      if (lower_d != upper_d) {
+        // element lobound of the block in the host
+        const long base_d = trange[d].tile(lower_d).first;
+        // element lobound of the target of this expression
+        const long target_base_d = trange_lobound_ ? (*trange_lobound_)[d] : 0l;
+        const auto perm_d = outer_perm.size() == 0 ? d : outer_perm[d];
+        range_shift[perm_d] = target_base_d - base_d;
+      }
+    }
+
+    return range_shift;
   }
 
 };  // class BlkTsrEngineBase
@@ -389,33 +488,7 @@ class BlkTsrEngine
 
   /// \return The tile operation
   op_type make_tile_op() const {
-    const unsigned int rank = trange_.tiles_range().rank();
-
-    // Construct and allocate memory for the shift range
-    container::svector<long> range_shift;
-    range_shift.reserve(rank);
-
-    // Get temporary data pointers
-    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
-    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
-    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
-
-    // Initialize the range shift vector
-    for (unsigned int d = 0u; d < rank; ++d) {
-      const auto lower_d = lower[d];
-      const auto upper_d = upper[d];
-      if (lower_d != upper_d) {
-        // element lobound of the block in the host
-        const auto base_d = trange[d].tile(lower_d).first;
-        // element lobound of the target of this expression
-        const auto target_base_d =
-            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
-        range_shift.emplace_back(target_base_d - base_d);
-      } else {
-        range_shift.emplace_back(0l);
-      }
-    }
-
+    const auto range_shift = this->make_range_shift();
     return op_type(op_base_type(range_shift));
   }
 
@@ -427,32 +500,7 @@ class BlkTsrEngine
             typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
                 std::remove_reference_t<Perm>>>>
   op_type make_tile_op(Perm&& perm) const {
-    const unsigned int rank = trange_.tiles_range().rank();
-
-    // Construct and allocate memory for the shift range
-    container::svector<long> range_shift(rank, 0l);
-
-    // Get temporary data pointers
-    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
-    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
-    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
-
-    // Initialize the permuted range shift vector
-    auto outer_perm = outer(perm);
-    TA_ASSERT(outer_perm.size() == rank);
-    for (unsigned int d = 0u; d < rank; ++d) {
-      const auto perm_d = outer_perm[d];
-      const auto lower_d = lower[d];
-      const auto upper_d = upper[d];
-      if (lower_d != upper_d) {
-        // element lobound of the block in the host
-        const auto base_d = trange[d].tile(lower_d).first;
-        // element lobound of the target of this expression
-        const auto target_base_d = trange_lobound_ ? (*trange_lobound_)[d] : 0;
-        range_shift[perm_d] = target_base_d - base_d;
-      }
-    }
-
+    const auto range_shift = this->make_range_shift(outer(perm));
     return op_type(op_base_type(range_shift), std::forward<Perm>(perm));
   }
 
@@ -555,32 +603,7 @@ class ScalBlkTsrEngine
 
   /// \return The tile operation
   op_type make_tile_op() const {
-    const unsigned int rank = trange_.tiles_range().rank();
-
-    // Construct and allocate memory for the shift range
-    std::vector<long> range_shift;
-    range_shift.reserve(rank);
-
-    // Get temporary data pointers
-    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
-    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
-    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
-
-    // Construct the inverse permutation
-    for (unsigned int d = 0u; d < rank; ++d) {
-      const auto lower_d = lower[d];
-      const auto upper_d = upper[d];
-      if (lower_d != upper_d) {
-        // element lobound of the block in the host
-        const auto base_d = trange[d].tile(lower_d).first;
-        // element lobound of the target of this expression
-        const auto target_base_d =
-            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
-        range_shift.emplace_back(target_base_d - base_d);
-      } else
-        range_shift.emplace_back(0);
-    }
-
+    const auto range_shift = this->make_range_shift();
     return op_type(op_base_type(range_shift, factor_));
   }
 
@@ -592,33 +615,7 @@ class ScalBlkTsrEngine
             typename = std::enable_if_t<TiledArray::detail::is_permutation_v<
                 std::remove_reference_t<Perm>>>>
   op_type make_tile_op(Perm&& perm) const {
-    const unsigned int rank = trange_.tiles_range().rank();
-
-    // Construct and allocate memory for the shift range
-    container::svector<long> range_shift(rank, 0l);
-
-    // Get temporary data pointers
-    const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
-    const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
-    const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
-
-    // Initialize the permuted range shift vector
-    auto outer_perm = outer(perm);
-    TA_ASSERT(outer_perm.size() == rank);
-    for (unsigned int d = 0u; d < rank; ++d) {
-      const auto perm_d = outer_perm[d];
-      const auto lower_d = lower[d];
-      const auto upper_d = upper[d];
-      if (lower_d != upper_d) {
-        // element lobound of the block in the host
-        const auto base_d = trange[d].tile(lower_d).first;
-        // element lobound of the target of this expression
-        const auto target_base_d =
-            trange_lobound_ ? (*trange_lobound_)[d] : 0ul;
-        range_shift[perm_d] = target_base_d - base_d;
-      }
-    }
-
+    const auto range_shift = this->make_range_shift(outer(perm));
     return op_type(op_base_type(range_shift, factor_),
                    std::forward<Perm>(perm));
   }

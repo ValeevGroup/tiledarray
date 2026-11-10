@@ -87,6 +87,9 @@ class ExprEngine : private NO_DEFAULTS {
   shape_type shape_;    ///< The shape of the result tensor
   std::shared_ptr<const pmap_interface>
       pmap_;  ///< The process map for the result tensor
+  bool pmap_serves_operand_ =
+      false;  ///< If true, pmap_ was chosen for an operand's data locality
+              ///< only; see pmap_serves_operand()
   std::shared_ptr<EngineParamOverride<Derived> >
       override_ptr_;  ///< The engine params overriding the default
 
@@ -182,6 +185,7 @@ class ExprEngine : private NO_DEFAULTS {
 
     world_ = world;
     pmap_ = pmap;
+    pmap_serves_operand_ = false;
   }
 
   /// Permutation factory function
@@ -267,6 +271,16 @@ class ExprEngine : private NO_DEFAULTS {
 
   /// \return A const reference to the process map
   const std::shared_ptr<const pmap_interface>& pmap() const { return pmap_; }
+
+  /// Queries whether the process map serves an operand only
+
+  /// \return \c true if pmap() was chosen by this expression, no map having
+  ///         been imposed on it, so that an operand's tiles need not move
+  ///         (e.g. a block's map that follows its parent array's); such a map
+  ///         is not a map for an array holding the result (see
+  ///         Expr::eval_to()). \c false if the map was imposed, or is one fit
+  ///         for the result, e.g. a plain array operand's own map.
+  bool pmap_serves_operand() const { return pmap_serves_operand_; }
 
   /// Set the flag that controls whether tiles' permutation will be implicit
 

@@ -3078,6 +3078,204 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_trange1, F, Fixtures, F) {
   }
 }
 
+// a block of a CONST array that keeps the array's element coordinates is a
+// view: its consumers read the array's tiles in place. The array must come
+// through unchanged whatever the consumer does with the tiles it gets (an
+// in-place accumulation into the left operand, an assignment that then owns
+// the result), and the values must be those of the copying (mutable) block.
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(const_block_is_a_view, F, Fixtures, F) {
+  auto& a = F::a;
+  using array_type = std::decay_t<decltype(a)>;
+  const auto lb = std::array{3, 3, 3};
+  const auto ub = std::array{5, 5, 5};
+
+  // the reference: the copying block of the mutable array
+  array_type ref;
+  BOOST_REQUIRE_NO_THROW(ref("a,b,c") =
+                             a("a,b,c").block(lb, ub, preserve_lobound));
+  BOOST_REQUIRE(ref.trange().elements_range().lobound()[0] != 0);
+
+  using namespace TiledArray::expressions;
+  auto cblk = [&](std::string const& annot = "a,b,c") {
+    return std::as_const(a)(annot).block(lb, ub, preserve_lobound);
+  };
+  auto norm_of_diff = [](auto&& expr) {
+    return static_cast<double>(expr.norm().get());
+  };
+
+  // assignment: the result owns its tiles and has the block's value
+  {
+    array_type result;
+    BOOST_REQUIRE_NO_THROW(result("a,b,c") = cblk());
+    BOOST_CHECK_EQUAL(result.trange(), ref.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - ref("a,b,c")), 0.0);
+  }
+
+  // the view as the left operand of an in-place-capable binary op, with the
+  // same view on the right: the array must not be touched
+  {
+    array_type result;
+    BOOST_REQUIRE_NO_THROW(result("a,b,c") = cblk() + 2 * cblk());
+    BOOST_CHECK_EQUAL(result.trange(), ref.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - 3 * ref("a,b,c")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // a permuted assignment of the view
+  {
+    array_type result, expected;
+    BOOST_REQUIRE_NO_THROW(result("c,b,a") = cblk());
+    BOOST_REQUIRE_NO_THROW(expected("c,b,a") = ref("a,b,c"));
+    BOOST_CHECK_EQUAL(result.trange(), expected.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("c,b,a") - expected("c,b,a")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // an assignment of the view into the same block of another array
+  {
+    array_type result = a.clone();
+    BOOST_REQUIRE_NO_THROW(result("a,b,c").block(lb, ub) = 2 * cblk());
+    array_type expected = a.clone();
+    BOOST_REQUIRE_NO_THROW(expected("a,b,c").block(lb, ub) = 2 * ref("a,b,c"));
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - expected("a,b,c")), 0.0);
+    BOOST_REQUIRE_NO_THROW(result("a,b,c").block(lb, ub) = cblk());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,b,c") - a("a,b,c")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+
+  // a product with the view as an operand
+  {
+    array_type result, expected;
+    BOOST_REQUIRE_NO_THROW(result("a,d") = cblk() * cblk("d,b,c").conj());
+    BOOST_REQUIRE_NO_THROW(expected("a,d") =
+                               ref("a,b,c") * ref("d,b,c").conj());
+    BOOST_CHECK_EQUAL(result.trange(), expected.trange());
+    BOOST_CHECK_EQUAL(norm_of_diff(result("a,d") - expected("a,d")), 0.0);
+    BOOST_CHECK_EQUAL(norm_of_diff(cblk() - ref("a,b,c")), 0.0);
+  }
+}
+
+// the block expressions derived from a block (scaled, negated, conjugated,
+// and their compositions) refer to the same block and keep its result trange
+// lobound: `2 * a.block(lb, ub, preserve_lobound)` produces the trange that
+// `a.block(lb, ub, preserve_lobound)` does
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_derived_expressions_keep_lobound, F,
+                                 Fixtures, F) {
+  auto& a = F::a;
+  using array_type = std::decay_t<decltype(a)>;
+  const auto lb = std::array{3, 3, 3};
+  const auto ub = std::array{5, 5, 5};
+
+  // the reference: the block itself, with its element coordinates kept
+  array_type ref;
+  BOOST_REQUIRE_NO_THROW(ref("a,b,c") =
+                             a("a,b,c").block(lb, ub, preserve_lobound));
+  const auto& ref_lobound = ref.trange().elements_range().lobound();
+  BOOST_REQUIRE(ref_lobound == a.trange().make_tile_range(lb).lobound());
+  BOOST_REQUIRE(ref_lobound[0] != 0);  // a nonzero lobound, or the test is moot
+
+  using namespace TiledArray::expressions;
+  auto blk = [&] { return a("a,b,c").block(lb, ub, preserve_lobound); };
+  // every derived form must yield ref's trange, and the derived value
+  auto check = [&](auto&& expr, auto&& expected_expr) {
+    array_type result;
+    BOOST_REQUIRE_NO_THROW(result("a,b,c") = expr);
+    BOOST_CHECK_EQUAL(result.trange(), ref.trange());
+    if (result.trange() == ref.trange()) {
+      // the difference is well-formed only when the tranges agree
+      const auto diff = (result("a,b,c") - expected_expr).norm().get();
+      BOOST_CHECK_EQUAL(static_cast<double>(diff), 0.0);
+    }
+  };
+
+  check(2 * blk(), 2 * ref("a,b,c"));
+  check(blk() * 2, 2 * ref("a,b,c"));
+  check(2 * (3 * blk()), 6 * ref("a,b,c"));
+  check((3 * blk()) * 2, 6 * ref("a,b,c"));
+  check(-blk(), -ref("a,b,c"));
+  check(-(2 * blk()), -2 * ref("a,b,c"));
+  check(blk().conj(), ref("a,b,c").conj());
+  check(conj(blk()), ref("a,b,c").conj());
+  check(conj(conj(blk())), ref("a,b,c"));
+  check(2 * blk().conj(), 2 * ref("a,b,c").conj());
+  check(blk().conj() * 2, 2 * ref("a,b,c").conj());
+  check(2 * (3 * blk().conj()), 6 * ref("a,b,c").conj());
+  check((3 * blk().conj()) * 2, 6 * ref("a,b,c").conj());
+  check(-blk().conj(), -ref("a,b,c").conj());
+  check(-(2 * blk().conj()), -2 * ref("a,b,c").conj());
+  check(conj(2 * blk()), 2 * ref("a,b,c").conj());
+  check(conj(2 * blk().conj()), 2 * ref("a,b,c"));
+  // the right scalar product of a conjugated expression in the reference too
+  check(blk().conj() * 2, ref("a,b,c").conj() * 2);
+
+  // derived forms combined with the block they were derived from, the case
+  // that trips the trange congruence check in binary_eval.h
+  check(blk() + 2 * blk(), 3 * ref("a,b,c"));
+  check(blk() - blk().conj(), ref("a,b,c") - ref("a,b,c").conj());
+  check(-blk() + blk().conj() * 2, -ref("a,b,c") + 2 * ref("a,b,c").conj());
+
+  // a permuted result keeps the lobound of each host mode
+  {
+    array_type ref_perm;
+    ref_perm("c,b,a") = ref("a,b,c");
+    array_type result;
+    BOOST_REQUIRE_NO_THROW(result("c,b,a") = 2 * blk().conj());
+    BOOST_CHECK_EQUAL(result.trange(), ref_perm.trange());
+    if (result.trange() == ref_perm.trange()) {
+      const auto diff =
+          (result("c,b,a") - 2 * ref_perm("c,b,a").conj()).norm().get();
+      BOOST_CHECK_EQUAL(static_cast<double>(diff), 0.0);
+    }
+  }
+
+  // no_alias() keeps the block and its lobound
+  {
+    const auto src = blk();
+    const auto na = blk().no_alias();
+    BOOST_CHECK(na.lower_bound() == src.lower_bound());
+    BOOST_CHECK(na.upper_bound() == src.upper_bound());
+    BOOST_CHECK(na.trange_lobound() == src.trange_lobound());
+  }
+
+  // assignment through no_alias() on a block works and writes the block
+  {
+    auto& c = F::c;
+    c.fill_local(0.0);
+    BOOST_REQUIRE_NO_THROW(
+        c("a,b,c").block(lb, ub, preserve_lobound).no_alias() = 2 * blk());
+    array_type written;
+    BOOST_REQUIRE_NO_THROW(written("a,b,c") =
+                               c("a,b,c").block(lb, ub, preserve_lobound));
+    BOOST_CHECK_EQUAL(written.trange(), ref.trange());
+    const auto diff = (written("a,b,c") - 2 * ref("a,b,c")).norm().get();
+    BOOST_CHECK_EQUAL(static_cast<double>(diff), 0.0);
+  }
+
+  // a lobound of the wrong rank is rejected, whether set after construction
+  // or passed to the constructor; the setter leaves the expression untouched
+  {
+    auto expr = blk();
+    const auto before = expr.trange_lobound();
+    BOOST_CHECK_THROW(expr.set_trange_lobound(std::array{0, 0}),
+                      TiledArray::Exception);
+    BOOST_CHECK(expr.trange_lobound() == before);
+    BOOST_CHECK_THROW((BlkTsrExpr<array_type, true>(a, "a,b,c", lb, ub,
+                                                    Range::index_type{0, 0})),
+                      TiledArray::Exception);
+  }
+
+  // the right scalar product of a conjugated expression is a scaled
+  // conjugation, for blocks and for whole arrays alike
+  static_assert(std::is_same_v<decltype(blk().conj() * 2),
+                               ScalConjBlkTsrExpr<array_type, int>>);
+  static_assert(std::is_same_v<decltype(2 * blk().conj()),
+                               ScalConjBlkTsrExpr<array_type, int>>);
+  static_assert(std::is_same_v<decltype(a("a,b,c").conj() * 2),
+                               ScalConjTsrExpr<array_type, int>>);
+  static_assert(std::is_same_v<decltype(2 * a("a,b,c").conj()),
+                               ScalConjTsrExpr<array_type, int>>);
+}
+
 // corner case: expressions involving empty blocks
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(empty_block_expressions, F, Fixtures, F) {
   auto& a = F::a;

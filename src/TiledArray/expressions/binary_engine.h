@@ -353,6 +353,7 @@ class BinaryEngine : public ExprEngine<Derived> {
     left_.init_distribution(world, pmap);
     right_.init_distribution(world, left_.pmap());
     ExprEngine_::init_distribution(world, left_.pmap());
+    ExprEngine_::pmap_serves_operand_ = left_.pmap_serves_operand();
   }
 
   /// Non-permuting tiled range factory function

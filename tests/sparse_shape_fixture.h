@@ -28,6 +28,7 @@
 
 #include "TiledArray/sparse_shape.h"
 #include "range_fixture.h"
+#include "sparse_threshold_guard.h"
 
 namespace TiledArray {
 
@@ -40,16 +41,8 @@ struct SparseShapeFixture : public TiledRangeFixture {
         right(make_shape(tr, 0.1, 82)),
         perm(make_perm()),
         perm_index(tr.tiles_range(), perm),
-        tolerance(0.0001)
-
-  {
-    prior_default_threshold = SparseShape<float>::threshold();
-    SparseShape<float>::threshold(default_threshold);
-  }
-
-  ~SparseShapeFixture() {
-    SparseShape<float>::threshold(prior_default_threshold);
-  }
+        tolerance(0.0001),
+        threshold_guard(default_threshold) {}
 
   static Tensor<float> make_norm_tensor(const TiledRange& trange,
                                         const float fill_percent,
@@ -87,18 +80,17 @@ struct SparseShapeFixture : public TiledRangeFixture {
     return Permutation(temp.begin(), temp.end());
   }
 
-  static void reset_threshold() {
-    SparseShape<float>::threshold(default_threshold);
+  /// sets the default threshold to \p t until the returned object is destroyed
+  static auto set_threshold(float t) {
+    return test::ScopedSparseThreshold<float>(t);
   }
 
   static auto set_threshold_to_max() {
-    SparseShape<float>::threshold(std::numeric_limits<float>::max());
-    return std::shared_ptr<void>(nullptr, [](void*) { reset_threshold(); });
+    return set_threshold(std::numeric_limits<float>::max());
   }
 
   static auto tweak_threshold() {
-    SparseShape<float>::threshold(10 * SparseShape<float>::threshold());
-    return std::shared_ptr<void>(nullptr, [](void*) { reset_threshold(); });
+    return set_threshold(10 * SparseShape<float>::threshold());
   }
 
   SparseShape<float> sparse_shape;
@@ -107,9 +99,9 @@ struct SparseShapeFixture : public TiledRangeFixture {
   Permutation perm;
   TiledArray::detail::PermIndex perm_index;
   const float tolerance;
-  inline static float prior_default_threshold =
-      std::numeric_limits<float>::max();
   static constexpr float default_threshold = 0.001;
+  // set after the shapes above are made; restores the prior threshold
+  test::ScopedSparseThreshold<float> threshold_guard;
 };  // SparseShapeFixture
 
 }  // namespace TiledArray

@@ -176,6 +176,31 @@ class Expr {
     return (*op)(std::forward<T>(tile));
   }
 
+  /// Converts a lazy tile to the result array's tile type. A tile that is
+  /// still the operand array's own (a local tile an engine hands through
+  /// unchanged, see LazyArrayTile::shares_source) is cloned, so that the
+  /// result array never shares a tile with an operand.
+  /// \note the cast may be nonblocking (a lazy tile that evaluates to a
+  /// Future): the Future is returned as is, for the task to forward. Such a
+  /// tile is generated, never shared (see LazyArrayTile::shares_source).
+  /// \note every path that makes an operand's lazy tile a tile of a result
+  /// array must keep it from sharing: the two lazy-tile set_tile overloads
+  /// below do it here; the assignment to a block (eval_to(BlkTsrExpr&)) does
+  /// it with a Shift that clones a non-consumable argument.
+  template <typename Result, typename T>
+  struct cast_or_clone {
+    auto operator()(const T& tile) const {
+      TiledArray::Cast<Result, T> cast;
+      using cast_result_type = decltype(cast(tile));
+      if constexpr (requires { tile.shares_source(); } &&
+                    !madness::is_future<cast_result_type>::value) {
+        if (tile.shares_source())
+          return cast_result_type(TiledArray::clone(cast(tile)));
+      }
+      return cast(tile);
+    }
+  };
+
   /// Set an array tile with a lazy tile
 
   /// Spawn a task to evaluate a lazy tile and set the \a array tile at
@@ -196,7 +221,7 @@ class Expr {
                               >::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
     array.set(index, array.world().taskq.add(
-                         TiledArray::Cast<typename A::value_type, T>(), tile));
+                         cast_or_clone<typename A::value_type, T>(), tile));
   }
 
 #ifdef TILEDARRAY_HAS_DEVICE
@@ -218,7 +243,7 @@ class Expr {
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
     array.set(index, madness::add_device_task(
                          array.world(),
-                         TiledArray::Cast<typename A::value_type, T>(), tile));
+                         cast_or_clone<typename A::value_type, T>(), tile));
   }
 #endif
 
@@ -408,12 +433,21 @@ class Expr {
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
     dist_eval.eval();
 
-    // Create the result array
+    // Create the result array, on the map the expression was evaluated on,
+    // unless the expression chose that map for an operand only (see
+    // ExprEngine::pmap_serves_operand(), e.g. a block's map that follows its
+    // parent array's): a new array gets the default map for its tiled range
+    // rather than one tied to another array's.
+    auto result_pmap = dist_eval.pmap();
+    const bool remap = engine.pmap_serves_operand();
+    if (remap)
+      result_pmap = A::policy_type::default_pmap(
+          dist_eval.world(), dist_eval.trange().tiles_range().volume());
     A result(dist_eval.world(), dist_eval.trange(), dist_eval.shape(),
-             dist_eval.pmap());
+             result_pmap);
 
     // Move the data from dist_eval into the result array. There is no
-    // communication in this step.
+    // communication in this step unless the result's map was replaced above.
     for (const auto index : *dist_eval.pmap()) {
       if (dist_eval.is_zero(index)) continue;
       auto tile_contents = dist_eval.get(index);
@@ -424,6 +458,17 @@ class Expr {
     dist_eval.wait();
     // Swap the new array with the result array object.
     result.swap(tsr.array());
+    // Tiles sent to their owners under the replaced map travel as unordered
+    // active messages, so they may still be in flight when tsr.array() is
+    // dropped and its lazy deleter's handshake completes: keep the new
+    // array's data to the next fence. The flag is set on a copy, rather than
+    // on tsr.array(), so that the data stays deferred even if tsr.array()
+    // passes it on to another handle (e.g. via swap by the next assignment),
+    // and so that tsr.array() keeps no flag for data it later holds.
+    if (remap) {
+      A keep_to_next_fence = tsr.array();
+      keep_to_next_fence.defer_deleter_to_next_fence();
+    }
 
 #if 0
     std::cout << "array.id()=" << tsr.array().id() << " evaluated using dist_eval.id=" << dist_eval.id() << std::endl;
@@ -564,6 +609,12 @@ class Expr {
         .defer_deleter_to_next_fence();  // if tsr.array().impl() is referred to
                                          // by outstanding tasks need to defer
                                          // destruction to the next fence
+    // Likewise the new array's data: the sub-block's tiles may still be in
+    // flight to their owners (see eval_to(TsrExpr&)).
+    {
+      A keep_to_next_fence = tsr.array();
+      keep_to_next_fence.defer_deleter_to_next_fence();
+    }
   }
 
   /// Expression print

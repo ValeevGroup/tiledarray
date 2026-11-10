@@ -205,7 +205,7 @@ class Pmap {
     /// \param pmap the host Pmap object
     /// \param it the current iterator value
     Iterator(const Pmap& pmap, std::vector<size_type>::const_iterator it)
-        : use_it_(true), it_(it) {
+        : pmap_(&pmap), use_it_(true), it_(it) {
       TA_ASSERT(it_ == pmap.local_.end() || pmap.is_local(*it_));
     }
 
