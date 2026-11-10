@@ -206,6 +206,8 @@ T inner_product(integer n, const T* x, const T* y, const Range& range) {
 }
 
 void synchronize() {
+  // outside a device task every kernel has already waited for its stream
+  if (detail::madness_task_stream_opt_ptr_accessor() == nullptr) return;
   if (auto stream = madness_task_current_stream())
     DeviceSafeCall(streamSynchronize(stream->stream));
 }

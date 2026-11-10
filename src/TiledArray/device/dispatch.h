@@ -94,15 +94,21 @@ template <typename T, typename... Ts>
 inline constexpr bool device_executable_v =
     detail::is_device_tensor_v<T> && (std::is_same_v<T, Ts> && ...);
 
-/// Runs the statement that follows it, which must end by returning, instead
-/// of the host code that follows, when the tensor types in the argument list
-/// satisfy device_executable_v and execution_space() is Device.
+/// Runs the statement that follows it when the tensor types in the argument
+/// list satisfy device_executable_v and execution_space() is Device. The host
+/// code after it is skipped only if the statement returns; a statement that
+/// does not return runs before the host code.
 /// The statement is the macro's last \c else, so following it with another
 /// \c else does not compile.
+/// When those types satisfy device_executable_v but execution_space() is Host,
+/// the host code may read data that kernels queued earlier in the same task
+/// (before a scope changed the setting) are still writing, so the macro waits
+/// for them first.
 #define TA_ON_DEVICE(...)                                          \
   if constexpr (!::TiledArray::device_executable_v<__VA_ARGS__>) { \
   } else if (::TiledArray::execution_space() !=                    \
              ::TiledArray::ExecutionSpace::Device) {               \
+    ::TiledArray::device::synchronize();                           \
   } else
 
 namespace device {
@@ -150,7 +156,9 @@ T dot(integer n, const T* x, const T* y, const Range& range);
 template <typename T>
 T inner_product(integer n, const T* x, const T* y, const Range& range);
 
-/// blocks until the device work queued so far by this task completes
+/// inside a device task, blocks until the device work queued so far by this
+/// task completes; outside one, does nothing, since every kernel has already
+/// waited for its stream
 void synchronize();
 
 }  // namespace device

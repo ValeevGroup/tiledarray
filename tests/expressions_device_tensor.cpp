@@ -29,7 +29,9 @@
 #include <tiledarray.h>
 
 #include <range_fixture.h>
+#include <atomic>
 #include <random>
+#include <thread>
 
 #include "unit_test_config.h"
 
@@ -1098,6 +1100,52 @@ BOOST_AUTO_TEST_CASE(stream_for_outside_device_task) {
         env.stream(r.offset() % env.num_streams_total());
     BOOST_CHECK(device::stream_for(r) == want);
     BOOST_CHECK(&blasqueue_for(r) == &BLASQueuePool::queue(want));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(scope_flip_mid_task) {
+  // A scaled sum is clone + axpy, then scale_to, and each step reads
+  // execution_space() on its own. If a Host scope begins between the steps,
+  // the host scale_to must wait for the axpy still queued in the same task.
+  // A scope opened on the main thread while the work runs (e.g. between dot()
+  // and .get()) rarely lands in that window, so a second thread flips the
+  // setting throughout instead; the workers see only the value, so the effect
+  // is the same.
+  std::vector<long> bounds;
+  for (long k = 0; k <= 4; ++k) bounds.push_back(k * 1024);
+  const TiledRange tr2{TiledRange1(bounds.begin(), bounds.end()),
+                       TiledRange1(bounds.begin(), bounds.end())};
+  TArrayD x(*GlobalFixture::world, tr2), y(*GlobalFixture::world, tr2),
+      z(*GlobalFixture::world, tr2);
+  HostArray x_h(*GlobalFixture::world, tr2), y_h(*GlobalFixture::world, tr2),
+      z_h(*GlobalFixture::world, tr2);
+  fill_with_seed(x, x_h, 3);
+  fill_with_seed(y, y_h, 5);
+  fill_with_seed(z, z_h, 9);
+  GlobalFixture::world->gop.fence();
+  const double want = (2.0 * (x_h("i,j") + y_h("i,j"))).dot(z_h("i,j")).get();
+
+  auto& space = detail::execution_space_accessor();
+  std::atomic<bool> stop{false};
+  std::thread flipper([&] {
+    while (!stop)
+      space = space.load() == ExecutionSpace::Host ? ExecutionSpace::Device
+                                                   : ExecutionSpace::Host;
+  });
+  // stop the flipper and restore the setting even if a check throws
+  struct Restore {
+    std::atomic<bool>& stop;
+    std::thread& flipper;
+    ~Restore() {
+      stop = true;
+      flipper.join();
+      detail::execution_space_accessor() = ExecutionSpace::Device;
+    }
+  } restore{stop, flipper};
+
+  for (int rep = 0; rep < 10; ++rep) {
+    const double got = (2.0 * (x("i,j") + y("i,j"))).dot(z("i,j")).get();
+    BOOST_CHECK_SMALL(std::abs(got - want), 1.0e-10 * std::abs(want));
   }
 }
 
