@@ -162,12 +162,16 @@ std::size_t DiskStore::append(const void* data, std::size_t n) {
   const char* p = static_cast<const char*>(data);
   std::size_t done = 0;
   while (done < n) {
-    const std::size_t request = std::min(n - done, disk_io_chunk());
+    const std::size_t request =
+        std::min(n - done, std::max<std::size_t>(disk_io_chunk(), 1));
     const ssize_t w =
         ::pwrite(fd_, p + done, request, static_cast<off_t>(offset + done));
-    if (w < 0) {
-      if (errno == EINTR) continue;
-      io_failure("write of " + std::to_string(n) + " bytes failed", errno);
+    if (w < 0 && errno == EINTR) continue;
+    if (w <= 0) {
+      // give the reserved range back: the store stays usable
+      const int err = w < 0 ? errno : ENOSPC;
+      release(offset, n);
+      io_failure("write of " + std::to_string(n) + " bytes failed", err);
     }
     done += static_cast<std::size_t>(w);
   }

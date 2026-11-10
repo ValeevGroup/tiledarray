@@ -669,14 +669,22 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// should not rely on this function.
   madness::uniqueidT id() const { return impl_ref().id(); }
 
-  /// Makes this array share with \p other the state an array keeps for its
-  /// tiles (see array_element_traits); for an array of DiskTile's that is
-  /// its scratch file. Used when a new array replaces \p other (assignment
-  /// to a block does that), so that the two are one array to their tiles.
-  /// Must be called before any tile of this array is set.
-  /// \param other the array this one is about to replace
-  void inherit_element_state(const DistArray& other) {
-    impl_ref().inherit_element_state(other.impl_ref());
+  /// Makes the array that is to replace \p other : an empty array in the
+  /// world of \p other , with its tiled range and process map, the given
+  /// shape, and sharing the state \p other keeps for its tiles (see
+  /// array_element_traits; for an array of DiskTile's that is its scratch
+  /// file), so that the two are one array to their tiles. The state is in
+  /// place before the new array can receive any tile. Assignment to a block
+  /// replaces the array this way.
+  /// \param other the array to be replaced
+  /// \param shape the shape of the new array
+  static DistArray successor(const DistArray& other, const shape_type& shape) {
+    DistArray result;
+    result.pimpl_ = pimpl_type(
+        new impl_type(other.world(), other.trange(), shape, other.pmap(),
+                      other.impl_ref().element_state()),
+        impl_type::lazy_deleter);
+    return result;
   }
 
   /// Begin iterator factory function

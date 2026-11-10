@@ -81,7 +81,7 @@ Each process sets the tiles it owns; `set` may be called from several threads. W
 
 ## Where the data lives
 
-Each array has one scratch file on each process that owns some of its tiles, holding exactly the tiles of that array owned by that process. The file is created when the process stores its first tile and is released when the array, and every copy of its tiles, is gone. An array that replaces another by block assignment continues the same file. Space of tiles that are gone is reused by later writes. A tile that is already on disk in another array's file and is made an element of this one (`e.set(i, d.find(i))`) is copied.
+Each array has one scratch file on each process that owns some of its tiles, holding the tiles of that array owned by that process (and, until the next `fence`, tiles that an assignment has just replaced). The file is created when the process stores its first tile and is released when the array, and every copy of its tiles, is gone. An array that replaces another by block assignment continues the same file. Space of tiles that are gone is reused by later writes. A tile that is already on disk in another array's file and is made an element of this one (`e.set(i, d.find(i))`) is copied.
 
 Scratch files are placed in the scratch directory, which should be on a filesystem local to the node. The scratch directory is, in order of precedence:
 
@@ -102,6 +102,10 @@ No shared filesystem is assumed or needed. When a process needs a tile owned by 
 A tile is in memory from the moment an expression evaluates it until the expression is done with it. A contraction evaluates the tiles of an argument a batch at a time (one SUMMA iteration), so the argument is never in memory as a whole; how many batches are in flight at once is controlled by the `TA_SUMMA_MAX_DEPTH` environment variable. Smaller tiles along the contracted indices give finer batches.
 
 Writing or reading a tile temporarily needs a buffer of the size of the tile in addition to the tile itself.
+
+## Failures
+
+Running out of disk space, or any other I/O error, raises a `TiledArray::Exception`. When that happens while tiles are being stored by an assignment, the exception is raised inside the runtime's tasks and the program terminates; it cannot be caught and recovered from. Make sure the scratch directory has room for the arrays placed there.
 
 ## Accounting
 

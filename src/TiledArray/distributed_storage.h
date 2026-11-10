@@ -117,6 +117,28 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
                                  ///< ranks
 #endif
 
+  /// Assigns a future with the transformed value of another once that one is
+  /// assigned (see array_element_traits)
+  struct TransformOnSet : public madness::CallbackInterface {
+    TransformOnSet(
+        const future& from, const future& to,
+        const std::shared_ptr<
+            typename array_element_traits<value_type>::state_type>& state)
+        : from_(from), to_(to), state_(state) {}
+    virtual ~TransformOnSet() = default;
+    virtual void notify() {
+      to_.set(array_element_traits<value_type>::on_insertion(
+          value_type(from_.get()), state_));
+      delete this;
+    }
+
+   private:
+    future from_;
+    future to_;
+    std::shared_ptr<typename array_element_traits<value_type>::state_type>
+        state_;
+  };
+
   static auto make_element_state() {
     if constexpr (array_element_traits<value_type>::transforms_on_insertion)
       return array_element_traits<value_type>::make_state();
@@ -323,13 +345,19 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
   /// \param world The world where the distributed container lives
   /// \param max_size The maximum capacity of this container
   /// \param pmap The process map for the container (default = null pointer)
+  /// \param element_state The state to keep for the elements (see
+  /// array_element_traits), shared with the container this one replaces;
+  /// default = a state of its own. It is in place before this container can
+  /// receive any element, including from other processes.
   DistributedStorage(World& world, size_type max_size,
-                     const std::shared_ptr<const pmap_interface>& pmap)
+                     const std::shared_ptr<const pmap_interface>& pmap,
+                     const std::shared_ptr<typename array_element_traits<
+                         value_type>::state_type>& element_state = {})
       : WorldObject_(world),
         max_size_(max_size),
         pmap_(pmap),
         data_((max_size / world.size()) + 11),
-        element_state_(make_element_state())
+        element_state_(element_state ? element_state : make_element_state())
 #ifdef TILEDARRAY_ENABLE_GLOBAL_COMM_STATS_TRACE
         ,
         ngets_served_per_rank_(world.size()),
@@ -361,12 +389,6 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
 
   /// \return the state this array keeps for its tiles
   const element_state_ptr& element_state() const { return element_state_; }
-
-  /// Makes this array share the state of the array it is about to replace.
-  /// Must be called before any element is set.
-  void set_element_state(const element_state_ptr& state) {
-    element_state_ = state;
-  }
 
   virtual ~DistributedStorage() {
     if (num_live_ds_ != 0) {
@@ -572,13 +594,13 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
           set_local(i, future(array_element_traits<value_type>::on_insertion(
                            value_type(f.get()), element_state_)));
         } else {
-          set_local(i,
-                    WorldObject_::get_world().taskq.add(
-                        [state = element_state_](const value_type& v) {
-                          return array_element_traits<value_type>::on_insertion(
-                              value_type(v), state);
-                        },
-                        f, madness::TaskAttributes::hipri()));
+          // transform when f is assigned, by whoever assigns it. Not a task:
+          // a task waiting on f would keep a fence from returning until f is
+          // assigned, which storing a future never did.
+          future transformed;
+          set_local(i, transformed);
+          const_cast<future&>(f).register_callback(
+              new TransformOnSet(f, transformed, element_state_));
         }
         return;
       }

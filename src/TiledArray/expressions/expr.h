@@ -599,13 +599,12 @@ class Expr {
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
     dist_eval.eval();
 
-    // Create the result array
-    A result(world, tsr.array().trange(),
-             tsr.array().shape().update_block(
-                 tsr.lower_bound(), tsr.upper_bound(), dist_eval.shape()),
-             tsr.array().pmap());
-    // `result` replaces tsr.array(): to their tiles the two are one array
-    result.inherit_element_state(tsr.array());
+    // Create the result array. It replaces tsr.array(): to their tiles the
+    // two are one array.
+    A result = A::successor(
+        tsr.array(),
+        tsr.array().shape().update_block(tsr.lower_bound(), tsr.upper_bound(),
+                                         dist_eval.shape()));
 
     // NOTE: The tiles from the original array and the sub-block are copied
     // in two separate steps because the two tensors have different data

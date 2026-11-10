@@ -467,12 +467,6 @@ class ArrayImpl : public TensorImpl<Policy>,
   ///         array_element_traits)
   const auto& element_state() const { return data_.element_state(); }
 
-  /// Makes this array share the element state of \p other , the array it is
-  /// about to replace. Must be called before any tile is set.
-  void inherit_element_state(const ArrayImpl_& other) {
-    data_.set_element_state(other.data_.element_state());
-  }
-
  private:
  public:
   static madness::AtomicInt cleanup_counter_;
@@ -564,10 +558,14 @@ class ArrayImpl : public TensorImpl<Policy>,
   /// \param pmap The tile-process map
   /// \throw TiledArray::Exception When the size of shape is not equal to
   /// zero
+  /// \param element_state The state to keep for the tiles (see
+  /// array_element_traits), shared with the array this one replaces;
+  /// default = a state of its own
   ArrayImpl(World& world, const trange_type& trange, const shape_type& shape,
-            const std::shared_ptr<const pmap_interface>& pmap)
+            const std::shared_ptr<const pmap_interface>& pmap,
+            const typename storage_type::element_state_ptr& element_state = {})
       : TensorImpl_(world, trange, shape, pmap),
-        data_(world, trange.tiles_range().volume(), pmap) {
+        data_(world, trange.tiles_range().volume(), pmap, element_state) {
     // Validate the process map
     TA_ASSERT(pmap->size() == trange.tiles_range().volume() &&
               "TiledArray::DistArray::DistArray() -- The size of the process "

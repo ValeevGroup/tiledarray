@@ -43,6 +43,8 @@
 #include <utility>
 #include <vector>
 
+#include <signal.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
 namespace TA = TiledArray;
@@ -1113,8 +1115,9 @@ BOOST_FIXTURE_TEST_CASE(block_reassign_reuses_space, DiskArrayFixture) {
   }
   if (store) {
     BOOST_CHECK_EQUAL(store->bytes_in_use(), used0);
-    // the file holds at most one extra generation of the block, not three
-    BOOST_CHECK(store->size() <= size0 + used0);
+    // the file holds at most one extra generation of the block (half of
+    // the array: one of the two k slabs), not three
+    BOOST_CHECK(store->size() <= size0 + used0 / 2 + used0 / 8);
   }
   BOOST_CHECK(local_tiles_in_one_file(d));
   FlatArray r;
@@ -1166,6 +1169,99 @@ BOOST_FIXTURE_TEST_CASE(foreign_tile_is_copied_in, DiskArrayFixture) {
   FlatArray r;
   r("p,k") = e("p,k");
   BOOST_CHECK(close(r, x, "p,k"));
+}
+
+// the array that replaces another in a block assignment continues its file
+// from the start: tiles that reach it from other processes right away land
+// in the same file. Repeated, since what is being ruled out is a race.
+BOOST_FIXTURE_TEST_CASE(block_assign_one_file_stress, DiskArrayFixture) {
+  bool one_file = true;
+  for (int repeat = 0; repeat < 30; ++repeat) {
+    auto dest = zero_disk_array(g);
+    const std::size_t nq = g.trange().dim(0).tile_extent();
+    for (std::size_t qt = 0; qt < nq; ++qt) {
+      auto const [lo, hi] = slab(g.trange(), 0, qt);
+      FlatArray part;  // on its own process map: most tiles change owner
+      part("q,p,k") = g("q,p,k").block(lo, hi, TA::preserve_lobound);
+      dest("q,p,k").block(lo, hi, TA::preserve_lobound) = part("q,p,k");
+    }
+    world.gop.fence();
+    one_file = one_file && local_tiles_in_one_file(dest);
+  }
+  BOOST_CHECK(one_file);
+}
+
+// block assignments need no fence between them
+BOOST_FIXTURE_TEST_CASE(block_assign_back_to_back, DiskArrayFixture) {
+  auto dest = zero_disk_array(g);
+  reset_global_disk_io_stats(world);
+  const std::size_t nk = g.trange().dim(2).tile_extent();
+  for (std::size_t kt = 0; kt < nk; ++kt) {
+    auto const [lo, hi] = slab(g.trange(), 2, kt);
+    dest("q,p,k").block(lo, hi, TA::preserve_lobound) =
+        g("q,p,k").block(lo, hi, TA::preserve_lobound);
+  }
+  world.gop.fence();
+  BOOST_CHECK(local_tiles_in_one_file(dest));
+  BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_written,
+                    count_nonzero_tiles(g));
+  FlatArray r;
+  r("q,p,k") = dest("q,p,k");
+  BOOST_CHECK(close(r, g, "q,p,k"));
+}
+
+// a tile may be set with a future that is assigned later, across a fence,
+// as for any array
+BOOST_FIXTURE_TEST_CASE(set_with_future_assigned_after_fence,
+                        DiskArrayFixture) {
+  using D = TA::DiskTile<TA::Tensor<double>>;
+  TA::DiskArray<TA::Tensor<double>, TA::SparsePolicy> d(world, x.trange(),
+                                                        x.shape(), x.pmap());
+  std::vector<std::pair<std::size_t, madness::Future<D>>> pending;
+  for (auto it = d.pmap()->begin(); it != d.pmap()->end(); ++it) {
+    if (d.is_zero(*it)) continue;
+    madness::Future<D> f;
+    d.set(*it, f);
+    pending.emplace_back(*it, f);
+  }
+  world.gop.fence();  // must not wait for the futures
+  for (auto& [ord, f] : pending) f.set(D(x.find_local(ord).get()));
+  world.gop.fence();
+  BOOST_CHECK(local_tiles_in_one_file(d));
+  FlatArray r;
+  r("p,k") = d("p,k");
+  BOOST_CHECK(close(r, x, "p,k"));
+}
+
+// a write that fails does not keep the space it had reserved
+BOOST_AUTO_TEST_CASE(store_failed_write_releases_space, TA_UT_LABEL_SERIAL) {
+  TA::detail::DiskStore store;
+  auto const a = pattern(100, 1);
+  store.append(a.data(), a.size());
+  struct rlimit old_limit;
+  BOOST_REQUIRE(::getrlimit(RLIMIT_FSIZE, &old_limit) == 0);
+  auto const old_handler = ::signal(SIGXFSZ, SIG_IGN);
+  struct rlimit small = old_limit;
+  small.rlim_cur = 1000;
+  BOOST_REQUIRE(::setrlimit(RLIMIT_FSIZE, &small) == 0);
+  auto const big = pattern(5000, 2);
+  bool threw = false;
+  try {
+    store.append(big.data(), big.size());
+  } catch (TA::Exception&) {
+    threw = true;
+  }
+  ::setrlimit(RLIMIT_FSIZE, &old_limit);
+  ::signal(SIGXFSZ, old_handler);
+  BOOST_REQUIRE(threw);
+  BOOST_CHECK_EQUAL(store.bytes_in_use(), 100u);
+  // the store is still usable, and the space is available again
+  auto const c = pattern(200, 3);
+  const auto oc = store.append(c.data(), c.size());
+  BOOST_CHECK_EQUAL(oc, 100u);
+  std::vector<char> r(200);
+  store.read(oc, r.data(), 200);
+  BOOST_CHECK(r == c);
 }
 
 // a tile requested by a process that does not own it is read from disk
