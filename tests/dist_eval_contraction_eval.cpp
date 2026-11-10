@@ -437,10 +437,10 @@ BOOST_AUTO_TEST_CASE(sparse_eval) {
           dist_eval_type::range_type range =
               contract.trange().make_tile_range(index);
 
-          BOOST_CHECK((reference
-                           .block(range.lobound(0), range.lobound(1),
-                                  range.extent(0), range.extent(1))
-                           .array() == 0)
+          BOOST_CHECK(reference
+                          .block(range.lobound(0), range.lobound(1),
+                                 range.extent(0), range.extent(1))
+                          .cwiseEqual(0)
                           .all());
         }
       } else {

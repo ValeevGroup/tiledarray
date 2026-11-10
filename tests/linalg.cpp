@@ -992,7 +992,7 @@ void householder_qr_test(const ArrayT& A, double tol) {
                               : non_dist::householder_qr<false>(A);
 #else
   static_assert(not use_scalapack);
-  auto [Q, R] = householder_qr<false>(A);
+  auto [Q, R] = non_dist::householder_qr<false>(A);
 #endif
 
   // Check reconstruction error

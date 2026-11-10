@@ -22,8 +22,11 @@
 #ifndef TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED
 #define TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED
 
-/* Defines the boost unit test framework linkage. */
+/* Defines the boost unit test framework linkage; may also be defined on the
+   command line (see tests/CMakeLists.txt). */
+#ifndef BOOST_TEST_DYN_LINK
 #cmakedefine BOOST_TEST_DYN_LINK
+#endif
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
