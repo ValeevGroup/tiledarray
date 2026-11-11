@@ -96,4 +96,84 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
   BOOST_CHECK(!scaled.is_zero({3, 1}));
 }
 
+// Regression for threshold 0: a shape screened at threshold 0 cannot mark a
+// zero-norm tile zero (0 < 0 is false), yet nothing produces such a tile. The
+// tests below mix operands screened at a positive threshold with results made
+// at threshold 0; each must neither abort nor hang.
+
+// contraction: every tile pair feeding c(0,0) has a zero operand tile, so its
+// reduction would receive no pairs
+BOOST_AUTO_TEST_CASE(contraction_zero_threshold_unfed_tile) {
+  using Shape = SparseShape<float>;
+  auto& world = *GlobalFixture::world;
+  const TA::test::ScopedSparseThreshold<float> threshold(1.0e-8f, world);
+
+  // c(0,0) = a(0,0) b(0,0) + a(0,1) b(1,0); each pair has one zero tile
+  TiledRange a_tr{{0, 2}, {0, 2, 4}};
+  TiledRange b_tr{{0, 2, 4}, {0, 2}};
+  Tensor<float> a_norms(a_tr.tiles_range(), 0.0f);
+  Tensor<float> b_norms(b_tr.tiles_range(), 0.0f);
+  a_norms(0, 0) = 1.0f;
+  b_norms(1, 0) = 1.0f;
+  TSpArrayD a(world, a_tr, Shape(a_norms, a_tr));
+  TSpArrayD b(world, b_tr, Shape(b_norms, b_tr));
+  a.fill(1.0);
+  b.fill(1.0);
+  world.gop.fence();
+
+  threshold.set(0.0f);
+  TSpArrayD c;
+  BOOST_CHECK_NO_THROW({
+    c("i,j") = a("i,k") * b("k,j");
+    world.gop.fence();
+  });
+  BOOST_CHECK(c.is_zero(0));
+}
+
+// block assignment: src's zero tile is never written into dest
+BOOST_AUTO_TEST_CASE(block_assign_zero_threshold_unwritten_tile) {
+  using Shape = SparseShape<float>;
+  auto& world = *GlobalFixture::world;
+  const TA::test::ScopedSparseThreshold<float> threshold(1.0e-8f, world);
+
+  TiledRange src_tr{{2, 4}, {0, 2, 4}};  // dest's tile row 1, lobound preserved
+  TiledRange dest_tr{{0, 2, 4}, {0, 2, 4}};
+  Tensor<float> src_norms(src_tr.tiles_range(), 0.0f);
+  src_norms(0, 1) = 1.0f;  // src(0,0) zero
+  TSpArrayD src(world, src_tr, Shape(src_norms, src_tr));
+  src.fill(1.0);
+  world.gop.fence();
+
+  threshold.set(0.0f);
+  TSpArrayD dest(world, dest_tr);  // every tile nonzero
+  dest.fill(1.0);
+  world.gop.fence();
+  dest("i,j").block({1, 0}, {2, 2}, preserve_lobound) = src("i,j");
+  world.gop.fence();
+
+  BOOST_CHECK(dest.is_zero({1, 0}));
+  TSpArrayD copy;
+  BOOST_CHECK_NO_THROW({
+    copy("i,j") = dest("i,j");
+    world.gop.fence();
+  });
+}
+
+// fill(0): a sparse array filled with zero holds no tiles
+BOOST_AUTO_TEST_CASE(fill_zero_at_zero_threshold) {
+  auto& world = *GlobalFixture::world;
+  const TA::test::ScopedSparseThreshold<float> threshold(0.0f, world);
+
+  TSpArrayD a(world, TiledRange{{0, 2, 4}, {0, 2, 4}});
+  a.fill(0.0);
+  world.gop.fence();
+
+  BOOST_CHECK(a.is_zero({0, 0}));
+  TSpArrayD copy;
+  BOOST_CHECK_NO_THROW({
+    copy("i,j") = a("i,j");
+    world.gop.fence();
+  });
+}
+
 BOOST_AUTO_TEST_SUITE_END()

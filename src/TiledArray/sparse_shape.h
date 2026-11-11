@@ -34,7 +34,9 @@
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/val_array.h>
+#include <algorithm>
 #include <cmath>
+#include <limits>
 #include <typeinfo>
 
 namespace TiledArray {
@@ -553,9 +555,15 @@ class SparseShape {
 
   /// \warning it is only safe to change default threshold after a fence;
   /// this can be done as e.g. `world.gop.serial_invoke([new_thresh] { SparseShape<T>::threshold(new_thresh); });`
-  /// \param thresh The new default threshold
+  /// \param thresh The new default threshold. A value below the smallest
+  ///        normal \c value_type, including 0 and negative values, is raised
+  ///        to it: at threshold 0 a tile of norm 0 would count as nonzero,
+  ///        yet no operation writes such a tile; and a denormal threshold
+  ///        compares as 0 under flush-to-zero arithmetic.
   // clang-format on
-  static void threshold(const value_type thresh) { threshold_ = thresh; }
+  static void threshold(const value_type thresh) {
+    threshold_ = std::max(thresh, std::numeric_limits<value_type>::min());
+  }
 
   /// Accesses the threshold used to initialize this tile
 

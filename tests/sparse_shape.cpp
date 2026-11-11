@@ -28,12 +28,22 @@
 
 #include "TiledArray/sparse_shape.h"
 #include "sparse_shape_fixture.h"
+#include "sparse_threshold_guard.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
 
 BOOST_FIXTURE_TEST_SUITE(sparse_shape_suite, SparseShapeFixture)
+
+BOOST_AUTO_TEST_CASE(threshold_below_min_is_raised) {
+  // a threshold of 0 would let a tile of norm 0 count as nonzero
+  for (const float t : {0.0f, -1.0f, 1.0e-40f}) {
+    const TA::test::ScopedSparseThreshold<float> threshold(t);
+    BOOST_CHECK_EQUAL(SparseShape<float>::threshold(),
+                      std::numeric_limits<float>::min());
+  }
+}
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK_NO_THROW(SparseShape<float> x);
