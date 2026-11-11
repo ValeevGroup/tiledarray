@@ -1,0 +1,337 @@
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2026  Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *  disk_tile.h
+ */
+
+#ifndef TILEDARRAY_DISK_DISK_TILE_H__INCLUDED
+#define TILEDARRAY_DISK_DISK_TILE_H__INCLUDED
+
+#include <TiledArray/disk/store.h>
+#include <TiledArray/distributed_storage.h>
+#include <TiledArray/error.h>
+#include <TiledArray/tensor/type_traits.h>
+#include <TiledArray/tile_interface/clone.h>
+#include <TiledArray/type_traits.h>
+
+#include <madness/world/buffer_archive.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <exception>
+#include <memory>
+#include <mutex>
+#include <type_traits>
+#include <utility>
+
+namespace TiledArray {
+
+/// A tile kept in a scratch file, loaded when it is needed.
+
+/// DiskTile is a lazy tile: its evaluation type is \p Tile , and a
+/// DistArray<DiskTile<Tile>, Policy> can appear wherever an expression
+/// accepts an array argument. Evaluating a DiskTile (converting it to
+/// \p Tile ) reads the tile from disk; the DiskTile itself keeps nothing in
+/// memory, so every evaluation is a read and the memory of the evaluated
+/// tile is released when the consumer is done with it.
+///
+/// A DiskTile is in one of three states:
+/// - \e empty (default-constructed);
+/// - <em>on disk</em>: it refers to a byte range of a detail::DiskStore, a
+///   scratch file of the process that wrote it. This is the state
+///   of a tile that is an element of an array, on the process that owns the
+///   element. Copies share the bytes, which are given back to the store
+///   when the last copy is gone;
+/// - <em>in memory</em>: it holds a \p Tile . This is the state of a tile
+///   that is on its own: one just made from a \p Tile , or one received
+///   from another process. It goes to disk when it is made an element of an
+///   array (see array_element_traits).
+///
+/// The scratch file is local to the node of the process that wrote it and
+/// cannot be reached from anywhere else. Accordingly, serializing an on-disk
+/// tile serializes its \e data , and deserialization always yields an
+/// in-memory tile: a tile never refers to a file of another process.
+///
+/// A DiskTile is immutable once constructed, hence safe to evaluate and to
+/// serialize from several threads at once.
+///
+/// What is read from the scratch file is verified against a checksum taken
+/// when it was written, and must deserialize to exactly the bytes written:
+/// data damaged on the way to or from the device (including by a write error
+/// the operating system reported to no one) is an error when the tile is
+/// used, not a tile with wrong numbers.
+///
+/// \tparam Tile the tile type this evaluates to; must be default
+///         constructible and serializable by a MADNESS buffer archive
+template <typename Tile>
+class DiskTile {
+ public:
+  using eval_type = Tile;
+  using value_type = typename Tile::value_type;
+  using numeric_type = typename Tile::numeric_type;
+  using scalar_type = typename Tile::scalar_type;
+  using range_type = typename Tile::range_type;
+
+  /// Constructs an empty tile
+  DiskTile() = default;
+
+  /// Writes \p tile to \p store ; the result is on disk.
+  /// \param tile the tile to store
+  /// \param store the scratch file to write the tile to
+  /// \throw TiledArray::Exception if the write fails
+  DiskTile(const Tile& tile, std::shared_ptr<detail::DiskStore> store) {
+    if (!store)
+      TA_EXCEPTION("DiskTile: constructed from a tile without a store");
+    madness::archive::BufferOutputArchive count;
+    count & tile;
+    const std::size_t nbytes = count.size();
+    const std::unique_ptr<unsigned char[]> buffer(new unsigned char[nbytes]);
+    madness::archive::BufferOutputArchive out(buffer.get(), nbytes);
+    out & tile;
+    const std::uint64_t checksum = detail::disk_checksum(buffer.get(), nbytes);
+    const std::size_t offset = store->write(buffer.get(), nbytes);
+    extent_ = std::make_shared<const Extent>(std::move(store), offset, nbytes,
+                                             checksum);
+    detail::disk_io_count_tiles(1, 0);
+  }
+
+  /// Makes a tile that holds \p tile in memory. It goes to disk when it is
+  /// made an element of an array (see array_element_traits).
+  /// \param tile the tile to hold; shares its data until then
+  explicit DiskTile(const Tile& tile)
+      : mem_(std::make_shared<const Tile>(tile)) {}
+
+  /// Evaluates this tile: reads it from disk, or copies the tile held in
+  /// memory. Either way the result shares no data with this tile or with any
+  /// other evaluation of it, so the caller is free to modify it.
+  /// \throw TiledArray::Exception if this tile is empty, or if what is read
+  ///        from disk is not what was written
+  explicit operator Tile() const {
+    // a deep copy: copying a tile may be shallow, and whoever evaluates a
+    // lazy tile may work on the result in place
+    if (mem_) {
+      using TiledArray::clone;  // and whatever the tile type itself provides
+      return clone(*mem_);
+    }
+    if (!extent_) TA_EXCEPTION("DiskTile: an empty tile cannot be evaluated");
+    const auto buffer = read_bytes();
+    madness::archive::BufferInputArchive in(buffer.get(), extent_->nbytes);
+    Tile tile;
+    in & tile;
+    if (in.nbyte_avail() != 0)
+      TA_EXCEPTION(
+          "DiskTile: the tile read from disk is not the size of the one "
+          "written");
+    return tile;
+  }
+
+  /// \return true if this tile holds no data
+  bool empty() const { return !extent_ && !mem_; }
+
+  /// \return true if this tile's data is in a scratch file (of this process)
+  bool on_disk() const { return static_cast<bool>(extent_); }
+
+  /// \return the tile held in memory; must not be on_disk() or empty()
+  const Tile& in_memory_tile() const {
+    if (!mem_) TA_EXCEPTION("DiskTile: the tile is not held in memory");
+    return *mem_;
+  }
+
+  /// \return the scratch file this tile is in; null unless on_disk()
+  std::shared_ptr<detail::DiskStore> store() const {
+    return extent_ ? extent_->store : nullptr;
+  }
+
+  /// \return the number of bytes this tile occupies in a MADNESS buffer
+  ///         archive
+  std::size_t serialized_size() const {
+    std::size_t n = flag_size();
+    if (extent_)
+      n += extent_->nbytes;
+    else if (mem_) {
+      madness::archive::BufferOutputArchive count;
+      count&* mem_;
+      n += count.size();
+    }
+    return n;
+  }
+
+  /// (De)serializes this tile.
+
+  /// Output: writes the tile's data. An on-disk tile is read from disk
+  /// exactly once per (non-counting) serialization, and not at all when the
+  /// archive only counts bytes, as MADNESS does to size a message before
+  /// filling it. Input: the result is in memory (or empty).
+  template <typename Archive>
+  void serialize(Archive& ar) {
+    if constexpr (madness::is_output_archive_v<Archive>) {
+      const bool has_data = !empty();
+      ar & has_data;
+      if (!has_data) return;
+      if (mem_) {
+        ar&* mem_;
+        return;
+      }
+      // on disk: the stored bytes are exactly what a buffer archive holds
+      // for the tile, so a buffer archive takes them as they are
+      if constexpr (std::is_same_v<std::remove_cv_t<Archive>,
+                                   madness::archive::BufferOutputArchive>) {
+        if (ar.count_only()) {
+          // only the size is wanted: known since the tile was written
+          ar.store(static_cast<const unsigned char*>(nullptr),
+                   static_cast<long>(extent_->nbytes));
+        } else {
+          const auto buffer = read_bytes();
+          ar.store(buffer.get(), static_cast<long>(extent_->nbytes));
+        }
+      } else {
+        const Tile tile = static_cast<Tile>(*this);
+        ar & tile;
+      }
+    } else {
+      bool has_data = false;
+      ar & has_data;
+      extent_.reset();
+      if (has_data) {
+        Tile tile;
+        ar & tile;
+        mem_ = std::make_shared<const Tile>(std::move(tile));
+      } else
+        mem_.reset();
+    }
+  }
+
+ private:
+  /// \return the number of bytes of the "has data" flag in a buffer archive
+  static std::size_t flag_size() {
+    madness::archive::BufferOutputArchive count;
+    const bool flag = true;
+    count & flag;
+    return count.size();
+  }
+
+  /// Reads this (on-disk) tile's bytes from its store.
+  /// \throw TiledArray::Exception if they are not the bytes that were written
+  std::unique_ptr<unsigned char[]> read_bytes() const {
+    std::unique_ptr<unsigned char[]> buffer(new unsigned char[extent_->nbytes]);
+    extent_->store->read(extent_->offset, buffer.get(), extent_->nbytes);
+    detail::disk_io_count_tiles(0, 1);
+    if (detail::disk_checksum(buffer.get(), extent_->nbytes) !=
+        extent_->checksum)
+      TA_EXCEPTION(
+          "DiskTile: the data read from the scratch file is not the data that "
+          "was written to it (storage error?)");
+    return buffer;
+  }
+
+  /// The bytes of a tile in a store. Shared by the copies of a tile; gives
+  /// the bytes back to the store when the last copy is gone.
+  struct Extent {
+    Extent(std::shared_ptr<detail::DiskStore> s, std::size_t o, std::size_t n,
+           std::uint64_t c)
+        : store(std::move(s)), offset(o), nbytes(n), checksum(c) {}
+    ~Extent() {
+      // release() fails only if the store's bookkeeping is broken, and a
+      // destructor cannot report that: say what happened before stopping
+      try {
+        store->release(offset, nbytes);
+      } catch (const std::exception& e) {
+        std::fprintf(stderr,
+                     "TiledArray: DiskTile: cannot release the space of a "
+                     "tile in its scratch file: %s\n",
+                     e.what());
+        std::terminate();
+      }
+    }
+    Extent(const Extent&) = delete;
+    Extent& operator=(const Extent&) = delete;
+    std::shared_ptr<detail::DiskStore> store;
+    std::size_t offset;
+    std::size_t nbytes;
+    std::uint64_t checksum;  ///< detail::disk_checksum of the bytes written
+  };
+
+  std::shared_ptr<const Extent> extent_;  ///< set iff on disk
+  std::shared_ptr<const Tile> mem_;       ///< set iff in memory
+};
+
+namespace detail {
+
+/// What a disk-backed array keeps for its tiles on one process: its scratch
+/// file, created when the first tile is written.
+class DiskArrayState {
+ public:
+  /// \return the scratch file, creating it if this is the first use
+  std::shared_ptr<DiskStore> store() {
+    std::scoped_lock lock(mtx_);
+    if (!store_) store_ = std::make_shared<DiskStore>();
+    return store_;
+  }
+  /// \return the scratch file, or null if nothing has been written yet
+  std::shared_ptr<DiskStore> store_if_any() const {
+    std::scoped_lock lock(mtx_);
+    return store_;
+  }
+
+ private:
+  mutable std::mutex mtx_;
+  std::shared_ptr<DiskStore> store_;
+};
+
+}  // namespace detail
+
+/// A DiskTile goes to disk when it becomes an element of an array.
+
+/// A DiskTile that is on its own holds its data in memory: one just made
+/// from a tile, or one received from another process. When it is made an
+/// element of an array, on the process that owns that element, it is
+/// written to the array's scratch file. Every tile of an array is in the
+/// array's own file: a tile that is on disk in another file is copied.
+template <typename Tile>
+struct array_element_traits<DiskTile<Tile>> {
+  static constexpr bool transforms_on_insertion = true;
+  using state_type = detail::DiskArrayState;
+
+  static std::shared_ptr<state_type> make_state() {
+    return std::make_shared<state_type>();
+  }
+
+  static DiskTile<Tile> on_insertion(DiskTile<Tile>&& tile,
+                                     const std::shared_ptr<state_type>& state) {
+    if (tile.empty()) return std::move(tile);
+    if (tile.on_disk()) {
+      if (tile.store() == state->store_if_any()) return std::move(tile);
+      // in another array's file: copy
+      return DiskTile<Tile>(static_cast<Tile>(tile), state->store());
+    }
+    return DiskTile<Tile>(tile.in_memory_tile(), state->store());
+  }
+};
+
+namespace detail {
+
+template <typename Tile>
+struct is_contiguous_tensor_helper<DiskTile<Tile>>
+    : public is_contiguous_tensor_helper<Tile> {};
+
+}  // namespace detail
+
+}  // namespace TiledArray
+
+#endif  // TILEDARRAY_DISK_DISK_TILE_H__INCLUDED

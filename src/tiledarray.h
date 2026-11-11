@@ -57,6 +57,7 @@
 // Linear algebra
 #include <TiledArray/math/linalg.h>
 
+#include <TiledArray/disk/disk_array.h>
 #include <TiledArray/dist_array.h>
 
 #endif  // TILEDARRAY_H__INCLUDED

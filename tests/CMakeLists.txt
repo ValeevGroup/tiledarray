@@ -104,6 +104,7 @@ set(ta_test_src_files  ta_test.cpp
     diagonal_array.cpp
     einsum.cpp
     dot_inner.cpp
+    disk_tile.cpp
     general_product.cpp
     linalg.cpp
     math_blas.cpp
