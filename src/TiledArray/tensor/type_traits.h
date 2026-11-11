@@ -178,55 +178,6 @@ struct is_tensor_of_tensor_helper<
           detail::remove_cvr_t<typename T::value_type>>::value;
 };
 
-namespace lazy_nesting {
-/// The tile a lazy tile evaluates to, or \c T itself if \c T is not a lazy
-/// tile. A lazy tile is recognized as \c is_lazy_tile recognizes one that
-/// declares its laziness in the class: it names an \c eval_type and has a
-/// conversion operator to it (or to a \c madness::Future of it). A type that
-/// merely names an \c eval_type -- \c DistArray does -- is not one.
-///
-/// This does not go through \c eval_trait / \c is_lazy_tile , and tests for
-/// the conversion operator itself rather than for convertibility: this trait
-/// is asked about a lazy tile while \c eval_trait of that very tile is still
-/// being instantiated, and convertibility would look at the constructors of
-/// the tensor type, which consult this trait.
-template <typename T, typename = void>
-struct evaluated_tile {
-  using type = T;
-};
-template <typename T>
-struct evaluated_tile<
-    T,
-    std::enable_if_t<
-        has_conversion_operator_v<
-            T, detail::remove_cvr_t<typename T::eval_type>> ||
-        has_conversion_operator_v<
-            T, madness::Future<detail::remove_cvr_t<typename T::eval_type>>>>> {
-  using type = detail::remove_cvr_t<typename T::eval_type>;
-};
-}  // namespace lazy_nesting
-
-/// A lazy tile is as nested as the tile it evaluates to: an array of lazy
-/// tiles is annotated, and its expressions are typed, by its evaluated tile.
-/// A lazy tile is not itself a tensor (\c is_tensor_helper is false for
-/// it), so this does not overlap the specialization above.
-/// \note A tile type made lazy only by specializing \c eval_trait , without
-/// declaring \c eval_type and a conversion to it, is not recognized here:
-/// for such a type \c is_lazy_tile is true and this trait is false.
-/// \warning Hence \c is_tensor_of_tensor<T> does not imply \c
-/// is_tensor_helper<T> (nor \c is_nested_tensor<T> ): for a lazy tile \c T the
-/// former describes the tile \c T evaluates to, and \c T itself has no tensor
-/// interface
-/// (\c data() , \c range() , element access, ...). Code that goes on to use
-/// that interface must hold an evaluated tile, or test for it too.
-template <typename T>
-struct is_tensor_of_tensor_helper<
-    T, std::enable_if_t<
-           !is_tensor_helper<T>::value &&
-           !std::is_same_v<T, typename lazy_nesting::evaluated_tile<T>::type>>>
-    : public is_tensor_of_tensor_helper<
-          typename lazy_nesting::evaluated_tile<T>::type> {};
-
 ////////////////////////////////////////////////////////////////////////////////
 
 template <>
@@ -254,9 +205,6 @@ inline constexpr const bool is_tensor_v = is_tensor<Ts...>::value;
 template <>
 struct is_tensor_of_tensor<> : public std::false_type {};
 
-/// \note true also for a lazy tile that evaluates to a tensor of tensors,
-/// which is not itself a tensor: see the \c is_tensor_of_tensor_helper
-/// specialization for lazy tiles.
 template <typename T>
 struct is_tensor_of_tensor<T> {
   static constexpr bool value = is_tensor_of_tensor_helper<T>::value;
@@ -274,6 +222,28 @@ struct is_tensor_of_tensor<T1, T2, Ts...> {
 template <typename... Ts>
 inline constexpr const bool is_tensor_of_tensor_v =
     is_tensor_of_tensor<Ts...>::value;
+
+/// Whether a tile of type \c T is, or evaluates to, a tensor of tensors.
+
+/// This is the nestedness of an \em array whose tiles are of type \c T : an
+/// array of lazy tiles is annotated (\c "i,j;a" ), and its expressions are
+/// typed, by the tile its tiles evaluate to (see \c eval_trait ). For a tile
+/// that is not lazy this is \c is_tensor_of_tensor<T> .
+/// \note Unlike \c is_tensor_of_tensor<T> this says nothing about \c T
+/// itself: a lazy tile has no tensor interface (\c data() , \c range() ,
+/// element access, ...). Use it to ask what an array holds, not what can be
+/// done with a tile in hand.
+template <typename T>
+struct evaluates_to_tensor_of_tensor
+    : public std::bool_constant<is_tensor_of_tensor_v<detail::remove_cvr_t<
+          typename std::conditional_t<is_lazy_tile<T>::value, eval_trait<T>,
+                                      std::type_identity<T>>::type>>> {};
+
+/// \c evaluates_to_tensor_of_tensor_v<T> is an alias for
+/// \c evaluates_to_tensor_of_tensor<T>::value
+template <typename T>
+inline constexpr bool evaluates_to_tensor_of_tensor_v =
+    evaluates_to_tensor_of_tensor<T>::value;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// It is sometimes desirable to distinguish between DistArrays with

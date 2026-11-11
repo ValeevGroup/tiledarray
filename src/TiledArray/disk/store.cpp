@@ -27,6 +27,7 @@
 #include <atomic>
 #include <cerrno>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
@@ -34,6 +35,7 @@
 #include <vector>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace TiledArray {
@@ -75,6 +77,9 @@ long long elapsed_ns(std::chrono::steady_clock::time_point t0) {
 }  // namespace
 
 void set_disk_scratch_dir(std::filesystem::path dir) {
+  // a directory that cannot be used is reported here, to the caller, rather
+  // than when the first tile is written, which is typically inside a task
+  if (!dir.empty()) detail::check_disk_scratch_dir(dir);
   std::scoped_lock lock(scratch_dir_mutex());
   scratch_dir_setting() = std::move(dir);
 }
@@ -124,6 +129,41 @@ void disk_io_count_tiles(std::size_t n_written, std::size_t n_read) {
   counters().tiles_read += n_read;
 }
 
+void check_disk_scratch_dir(const std::filesystem::path& dir) {
+  const std::string what =
+      "TiledArray: disk-backed array I/O: scratch directory " + dir.string();
+  std::error_code ec;
+  if (!std::filesystem::is_directory(dir, ec))
+    throw TiledArray::Exception(what + " is not an existing directory");
+  if (::access(dir.c_str(), W_OK | X_OK) != 0)
+    throw TiledArray::Exception(what +
+                                " is not writable: " + std::strerror(errno));
+}
+
+std::uint64_t disk_checksum(const void* data, std::size_t n) {
+  // every step is a bijection of h for a given word, so data that differs
+  // in one word (anywhere) never has the same checksum; a word at a time,
+  // to stay well ahead of the disk
+  const unsigned char* p = static_cast<const unsigned char*>(data);
+  std::uint64_t h = 0x9e3779b97f4a7c15ull ^ static_cast<std::uint64_t>(n);
+  auto const mix = [&h](std::uint64_t w) {
+    h = (h ^ w) * 0xff51afd7ed558ccdull;
+    h ^= h >> 32;
+  };
+  std::size_t i = 0;
+  for (; i + 8 <= n; i += 8) {
+    std::uint64_t w;
+    std::memcpy(&w, p + i, 8);
+    mix(w);
+  }
+  if (i < n) {
+    std::uint64_t w = 0;
+    std::memcpy(&w, p + i, n - i);
+    mix(w);
+  }
+  return h;
+}
+
 DiskStore::DiskStore() {
   std::filesystem::path dir;
   try {
@@ -141,10 +181,15 @@ DiskStore::DiskStore() {
   // close-on-exec, set as the file is created: a child process must not
   // inherit the descriptor, which would let it read the data and would keep
   // the file's space allocated for as long as the child lives
+#ifdef O_TMPFILE
+  // where the filesystem can do it, a file that never has a name at all
+  fd_ = ::open(dir.c_str(), O_TMPFILE | O_RDWR | O_CLOEXEC, S_IRUSR | S_IWUSR);
+  if (fd_ != -1) return;
+#endif
   fd_ = ::mkostemp(name.data(), O_CLOEXEC);
   if (fd_ == -1)
     io_failure("cannot create a scratch file in " + dir.string(), errno);
-  // no name from here on: private to this process, gone when it is
+  // no name from here on: gone when this process is
   if (::unlink(name.data()) != 0) {
     const int err = errno;
     ::close(fd_);
@@ -157,19 +202,30 @@ DiskStore::~DiskStore() {
   if (fd_ != -1) ::close(fd_);
 }
 
-std::size_t DiskStore::append(const void* data, std::size_t n) {
-  // reserve the byte range, then write outside the lock: concurrent appends
+void DiskStore::add_free(std::size_t offset, std::size_t n) {
+  free_.emplace(offset, n);
+  free_by_size_.emplace(n, offset);
+}
+
+void DiskStore::remove_free(std::map<std::size_t, std::size_t>::iterator it) {
+  free_by_size_.erase({it->second, it->first});
+  free_.erase(it);
+}
+
+std::size_t DiskStore::write(const void* data, std::size_t n) {
+  // reserve the byte range, then write outside the lock: concurrent writes
   // go to disjoint ranges
   std::size_t offset;
   {
     std::scoped_lock lock(mtx_);
-    auto it = free_.begin();
-    while (it != free_.end() && it->second < n) ++it;  // first fit
-    if (it != free_.end()) {
-      offset = it->first;
-      const std::size_t left = it->second - n;
-      free_.erase(it);
-      if (left != 0) free_.emplace(offset + n, left);
+    // best fit: the smallest released range that is large enough (the
+    // lowest of those of equal size)
+    auto const fit = free_by_size_.lower_bound({n, 0});
+    if (n != 0 && fit != free_by_size_.end()) {
+      offset = fit->second;
+      const std::size_t left = fit->first - n;
+      remove_free(free_.find(offset));
+      if (left != 0) add_free(offset + n, left);
     } else {
       offset = size_;
       size_ += n;
@@ -199,6 +255,26 @@ std::size_t DiskStore::append(const void* data, std::size_t n) {
 }
 
 void DiskStore::read(std::size_t offset, void* data, std::size_t n) const {
+  if (n == 0) return;
+  {
+    // the range must be in space handed out by write() and not released
+    std::scoped_lock lock(mtx_);
+    bool valid = offset + n <= size_ && offset + n > offset;
+    if (valid) {
+      auto const next = free_.upper_bound(offset);  // first range past offset
+      if (next != free_.end() && next->first < offset + n) valid = false;
+      if (valid && next != free_.begin()) {
+        auto const prev = std::prev(next);
+        if (prev->first + prev->second > offset) valid = false;
+      }
+    }
+    if (!valid)
+      throw TiledArray::Exception(
+          "TiledArray: disk-backed array I/O: read of a range that is not in "
+          "use (" +
+          std::to_string(n) + " bytes at offset " + std::to_string(offset) +
+          ")");
+  }
   auto const t0 = std::chrono::steady_clock::now();
   char* p = static_cast<char*>(data);
   std::size_t done = 0;
@@ -233,17 +309,19 @@ void DiskStore::release(std::size_t offset, std::size_t n) {
   TA_ASSERT(next == free_.end() || offset + n <= next->first);
   if (next != free_.end() && next->first == offset + n) {
     n += next->second;
-    next = free_.erase(next);
+    auto const merged = next++;
+    remove_free(merged);
   }
   if (next != free_.begin()) {
     auto prev = std::prev(next);
     TA_ASSERT(prev->first + prev->second <= offset);
     if (prev->first + prev->second == offset) {
-      prev->second += n;
-      return;
+      offset = prev->first;
+      n += prev->second;
+      remove_free(prev);
     }
   }
-  free_.emplace(offset, n);
+  add_free(offset, n);
 }
 
 std::size_t DiskStore::size() const {

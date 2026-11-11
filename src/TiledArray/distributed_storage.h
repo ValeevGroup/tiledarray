@@ -127,6 +127,18 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
 
   /// Assigns a future with the transformed value of another once that one is
   /// assigned (see array_element_traits)
+  /// \note notify() runs inside the assignment of the source future, which
+  /// MADNESS makes while holding that future's lock: the transformation (for
+  /// a DiskTile, a write to disk) is done by the thread that assigns the
+  /// future, and any other thread that touches that same future meanwhile
+  /// (probing is fine; registering a callback or a dependent task is not)
+  /// spins until it is done. The futures the expression layer sets tiles
+  /// with are not shared, so this matters only for a future a user holds on
+  /// to and uses from other threads.
+  /// \note this object and the source future refer to each other until the
+  /// future is assigned. If it never is, both are leaked, with the element
+  /// state (for a DiskTile array, its scratch file and file descriptor), as
+  /// the tile itself would be: a future used to set a tile must be assigned.
   struct TransformOnSet : public madness::CallbackInterface {
     TransformOnSet(const future& from, const future& to,
                    const element_state_ptr& state)

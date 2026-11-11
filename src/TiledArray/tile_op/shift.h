@@ -119,6 +119,10 @@ class Shift {
       // shallow-copy tile type) instead of cloning it
       if (is_zero_shift()) return result_type(arg);
     }
+    // N.B. if result_type is lazy this shifts the (evaluated) argument and
+    // converts: TiledArray::Shift casts the shifted tile to its Result. The
+    // permuting overload above has to spell the same thing out, since
+    // Permute cannot produce a lazy tile.
     TiledArray::Shift<result_type, argument_type> shift;
     return shift(arg, range_shift_);
   }

@@ -54,8 +54,8 @@ namespace TiledArray {
 /// Its tiles are written once and never modified.
 ///
 /// Every process keeps the tiles it owns in a scratch file on its own node
-/// (see set_disk_scratch_dir()); the files are private to the process, are
-/// gone when the array is, and do not outlive the process.
+/// (see set_disk_scratch_dir()); the files are used by that process only,
+/// are gone when the array is, and do not outlive the process.
 template <typename Tile, typename Policy>
 using DiskArray = DistArray<DiskTile<Tile>, Policy>;
 

@@ -201,6 +201,23 @@ class Expr {
     }
   };
 
+  /// Makes the array that is to replace \p array in an assignment to a
+  /// block: an empty array in the world of \p array , with its tiled range
+  /// and process map, the given shape, and sharing the state \p array keeps
+  /// for its tiles (see array_element_traits; for an array of DiskTile's that
+  /// is its scratch file), so that the two are one array to their tiles. The
+  /// state is in place before the new array can receive any tile.
+  /// \param array the array to be replaced
+  /// \param shape the shape of the new array
+  template <typename A>
+  static A make_successor(const A& array, const typename A::shape_type& shape) {
+    using impl_type = typename A::impl_type;
+    return A(typename A::pimpl_type(
+        new impl_type(array.world(), array.trange(), shape, array.pmap(),
+                      array.pimpl()->element_state()),
+        impl_type::lazy_deleter));
+  }
+
   /// Makes a tile of a result array whose tiles are lazy (and are made
   /// from their evaluated tile, see array_element_traits) from a tile \c T
   /// of the evaluated expression: evaluates \c T if it is lazy -- cloning
@@ -223,93 +240,52 @@ class Expr {
     }
   };
 
-  /// Set a tile of an array of lazy tiles with an evaluated tile
+  /// The task function that makes a tile of a result array \c A from a tile
+  /// \c T of the evaluated expression, when the two types differ: if the
+  /// array's tiles are lazy the tile is evaluated and wrapped
+  /// (wrap_evaluated), else it is cast to the array's tile type
+  /// (cast_or_clone).
+  template <typename A, typename T>
+  using to_result_tile =
+      std::conditional_t<is_lazy_tile<typename A::value_type>::value,
+                         wrap_evaluated<typename A::value_type, T>,
+                         cast_or_clone<typename A::value_type, T>>;
 
-  /// The tile is wrapped in the array's tile type; what becoming an element
-  /// then does to it is up to the array (see array_element_traits).
+  /// Schedules \c fn(tile) : as a device task if \c T is a device tile, else
+  /// as an ordinary task
+  /// \return a future of the result
+  template <typename Fn, typename T>
+  static auto add_tile_task(World& world, Fn&& fn, const Future<T>& tile) {
+#ifdef TILEDARRAY_HAS_DEVICE
+    if constexpr (::TiledArray::detail::is_device_tile_v<T>)
+      return madness::add_device_task(world, std::forward<Fn>(fn), tile);
+    else
+#endif
+      return world.taskq.add(std::forward<Fn>(fn), tile);
+  }
+
+  /// Set an array tile with a tile of another type
+
+  /// Spawn a task to convert \c tile to the tile type of \a array (see
+  /// to_result_tile) and set the \a array tile at \c index with the result.
+  /// This is the case if \c T is lazy, or the tiles of \a array are (they
+  /// are then made from their evaluated tile; what becoming an element does
+  /// to them is up to the array, see array_element_traits), or both.
   /// \tparam A The array type
   /// \tparam I The index type
-  /// \tparam T The evaluated tile type
+  /// \tparam T The tile type of the evaluated expression
   /// \param array The result array
   /// \param index The tile index
-  /// \param tile The evaluated tile
+  /// \param tile The tile
   template <typename A, typename I, typename T,
             typename std::enable_if<
                 !std::is_same<typename A::value_type, T>::value &&
-                !is_lazy_tile<T>::value &&
-                is_lazy_tile<typename A::value_type>::value>::type* = nullptr>
+                (is_lazy_tile<T>::value ||
+                 is_lazy_tile<typename A::value_type>::value)>::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
-#ifdef TILEDARRAY_HAS_DEVICE
-    if constexpr (::TiledArray::detail::is_device_tile_v<T>) {
-      array.set(index, madness::add_device_task(
-                           array.world(),
-                           wrap_evaluated<typename A::value_type, T>(), tile));
-      return;
-    }
-#endif
-    array.set(index, array.world().taskq.add(
-                         wrap_evaluated<typename A::value_type, T>(), tile));
+    array.set(index,
+              add_tile_task(array.world(), to_result_tile<A, T>(), tile));
   }
-
-  /// Set an array tile with a lazy tile
-
-  /// Spawn a task to evaluate a lazy tile and set the \a array tile at
-  /// \c index with the result.
-  /// \tparam A The array type
-  /// \tparam I The index type
-  /// \tparam T The lazy tile type
-  /// \param array The result array
-  /// \param index The tile index
-  /// \param tile The lazy tile
-  template <
-      typename A, typename I, typename T,
-      typename std::enable_if<!std::is_same<typename A::value_type, T>::value &&
-                              is_lazy_tile<T>::value
-#ifdef TILEDARRAY_HAS_DEVICE
-                              && !::TiledArray::detail::is_device_tile_v<T>
-#endif
-                              >::type* = nullptr>
-  void set_tile(A& array, const I& index, const Future<T>& tile) const {
-    if constexpr (is_lazy_tile<typename A::value_type>::value) {
-      // the result's tiles are themselves lazy (made from their evaluated
-      // tile, see array_element_traits): evaluate, then wrap
-      array.set(index, array.world().taskq.add(
-                           wrap_evaluated<typename A::value_type, T>(), tile));
-    } else {
-      array.set(index, array.world().taskq.add(
-                           cast_or_clone<typename A::value_type, T>(), tile));
-    }
-  }
-
-#ifdef TILEDARRAY_HAS_DEVICE
-  /// Set an array tile with a lazy tile
-
-  /// Spawn a task to evaluate a lazy tile and set the \a array tile at
-  /// \c index with the result.
-  /// \tparam A The array type
-  /// \tparam I The index type
-  /// \tparam T The lazy tile type
-  /// \param array The result array
-  /// \param index The tile index
-  /// \param tile The lazy tile
-  template <typename A, typename I, typename T,
-            typename std::enable_if<
-                !std::is_same<typename A::value_type, T>::value &&
-                is_lazy_tile<T>::value &&
-                ::TiledArray::detail::is_device_tile_v<T>>::type* = nullptr>
-  void set_tile(A& array, const I& index, const Future<T>& tile) const {
-    if constexpr (is_lazy_tile<typename A::value_type>::value) {
-      // see the non-device overload
-      array.set(index, madness::add_device_task(
-                           array.world(),
-                           wrap_evaluated<typename A::value_type, T>(), tile));
-    } else {
-      array.set(index, madness::add_device_task(
-                           array.world(),
-                           cast_or_clone<typename A::value_type, T>(), tile));
-    }
-  }
-#endif
 
   /// Set the \c array tile at \c index with \c tile
 
@@ -612,7 +588,7 @@ class Expr {
 
     // Create the result array. It replaces tsr.array(): to their tiles the
     // two are one array.
-    A result = A::successor(
+    A result = make_successor(
         tsr.array(),
         tsr.array().shape().update_block(tsr.lower_bound(), tsr.upper_bound(),
                                          dist_eval.shape()));

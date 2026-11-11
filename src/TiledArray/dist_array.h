@@ -669,24 +669,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// should not rely on this function.
   madness::uniqueidT id() const { return impl_ref().id(); }
 
-  /// Makes the array that is to replace \p other : an empty array in the
-  /// world of \p other , with its tiled range and process map, the given
-  /// shape, and sharing the state \p other keeps for its tiles (see
-  /// array_element_traits; for an array of DiskTile's that is its scratch
-  /// file), so that the two are one array to their tiles. The state is in
-  /// place before the new array can receive any tile. Assignment to a block
-  /// replaces the array this way.
-  /// \param other the array to be replaced
-  /// \param shape the shape of the new array
-  static DistArray successor(const DistArray& other, const shape_type& shape) {
-    DistArray result;
-    result.pimpl_ = pimpl_type(
-        new impl_type(other.world(), other.trange(), shape, other.pmap(),
-                      other.impl_ref().element_state()),
-        impl_type::lazy_deleter);
-    return result;
-  }
-
   /// Begin iterator factory function
 
   /// \return An iterator to the first local tile.
@@ -1871,7 +1853,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     // the RHS of an equation)
     if (!is_initialized()) return;
 
-    constexpr bool is_tot = detail::is_tensor_of_tensor_v<value_type>;
+    // an array of lazy tiles is annotated by the tile they evaluate to
+    constexpr bool is_tot = detail::evaluates_to_tensor_of_tensor_v<value_type>;
     const auto rank = tiles_range().rank();
     // TODO: Make constexpr and use structured bindings when CUDA supports C++17
     if (is_tot) {

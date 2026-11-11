@@ -32,6 +32,9 @@
 #include <madness/world/buffer_archive.h>
 
 #include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <exception>
 #include <memory>
 #include <mutex>
 #include <type_traits>
@@ -51,7 +54,7 @@ namespace TiledArray {
 /// A DiskTile is in one of three states:
 /// - \e empty (default-constructed);
 /// - <em>on disk</em>: it refers to a byte range of a detail::DiskStore, a
-///   scratch file private to the process that wrote it. This is the state
+///   scratch file of the process that wrote it. This is the state
 ///   of a tile that is an element of an array, on the process that owns the
 ///   element. Copies share the bytes, which are given back to the store
 ///   when the last copy is gone;
@@ -67,6 +70,12 @@ namespace TiledArray {
 ///
 /// A DiskTile is immutable once constructed, hence safe to evaluate and to
 /// serialize from several threads at once.
+///
+/// What is read from the scratch file is verified against a checksum taken
+/// when it was written, and must deserialize to exactly the bytes written:
+/// data damaged on the way to or from the device (including by a write error
+/// the operating system reported to no one) is an error when the tile is
+/// used, not a tile with wrong numbers.
 ///
 /// \tparam Tile the tile type this evaluates to; must be default
 ///         constructible and serializable by a MADNESS buffer archive
@@ -84,7 +93,7 @@ class DiskTile {
 
   /// Writes \p tile to \p store ; the result is on disk.
   /// \param tile the tile to store
-  /// \param store the scratch file to append the tile to
+  /// \param store the scratch file to write the tile to
   /// \throw TiledArray::Exception if the write fails
   DiskTile(const Tile& tile, std::shared_ptr<detail::DiskStore> store) {
     if (!store)
@@ -95,8 +104,10 @@ class DiskTile {
     const std::unique_ptr<unsigned char[]> buffer(new unsigned char[nbytes]);
     madness::archive::BufferOutputArchive out(buffer.get(), nbytes);
     out & tile;
-    const std::size_t offset = store->append(buffer.get(), nbytes);
-    extent_ = std::make_shared<const Extent>(std::move(store), offset, nbytes);
+    const std::uint64_t checksum = detail::disk_checksum(buffer.get(), nbytes);
+    const std::size_t offset = store->write(buffer.get(), nbytes);
+    extent_ = std::make_shared<const Extent>(std::move(store), offset, nbytes,
+                                             checksum);
     detail::disk_io_count_tiles(1, 0);
   }
 
@@ -109,7 +120,8 @@ class DiskTile {
   /// Evaluates this tile: reads it from disk, or copies the tile held in
   /// memory. Either way the result shares no data with this tile or with any
   /// other evaluation of it, so the caller is free to modify it.
-  /// \throw TiledArray::Exception if this tile is empty
+  /// \throw TiledArray::Exception if this tile is empty, or if what is read
+  ///        from disk is not what was written
   explicit operator Tile() const {
     // a deep copy: copying a tile may be shallow, and whoever evaluates a
     // lazy tile may work on the result in place
@@ -122,6 +134,10 @@ class DiskTile {
     madness::archive::BufferInputArchive in(buffer.get(), extent_->nbytes);
     Tile tile;
     in & tile;
+    if (in.nbyte_avail() != 0)
+      TA_EXCEPTION(
+          "DiskTile: the tile read from disk is not the size of the one "
+          "written");
     return tile;
   }
 
@@ -211,24 +227,44 @@ class DiskTile {
   }
 
   /// Reads this (on-disk) tile's bytes from its store.
+  /// \throw TiledArray::Exception if they are not the bytes that were written
   std::unique_ptr<unsigned char[]> read_bytes() const {
     std::unique_ptr<unsigned char[]> buffer(new unsigned char[extent_->nbytes]);
     extent_->store->read(extent_->offset, buffer.get(), extent_->nbytes);
     detail::disk_io_count_tiles(0, 1);
+    if (detail::disk_checksum(buffer.get(), extent_->nbytes) !=
+        extent_->checksum)
+      TA_EXCEPTION(
+          "DiskTile: the data read from the scratch file is not the data that "
+          "was written to it (storage error?)");
     return buffer;
   }
 
   /// The bytes of a tile in a store. Shared by the copies of a tile; gives
   /// the bytes back to the store when the last copy is gone.
   struct Extent {
-    Extent(std::shared_ptr<detail::DiskStore> s, std::size_t o, std::size_t n)
-        : store(std::move(s)), offset(o), nbytes(n) {}
-    ~Extent() { store->release(offset, nbytes); }
+    Extent(std::shared_ptr<detail::DiskStore> s, std::size_t o, std::size_t n,
+           std::uint64_t c)
+        : store(std::move(s)), offset(o), nbytes(n), checksum(c) {}
+    ~Extent() {
+      // release() fails only if the store's bookkeeping is broken, and a
+      // destructor cannot report that: say what happened before stopping
+      try {
+        store->release(offset, nbytes);
+      } catch (const std::exception& e) {
+        std::fprintf(stderr,
+                     "TiledArray: DiskTile: cannot release the space of a "
+                     "tile in its scratch file: %s\n",
+                     e.what());
+        std::terminate();
+      }
+    }
     Extent(const Extent&) = delete;
     Extent& operator=(const Extent&) = delete;
     std::shared_ptr<detail::DiskStore> store;
     std::size_t offset;
     std::size_t nbytes;
+    std::uint64_t checksum;  ///< detail::disk_checksum of the bytes written
   };
 
   std::shared_ptr<const Extent> extent_;  ///< set iff on disk

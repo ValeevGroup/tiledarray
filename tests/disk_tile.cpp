@@ -39,6 +39,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <string>
@@ -355,22 +356,28 @@ std::size_t count_nonzero_tiles(const Array& a) {
 BOOST_AUTO_TEST_SUITE(disk_tile_suite)
 
 BOOST_AUTO_TEST_CASE(lazy_tile_nestedness) {
-  // a lazy tile is as nested as the tile it evaluates to ...
-  static_assert(
-      TA::detail::is_tensor_of_tensor_v<test::InMemLazyTile<ArenaToT>>);
-  static_assert(!TA::detail::is_tensor_of_tensor_v<
+  using TA::detail::evaluates_to_tensor_of_tensor_v;
+  using TA::detail::is_tensor_of_tensor_v;
+  // a lazy tile evaluates to a tile as nested as its evaluation type ...
+  static_assert(evaluates_to_tensor_of_tensor_v<test::InMemLazyTile<ArenaToT>>);
+  static_assert(!evaluates_to_tensor_of_tensor_v<
                 test::InMemLazyTile<TA::Tensor<double>>>);
-  // ... but it is not itself a tensor
+  // ... but it is not itself a tensor, of tensors or of anything else:
+  // is_tensor_of_tensor is about the type in hand
+  static_assert(!is_tensor_of_tensor_v<test::InMemLazyTile<ArenaToT>>);
   static_assert(
       !TA::detail::is_tensor_v<test::InMemLazyTile<TA::Tensor<double>>>);
+  // for a tile that is not lazy the two agree
+  static_assert(evaluates_to_tensor_of_tensor_v<ArenaToT>);
+  static_assert(is_tensor_of_tensor_v<ArenaToT>);
+  static_assert(!evaluates_to_tensor_of_tensor_v<TA::Tensor<double>>);
   // only a lazy TILE is looked through: an array (or any other type that
-  // merely names an eval_type, without converting to it) is not a tensor of
-  // tensors, whatever its tiles are
-  static_assert(!TA::detail::is_tensor_of_tensor_v<ToTArray>);
+  // merely names an eval_type, without converting to it) is not
+  static_assert(!evaluates_to_tensor_of_tensor_v<ToTArray>);
   static_assert(
-      !TA::detail::is_tensor_of_tensor_v<
+      !evaluates_to_tensor_of_tensor_v<
           TA::DistArray<test::InMemLazyTile<ArenaToT>, TA::SparsePolicy>>);
-  static_assert(!TA::detail::is_tensor_of_tensor_v<test::NamesEvalTypeOnly>);
+  static_assert(!evaluates_to_tensor_of_tensor_v<test::NamesEvalTypeOnly>);
   BOOST_CHECK(true);
 }
 
@@ -393,9 +400,9 @@ BOOST_AUTO_TEST_CASE(lazy_tot_annotation) {
 BOOST_AUTO_TEST_CASE(store_roundtrip) {
   TA::detail::DiskStore store;
   auto const a = pattern(10, 1), b = pattern(1000, 2), c = pattern(3, 3);
-  BOOST_CHECK_EQUAL(store.append(a.data(), a.size()), 0u);
-  BOOST_CHECK_EQUAL(store.append(b.data(), b.size()), 10u);
-  BOOST_CHECK_EQUAL(store.append(c.data(), c.size()), 1010u);
+  BOOST_CHECK_EQUAL(store.write(a.data(), a.size()), 0u);
+  BOOST_CHECK_EQUAL(store.write(b.data(), b.size()), 10u);
+  BOOST_CHECK_EQUAL(store.write(c.data(), c.size()), 1010u);
   BOOST_CHECK_EQUAL(store.size(), 1013u);
   std::vector<char> rb(b.size()), ra(a.size()), rc(c.size());
   store.read(10, rb.data(), rb.size());
@@ -414,7 +421,7 @@ BOOST_AUTO_TEST_CASE(store_chunked_io) {
   {
     TA::detail::DiskStore store;
     auto const a = pattern(1000, 5);
-    BOOST_CHECK_EQUAL(store.append(a.data(), a.size()), 0u);
+    BOOST_CHECK_EQUAL(store.write(a.data(), a.size()), 0u);
     std::vector<char> r(a.size());
     store.read(0, r.data(), r.size());
     BOOST_CHECK(r == a);
@@ -427,7 +434,7 @@ BOOST_AUTO_TEST_CASE(store_chunked_io) {
   {
     TA::detail::DiskStore store;
     auto const a = pattern(50, 6);
-    BOOST_CHECK_EQUAL(store.append(a.data(), a.size()), 0u);
+    BOOST_CHECK_EQUAL(store.write(a.data(), a.size()), 0u);
     std::vector<char> r(a.size());
     BOOST_CHECK_NO_THROW(store.read(0, r.data(), r.size()));
     BOOST_CHECK(r == a);
@@ -473,8 +480,8 @@ BOOST_AUTO_TEST_CASE(store_concurrent) {
     threads.emplace_back([&, t] {
       for (int i = 0; i < nper; ++i) {
         auto const p = pattern(size_of(t, i), t * 1000 + i);
-        offsets[t][i] = store.append(p.data(), p.size());
-        // read back something written earlier while others are appending
+        offsets[t][i] = store.write(p.data(), p.size());
+        // read back something written earlier while others are writing
         if (i > 0) {
           auto const q = pattern(size_of(t, i - 1), t * 1000 + i - 1);
           std::vector<char> r(q.size());
@@ -503,18 +510,48 @@ BOOST_AUTO_TEST_CASE(store_leaves_no_file) {
   {
     TA::detail::DiskStore store;
     auto const a = pattern(100, 1);
-    store.append(a.data(), a.size());
+    store.write(a.data(), a.size());
     // the file has no name: nothing to find, nothing to leave behind
     BOOST_CHECK(scratch.empty());
   }
   BOOST_CHECK(scratch.empty());
 }
 
+// a scratch directory that cannot be used is rejected when it is set, not
+// when the first tile is written
 BOOST_AUTO_TEST_CASE(store_bad_dir_throws) {
   auto const prev = TA::detail::disk_scratch_dir_setting();
   const std::string bad = "/nonexistent-ta-disk-dir/scratch";
-  TA::set_disk_scratch_dir(bad);
   bool threw = false;
+  try {
+    TA::set_disk_scratch_dir(bad);
+  } catch (TA::Exception& e) {
+    threw = true;
+    BOOST_CHECK(std::string(e.what()).find(bad) != std::string::npos);
+  }
+  BOOST_CHECK(threw);
+  // and the setting is unchanged
+  BOOST_CHECK(TA::detail::disk_scratch_dir_setting() == prev);
+  // a file is not a directory
+  {
+    ScratchDirGuard scratch("baddir");
+    auto const file = scratch.dir / "a-file";
+    { std::ofstream(file) << "x"; }
+    BOOST_CHECK_THROW(TA::set_disk_scratch_dir(file), TA::Exception);
+    BOOST_CHECK(TA::detail::disk_scratch_dir_setting() == scratch.dir);
+  }
+  BOOST_CHECK_THROW(TA::detail::check_disk_scratch_dir(bad), TA::Exception);
+  BOOST_CHECK_NO_THROW(TA::detail::check_disk_scratch_dir(
+      std::filesystem::temp_directory_path()));
+
+  // a directory named by the environment that has gone bad since it was
+  // checked (by TiledArray::initialize) is an error naming it when a store
+  // is created
+  const char* const prev_env = std::getenv("TA_DISK_SCRATCH_DIR");
+  const std::string saved_env = prev_env ? prev_env : "";
+  TA::set_disk_scratch_dir({});
+  ::setenv("TA_DISK_SCRATCH_DIR", bad.c_str(), 1);
+  threw = false;
   try {
     TA::detail::DiskStore store;
   } catch (TA::Exception& e) {
@@ -522,26 +559,6 @@ BOOST_AUTO_TEST_CASE(store_bad_dir_throws) {
     BOOST_CHECK(std::string(e.what()).find(bad) != std::string::npos);
   }
   BOOST_CHECK(threw);
-  TA::set_disk_scratch_dir(prev);
-}
-
-BOOST_AUTO_TEST_CASE(scratch_dir_resolution) {
-  auto const prev = TA::detail::disk_scratch_dir_setting();
-  const char* const prev_env = std::getenv("TA_DISK_SCRATCH_DIR");
-  const std::string saved_env = prev_env ? prev_env : "";
-
-  // nothing set: the environment variable, else the system temp directory
-  TA::set_disk_scratch_dir({});
-  ::unsetenv("TA_DISK_SCRATCH_DIR");
-  BOOST_CHECK(TA::disk_scratch_dir() == std::filesystem::temp_directory_path());
-  ::setenv("TA_DISK_SCRATCH_DIR", "/tmp/ta-env-dir", 1);
-  BOOST_CHECK(TA::disk_scratch_dir() ==
-              std::filesystem::path("/tmp/ta-env-dir"));
-  // an explicit setting wins over the environment
-  TA::set_disk_scratch_dir("/tmp/ta-set-dir");
-  BOOST_CHECK(TA::disk_scratch_dir() ==
-              std::filesystem::path("/tmp/ta-set-dir"));
-
   if (prev_env)
     ::setenv("TA_DISK_SCRATCH_DIR", saved_env.c_str(), 1);
   else
@@ -549,11 +566,39 @@ BOOST_AUTO_TEST_CASE(scratch_dir_resolution) {
   TA::set_disk_scratch_dir(prev);
 }
 
+BOOST_AUTO_TEST_CASE(scratch_dir_resolution) {
+  auto const prev = TA::detail::disk_scratch_dir_setting();
+  const char* const prev_env = std::getenv("TA_DISK_SCRATCH_DIR");
+  const std::string saved_env = prev_env ? prev_env : "";
+  auto const base = std::filesystem::temp_directory_path() /
+                    ("ta-disk-test-resolution-" + std::to_string(::getpid()));
+  auto const env_dir = base / "env", set_dir = base / "set";
+  std::filesystem::create_directories(env_dir);
+  std::filesystem::create_directories(set_dir);
+
+  // nothing set: the environment variable, else the system temp directory
+  TA::set_disk_scratch_dir({});
+  ::unsetenv("TA_DISK_SCRATCH_DIR");
+  BOOST_CHECK(TA::disk_scratch_dir() == std::filesystem::temp_directory_path());
+  ::setenv("TA_DISK_SCRATCH_DIR", env_dir.c_str(), 1);
+  BOOST_CHECK(TA::disk_scratch_dir() == env_dir);
+  // an explicit setting wins over the environment
+  TA::set_disk_scratch_dir(set_dir);
+  BOOST_CHECK(TA::disk_scratch_dir() == set_dir);
+
+  if (prev_env)
+    ::setenv("TA_DISK_SCRATCH_DIR", saved_env.c_str(), 1);
+  else
+    ::unsetenv("TA_DISK_SCRATCH_DIR");
+  TA::set_disk_scratch_dir(prev);
+  std::filesystem::remove_all(base);
+}
+
 BOOST_AUTO_TEST_CASE(io_stats) {
   TA::detail::DiskStore store;
   auto const a = pattern(100, 1);
   TA::reset_disk_io_stats();
-  store.append(a.data(), a.size());
+  store.write(a.data(), a.size());
   std::vector<char> r(40);
   store.read(10, r.data(), r.size());
   auto const s = TA::disk_io_stats();
@@ -604,8 +649,10 @@ BOOST_AUTO_TEST_CASE(tile_is_lazy) {
   using D = TA::DiskTile<TA::Tensor<double>>;
   static_assert(TA::is_lazy_tile_v<D>);
   static_assert(std::is_same_v<TA::eval_trait<D>::type, TA::Tensor<double>>);
-  static_assert(TA::detail::is_tensor_of_tensor_v<TA::DiskTile<ArenaToT>>);
-  static_assert(!TA::detail::is_tensor_of_tensor_v<D>);
+  static_assert(
+      TA::detail::evaluates_to_tensor_of_tensor_v<TA::DiskTile<ArenaToT>>);
+  static_assert(!TA::detail::evaluates_to_tensor_of_tensor_v<D>);
+  static_assert(!TA::detail::is_tensor_of_tensor_v<TA::DiskTile<ArenaToT>>);
   BOOST_CHECK(true);
 }
 
@@ -857,9 +904,9 @@ BOOST_AUTO_TEST_CASE(no_file_left) {
 BOOST_AUTO_TEST_CASE(store_reuses_freed_space) {
   TA::detail::DiskStore store;
   auto const a = pattern(100, 1), b = pattern(100, 2), c = pattern(100, 3);
-  auto const oa = store.append(a.data(), a.size());
-  auto const ob = store.append(b.data(), b.size());
-  auto const oc = store.append(c.data(), c.size());
+  auto const oa = store.write(a.data(), a.size());
+  auto const ob = store.write(b.data(), b.size());
+  auto const oc = store.write(c.data(), c.size());
   BOOST_CHECK_EQUAL(store.size(), 300u);
   BOOST_CHECK_EQUAL(store.bytes_in_use(), 300u);
 
@@ -867,16 +914,16 @@ BOOST_AUTO_TEST_CASE(store_reuses_freed_space) {
   BOOST_CHECK_EQUAL(store.bytes_in_use(), 200u);
   // a write that fits goes into the hole: the file does not grow
   auto const d = pattern(60, 4);
-  auto const od = store.append(d.data(), d.size());
+  auto const od = store.write(d.data(), d.size());
   BOOST_CHECK_EQUAL(od, ob);
   BOOST_CHECK_EQUAL(store.size(), 300u);
   // the rest of the hole is still free
   auto const e = pattern(40, 5);
-  BOOST_CHECK_EQUAL(store.append(e.data(), e.size()), ob + 60);
+  BOOST_CHECK_EQUAL(store.write(e.data(), e.size()), ob + 60);
   BOOST_CHECK_EQUAL(store.size(), 300u);
   // one that does not fit extends the file
   auto const f = pattern(10, 6);
-  BOOST_CHECK_EQUAL(store.append(f.data(), f.size()), 300u);
+  BOOST_CHECK_EQUAL(store.write(f.data(), f.size()), 300u);
 
   // neighbours are untouched
   std::vector<char> r(100);
@@ -893,8 +940,130 @@ BOOST_AUTO_TEST_CASE(store_reuses_freed_space) {
   store.release(od, 60);
   store.release(ob + 60, 40);
   auto const g = pattern(200, 7);
-  BOOST_CHECK_EQUAL(store.append(g.data(), g.size()), 0u);
+  BOOST_CHECK_EQUAL(store.write(g.data(), g.size()), 0u);
   BOOST_CHECK_EQUAL(store.size(), 310u);
+}
+
+// the smallest released range that fits is the one reused
+BOOST_AUTO_TEST_CASE(store_best_fit) {
+  TA::detail::DiskStore store;
+  std::vector<std::size_t> off;
+  for (const std::size_t n : {300u, 10u, 100u, 10u, 200u, 10u}) {
+    auto const p = pattern(n, static_cast<int>(n));
+    off.push_back(store.write(p.data(), p.size()));
+  }
+  const std::size_t size = store.size();
+  // holes of 300, 100 and 200 bytes, kept apart by the 10-byte ranges
+  store.release(off[0], 300);
+  store.release(off[2], 100);
+  store.release(off[4], 200);
+  auto const p = pattern(150, 9);
+  BOOST_CHECK_EQUAL(store.write(p.data(), p.size()), off[4]);  // the 200
+  auto const q = pattern(100, 8);
+  BOOST_CHECK_EQUAL(store.write(q.data(), q.size()), off[2]);  // exactly
+  auto const r = pattern(60, 7);
+  BOOST_CHECK_EQUAL(store.write(r.data(), r.size()), off[0]);  // 50 < 60
+  BOOST_CHECK_EQUAL(store.size(), size);
+  // many ranges released in an order that leaves them all apart, then
+  // joined: the bookkeeping ends with one range
+  {
+    TA::detail::DiskStore s2;
+    const std::size_t n = 1000;
+    auto const b = pattern(16, 3);
+    for (std::size_t i = 0; i < n; ++i) s2.write(b.data(), b.size());
+    for (std::size_t i = 0; i < n; i += 2) s2.release(16 * i, 16);
+    for (std::size_t i = 1; i < n; i += 2) s2.release(16 * i, 16);
+    BOOST_CHECK_EQUAL(s2.bytes_in_use(), 0u);
+    auto const whole = pattern(16 * n, 4);
+    BOOST_CHECK_EQUAL(s2.write(whole.data(), whole.size()), 0u);
+    BOOST_CHECK_EQUAL(s2.size(), 16 * n);
+  }
+}
+
+// only what was written, and not released, can be read
+BOOST_AUTO_TEST_CASE(store_read_out_of_use_throws) {
+  TA::detail::DiskStore store;
+  auto const a = pattern(100, 1), b = pattern(100, 2), c = pattern(100, 3);
+  store.write(a.data(), a.size());
+  auto const ob = store.write(b.data(), b.size());
+  store.write(c.data(), c.size());
+  std::vector<char> r(300);
+  BOOST_CHECK_NO_THROW(store.read(0, r.data(), 300));
+  BOOST_CHECK_THROW(store.read(250, r.data(), 100), TA::Exception);  // past
+  BOOST_CHECK_THROW(store.read(1000, r.data(), 1), TA::Exception);
+  store.release(ob, 100);
+  BOOST_CHECK_THROW(store.read(ob, r.data(), 100), TA::Exception);
+  BOOST_CHECK_THROW(store.read(ob + 50, r.data(), 10), TA::Exception);
+  BOOST_CHECK_THROW(store.read(50, r.data(), 60), TA::Exception);   // into it
+  BOOST_CHECK_THROW(store.read(190, r.data(), 60), TA::Exception);  // out of
+  BOOST_CHECK_THROW(store.read(0, r.data(), 300), TA::Exception);   // across
+  BOOST_CHECK_NO_THROW(store.read(0, r.data(), 100));
+  BOOST_CHECK_NO_THROW(store.read(200, r.data(), 100));
+}
+
+BOOST_AUTO_TEST_CASE(checksum) {
+  auto const a = pattern(1000, 1);
+  const auto h = TA::detail::disk_checksum(a.data(), a.size());
+  BOOST_CHECK_EQUAL(TA::detail::disk_checksum(a.data(), a.size()), h);
+  // a change of any one byte, a change of length
+  for (const std::size_t i : {0u, 7u, 8u, 500u, 999u}) {
+    auto b = a;
+    b[i] ^= 1;
+    BOOST_CHECK(TA::detail::disk_checksum(b.data(), b.size()) != h);
+  }
+  BOOST_CHECK(TA::detail::disk_checksum(a.data(), a.size() - 1) != h);
+  // lengths that are not a multiple of the word, and zero
+  auto const z = std::vector<char>(13, 0);
+  BOOST_CHECK(TA::detail::disk_checksum(z.data(), 13) !=
+              TA::detail::disk_checksum(z.data(), 12));
+  BOOST_CHECK_NO_THROW(TA::detail::disk_checksum(nullptr, 0));
+}
+
+// data that comes back from the scratch file changed is an error, not a
+// tile with wrong numbers
+BOOST_AUTO_TEST_CASE(tile_detects_damaged_data) {
+  // the descriptors of unlinked regular files that are open now
+  auto const unlinked_files = [] {
+    std::vector<int> fds;
+    const int nfd = ::getdtablesize();
+    for (int fd = 0; fd < nfd; ++fd) {
+      struct stat st;
+      if (::fstat(fd, &st) == 0 && S_ISREG(st.st_mode) && st.st_nlink == 0)
+        fds.push_back(fd);
+    }
+    return fds;
+  };
+  auto const before = unlinked_files();
+  auto store = std::make_shared<TA::detail::DiskStore>();
+  int store_fd = -1;
+  for (const int fd : unlinked_files())
+    if (std::find(before.begin(), before.end(), fd) == before.end())
+      store_fd = fd;
+  BOOST_REQUIRE(store_fd != -1);
+
+  using D = TA::DiskTile<TA::Tensor<double>>;
+  auto const t = flat_tile(TA::Range{4, 5}, 1.0);
+  D d(t, store);
+  BOOST_REQUIRE(same_tile(static_cast<TA::Tensor<double>>(d), t));
+  // flip one bit of the tile's last element, behind the store's back
+  const auto last = static_cast<off_t>(store->size() - 1);
+  char byte;
+  BOOST_REQUIRE(::pread(store_fd, &byte, 1, last) == 1);
+  byte ^= 1;
+  BOOST_REQUIRE(::pwrite(store_fd, &byte, 1, last) == 1);
+
+  BOOST_CHECK_THROW((void)static_cast<TA::Tensor<double>>(d), TA::Exception);
+  // shipping it to another process does not launder it either
+  std::vector<unsigned char> buf(d.serialized_size());
+  madness::archive::BufferOutputArchive out(buf.data(), buf.size());
+  BOOST_CHECK_THROW(out & d, TA::Exception);
+  // other tiles of the store are unaffected, and so is this one once the
+  // data is back
+  D const d2(t, store);
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(d2), t));
+  byte ^= 1;
+  BOOST_REQUIRE(::pwrite(store_fd, &byte, 1, last) == 1);
+  BOOST_CHECK(same_tile(static_cast<TA::Tensor<double>>(d), t));
 }
 
 // a tile's space is given back when its last copy is gone
@@ -1252,7 +1421,7 @@ BOOST_FIXTURE_TEST_CASE(set_with_future_assigned_after_fence,
 BOOST_AUTO_TEST_CASE(store_failed_write_releases_space, TA_UT_LABEL_SERIAL) {
   TA::detail::DiskStore store;
   auto const a = pattern(100, 1);
-  store.append(a.data(), a.size());
+  store.write(a.data(), a.size());
   struct rlimit old_limit;
   BOOST_REQUIRE(::getrlimit(RLIMIT_FSIZE, &old_limit) == 0);
   auto const old_handler = ::signal(SIGXFSZ, SIG_IGN);
@@ -1262,7 +1431,7 @@ BOOST_AUTO_TEST_CASE(store_failed_write_releases_space, TA_UT_LABEL_SERIAL) {
   auto const big = pattern(5000, 2);
   bool threw = false;
   try {
-    store.append(big.data(), big.size());
+    store.write(big.data(), big.size());
   } catch (TA::Exception&) {
     threw = true;
   }
@@ -1272,7 +1441,7 @@ BOOST_AUTO_TEST_CASE(store_failed_write_releases_space, TA_UT_LABEL_SERIAL) {
   BOOST_CHECK_EQUAL(store.bytes_in_use(), 100u);
   // the store is still usable, and the space is available again
   auto const c = pattern(200, 3);
-  const auto oc = store.append(c.data(), c.size());
+  const auto oc = store.write(c.data(), c.size());
   BOOST_CHECK_EQUAL(oc, 100u);
   std::vector<char> r(200);
   store.read(oc, r.data(), 200);
