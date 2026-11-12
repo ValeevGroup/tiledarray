@@ -1,0 +1,1364 @@
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2026  Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Ajay Melekamburath
+ *  Department of Chemistry, Virginia Tech
+ */
+
+#include <TiledArray/config.h>
+
+#ifdef TILEDARRAY_HAS_DEVICE
+
+#include <TiledArray/device/blas.h>
+#include <TiledArray/device/tensor.h>
+#include <TiledArray/einsum/tiledarray.h>
+#include <tiledarray.h>
+
+#include <range_fixture.h>
+#include <atomic>
+#include <random>
+#include <thread>
+
+#include "unit_test_config.h"
+
+using namespace TiledArray;
+
+// Expression-engine tests for the native UMTensor tile type (TA::Tensor
+// backed by device_um_allocator).
+//
+// All correctness checks use a host side TiledArray::Tensor<double> mirror
+// of the input arrays. The expression runs through the engine for both sides;
+// we then compare elements after.
+
+struct DeviceTensorExpressionsFixture : public TiledRangeFixture {
+  using TileD = UMTensor<double>;
+  using TArrayD = TiledArray::DistArray<TileD, TA::DensePolicy>;
+
+  using HostTile = TiledArray::Tensor<double>;
+  using HostArray = TiledArray::DistArray<HostTile, TA::DensePolicy>;
+
+  static constexpr double tolerance = 5.0e-14;
+
+  DeviceTensorExpressionsFixture()
+      : a(*GlobalFixture::world, tr),
+        b(*GlobalFixture::world, tr),
+        c(*GlobalFixture::world, tr),
+        a_h(*GlobalFixture::world, tr),
+        b_h(*GlobalFixture::world, tr),
+        c_h(*GlobalFixture::world, tr) {
+    fill_with_seed(a, a_h, 7);
+    fill_with_seed(b, b_h, 11);
+    GlobalFixture::world->gop.fence();
+  }
+
+  ~DeviceTensorExpressionsFixture() { GlobalFixture::world->gop.fence(); }
+
+  // Fill paired device + host arrays with the same deterministic data so
+  // the host array is an exact reference for the device expression result.
+  template <typename DeviceArray, typename HostArrayT>
+  static void fill_with_seed(DeviceArray& d, HostArrayT& h, int seed) {
+    auto pmap_d = d.pmap();
+    for (auto it = pmap_d->begin(); it != pmap_d->end(); ++it) {
+      const auto tile_range = d.trange().make_tile_range(*it);
+      const auto vol = tile_range.volume();
+
+      std::mt19937 rng(seed + static_cast<unsigned>(*it));
+      std::uniform_real_distribution<double> dist(-5.0, 5.0);
+
+      typename DeviceArray::value_type d_tile(tile_range);
+      typename HostArrayT::value_type h_tile(tile_range);
+      for (std::size_t k = 0; k < vol; ++k) {
+        const double v = dist(rng);
+        d_tile.data()[k] = v;
+        h_tile.data()[k] = v;
+      }
+      d.set(*it, d_tile);
+      h.set(*it, h_tile);
+    }
+  }
+
+  // Compare every element of two DistArrays with matching tiles: relative to
+  // the element above 1, absolute below, since summation order (thread count,
+  // reduction order) moves near-cancelling elements by ~1e-15 absolute.
+  template <typename DeviceArrayT, typename HostArrayT>
+  static void check_close(const DeviceArrayT& d, const HostArrayT& h_ref,
+                          double tol) {
+    GlobalFixture::world->gop.fence();
+    for (auto it = d.begin(); it != d.end(); ++it) {
+      auto d_tile = it->get();
+      auto h_tile = h_ref.find(it.index()).get();
+      BOOST_REQUIRE_EQUAL(d_tile.range(), h_tile.range());
+      for (std::size_t k = 0; k < d_tile.size(); ++k) {
+        using std::abs;
+        BOOST_CHECK_SMALL(abs(d_tile.data()[k] - h_tile.data()[k]),
+                          tol * std::max(1.0, abs(h_tile.data()[k])));
+      }
+    }
+  }
+
+  // eval() computed by the host code, on the same UMTensor operands; compare
+  // with a plain eval() to check the device path against the host path
+  template <typename Eval>
+  static auto on_host(Eval&& eval) {
+    ExecutionSpaceScope host(ExecutionSpace::Host);
+    auto result = eval();
+    GlobalFixture::world->gop.fence();
+    return result;
+  }
+
+  TArrayD a, b, c;
+  HostArray a_h, b_h, c_h;
+};
+
+BOOST_FIXTURE_TEST_SUITE(device_tensor_expressions_suite,
+                         DeviceTensorExpressionsFixture)
+
+BOOST_AUTO_TEST_CASE(is_device_tile_classification) {
+  using detail::is_device_tile_v;
+  BOOST_CHECK(is_device_tile_v<UMTensor<double>>);
+  BOOST_CHECK(is_device_tile_v<UMTensor<float>>);
+  BOOST_CHECK(is_device_tile_v<UMTensor<std::complex<double>>>);
+  BOOST_CHECK(is_device_tile_v<TiledArray::Tile<UMTensor<double>>>);
+  BOOST_CHECK(is_device_tile_v<typename TArrayD::value_type>);
+  BOOST_CHECK(!is_device_tile_v<HostTile>);
+  // no device kernels for integers, so their tile ops skip the device task
+  BOOST_CHECK(!is_device_tile_v<UMTensor<int>>);
+
+  // the device branches in TA::Tensor are reachable only through this trait
+  static_assert(device_executable_v<UMTensor<double>>);
+  static_assert(device_executable_v<UMTensor<std::complex<float>>>);
+  static_assert(!device_executable_v<UMTensor<int>>);
+  static_assert(!device_executable_v<HostTile>);
+  static_assert(!device_executable_v<UMTensor<double>, HostTile>);
+}
+
+BOOST_AUTO_TEST_CASE(direct_assign) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c"));
+  c_h("a,b,c") = a_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a"));
+  c_h("a,b,c") = a_h("c,b,a");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scale) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2.5 * a("a,b,c"));
+  c_h("a,b,c") = 2.5 * a_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(neg) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = -a("a,b,c"));
+  c_h("a,b,c") = -a_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(add) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") + b("a,b,c"));
+  c_h("a,b,c") = a_h("a,b,c") + b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(add_with_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a") + b("a,b,c"));
+  c_h("a,b,c") = a_h("c,b,a") + b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(add_to) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c"));
+  c_h("a,b,c") = a_h("a,b,c");
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") += b("a,b,c"));
+  c_h("a,b,c") += b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(subt) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") - b("a,b,c"));
+  c_h("a,b,c") = a_h("a,b,c") - b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(subt_to) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c"));
+  c_h("a,b,c") = a_h("a,b,c");
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") -= b("a,b,c"));
+  c_h("a,b,c") -= b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scaled_subt_right) {
+  // Isolate: scale-on-right only. `c = a - 3*b`.
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") - 3.0 * b("a,b,c"));
+  c_h("a,b,c") = a_h("a,b,c") - 3.0 * b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scaled_subt_left) {
+  // Isolate: scale-on-left only. `c = 2*a - b`.
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2.0 * a("a,b,c") - b("a,b,c"));
+  c_h("a,b,c") = 2.0 * a_h("a,b,c") - b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(mixed_linear_combination) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2.0 * a("a,b,c") - 3.0 * b("a,b,c"));
+  c_h("a,b,c") = 2.0 * a_h("a,b,c") - 3.0 * b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(hadamard) {
+  // C(ijk) = A(ijk) .* B(ijk), element-wise multiplication
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * b("a,b,c"));
+  c_h("a,b,c") = a_h("a,b,c") * b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(contraction) {
+  // C(i,k) = A(i,j) * B(j,k) requires rank-2 arrays; build them on the fly
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  TArrayD c2;
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  HostArray c2_h;
+  fill_with_seed(a2, a2_h, 13);
+  fill_with_seed(b2, b2_h, 17);
+  GlobalFixture::world->gop.fence();
+
+  BOOST_REQUIRE_NO_THROW(c2("i,k") = a2("i,j") * b2("j,k"));
+  c2_h("i,k") = a2_h("i,j") * b2_h("j,k");
+  // GEMM tolerance: float-add reordering between BLAS and CPU Eigen path.
+  check_close(c2, c2_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(norm2_value) {
+  const double dev_norm = TA::norm2(a);
+  const double host_norm = TA::norm2(a_h);
+  GlobalFixture::world->gop.fence();
+  BOOST_CHECK_CLOSE_FRACTION(dev_norm, host_norm, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(dot_value) {
+  // dot expression: scalar = a . b
+  double dev_dot = static_cast<double>(a("a,b,c") * b("a,b,c"));
+  double host_dot = static_cast<double>(a_h("a,b,c") * b_h("a,b,c"));
+  GlobalFixture::world->gop.fence();
+  BOOST_CHECK_CLOSE_FRACTION(dev_dot, host_dot, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(reduce_factories) {
+  // Expression-level reductions through the DSL: scalar = a("...").reduce()
+  GlobalFixture::world->gop.fence();
+
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").sum().get(), a_h("a,b,c").sum().get(),
+                             1.0e-12);
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").squared_norm().get(),
+                             a_h("a,b,c").squared_norm().get(), 1.0e-12);
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").norm().get(), a_h("a,b,c").norm().get(),
+                             1.0e-12);
+  BOOST_CHECK_EQUAL(a("a,b,c").min().get(), a_h("a,b,c").min().get());
+  BOOST_CHECK_EQUAL(a("a,b,c").max().get(), a_h("a,b,c").max().get());
+  BOOST_CHECK_EQUAL(a("a,b,c").abs_min().get(), a_h("a,b,c").abs_min().get());
+  BOOST_CHECK_EQUAL(a("a,b,c").abs_max().get(), a_h("a,b,c").abs_max().get());
+  // over one 2x2x2 tile: the product of the whole array overflows
+  const std::array<int, 3> lo{0, 0, 0}, up{1, 1, 1};
+  BOOST_CHECK_CLOSE_FRACTION(a("a,b,c").block(lo, up).product().get(),
+                             a_h("a,b,c").block(lo, up).product().get(),
+                             1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(reuse_stress) {
+  const double host_ref = static_cast<double>(a_h("a,b,c") * a_h("a,b,c"));
+  GlobalFixture::world->gop.fence();
+  for (int iter = 0; iter < 8; ++iter) {
+    const double d = static_cast<double>(a("a,b,c") * a("a,b,c"));
+    GlobalFixture::world->gop.fence();
+    BOOST_CHECK_CLOSE_FRACTION(d, host_ref, 1.0e-12);
+  }
+}
+
+/// In-place expression operators (+=, -=, *=)
+BOOST_AUTO_TEST_CASE(plus_equal_expr) {
+  c("a,b,c") = a("a,b,c");
+  c_h("a,b,c") = a_h("a,b,c");
+  c("a,b,c") += b("a,b,c");
+  c_h("a,b,c") += b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(plus_equal_with_permute) {
+  c("a,b,c") = a("a,b,c");
+  c_h("a,b,c") = a_h("a,b,c");
+  c("a,b,c") += b("c,b,a");
+  c_h("a,b,c") += b_h("c,b,a");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(minus_equal_expr) {
+  c("a,b,c") = a("a,b,c");
+  c_h("a,b,c") = a_h("a,b,c");
+  c("a,b,c") -= b("a,b,c");
+  c_h("a,b,c") -= b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(times_equal_expr) {
+  c("a,b,c") = a("a,b,c");
+  c_h("a,b,c") = a_h("a,b,c");
+  c("a,b,c") *= b("a,b,c");
+  c_h("a,b,c") *= b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(neg_scaled_sum) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = -(2.0 * (a("a,b,c") + b("a,b,c"))));
+  c_h("a,b,c") = -(2.0 * (a_h("a,b,c") + b_h("a,b,c")));
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(neg_permuted) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = -a("c,b,a"));
+  c_h("a,b,c") = -a_h("c,b,a");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scale_with_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2.5 * a("c,b,a"));
+  c_h("a,b,c") = 2.5 * a_h("c,b,a");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(subt_with_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a") - b("a,b,c"));
+  c_h("a,b,c") = a_h("c,b,a") - b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(mult_with_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a") * b("a,b,c"));
+  c_h("a,b,c") = a_h("c,b,a") * b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+// .conj() on a real-valued tensor is a compile-time no-op in
+// `apply_scale_factor`, but the expression DSL still has to parse and route
+// through the conjugation factory. This verifies it does. Complex-typed
+// fixtures are out of scope here.
+BOOST_AUTO_TEST_CASE(conj_real) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c").conj());
+  c_h("a,b,c") = a_h("a,b,c").conj();
+  check_close(c, c_h, tolerance);
+}
+
+/// Multi-step chains
+BOOST_AUTO_TEST_CASE(multi_step_chain) {
+  TArrayD t(*GlobalFixture::world, tr);
+  HostArray t_h(*GlobalFixture::world, tr);
+  t("a,b,c") = a("a,b,c") + b("a,b,c");
+  t_h("a,b,c") = a_h("a,b,c") + b_h("a,b,c");
+  c("a,b,c") = 2.0 * t("a,b,c") - a("a,b,c");
+  c_h("a,b,c") = 2.0 * t_h("a,b,c") - a_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+/// Block expressions
+BOOST_AUTO_TEST_CASE(block_assign) {
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+
+  // Result range matches the block's element range; build small companion
+  // arrays to receive the result.
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  blk_d("a,b,c") = a("a,b,c").block(lo, up);
+  blk_h("a,b,c") = a_h("a,b,c").block(lo, up);
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(block_add_then_scale) {
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  blk_d("a,b,c") = 2.0 * (a("a,b,c").block(lo, up) + b("a,b,c").block(lo, up));
+  blk_h("a,b,c") =
+      2.0 * (a_h("a,b,c").block(lo, up) + b_h("a,b,c").block(lo, up));
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(block_accumulate) {
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  blk_d("a,b,c") = a("a,b,c").block(lo, up);
+  blk_h("a,b,c") = a_h("a,b,c").block(lo, up);
+  blk_d("a,b,c") += b("a,b,c").block(lo, up);
+  blk_h("a,b,c") += b_h("a,b,c").block(lo, up);
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(const_block) {
+  const auto& ca = a;
+  const auto& ca_h = a_h;
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  blk_d("a,b,c") = ca("a,b,c").block(lo, up);
+  blk_h("a,b,c") = ca_h("a,b,c").block(lo, up);
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scal_block) {
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  blk_d("a,b,c") = 2.0 * a("a,b,c").block(lo, up);
+  blk_h("a,b,c") = 2.0 * a_h("a,b,c").block(lo, up);
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(permute_block) {
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  const TiledRange ctr{TiledRange1{lo[0], up[0]}, TiledRange1{lo[1], up[1]},
+                       TiledRange1{lo[2], up[2]}};
+  TArrayD blk_d(*GlobalFixture::world, ctr);
+  HostArray blk_h(*GlobalFixture::world, ctr);
+  // Permute the source annotation before slicing.
+  blk_d("a,b,c") = a("c,b,a").block(lo, up);
+  blk_h("a,b,c") = a_h("c,b,a").block(lo, up);
+  check_close(blk_d, blk_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(assign_sub_block) {
+  c.fill_local(0.0);
+  c_h.fill_local(0.0);
+  GlobalFixture::world->gop.fence();
+
+  const std::array<int, 3> lo{3, 3, 3};
+  const std::array<int, 3> up{5, 5, 5};
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block(lo, up) = a("a,b,c").block(lo, up));
+  c_h("a,b,c").block(lo, up) = a_h("a,b,c").block(lo, up);
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(block_contract) {
+  const TiledRange tr_w{tr.data()[0], tr.data()[1]};
+  TArrayD w(*GlobalFixture::world, tr_w);
+  HostArray w_h(*GlobalFixture::world, tr_w);
+  w.fill_local(0.0);
+  w_h.fill_local(0.0);
+  GlobalFixture::world->gop.fence();
+
+  const std::array<int, 3> alo{3, 2, 3};
+  const std::array<int, 3> aup{5, 5, 5};
+  const std::array<int, 3> blo{2, 3, 3};
+  const std::array<int, 3> bup{5, 5, 5};
+
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block(alo, aup) *
+                                    b("c,d,b").block(blo, bup));
+  w_h("a,b") = a_h("a,c,d").block(alo, aup) * b_h("c,d,b").block(blo, bup);
+  check_close(w, w_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(block_permute_contract) {
+  const TiledRange tr_w{tr.data()[0], tr.data()[1]};
+  TArrayD w(*GlobalFixture::world, tr_w);
+  HostArray w_h(*GlobalFixture::world, tr_w);
+  w.fill_local(0.0);
+  w_h.fill_local(0.0);
+  GlobalFixture::world->gop.fence();
+
+  const std::array<int, 3> alo{3, 3, 2};
+  const std::array<int, 3> aup{5, 5, 5};
+  const std::array<int, 3> blo{2, 3, 3};
+  const std::array<int, 3> bup{5, 5, 5};
+
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,d,c").block(alo, aup) *
+                                    b("c,d,b").block(blo, bup));
+  w_h("a,b") = a_h("a,d,c").block(alo, aup) * b_h("c,d,b").block(blo, bup);
+  check_close(w, w_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(outer_product) {
+  const TiledRange tr_u{tr.data()[0]};
+  const TiledRange tr_v{tr.data()[1]};
+  const TiledRange tr_w{tr.data()[0], tr.data()[1]};
+
+  TArrayD u(*GlobalFixture::world, tr_u);
+  TArrayD v(*GlobalFixture::world, tr_v);
+  TArrayD w;
+  HostArray u_h(*GlobalFixture::world, tr_u);
+  HostArray v_h(*GlobalFixture::world, tr_v);
+  HostArray w_h;
+  fill_with_seed(u, u_h, 31);
+  fill_with_seed(v, v_h, 37);
+  GlobalFixture::world->gop.fence();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = u("i") * v("j"));
+  w_h("i,j") = u_h("i") * v_h("j");
+  check_close(w, w_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(contraction_permuted_result) {
+  // c(k,i) = a(i,j) * b(j,k)
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  TArrayD c2;
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  HostArray c2_h;
+  fill_with_seed(a2, a2_h, 41);
+  fill_with_seed(b2, b2_h, 43);
+  GlobalFixture::world->gop.fence();
+  BOOST_REQUIRE_NO_THROW(c2("k,i") = a2("i,j") * b2("j,k"));
+  c2_h("k,i") = a2_h("i,j") * b2_h("j,k");
+  // Looser tolerance for permuted GEMM: BLAS sums in different
+  // tile-internal order than the CPU reference path.
+  check_close(c2, c2_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(contraction_with_transpose_on_right) {
+  // c(i,k) = a(i,j) * b(k,j)
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  TArrayD c2;
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  HostArray c2_h;
+  fill_with_seed(a2, a2_h, 47);
+  fill_with_seed(b2, b2_h, 53);
+  GlobalFixture::world->gop.fence();
+  BOOST_REQUIRE_NO_THROW(c2("i,k") = a2("i,j") * b2("k,j"));
+  c2_h("i,k") = a2_h("i,j") * b2_h("k,j");
+  check_close(c2, c2_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(contraction_rank4_via_two_indices) {
+  // r(a,c) = t(a,b,k,l) * v(c,b,k,l)
+  const TiledRange tr4{tr.data()[0], tr.data()[1], tr.data()[2], tr.data()[2]};
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD t(*GlobalFixture::world, tr4);
+  TArrayD v(*GlobalFixture::world, tr4);
+  TArrayD r;
+  HostArray t_h(*GlobalFixture::world, tr4);
+  HostArray v_h(*GlobalFixture::world, tr4);
+  HostArray r_h;
+  fill_with_seed(t, t_h, 59);
+  fill_with_seed(v, v_h, 61);
+  GlobalFixture::world->gop.fence();
+  BOOST_REQUIRE_NO_THROW(r("a,c") = t("a,b,k,l") * v("c,b,k,l"));
+  r_h("a,c") = t_h("a,b,k,l") * v_h("c,b,k,l");
+  check_close(r, r_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(execution_space_scope) {
+  BOOST_CHECK(execution_space() == ExecutionSpace::Device);
+  {
+    ExecutionSpaceScope host(ExecutionSpace::Host);
+    BOOST_CHECK(execution_space() == ExecutionSpace::Host);
+    {
+      ExecutionSpaceScope device(ExecutionSpace::Device);
+      BOOST_CHECK(execution_space() == ExecutionSpace::Device);
+    }
+    BOOST_CHECK(execution_space() == ExecutionSpace::Host);
+  }
+  BOOST_CHECK(execution_space() == ExecutionSpace::Device);
+}
+
+BOOST_AUTO_TEST_CASE(mixed_allocator_add) {
+  // a host operand keeps the op on the host, whatever execution_space() says
+  const auto range = tr.make_tile_range(0);
+  TileD u(range);
+  HostTile h(range);
+  for (std::size_t k = 0; k < range.volume(); ++k) {
+    u.data()[k] = 0.5 * k;
+    h.data()[k] = 1.0 + k;
+  }
+  const auto r = u.add(h);
+  for (std::size_t k = 0; k < range.volume(); ++k)
+    BOOST_CHECK_EQUAL(r.data()[k], u.data()[k] + h.data()[k]);
+}
+
+BOOST_AUTO_TEST_CASE(complex_expressions) {
+  using Z = std::complex<double>;
+  using ZArray = DistArray<UMTensor<Z>, DensePolicy>;
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  ZArray x(*GlobalFixture::world, tr2), y(*GlobalFixture::world, tr2);
+  std::mt19937 rng(23);
+  std::uniform_real_distribution<double> dist(-1.0, 1.0);
+  // the calling thread fills every tile, so rng needs no locking
+  for (auto* array : {&x, &y})
+    array->init_tiles<HostExecutor::Thread>([&](const Range& range) {
+      UMTensor<Z> tile(range);
+      for (std::size_t k = 0; k < range.volume(); ++k)
+        tile.data()[k] = Z(dist(rng), dist(rng));
+      return tile;
+    });
+  GlobalFixture::world->gop.fence();
+
+  const Z s(0.5, -2.0);
+  auto expr = [&] {
+    ZArray z;
+    z("i,j") = s * (x("i,j") + y("j,i")) - x("i,k") * y("k,j");
+    return z;
+  };
+  check_close(expr(), on_host(expr), 1.0e-12);
+
+  // conjugation has no device kernel: the device branch synchronizes, then
+  // runs the host code
+  auto conj = [&] {
+    ZArray z;
+    z("i,j") = x("i,j").conj();
+    return z;
+  };
+  auto scaled_conj = [&] {
+    ZArray z;
+    z("i,j") = 2.0 * x("i,j").conj();
+    return z;
+  };
+  check_close(conj(), on_host(conj), 1.0e-12);
+  check_close(scaled_conj(), on_host(scaled_conj), 1.0e-12);
+
+  // dot does not conjugate, inner_product conjugates its left operand
+  auto dot = [&] { return x("i,j").dot(y("i,j")).get(); };
+  auto inner = [&] { return x("i,j").inner_product(y("i,j")).get(); };
+  auto norm = [&] { return x("i,j").norm().get(); };
+  BOOST_CHECK_SMALL(std::abs(dot() - on_host(dot)), 1.0e-12);
+  BOOST_CHECK_SMALL(std::abs(inner() - on_host(inner)), 1.0e-12);
+  BOOST_CHECK_CLOSE_FRACTION(norm(), on_host(norm), 1.0e-12);
+  BOOST_CHECK(std::abs(dot() - inner()) > 1.0e-6);  // the two really differ
+}
+
+BOOST_AUTO_TEST_CASE(general_product_batched) {
+  // b is a fused (Hadamard) index, so BatchedContractReduce folds it into
+  // nbatch > 1 and gemm must run once per batch
+  auto expr = [&] {
+    TArrayD r;
+    r("b,i,k") = a("b,i,j") * b("b,j,k");
+    return r;
+  };
+  check_close(expr(), on_host(expr), 1.0e-12);
+}
+
+/// TA::einsum
+BOOST_AUTO_TEST_CASE(einsum_matmul) {
+  // c(i,k) = a(i,j) * b(j,k) via einsum
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  fill_with_seed(a2, a2_h, 67);
+  fill_with_seed(b2, b2_h, 71);
+  GlobalFixture::world->gop.fence();
+
+  auto c2 = TiledArray::einsum(a2("i,j"), b2("j,k"), "i,k");
+  auto c2_h = TiledArray::einsum(a2_h("i,j"), b2_h("j,k"), "i,k");
+  check_close(c2, c2_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(einsum_hadamard) {
+  // c(i,j) = a(i,j) * b(i,j) via einsum: Hadamard / element-wise multiply
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  fill_with_seed(a2, a2_h, 73);
+  fill_with_seed(b2, b2_h, 79);
+  GlobalFixture::world->gop.fence();
+
+  auto c2 = TiledArray::einsum(a2("i,j"), b2("i,j"), "i,j");
+  auto c2_h = TiledArray::einsum(a2_h("i,j"), b2_h("i,j"), "i,j");
+  check_close(c2, c2_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(einsum_contraction_over_two_indices) {
+  // c(a,c) = t(a,b,k) * v(c,b,k) via einsum: contraction over (b, k),
+  const TiledRange tr3{tr.data()[0], tr.data()[1], tr.data()[2]};
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD t(*GlobalFixture::world, tr3);
+  TArrayD v(*GlobalFixture::world, tr3);
+  HostArray t_h(*GlobalFixture::world, tr3);
+  HostArray v_h(*GlobalFixture::world, tr3);
+  fill_with_seed(t, t_h, 83);
+  fill_with_seed(v, v_h, 89);
+  GlobalFixture::world->gop.fence();
+
+  auto r = TiledArray::einsum(t("a,b,k"), v("c,b,k"), "a,c");
+  auto r_h = TiledArray::einsum(t_h("a,b,k"), v_h("c,b,k"), "a,c");
+  check_close(r, r_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(rank2_transpose) {
+  // c(j,i) = a(i,j)
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  fill_with_seed(a2, a2_h, 97);
+  GlobalFixture::world->gop.fence();
+
+  TArrayD a2T;
+  HostArray a2T_h;
+  a2T("j,i") = a2("i,j");
+  a2T_h("j,i") = a2_h("i,j");
+  check_close(a2T, a2T_h, tolerance);
+}
+
+/// Scaled and permuted variants of the elementary arithmetic ops.
+BOOST_AUTO_TEST_CASE(scale_add) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5.0 * (a("a,b,c") + b("a,b,c")));
+  c_h("a,b,c") = 5.0 * (a_h("a,b,c") + b_h("a,b,c"));
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scale_add_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =
+                             5.0 * (2.0 * a("c,b,a")) + (3.0 * b("a,b,c")));
+  c_h("a,b,c") = 5.0 * (2.0 * a_h("c,b,a")) + (3.0 * b_h("a,b,c"));
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(subt_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a") - b("a,b,c"));
+  c_h("a,b,c") = a_h("c,b,a") - b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scale_subt) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5.0 * (a("a,b,c") - b("a,b,c")));
+  c_h("a,b,c") = 5.0 * (a_h("a,b,c") - b_h("a,b,c"));
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scale_subt_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =
+                             5.0 * (2.0 * a("c,b,a")) - (3.0 * b("a,b,c")));
+  c_h("a,b,c") = 5.0 * (2.0 * a_h("c,b,a")) - (3.0 * b_h("a,b,c"));
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(mult_permute) {
+  // Hadamard with permutation on left operand.
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a") * b("a,b,c"));
+  c_h("a,b,c") = a_h("c,b,a") * b_h("a,b,c");
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scale_mult) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5.0 * (a("a,b,c") * b("a,b,c")));
+  c_h("a,b,c") = 5.0 * (a_h("a,b,c") * b_h("a,b,c"));
+  check_close(c, c_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(scale_mult_permute) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =
+                             5.0 * (2.0 * a("c,b,a")) * (3.0 * b("a,b,c")));
+  c_h("a,b,c") = 5.0 * (2.0 * a_h("c,b,a")) * (3.0 * b_h("a,b,c"));
+  check_close(c, c_h, tolerance);
+}
+
+/// Scaled contraction variants
+BOOST_AUTO_TEST_CASE(scale_cont) {
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  TArrayD c2;
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  HostArray c2_h;
+  fill_with_seed(a2, a2_h, 101);
+  fill_with_seed(b2, b2_h, 103);
+  GlobalFixture::world->gop.fence();
+
+  BOOST_REQUIRE_NO_THROW(c2("i,k") = 5.0 * (a2("i,j") * b2("j,k")));
+  c2_h("i,k") = 5.0 * (a2_h("i,j") * b2_h("j,k"));
+  check_close(c2, c2_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(scale_cont_permute) {
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  TArrayD c2;
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  HostArray c2_h;
+  fill_with_seed(a2, a2_h, 107);
+  fill_with_seed(b2, b2_h, 109);
+  GlobalFixture::world->gop.fence();
+
+  // c(k,i) = 5 * a(i,j) * b(j,k)
+  BOOST_REQUIRE_NO_THROW(c2("k,i") = 5.0 * (a2("i,j") * b2("j,k")));
+  c2_h("k,i") = 5.0 * (a2_h("i,j") * b2_h("j,k"));
+  check_close(c2, c2_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(scale_cont_with_input_transpose) {
+  // 5 * a(i,j) * b(k,j)
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  TArrayD c2;
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  HostArray c2_h;
+  fill_with_seed(a2, a2_h, 113);
+  fill_with_seed(b2, b2_h, 127);
+  GlobalFixture::world->gop.fence();
+
+  BOOST_REQUIRE_NO_THROW(c2("i,k") = 5.0 * (a2("i,j") * b2("k,j")));
+  c2_h("i,k") = 5.0 * (a2_h("i,j") * b2_h("k,j"));
+  check_close(c2, c2_h, 1.0e-12);
+}
+
+/// Non-uniform tile sizes for contraction.
+BOOST_AUTO_TEST_CASE(cont_non_uniform_split_inner) {
+  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
+  std::array<std::size_t, 2> tiling2 = {{0, 40}};
+  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
+  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
+  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_2, tr1_1, tr1_1}};
+  TiledRange tr_irr(tiling4.begin(), tiling4.end());
+
+  TArrayD lhs(*GlobalFixture::world, tr_irr);
+  TArrayD rhs(*GlobalFixture::world, tr_irr);
+  TArrayD out;
+  HostArray lhs_h(*GlobalFixture::world, tr_irr);
+  HostArray rhs_h(*GlobalFixture::world, tr_irr);
+  HostArray out_h;
+  fill_with_seed(lhs, lhs_h, 131);
+  fill_with_seed(rhs, rhs_h, 137);
+  GlobalFixture::world->gop.fence();
+
+  BOOST_REQUIRE_NO_THROW(out("x,y") = 5.0 * (lhs("x,i,j,k") * rhs("y,i,j,k")));
+  out_h("x,y") = 5.0 * (lhs_h("x,i,j,k") * rhs_h("y,i,j,k"));
+  check_close(out, out_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(cont_non_uniform_split_two_inner) {
+  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
+  std::array<std::size_t, 2> tiling2 = {{0, 40}};
+  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
+  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
+  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_1, tr1_2, tr1_2}};
+  TiledRange tr_irr(tiling4.begin(), tiling4.end());
+
+  TArrayD lhs(*GlobalFixture::world, tr_irr);
+  TArrayD rhs(*GlobalFixture::world, tr_irr);
+  TArrayD out;
+  HostArray lhs_h(*GlobalFixture::world, tr_irr);
+  HostArray rhs_h(*GlobalFixture::world, tr_irr);
+  HostArray out_h;
+  fill_with_seed(lhs, lhs_h, 139);
+  fill_with_seed(rhs, rhs_h, 149);
+  GlobalFixture::world->gop.fence();
+
+  BOOST_REQUIRE_NO_THROW(out("x,y") = 5.0 * (lhs("x,i,j,k") * rhs("y,i,j,k")));
+  out_h("x,y") = 5.0 * (lhs_h("x,i,j,k") * rhs_h("y,i,j,k"));
+  check_close(out, out_h, 1.0e-12);
+}
+
+/// Contraction-plus-reduction
+BOOST_AUTO_TEST_CASE(cont_plus_reduce) {
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  fill_with_seed(a2, a2_h, 151);
+  fill_with_seed(b2, b2_h, 157);
+  GlobalFixture::world->gop.fence();
+
+  TArrayD c2;
+  HostArray c2_h;
+  c2("i,k") = a2("i,j") * b2("j,k");
+  c2_h("i,k") = a2_h("i,j") * b2_h("j,k");
+  const double dev_n = TA::norm2(c2);
+  const double host_n = TA::norm2(c2_h);
+  GlobalFixture::world->gop.fence();
+  BOOST_CHECK_CLOSE_FRACTION(dev_n, host_n, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  TArrayD c2(*GlobalFixture::world, TiledRange{tr.data()[0], tr.data()[1]});
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  HostArray c2_h(*GlobalFixture::world, TiledRange{tr.data()[0], tr.data()[1]});
+  fill_with_seed(a2, a2_h, 163);
+  fill_with_seed(b2, b2_h, 167);
+  c2.fill_local(0.0);
+  c2_h.fill_local(0.0);
+  GlobalFixture::world->gop.fence();
+
+  BOOST_REQUIRE_NO_THROW(c2("i,k").no_alias() = a2("i,j") * b2("j,k"));
+  c2_h("i,k").no_alias() = a2_h("i,j") * b2_h("j,k");
+  check_close(c2, c2_h, 1.0e-12);
+  const double dev_n = TA::norm2(c2);
+  const double host_n = TA::norm2(c2_h);
+  GlobalFixture::world->gop.fence();
+  BOOST_CHECK_CLOSE_FRACTION(dev_n, host_n, 1.0e-12);
+}
+
+/// Dot-product variants
+BOOST_AUTO_TEST_CASE(dot_permute) {
+  const double dev_d = static_cast<double>(a("a,b,c") * b("c,b,a"));
+  const double host_d = static_cast<double>(a_h("a,b,c") * b_h("c,b,a"));
+  GlobalFixture::world->gop.fence();
+  // Looser tolerance because permuted dot reads tiles in a different
+  // order, so the partial-sum accumulation order differs.
+  BOOST_CHECK_CLOSE_FRACTION(dev_d, host_d, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(dot_contr) {
+  // Dot of two contraction expressions: scalar = (a*b) . (b*a).
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+  TArrayD a2(*GlobalFixture::world, tr2);
+  TArrayD b2(*GlobalFixture::world, tr2);
+  HostArray a2_h(*GlobalFixture::world, tr2);
+  HostArray b2_h(*GlobalFixture::world, tr2);
+  fill_with_seed(a2, a2_h, 173);
+  fill_with_seed(b2, b2_h, 179);
+  GlobalFixture::world->gop.fence();
+
+  const double dev_d =
+      static_cast<double>((a2("i,j") * b2("j,k")) * (a2("i,j") * b2("j,k")));
+  const double host_d = static_cast<double>((a2_h("i,j") * b2_h("j,k")) *
+                                            (a2_h("i,j") * b2_h("j,k")));
+  GlobalFixture::world->gop.fence();
+  BOOST_CHECK_CLOSE_FRACTION(dev_d, host_d, 1.0e-12);
+}
+
+/// Archive round-trip, host/device array conversions
+BOOST_AUTO_TEST_CASE(serialize_um_tensor) {
+  // Single-tile round-trip: build a UMTensor, write to a buffer archive,
+  // read into a fresh UMTensor, compare element-wise. The Store side
+  // forces a host prefetch so the archive sees coherent data.
+  TileD t(TiledArray::Range{4, 4});
+  for (std::size_t k = 0; k < t.size(); ++k)
+    t.data()[k] = static_cast<double>(k) - 5.0;
+
+  const std::size_t buf_size =
+      (t.range().volume() * sizeof(double) +
+       sizeof(std::size_t) * (t.range().rank() * 4 + 4)) *
+      2;
+  std::vector<unsigned char> buf(buf_size);
+
+  madness::archive::BufferOutputArchive oar(buf.data(), buf.size());
+  BOOST_REQUIRE_NO_THROW(oar & t);
+  const std::size_t nbyte = oar.size();
+  oar.close();
+
+  TileD u;
+  madness::archive::BufferInputArchive iar(buf.data(), nbyte);
+  BOOST_REQUIRE_NO_THROW(iar & u);
+  iar.close();
+
+  BOOST_REQUIRE_EQUAL(t.range(), u.range());
+  for (std::size_t k = 0; k < t.size(); ++k)
+    BOOST_CHECK_CLOSE(t.data()[k], u.data()[k], 1.0e-15);
+}
+
+BOOST_AUTO_TEST_CASE(serialize_um_tensor_empty) {
+  // Empty-tensor round-trip: the empty branch in Store/Load.
+  TileD t;
+  std::vector<unsigned char> buf(1024);
+  madness::archive::BufferOutputArchive oar(buf.data(), buf.size());
+  BOOST_REQUIRE_NO_THROW(oar & t);
+  const std::size_t nbyte = oar.size();
+  oar.close();
+
+  TileD u(TiledArray::Range{2, 2});  // start non-empty so load has work
+  madness::archive::BufferInputArchive iar(buf.data(), nbyte);
+  BOOST_REQUIRE_NO_THROW(iar & u);
+  iar.close();
+  BOOST_CHECK(u.empty());
+}
+
+BOOST_AUTO_TEST_CASE(um_to_ta_round_trip) {
+  // UMTensor array -> host array -> UMTensor array, verify element-wise
+  // against the original both at the host and device endpoints.
+  HostArray host_view =
+      TiledArray::um_tensor_to_ta_tensor<TileD, HostTile, TA::DensePolicy>(a);
+  GlobalFixture::world->gop.fence();
+  // Compare host_view directly against a_h
+  check_close(host_view, a_h, tolerance);
+
+  TArrayD device_view =
+      TiledArray::ta_tensor_to_um_tensor<TileD, HostTile, TA::DensePolicy>(
+          host_view);
+  GlobalFixture::world->gop.fence();
+  // Round-trip: device_view should match the original `a`.
+  check_close(device_view, a_h, tolerance);
+
+  // same tile type on both sides (as in callers generic over the tile type):
+  // no conversion, the same array comes back
+  BOOST_CHECK(
+      (TiledArray::ta_tensor_to_um_tensor<TileD, TileD, TA::DensePolicy>(a)
+           .id() == a.id()));
+  BOOST_CHECK(
+      (TiledArray::um_tensor_to_ta_tensor<TileD, TileD, TA::DensePolicy>(a)
+           .id() == a.id()));
+}
+
+BOOST_AUTO_TEST_CASE(um_to_ta_then_expression) {
+  HostArray sum_h(*GlobalFixture::world, tr);
+  sum_h("a,b,c") = a_h("a,b,c") + b_h("a,b,c");
+
+  HostArray converted =
+      TiledArray::um_tensor_to_ta_tensor<TileD, HostTile, TA::DensePolicy>(a);
+  HostArray sum_from_device(*GlobalFixture::world, tr);
+  sum_from_device("a,b,c") = converted("a,b,c") + b_h("a,b,c");
+
+  GlobalFixture::world->gop.fence();
+  check_close(sum_from_device, sum_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(convert_batched_tiles) {
+  // tiles with nbatch() > 1 keep every batch through both conversions
+  constexpr std::size_t nbatch = 3;
+  TArrayD um(*GlobalFixture::world, TiledRange{TiledRange1{0, 2, 5}});
+  um.init_tiles([](const Range& range) {
+    TileD tile(range, TileD::nbatches(nbatch));
+    for (std::size_t k = 0; k < tile.total_size(); ++k) tile.data()[k] = k + 1;
+    return tile;
+  });
+  GlobalFixture::world->gop.fence();
+
+  HostArray host =
+      TiledArray::um_tensor_to_ta_tensor<TileD, HostTile, TA::DensePolicy>(um);
+  TArrayD back =
+      TiledArray::ta_tensor_to_um_tensor<TileD, HostTile, TA::DensePolicy>(
+          host);
+  GlobalFixture::world->gop.fence();
+  for (auto it = back.begin(); it != back.end(); ++it) {
+    const HostTile h = host.find(it.index()).get();
+    const TileD u = it->get();
+    BOOST_REQUIRE_EQUAL(h.nbatch(), nbatch);
+    BOOST_REQUIRE_EQUAL(u.nbatch(), nbatch);
+    for (std::size_t k = 0; k < u.total_size(); ++k) {
+      BOOST_CHECK_EQUAL(h.data()[k], k + 1);
+      BOOST_CHECK_EQUAL(u.data()[k], k + 1);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(bulk_prefetch_round_trip) {
+  // to_host / to_device on a DistArray should be no-ops for correctness:
+  TiledArray::to_host(a);
+  TiledArray::to_device(a);
+  GlobalFixture::world->gop.fence();
+  check_close(a, a_h, tolerance);
+}
+
+BOOST_AUTO_TEST_CASE(stream_for_outside_device_task) {
+  // outside a device task, work on a tile goes to the stream that its range's
+  // offset picks, so concurrent plain tasks spread over all the streams
+  auto& env = *deviceEnv::instance();
+  for (const Range& r :
+       {Range(std::array<long, 2>{0, 0}, std::array<long, 2>{2, 2}),
+        Range(std::array<long, 2>{0, 1}, std::array<long, 2>{2, 3})}) {
+    const device::Stream want =
+        env.stream(r.offset() % env.num_streams_total());
+    BOOST_CHECK(device::stream_for(r) == want);
+    BOOST_CHECK(&blasqueue_for(r) == &BLASQueuePool::queue(want));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(scope_flip_mid_task) {
+  // A scaled sum is clone + axpy, then scale_to, and each step reads
+  // execution_space() on its own. If a Host scope begins between the steps,
+  // the host scale_to must wait for the axpy still queued in the same task.
+  // A scope opened on the main thread while the work runs (e.g. between dot()
+  // and .get()) rarely lands in that window, so a second thread flips the
+  // setting throughout instead; the workers see only the value, so the effect
+  // is the same.
+  std::vector<long> bounds;
+  for (long k = 0; k <= 4; ++k) bounds.push_back(k * 1024);
+  const TiledRange tr2{TiledRange1(bounds.begin(), bounds.end()),
+                       TiledRange1(bounds.begin(), bounds.end())};
+  TArrayD x(*GlobalFixture::world, tr2), y(*GlobalFixture::world, tr2),
+      z(*GlobalFixture::world, tr2);
+  HostArray x_h(*GlobalFixture::world, tr2), y_h(*GlobalFixture::world, tr2),
+      z_h(*GlobalFixture::world, tr2);
+  fill_with_seed(x, x_h, 3);
+  fill_with_seed(y, y_h, 5);
+  fill_with_seed(z, z_h, 9);
+  GlobalFixture::world->gop.fence();
+  const double want = (2.0 * (x_h("i,j") + y_h("i,j"))).dot(z_h("i,j")).get();
+
+  auto& space = detail::execution_space_accessor();
+  std::atomic<bool> stop{false};
+  std::thread flipper([&] {
+    while (!stop)
+      space = space.load() == ExecutionSpace::Host ? ExecutionSpace::Device
+                                                   : ExecutionSpace::Host;
+  });
+  // stop the flipper and restore the setting even if a check throws
+  struct Restore {
+    std::atomic<bool>& stop;
+    std::thread& flipper;
+    ~Restore() {
+      stop = true;
+      flipper.join();
+      detail::execution_space_accessor() = ExecutionSpace::Device;
+    }
+  } restore{stop, flipper};
+
+  for (int rep = 0; rep < 10; ++rep) {
+    const double got = (2.0 * (x("i,j") + y("i,j"))).dot(z("i,j")).get();
+    BOOST_CHECK_SMALL(std::abs(got - want), 1.0e-10 * std::abs(want));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(batched_tile_ops) {
+  // tiles with nbatch() > 1: the device branches cover every batch, as the
+  // host code does
+  constexpr std::size_t nbatch = 3;
+  const Range range(std::array<long, 2>{0, 0}, std::array<long, 2>{4, 5});
+  auto make = [&](unsigned seed) {
+    TileD d(range, TileD::nbatches(nbatch));
+    HostTile h(range, HostTile::nbatches(nbatch));
+    std::mt19937 rng(seed);
+    std::uniform_real_distribution<double> dist(-5.0, 5.0);
+    for (std::size_t k = 0; k < d.total_size(); ++k) {
+      const double v = dist(rng);
+      d.data()[k] = v;
+      h.data()[k] = v;
+    }
+    return std::make_pair(d, h);
+  };
+  const auto [x, x_h] = make(1);
+  const auto [y, y_h] = make(2);
+  auto check_impl = [](const char* what, const TileD& d, const HostTile& h) {
+    BOOST_TEST_CONTEXT(what) {
+      BOOST_REQUIRE_EQUAL(d.range(), h.range());
+      BOOST_REQUIRE_EQUAL(d.nbatch(), h.nbatch());
+      for (std::size_t k = 0; k < h.total_size(); ++k) {
+        using std::abs;
+        BOOST_CHECK_SMALL(abs(d.data()[k] - h.data()[k]),
+                          tolerance * std::max(1.0, abs(h.data()[k])));
+      }
+    }
+  };
+#define check(d, h) check_impl(#d, d, h)
+  const Permutation perm{1, 0};
+
+  // N.B. the references are computed element by element, batch by batch:
+  // the host Tensor ops cover every batch only in the binary in-place forms
+  // (the value-returning ops and clone produce one batch, scale_to/neg_to
+  // touch only the first, and permute asserts nbatch() == 1)
+  const auto volume = range.volume();
+  auto elementwise = [&](auto f) {
+    HostTile r(range, HostTile::nbatches(nbatch));
+    for (std::size_t k = 0; k < r.total_size(); ++k)
+      r.data()[k] = f(x_h.data()[k], y_h.data()[k]);
+    return r;
+  };
+  auto permuted = [&](const HostTile& t) {
+    HostTile r(perm * range, HostTile::nbatches(nbatch));
+    for (std::size_t b = 0; b < nbatch; ++b) {
+      const auto pb = t.batch(b).permute(perm);
+      std::copy_n(pb.data(), volume, r.data() + b * volume);
+    }
+    return r;
+  };
+  const auto x_ref = elementwise([](double l, double) { return l; });
+  const auto sum = elementwise([](double l, double r) { return l + r; });
+  const auto diff = elementwise([](double l, double r) { return l - r; });
+  const auto prod = elementwise([](double l, double r) { return l * r; });
+  auto scaled = [&](double factor) {
+    return elementwise([factor](double l, double) { return l * factor; });
+  };
+
+  check(x.clone(), x_ref);
+  check(x.scale(2.5), scaled(2.5));
+  check(x.neg(), scaled(-1.0));
+  check(x.permute(perm), permuted(x_ref));
+  check(x.add(y), sum);
+  check(x.add(y, 2.0),
+        elementwise([](double l, double r) { return (l + r) * 2.0; }));
+  check(x.add(y, perm), permuted(sum));
+  check(x.subt(y), diff);
+  check(x.mult(y), prod);
+  check(x.mult(y, 3.0),
+        elementwise([](double l, double r) { return l * r * 3.0; }));
+  check(x.clone().add_to(y), sum);
+  check(x.clone().subt_to(y), diff);
+  check(x.clone().mult_to(y), prod);
+  check(x.clone().scale_to(-1.5), scaled(-1.5));
+#undef check
+}
+
+BOOST_AUTO_TEST_CASE(sparse_policy) {
+  // SparsePolicy arrays: shape estimation and truncation take tile norms
+  // (host reductions on UM tiles), and only nonzero tiles are computed
+  using SpArray = DistArray<TileD, SparsePolicy>;
+  using SpHostArray = DistArray<HostTile, SparsePolicy>;
+  auto& world = *GlobalFixture::world;
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+
+  // every third tile is zero
+  auto make_shape = [&](unsigned skip) {
+    Tensor<float> norms(tr2.tiles_range(), 0.0f);
+    for (std::size_t i = 0; i < norms.size(); ++i)
+      if (i % 3 != skip) norms[i] = 1.0e3f;
+    return SparseShape<float>(norms, tr2);
+  };
+  auto fill = [&](SpArray& d, SpHostArray& h, unsigned seed) {
+    for (auto it = d.pmap()->begin(); it != d.pmap()->end(); ++it) {
+      if (d.is_zero(*it)) continue;
+      const auto tile_range = d.trange().make_tile_range(*it);
+      TileD d_tile(tile_range);
+      HostTile h_tile(tile_range);
+      std::mt19937 rng(seed + static_cast<unsigned>(*it));
+      std::uniform_real_distribution<double> dist(-5.0, 5.0);
+      for (std::size_t k = 0; k < tile_range.volume(); ++k) {
+        const double v = dist(rng);
+        d_tile.data()[k] = v;
+        h_tile.data()[k] = v;
+      }
+      d.set(*it, d_tile);
+      h.set(*it, h_tile);
+    }
+  };
+  SpArray x(world, tr2, make_shape(0)), y(world, tr2, make_shape(1));
+  SpHostArray x_h(world, tr2, make_shape(0)), y_h(world, tr2, make_shape(1));
+  fill(x, x_h, 3);
+  fill(y, y_h, 5);
+  world.gop.fence();
+
+  SpArray z;
+  SpHostArray z_h;
+  z("i,j") = 2.0 * (x("i,j") + y("j,i"));
+  z_h("i,j") = 2.0 * (x_h("i,j") + y_h("j,i"));
+  check_close(z, z_h, tolerance);
+
+  z("i,j") = x("i,j") * y("i,j");
+  z_h("i,j") = x_h("i,j") * y_h("i,j");
+  check_close(z, z_h, tolerance);
+
+  z("i,k") = x("i,j") * y("j,k");
+  z_h("i,k") = x_h("i,j") * y_h("j,k");
+  check_close(z, z_h, 1.0e-12);
+
+  const double norm = z("i,j").norm().get();
+  const double norm_h = z_h("i,j").norm().get();
+  BOOST_CHECK_SMALL(std::abs(norm - norm_h), 1.0e-12 * norm_h);
+
+  z.truncate();
+  z_h.truncate();
+  check_close(z, z_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(release_deferred_to_task_completion) {
+  // outside a device task every kernel has completed: nothing to defer
+  BOOST_CHECK(!device::defer_until_task_completes([] {}));
+
+  // inside one, storage freed while the task's kernels may still read it is
+  // released only once the task's stream has drained
+  const Range range(std::array<long, 2>{0, 0}, std::array<long, 2>{1024, 1024});
+  TileD x(range);
+  std::fill_n(x.data(), x.size(), 1.0);
+  std::atomic<bool> deferred{false}, released{false}, stream_idle{false};
+  auto task = [&](const TileD& t) {
+    // a temporary freed while the kernels reading it may still be queued
+    TileD result = t.scale(2.0).scale(0.5);
+    const auto stream = device::madness_task_current_stream();
+    deferred = device::defer_until_task_completes([&, stream] {
+#ifdef TILEDARRAY_HAS_CUDA
+      stream_idle = cudaStreamQuery(stream->stream) == cudaSuccess;
+#else
+      stream_idle = hipStreamQuery(stream->stream) == hipSuccess;
+#endif
+      released = true;
+    });
+    return result;
+  };
+  auto result = madness::add_device_task(*GlobalFixture::world, task, x).get();
+  GlobalFixture::world->await([&] { return released.load(); });
+  BOOST_CHECK(deferred);
+  BOOST_CHECK(stream_idle);
+  for (std::size_t k = 0; k < result.size(); ++k)
+    BOOST_REQUIRE_EQUAL(result.data()[k], 1.0);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// Tiles with more than INT_MAX elements. Each case needs about 18 GB of
+// unified memory, so the suite runs only when named, e.g.
+// --run_test=device_tensor_large_suite
+BOOST_AUTO_TEST_SUITE(device_tensor_large_suite, *boost::unit_test::disabled())
+
+BOOST_AUTO_TEST_CASE(blas1_past_int_max) {
+  // blaspp's device calls take int lengths, so these kernels run in chunks
+  const long e = 216;
+  const Range range{e, e, e, e};
+  const auto n = range.volume();
+  BOOST_REQUIRE_GT(n, std::numeric_limits<int>::max());
+  UMTensor<float> x(range);
+  std::fill_n(x.data(), n, 1.0f);
+  x.data()[n - 1] = 3.0f;  // the last element lies past the first chunk
+
+  const double want = double(n - 1) + 9.0;
+  BOOST_CHECK_CLOSE_FRACTION(x.squared_norm(), want, 1.0e-3);
+  BOOST_CHECK_CLOSE_FRACTION(x.dot(x), want, 1.0e-3);
+  BOOST_CHECK_CLOSE_FRACTION(x.inner_product(x), want, 1.0e-3);
+
+  UMTensor<float> y = x.clone();  // copy
+  BOOST_CHECK_EQUAL(y.data()[n - 1], 3.0f);
+  y.scale_to(2.0f);  // scal
+  BOOST_CHECK_EQUAL(y.data()[n - 1], 6.0f);
+  y.add_to(x);  // axpy
+  BOOST_CHECK_EQUAL(y.data()[0], 3.0f);
+  BOOST_CHECK_EQUAL(y.data()[n - 1], 9.0f);
+}
+
+BOOST_AUTO_TEST_CASE(permute_past_int_max_throws) {
+  // librett indexes with 32-bit integers
+  const long e = 216;
+  const UMTensor<float> x(Range{e, e, e, e});
+  BOOST_CHECK_THROW(x.permute(Permutation{3, 2, 1, 0}), TiledArray::Exception);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+#endif  // TILEDARRAY_HAS_DEVICE

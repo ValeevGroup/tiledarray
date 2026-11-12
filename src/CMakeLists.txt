@@ -42,6 +42,7 @@ TiledArray/initialize.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/platform.h
+TiledArray/device/dispatch.h
 TiledArray/proc_grid.h
 TiledArray/range.h
 TiledArray/range1.h
@@ -239,6 +240,7 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
           TiledArray/device/blas.h
           TiledArray/device/btas.h
           TiledArray/device/btas_um_tensor.h
+          TiledArray/device/tensor.h
           TiledArray/device/device_task_fn.h
           TiledArray/device/kernel/mult_kernel.h
           TiledArray/device/kernel/reduce_kernel.h
@@ -272,6 +274,7 @@ if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
   set(TILEDARRAY_DEVICE_SOURCE_FILES
           TiledArray/device/btas_um_tensor.cpp
+          TiledArray/device/tensor.cpp
   )
 
   if(TILEDARRAY_HAS_CUDA)

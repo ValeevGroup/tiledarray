@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_DIST_EVAL_BINARY_EVAL_H__INCLUDED
 #define TILEDARRAY_DIST_EVAL_BINARY_EVAL_H__INCLUDED
 
+#include <TiledArray/device/dispatch.h>
 #include <TiledArray/dist_eval/dist_eval.h>
 #include <TiledArray/zero_tensor.h>
 
@@ -160,6 +161,13 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   template <typename L, typename R, typename U = value_type>
   std::enable_if_t<detail::is_device_tile_v<U>, void> eval_tile(
       const ordinal_type i, L left, R right) {
+    // under a Host scope these tiles' ops run host code: skip the device task
+    if constexpr (device_executable_v<U>) {
+      if (execution_space() == ExecutionSpace::Host) {
+        DistEvalImpl_::set_tile(i, op_(left, right));
+        return;
+      }
+    }
     // TODO avoid copy the Op object
     auto result_tile =
         madness::add_device_task(DistEvalImpl_::world(), op_, left, right);

@@ -106,19 +106,34 @@ struct deviceTaskFn : public TaskInterface {
       // tell the task to report stream to be synced with to this->stream_
       TiledArray::device::detail::madness_task_stream_opt_ptr_accessor() =
           &this->stream_;
+      // storage freed by the async function is released only after the work
+      // it queued completes (see device::defer_until_task_completes)
+      TiledArray::device::detail::DeferredReleases deferred_releases;
+      TA_ASSERT(TiledArray::device::detail::
+                    madness_task_deferred_releases_ptr_accessor() == nullptr);
+      TiledArray::device::detail::
+          madness_task_deferred_releases_ptr_accessor() = &deferred_releases;
 
       // run the async function, the function must call synchronize_stream() to
       // set the stream it used!!
       task_->run_async();
 
-      // clear ptr to stream_
+      // clear ptrs to stream_ and deferred_releases
       TiledArray::device::detail::madness_task_stream_opt_ptr_accessor() =
           nullptr;
+      TiledArray::device::detail::
+          madness_task_deferred_releases_ptr_accessor() = nullptr;
 
       // WARNING, need to handle NoOp
       if (!stream_) {
+        // no queued work: release now
+        { auto releases = std::move(deferred_releases); }
         task_->notify();
       } else {
+        // the task (run on a MADNESS thread after the callback below notifies
+        // it) releases them when it is destroyed; hand them over before the
+        // callback can fire
+        task_->deferred_releases_ = std::move(deferred_releases);
         // TODO should we use device callback or device events??
         // insert device callback
         DeviceSafeCall(TiledArray::device::launchHostFunc(
@@ -171,6 +186,9 @@ struct deviceTaskFn : public TaskInterface {
   TaskInterface* async_task_;  ///< The internal AsyncTaskInterface that wraps
   ///< the async device function
   futureT async_result_;  ///< the future returned from the async task
+  /// storage the async function freed while its device work was still queued;
+  /// released when this task is destroyed, after that work has completed
+  TiledArray::device::detail::DeferredReleases deferred_releases_;
 
   // If the value of the argument is known at the time the
   // Note: The type argNT for argN, where N  is > arity should be void
