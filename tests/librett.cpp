@@ -44,6 +44,17 @@ struct LibreTTFixture {
   int C;
 };
 
+// UMTensor::permute goes through librett (device::permute) only for an
+// element type with device kernels and while execution_space() is Device;
+// otherwise it silently permutes on the host, which these tests' value checks
+// would not notice
+template <typename Tile>
+void require_device_permute() {
+  static_assert(TiledArray::device_executable_v<Tile>);
+  BOOST_REQUIRE(TiledArray::execution_space() ==
+                TiledArray::ExecutionSpace::Device);
+}
+
 BOOST_FIXTURE_TEST_SUITE(librett_suite, LibreTTFixture, TA_UT_LABEL_SERIAL);
 
 BOOST_AUTO_TEST_CASE(librett_gpu_mem) {
@@ -477,6 +488,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor) {
   TiledArray::Range range{A, A};
 
   using Tile = TiledArray::UMTensor<double>;
+  require_device_permute<Tile>();
 
   auto a = Tile(range);
 
@@ -509,6 +521,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_nonsym) {
   TiledArray::Range range{B, A};
 
   using Tile = TiledArray::UMTensor<double>;
+  require_device_permute<Tile>();
 
   auto a = Tile(range);
 
@@ -541,6 +554,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_three) {
   TiledArray::Range range{A, B, C};
 
   using Tile = TiledArray::UMTensor<double>;
+  require_device_permute<Tile>();
 
   auto a = Tile(range);
 
@@ -601,6 +615,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_four) {
   TiledArray::Range range(std::vector<std::size_t>({a, b, c, d}));
 
   using Tile = TiledArray::UMTensor<double>;
+  require_device_permute<Tile>();
 
   auto tile_a = Tile(range);
 
@@ -672,6 +687,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_six) {
   TiledArray::Range range(std::vector<std::size_t>({a, b, c, d, e, f}));
 
   using Tile = TiledArray::UMTensor<double>;
+  require_device_permute<Tile>();
 
   auto tile_a = Tile(range);
 
