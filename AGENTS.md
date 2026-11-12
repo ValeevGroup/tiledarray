@@ -532,7 +532,10 @@ doesn't compile cleanly in the expression DSL, the fix is usually
   application-specific. For "binary" sparsity (a tile is zero exactly
   when its norm is exactly zero), use
   `std::numeric_limits<float>::min()` as the threshold so any nonzero
-  norm clears the bar.
+  norm clears the bar. `SparseShape<T>::threshold(t)` raises any `t`
+  below that (including 0) to it, because at threshold 0 a zero-norm
+  tile would count as nonzero yet never be written; negative, infinite,
+  and NaN thresholds throw.
 - **`TiledRange` / `Range` are immutable post-construction.** To change
   tiling, build a new array with `retile` / `TA::retile` and copy tiles
   over.

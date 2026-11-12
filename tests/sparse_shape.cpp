@@ -28,12 +28,33 @@
 
 #include "TiledArray/sparse_shape.h"
 #include "sparse_shape_fixture.h"
+#include "sparse_threshold_guard.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
 
 BOOST_FIXTURE_TEST_SUITE(sparse_shape_suite, SparseShapeFixture)
+
+BOOST_AUTO_TEST_CASE(threshold_below_min_is_raised) {
+  // a threshold of 0 would let a tile of norm 0 count as nonzero
+  for (const float t : {0.0f, 1.0e-40f}) {
+    const TA::test::ScopedSparseThreshold<float> threshold(t);
+    BOOST_CHECK_EQUAL(SparseShape<float>::threshold(),
+                      std::numeric_limits<float>::min());
+  }
+}
+
+BOOST_AUTO_TEST_CASE(threshold_rejects_invalid) {
+  // a NaN threshold would let every tile, even one of norm 0, count as nonzero
+  const float prior = SparseShape<float>::threshold();
+  for (const float bad : {std::numeric_limits<float>::quiet_NaN(),
+                          std::numeric_limits<float>::infinity(), -1.0f}) {
+    BOOST_CHECK_THROW(SparseShape<float>::threshold(bad),
+                      TiledArray::Exception);
+    BOOST_CHECK_EQUAL(SparseShape<float>::threshold(), prior);
+  }
+}
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK_NO_THROW(SparseShape<float> x);
@@ -886,8 +907,11 @@ BOOST_AUTO_TEST_CASE(serialize_rejects_invalid_threshold) {
   oar.close();
 
   // the threshold is the last field of the archive
+  // a threshold of 0 or a denormal would let a tile of norm 0 count as
+  // nonzero
   for (const float bad : {std::numeric_limits<float>::quiet_NaN(),
-                          std::numeric_limits<float>::infinity(), -1.0f}) {
+                          std::numeric_limits<float>::infinity(), -1.0f, 0.0f,
+                          std::numeric_limits<float>::denorm_min()}) {
     std::memcpy(buf.get() + nbyte - sizeof(float), &bad, sizeof(float));
     madness::archive::BufferInputArchive iar(buf.get(), nbyte);
     SparseShape<float> result;

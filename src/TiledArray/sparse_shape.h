@@ -34,7 +34,9 @@
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/val_array.h>
+#include <algorithm>
 #include <cmath>
+#include <limits>
 #include <typeinfo>
 
 namespace TiledArray {
@@ -100,6 +102,10 @@ class SparseShape {
                       ///< reports the size of i-th tile in dimension d
   size_type zero_tile_count_;    ///< Number of zero tiles
   static value_type threshold_;  ///< The current default threshold
+  // invariant: threshold_ and my_threshold_ are at least the smallest normal
+  // value_type (enforced by threshold(value_type) and by deserialization), so
+  // `norm < threshold` always counts a tile of norm 0 as zero; is_zero() and
+  // the screening below rely on it, since no operation writes a zero-norm tile
   value_type my_threshold_ =
       threshold_;  ///< The threshold used to initialize this
 
@@ -553,9 +559,20 @@ class SparseShape {
 
   /// \warning it is only safe to change default threshold after a fence;
   /// this can be done as e.g. `world.gop.serial_invoke([new_thresh] { SparseShape<T>::threshold(new_thresh); });`
-  /// \param thresh The new default threshold
+  /// \param thresh The new default threshold, a finite nonnegative value. A
+  ///        value below the smallest normal \c value_type, including 0, is
+  ///        raised to it: at threshold 0 a tile of norm 0 would count as
+  ///        nonzero, yet no operation writes such a tile; and a denormal
+  ///        threshold compares as 0 under flush-to-zero arithmetic.
+  /// \throw TiledArray::Exception if \p thresh is negative, infinite, or NaN
   // clang-format on
-  static void threshold(const value_type thresh) { threshold_ = thresh; }
+  static void threshold(const value_type thresh) {
+    if (!(std::isfinite(thresh) && thresh >= value_type(0)))
+      TA_EXCEPTION(
+          "SparseShape::threshold: the threshold must be finite and "
+          "nonnegative");
+    threshold_ = std::max(thresh, std::numeric_limits<value_type>::min());
+  }
 
   /// Accesses the threshold used to initialize this tile
 
@@ -1881,7 +1898,10 @@ class SparseShape {
     // the threshold the norms were screened with: is_zero() must use it, not
     // the reader's default threshold, or the set of nonzero tiles changes
     ar & zero_tile_count_ & my_threshold_;
-    if (!(std::isfinite(my_threshold_) && my_threshold_ >= value_type(0)))
+    // below the smallest normal value, a tile of norm 0 would count as nonzero
+    // (see threshold(value_type))
+    if (!(std::isfinite(my_threshold_) &&
+          my_threshold_ >= std::numeric_limits<value_type>::min()))
       TA_EXCEPTION(
           "SparseShape::serialize: the archive holds an invalid threshold");
     // the cached unscaled norms belong to the previous contents
