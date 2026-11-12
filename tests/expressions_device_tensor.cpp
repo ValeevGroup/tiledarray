@@ -1149,6 +1149,178 @@ BOOST_AUTO_TEST_CASE(scope_flip_mid_task) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(batched_tile_ops) {
+  // tiles with nbatch() > 1: the device branches cover every batch, as the
+  // host code does
+  constexpr std::size_t nbatch = 3;
+  const Range range(std::array<long, 2>{0, 0}, std::array<long, 2>{4, 5});
+  auto make = [&](unsigned seed) {
+    TileD d(range, TileD::nbatches(nbatch));
+    HostTile h(range, HostTile::nbatches(nbatch));
+    std::mt19937 rng(seed);
+    std::uniform_real_distribution<double> dist(-5.0, 5.0);
+    for (std::size_t k = 0; k < d.total_size(); ++k) {
+      const double v = dist(rng);
+      d.data()[k] = v;
+      h.data()[k] = v;
+    }
+    return std::make_pair(d, h);
+  };
+  const auto [x, x_h] = make(1);
+  const auto [y, y_h] = make(2);
+  auto check_impl = [](const char* what, const TileD& d, const HostTile& h) {
+    BOOST_TEST_CONTEXT(what) {
+      BOOST_REQUIRE_EQUAL(d.range(), h.range());
+      BOOST_REQUIRE_EQUAL(d.nbatch(), h.nbatch());
+      for (std::size_t k = 0; k < h.total_size(); ++k) {
+        using std::abs;
+        BOOST_CHECK_SMALL(abs(d.data()[k] - h.data()[k]),
+                          tolerance * std::max(1.0, abs(h.data()[k])));
+      }
+    }
+  };
+#define check(d, h) check_impl(#d, d, h)
+  const Permutation perm{1, 0};
+
+  // N.B. the references are computed element by element, batch by batch:
+  // the host Tensor ops cover every batch only in the binary in-place forms
+  // (the value-returning ops and clone produce one batch, scale_to/neg_to
+  // touch only the first, and permute asserts nbatch() == 1)
+  const auto volume = range.volume();
+  auto elementwise = [&](auto f) {
+    HostTile r(range, HostTile::nbatches(nbatch));
+    for (std::size_t k = 0; k < r.total_size(); ++k)
+      r.data()[k] = f(x_h.data()[k], y_h.data()[k]);
+    return r;
+  };
+  auto permuted = [&](const HostTile& t) {
+    HostTile r(perm * range, HostTile::nbatches(nbatch));
+    for (std::size_t b = 0; b < nbatch; ++b) {
+      const auto pb = t.batch(b).permute(perm);
+      std::copy_n(pb.data(), volume, r.data() + b * volume);
+    }
+    return r;
+  };
+  const auto x_ref = elementwise([](double l, double) { return l; });
+  const auto sum = elementwise([](double l, double r) { return l + r; });
+  const auto diff = elementwise([](double l, double r) { return l - r; });
+  const auto prod = elementwise([](double l, double r) { return l * r; });
+  auto scaled = [&](double factor) {
+    return elementwise([factor](double l, double) { return l * factor; });
+  };
+
+  check(x.clone(), x_ref);
+  check(x.scale(2.5), scaled(2.5));
+  check(x.neg(), scaled(-1.0));
+  check(x.permute(perm), permuted(x_ref));
+  check(x.add(y), sum);
+  check(x.add(y, 2.0),
+        elementwise([](double l, double r) { return (l + r) * 2.0; }));
+  check(x.add(y, perm), permuted(sum));
+  check(x.subt(y), diff);
+  check(x.mult(y), prod);
+  check(x.mult(y, 3.0),
+        elementwise([](double l, double r) { return l * r * 3.0; }));
+  check(x.clone().add_to(y), sum);
+  check(x.clone().subt_to(y), diff);
+  check(x.clone().mult_to(y), prod);
+  check(x.clone().scale_to(-1.5), scaled(-1.5));
+#undef check
+}
+
+BOOST_AUTO_TEST_CASE(sparse_policy) {
+  // SparsePolicy arrays: shape estimation and truncation take tile norms
+  // (host reductions on UM tiles), and only nonzero tiles are computed
+  using SpArray = DistArray<TileD, SparsePolicy>;
+  using SpHostArray = DistArray<HostTile, SparsePolicy>;
+  auto& world = *GlobalFixture::world;
+  const TiledRange tr2{tr.data()[0], tr.data()[1]};
+
+  // every third tile is zero
+  auto make_shape = [&](unsigned skip) {
+    Tensor<float> norms(tr2.tiles_range(), 0.0f);
+    for (std::size_t i = 0; i < norms.size(); ++i)
+      if (i % 3 != skip) norms[i] = 1.0e3f;
+    return SparseShape<float>(norms, tr2);
+  };
+  auto fill = [&](SpArray& d, SpHostArray& h, unsigned seed) {
+    for (auto it = d.pmap()->begin(); it != d.pmap()->end(); ++it) {
+      if (d.is_zero(*it)) continue;
+      const auto tile_range = d.trange().make_tile_range(*it);
+      TileD d_tile(tile_range);
+      HostTile h_tile(tile_range);
+      std::mt19937 rng(seed + static_cast<unsigned>(*it));
+      std::uniform_real_distribution<double> dist(-5.0, 5.0);
+      for (std::size_t k = 0; k < tile_range.volume(); ++k) {
+        const double v = dist(rng);
+        d_tile.data()[k] = v;
+        h_tile.data()[k] = v;
+      }
+      d.set(*it, d_tile);
+      h.set(*it, h_tile);
+    }
+  };
+  SpArray x(world, tr2, make_shape(0)), y(world, tr2, make_shape(1));
+  SpHostArray x_h(world, tr2, make_shape(0)), y_h(world, tr2, make_shape(1));
+  fill(x, x_h, 3);
+  fill(y, y_h, 5);
+  world.gop.fence();
+
+  SpArray z;
+  SpHostArray z_h;
+  z("i,j") = 2.0 * (x("i,j") + y("j,i"));
+  z_h("i,j") = 2.0 * (x_h("i,j") + y_h("j,i"));
+  check_close(z, z_h, tolerance);
+
+  z("i,j") = x("i,j") * y("i,j");
+  z_h("i,j") = x_h("i,j") * y_h("i,j");
+  check_close(z, z_h, tolerance);
+
+  z("i,k") = x("i,j") * y("j,k");
+  z_h("i,k") = x_h("i,j") * y_h("j,k");
+  check_close(z, z_h, 1.0e-12);
+
+  const double norm = z("i,j").norm().get();
+  const double norm_h = z_h("i,j").norm().get();
+  BOOST_CHECK_SMALL(std::abs(norm - norm_h), 1.0e-12 * norm_h);
+
+  z.truncate();
+  z_h.truncate();
+  check_close(z, z_h, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(release_deferred_to_task_completion) {
+  // outside a device task every kernel has completed: nothing to defer
+  BOOST_CHECK(!device::defer_until_task_completes([] {}));
+
+  // inside one, storage freed while the task's kernels may still read it is
+  // released only once the task's stream has drained
+  const Range range(std::array<long, 2>{0, 0}, std::array<long, 2>{1024, 1024});
+  TileD x(range);
+  std::fill_n(x.data(), x.size(), 1.0);
+  std::atomic<bool> deferred{false}, released{false}, stream_idle{false};
+  auto task = [&](const TileD& t) {
+    // a temporary freed while the kernels reading it may still be queued
+    TileD result = t.scale(2.0).scale(0.5);
+    const auto stream = device::madness_task_current_stream();
+    deferred = device::defer_until_task_completes([&, stream] {
+#ifdef TILEDARRAY_HAS_CUDA
+      stream_idle = cudaStreamQuery(stream->stream) == cudaSuccess;
+#else
+      stream_idle = hipStreamQuery(stream->stream) == hipSuccess;
+#endif
+      released = true;
+    });
+    return result;
+  };
+  auto result = madness::add_device_task(*GlobalFixture::world, task, x).get();
+  GlobalFixture::world->await([&] { return released.load(); });
+  BOOST_CHECK(deferred);
+  BOOST_CHECK(stream_idle);
+  for (std::size_t k = 0; k < result.size(); ++k)
+    BOOST_REQUIRE_EQUAL(result.data()[k], 1.0);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 // Tiles with more than INT_MAX elements. Each case needs about 18 GB of
