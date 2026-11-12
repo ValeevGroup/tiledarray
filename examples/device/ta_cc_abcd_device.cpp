@@ -17,7 +17,7 @@
  *
  */
 
-#include <TiledArray/device/btas_um_tensor.h>
+#include <TiledArray/device/tensor.h>
 #include <TiledArray/version.h>
 #include <tiledarray.h>
 #include <iostream>
@@ -185,9 +185,8 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   const double n_gflop =
       flops_per_fma * std::pow(n_occ, 2) * std::pow(n_uocc, 4) / 1e9;
 
-  using deviceTile =
-      btas::Tensor<T, TA::Range, TiledArray::device_um_btas_varray<T>>;
-  using deviceMatrix = TA::DistArray<TA::Tile<deviceTile>>;
+  using deviceTile = TA::UMTensor<T>;
+  using deviceMatrix = TA::DistArray<deviceTile>;
 
   // Construct tensors
   deviceMatrix t2(world, trange_oovv);
@@ -245,7 +244,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   auto result = dot_length * 0.2 * 0.3;
 
   auto verify = [&world, &threshold, &result,
-                 &dot_length](const TA::Tile<deviceTile>& tile) {
+                 &dot_length](const deviceTile& tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = fabs(tile[i] - result);

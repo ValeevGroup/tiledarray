@@ -452,16 +452,13 @@ in the tree:
   deep-copy tile via the same non-intrusive API.
 - **`btas::Tensor`** also lacks member ops → `external/btas.h` provides
   free-function overloads **in the `btas` namespace** (so ADL finds
-  them, not in `TiledArray`). Device-specific further specializations
-  for BTAS-backed unified-memory tiles live in
-  `device/btas_um_tensor.h` and dispatch to device BLAS where possible.
+  them, not in `TiledArray`).
 
-**When to actually use `btas::Tensor`.** Almost never. Its remaining
-production use is composing the tile type for GPU unified-memory
-arrays; PR #531 will let `TA::Tensor` cover that case too, after which
-`btas::Tensor` is purely a tile-genericity test vehicle. Don't reach
-for it in new TA code unless you are deliberately exercising the
-non-`TA::Tensor` path.
+**When to actually use `btas::Tensor`.** Almost never. GPU
+unified-memory arrays use `TA::UMTensor` (a `TA::Tensor` with the UM
+allocator), so `btas::Tensor` is purely a tile-genericity test vehicle.
+Don't reach for it in new TA code unless you are deliberately
+exercising the non-`TA::Tensor` path.
 
 ### Lazy tiles (`is_lazy_tile`)
 
@@ -624,7 +621,6 @@ Set at runtime, read during `initialize` or first use:
 | `TA_SUMMA_MAX_MEMORY` | (none) | Caps SUMMA contraction per-rank memory (`dist_eval/contraction_eval.h`). |
 | `TA_SUMMA_MAX_DEPTH` | (none) | Caps SUMMA pipeline depth. |
 | `TA_DEVICE_NUM_STREAMS` / `TA_CUDA_NUM_STREAMS` / `TA_HIP_NUM_STREAMS` | impl | Number of device streams per rank. CUDA unit tests require `=1`. |
-| `TA_DEVICE_LEGACY_UM_CONVERSION` | unset | Opt into the pre-Umpire unified-memory conversion path for `btas_um_tensor`. |
 | `TA_DISK_SCRATCH_DIR` | system temp dir | Directory for the scratch files of disk-backed arrays (`disk/store.h`); overridden by `TiledArray::set_disk_scratch_dir()`. Should be node-local and not memory-backed. |
 | `TA_UT_DISTRIBUTED` | unset | Set by CTest for np≥2 runs; test fixtures branch on it. |
 

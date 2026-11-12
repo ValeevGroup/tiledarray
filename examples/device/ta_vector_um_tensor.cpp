@@ -20,7 +20,7 @@
  */
 
 // Element-wise vector-op benchmarks (add, scale, permute, Hadamard) using
-// the native UMTensor tile type. Companion to ta_vector_device.cpp.
+// the native UMTensor tile type.
 //
 // Usage:
 //   ta_vector_um_tensor Nm Bm Nn Bn [nrepeat=5]

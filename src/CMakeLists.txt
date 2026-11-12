@@ -238,8 +238,6 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
           TiledArray/external/device.h
           TiledArray/external/librett.h
           TiledArray/device/blas.h
-          TiledArray/device/btas.h
-          TiledArray/device/btas_um_tensor.h
           TiledArray/device/tensor.h
           TiledArray/device/device_task_fn.h
           TiledArray/device/kernel/mult_kernel.h
@@ -247,7 +245,6 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
           TiledArray/device/kernel/thrust/mult_kernel.h
           TiledArray/device/kernel/thrust/reduce_kernel.h
           TiledArray/device/thrust.h
-          TiledArray/device/um_storage.h
   )
   list(APPEND TILEDARRAY_SOURCE_FILES
           TiledArray/device/blas.cpp
@@ -273,7 +270,6 @@ set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
   set(TILEDARRAY_DEVICE_SOURCE_FILES
-          TiledArray/device/btas_um_tensor.cpp
           TiledArray/device/tensor.cpp
   )
 

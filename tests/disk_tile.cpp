@@ -28,7 +28,7 @@
 #include "tiledarray.h"
 
 #ifdef TILEDARRAY_HAS_DEVICE
-#include <TiledArray/device/btas_um_tensor.h>
+#include <TiledArray/device/tensor.h>
 #endif
 
 #include <madness/world/vector_archive.h>
@@ -1642,14 +1642,14 @@ BOOST_FIXTURE_TEST_CASE(streaming_contraction, DiskArrayFixture,
 // serialized device tile; evaluating it gives a device tile again.
 namespace {
 
-using UMTensor = TA::Tile<TA::btasUMTensorVarray<double>>;
-using UMArray = TA::DistArray<UMTensor, TA::DensePolicy>;
-using UMDiskArray = TA::DiskArray<UMTensor, TA::DensePolicy>;
+using UMTile = TA::UMTensor<double>;
+using UMArray = TA::DistArray<UMTile, TA::DensePolicy>;
+using UMDiskArray = TA::DiskArray<UMTile, TA::DensePolicy>;
 
 UMArray make_um(TA::World& world, const TA::TiledRange& tr, double seed) {
   UMArray a(world, tr);
   for (auto it = a.pmap()->begin(); it != a.pmap()->end(); ++it) {
-    UMTensor tile(tr.make_tile_range(*it));
+    UMTile tile(tr.make_tile_range(*it));
     for (std::size_t i = 0; i < tile.size(); ++i)
       tile.at_ordinal(i) =
           seed + 0.001 * static_cast<double>((i + 5 * (*it)) % 19);
@@ -1677,7 +1677,7 @@ struct DeviceDiskFixture {
 }  // namespace
 
 BOOST_FIXTURE_TEST_CASE(device_on_disk_and_back, DeviceDiskFixture) {
-  static_assert(TA::is_lazy_tile_v<TA::DiskTile<UMTensor>>);
+  static_assert(TA::is_lazy_tile_v<TA::DiskTile<UMTile>>);
   reset_global_disk_io_stats(world);
   auto const ad = on_disk(a);
   BOOST_CHECK_EQUAL(global_disk_io_stats(world).tiles_written,
@@ -1752,7 +1752,7 @@ BOOST_FIXTURE_TEST_CASE(device_remote_fetch, DeviceDiskFixture,
     auto const fetched = ad.find(ord).get();
     ++nfetched;
     ok = ok && !fetched.on_disk() && !fetched.empty();
-    auto const tile = static_cast<UMTensor>(fetched);
+    auto const tile = static_cast<UMTile>(fetched);
     auto const src = a.find(ord).get();
     for (std::size_t i = 0; i < tile.size() && ok; ++i)
       ok = tile.at_ordinal(i) == src.at_ordinal(i);
