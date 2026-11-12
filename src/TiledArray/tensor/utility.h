@@ -27,6 +27,7 @@
 #define TILEDARRAY_TENSOR_UTILITY_H__INCLUDED
 
 #include <TiledArray/block_range.h>
+#include <TiledArray/error.h>
 #include <TiledArray/range.h>
 #include <TiledArray/size_array.h>
 #include <TiledArray/tensor/type_traits.h>
@@ -180,8 +181,16 @@ inline bool is_range_set_congruent(const T1& tensor1, const T2& tensor2,
          is_range_set_congruent(tensor1, tensors...);
 }
 
+// Batched tensors: a tensor with `nbatch() > 1` stores `nbatch()` contiguous
+// copies ("batches") of its range. Tile ops act on every batch, but `range()`,
+// `size()`, `begin()`/`end()`, `operator[]` and `at_ordinal` describe the first
+// batch only; use `total_size()`, `batch(idx)` and `batch_data(idx)` to reach
+// the others.
+
 /// Whether tensor type \c T is batched, i.e. holds `nbatch()` copies of its
-/// range, each accessible as a plain tensor via `batch(idx)`
+/// range, each accessible as a plain tensor via `batch(idx)`; types that
+/// report `nbatch()` without `batch(idx)` (e.g. `Tile<Tensor>`) count their
+/// batches via nbatch() below but cannot be split per batch
 template <typename T>
 inline constexpr bool is_batched_tensor_v = requires(const T& t) {
   t.nbatch();
@@ -201,6 +210,18 @@ inline std::size_t nbatch(const T& tensor) {
 template <typename T1, typename... Ts>
 inline bool is_nbatch_congruent(const T1& tensor1, const Ts&... tensors) {
   return ((nbatch(tensor1) == nbatch(tensors)) && ...);
+}
+
+/// Throws unless all of \p tensors have the same number of batches
+
+/// Unlike range congruence this is checked in all builds: a mismatch would
+/// make the kernels read or write past the end of the smaller operand, and
+/// the check is one integer comparison per operand.
+/// \throw TiledArray::Exception if the batch counts differ
+template <typename T1, typename... Ts>
+inline void check_nbatch_congruent(const T1& tensor1, const Ts&... tensors) {
+  if (!is_nbatch_congruent(tensor1, tensors...))
+    TA_EXCEPTION("tensor arguments have different numbers of batches");
 }
 
 /// Get the inner size

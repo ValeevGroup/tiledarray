@@ -395,7 +395,7 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
-  TA_ASSERT(is_nbatch_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   // contiguous data: all batches are processed in one sweep
   const auto volume = result.range().volume() * nbatch(result);
@@ -421,6 +421,7 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   auto volume = result.total_size();
   for (decltype(volume) ord = 0; ord < volume; ++ord) {
@@ -467,6 +468,7 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
                               const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_congruent(result, tensor1, perm));
+  check_nbatch_congruent(result, tensor1, tensors...);
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
   TA_ASSERT(perm);
   TA_ASSERT(perm.size() == tensor1.range().rank());
@@ -513,6 +515,7 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
                               const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_congruent(result, tensor1, perm));
+  check_nbatch_congruent(result, tensor1, tensors...);
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
   TA_ASSERT(perm);
   TA_ASSERT(perm.size() == tensor1.range().rank());
@@ -553,6 +556,7 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   const auto volume = result.range().volume();
 
@@ -593,6 +597,7 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   const auto volume = result.range().volume();
 
@@ -654,7 +659,7 @@ template <typename Op, typename TR, typename... Ts,
 inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
-  TA_ASSERT(is_nbatch_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   // contiguous data: all batches are processed in one sweep
   const auto volume = result.range().volume() * nbatch(result);
@@ -687,6 +692,7 @@ template <
 inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   if constexpr (std::is_invocable_r_v<TR, Op, const Ts&...>) {
     result = std::forward<Op>(op)(tensors...);
@@ -721,6 +727,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(perm, result, tensor1, tensors...));
+  check_nbatch_congruent(result, tensor1, tensors...);
   TA_ASSERT(perm);
   TA_ASSERT(perm.size() == result.range().rank());
 
@@ -755,6 +762,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(perm, result, tensor1, tensors...));
+  check_nbatch_congruent(result, tensor1, tensors...);
   TA_ASSERT(perm);
   TA_ASSERT(perm.size() == result.range().rank());
 
@@ -795,6 +803,7 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
                         const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
+  check_nbatch_congruent(result, tensor1, tensors...);
 
   const auto volume = tensor1.range().volume();
 
@@ -850,6 +859,7 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
                         const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
+  check_nbatch_congruent(result, tensor1, tensors...);
 
   const auto volume = tensor1.range().volume();
 

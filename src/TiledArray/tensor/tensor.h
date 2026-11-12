@@ -674,7 +674,7 @@ class Tensor {
         Permute<value_type, value_type> p;
 
         auto volume = total_size();
-        for (decltype(volume) i = 0; i < volume; ++i) {
+        for (std::decay_t<decltype(volume)> i = 0; i < volume; ++i) {
           auto& el = *(data() + i);
           if (!el.empty()) el = p(el, inner_perm);
         }
@@ -731,7 +731,12 @@ class Tensor {
       if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
-        for (auto& x : *this) x = p(x, inner_perm);
+        // all batches; range-for would only visit the first
+        const auto volume = total_size();
+        for (std::decay_t<decltype(volume)> i = 0; i < volume; ++i) {
+          auto& x = data()[i];
+          x = p(x, inner_perm);
+        }
       }
     }
   }
@@ -781,7 +786,12 @@ class Tensor {
       if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
-        for (auto& x : *this) x = p(x, inner_perm);
+        // all batches; range-for would only visit the first
+        const auto volume = total_size();
+        for (std::decay_t<decltype(volume)> i = 0; i < volume; ++i) {
+          auto& x = data()[i];
+          x = p(x, inner_perm);
+        }
       }
     }
   }

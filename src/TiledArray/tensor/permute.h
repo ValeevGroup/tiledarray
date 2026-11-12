@@ -122,7 +122,7 @@ template <typename InputOp, typename OutputOp, typename Result, typename Perm,
 inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
                     const Perm& perm, const Arg0& arg0, const Args&... args) {
   // batched tensors: permute each batch; the range describes a single batch
-  TA_ASSERT(is_nbatch_congruent(result, arg0, args...));
+  check_nbatch_congruent(result, arg0, args...);
   if constexpr (is_batched_tensor_v<Result> && is_batched_tensor_v<Arg0> &&
                 (is_batched_tensor_v<Args> && ...)) {
     if (const std::size_t nb = result.nbatch(); nb > 1) {
