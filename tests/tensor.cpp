@@ -834,4 +834,138 @@ BOOST_AUTO_TEST_CASE(size_of) {
                            5 * 6 * sizeof(TTD::value_type::value_type));
 }
 
+// every host op must act on all batches of a batched tensor, and value-
+// returning ops must return a tensor with as many batches as their arguments
+BOOST_AUTO_TEST_CASE(batched_ops) {
+  using T = TensorD;
+  const std::size_t nb = 3;
+  const Range rng{Range1{0, 2}, Range1{1, 4}, Range1{0, 4}};
+  const Permutation perm{2, 0, 1};
+
+  auto make = [&](double offset) {
+    T t(rng, T::nbatches{nb});
+    for (std::size_t i = 0; i != t.total_size(); ++i)
+      t.data()[i] = offset + 0.5 * i;
+    return t;
+  };
+  // deep copy of batch b as a plain (nbatch=1) tensor
+  auto deep_batch = [](const T& t, std::size_t b) {
+    T result(t.range());
+    std::copy_n(t.batch_data(b), t.range().volume(), result.data());
+    return result;
+  };
+  // checks result against per-batch reference op applied to deep copies
+  auto check = [&](const char* what, const T& result, auto&& ref_op) {
+    BOOST_TEST_CONTEXT(what) {
+      BOOST_CHECK_EQUAL(result.nbatch(), nb);
+      if (result.nbatch() != nb) return;
+      for (std::size_t b = 0; b != nb; ++b) {
+        BOOST_TEST_CONTEXT("batch " << b) {
+          const T expected = ref_op(b);
+          BOOST_REQUIRE_EQUAL(result.range(), expected.range());
+          const auto* r = result.batch_data(b);
+          for (std::size_t i = 0; i != expected.size(); ++i)
+            BOOST_CHECK_CLOSE(r[i], expected.data()[i], 1e-12);
+        }
+      }
+    }
+  };
+
+  const T a = make(1.0);
+  const T c = make(-7.0);
+
+  check("clone", a.clone(), [&](auto b) { return deep_batch(a, b); });
+  check("permute", a.permute(perm),
+        [&](auto b) { return deep_batch(a, b).permute(perm); });
+  check("scale", a.scale(2.0),
+        [&](auto b) { return deep_batch(a, b).scale(2.0); });
+  check("scale(perm)", a.scale(2.0, perm),
+        [&](auto b) { return deep_batch(a, b).scale(2.0, perm); });
+  check("neg", a.neg(), [&](auto b) { return deep_batch(a, b).neg(); });
+  check("neg(perm)", a.neg(perm),
+        [&](auto b) { return deep_batch(a, b).neg(perm); });
+  check("add", a.add(c),
+        [&](auto b) { return deep_batch(a, b).add(deep_batch(c, b)); });
+  check("add(perm)", a.add(c, perm),
+        [&](auto b) { return deep_batch(a, b).add(deep_batch(c, b), perm); });
+  check("add(factor)", a.add(c, 3.0),
+        [&](auto b) { return deep_batch(a, b).add(deep_batch(c, b), 3.0); });
+  check("add(constant)", a.add(3.0),
+        [&](auto b) { return deep_batch(a, b).add(3.0); });
+  check("subt", a.subt(c),
+        [&](auto b) { return deep_batch(a, b).subt(deep_batch(c, b)); });
+  check("subt(perm)", a.subt(c, perm),
+        [&](auto b) { return deep_batch(a, b).subt(deep_batch(c, b), perm); });
+  check("mult", a.mult(c),
+        [&](auto b) { return deep_batch(a, b).mult(deep_batch(c, b)); });
+  check("mult(perm)", a.mult(c, perm),
+        [&](auto b) { return deep_batch(a, b).mult(deep_batch(c, b), perm); });
+  check("unary", a.unary([](double x) { return x * x; }), [&](auto b) {
+    const T ab = deep_batch(a, b);
+    return ab.unary([](double x) { return x * x; });
+  });
+  check("binary", a.binary(c, [](double x, double y) { return x - 2 * y; }),
+        [&](auto b) {
+          return deep_batch(a, b).binary(
+              deep_batch(c, b), [](double x, double y) { return x - 2 * y; });
+        });
+  check("operator+", a + c,
+        [&](auto b) { return deep_batch(a, b) + deep_batch(c, b); });
+
+  // in-place ops
+  {
+    T x = a.clone();
+    x.scale_to(2.0);
+    check("scale_to", x, [&](auto b) { return deep_batch(a, b).scale(2.0); });
+  }
+  {
+    T x = a.clone();
+    x.neg_to();
+    check("neg_to", x, [&](auto b) { return deep_batch(a, b).neg(); });
+  }
+  {
+    T x = a.clone();
+    x.add_to(3.0);
+    check("add_to(constant)", x,
+          [&](auto b) { return deep_batch(a, b).add(3.0); });
+  }
+  {
+    T x = a.clone();
+    x.add_to(c);
+    check("add_to", x,
+          [&](auto b) { return deep_batch(a, b).add(deep_batch(c, b)); });
+  }
+  {
+    T x = a.clone();
+    x.subt_to(c, 2.0);
+    check("subt_to(factor)", x,
+          [&](auto b) { return deep_batch(a, b).subt(deep_batch(c, b), 2.0); });
+  }
+  {
+    T x = a.clone();
+    x.mult_to(c);
+    check("mult_to", x,
+          [&](auto b) { return deep_batch(a, b).mult(deep_batch(c, b)); });
+  }
+  {
+    T x = a.clone();
+    x.inplace_unary([](double& v) { v = -3 * v; });
+    check("inplace_unary", x,
+          [&](auto b) { return deep_batch(a, b).scale(-3.0); });
+  }
+
+  // reductions cover all batches
+  {
+    double sum = 0, sqnorm = 0, dot = 0;
+    for (std::size_t b = 0; b != nb; ++b) {
+      sum += deep_batch(a, b).sum();
+      sqnorm += deep_batch(a, b).squared_norm();
+      dot += deep_batch(a, b).dot(deep_batch(c, b));
+    }
+    BOOST_CHECK_CLOSE(a.sum(), sum, 1e-12);
+    BOOST_CHECK_CLOSE(a.squared_norm(), sqnorm, 1e-12);
+    BOOST_CHECK_CLOSE(a.dot(c), dot, 1e-12);
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

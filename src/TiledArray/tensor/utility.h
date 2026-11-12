@@ -180,6 +180,29 @@ inline bool is_range_set_congruent(const T1& tensor1, const T2& tensor2,
          is_range_set_congruent(tensor1, tensors...);
 }
 
+/// Whether tensor type \c T is batched, i.e. holds `nbatch()` copies of its
+/// range, each accessible as a plain tensor via `batch(idx)`
+template <typename T>
+inline constexpr bool is_batched_tensor_v = requires(const T& t) {
+  t.nbatch();
+  t.batch(std::size_t{0});
+};
+
+/// \return the number of batches in \p tensor ; 1 if \c T is not batched
+template <typename T>
+inline std::size_t nbatch(const T& tensor) {
+  if constexpr (requires { tensor.nbatch(); })
+    return tensor.nbatch();
+  else
+    return 1;
+}
+
+/// \return true if all of \p tensors have the same number of batches
+template <typename T1, typename... Ts>
+inline bool is_nbatch_congruent(const T1& tensor1, const Ts&... tensors) {
+  return ((nbatch(tensor1) == nbatch(tensors)) && ...);
+}
+
 /// Get the inner size
 
 /// This function searches of the largest contiguous size in the range of a

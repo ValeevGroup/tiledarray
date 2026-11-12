@@ -395,8 +395,10 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  TA_ASSERT(is_nbatch_congruent(result, tensors...));
 
-  const auto volume = result.range().volume();
+  // contiguous data: all batches are processed in one sweep
+  const auto volume = result.range().volume() * nbatch(result);
 
   math::inplace_vector_op(std::forward<Op>(op), volume, result.data(),
                           tensors.data()...);
@@ -652,8 +654,10 @@ template <typename Op, typename TR, typename... Ts,
 inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  TA_ASSERT(is_nbatch_congruent(result, tensors...));
 
-  const auto volume = result.range().volume();
+  // contiguous data: all batches are processed in one sweep
+  const auto volume = result.range().volume() * nbatch(result);
 
   auto wrapper_op = [&op](typename TR::pointer MADNESS_RESTRICT result,
                           typename Ts::const_reference MADNESS_RESTRICT... ts) {

@@ -625,7 +625,8 @@ class Tensor {
           is_tensor<T1>::value && !std::is_same<T1, Tensor>::value &&
           !detail::has_conversion_operator_v<T1, Tensor>>::type* = nullptr>
   explicit Tensor(const T1& other)
-      : Tensor(detail::clone_range(other), 1, default_construct{false}) {
+      : Tensor(detail::clone_range(other), detail::nbatch(other),
+               default_construct{false}) {
     detail::tensor_init(value_converter<typename T1::value_type>, *this, other);
   }
 
@@ -699,7 +700,8 @@ class Tensor {
                 is_tensor<T1>::value &&
                 !detail::is_permutation_v<std::decay_t<Op>>>* = nullptr>
   Tensor(const T1& other, Op&& op)
-      : Tensor(detail::clone_range(other), 1, default_construct{false}) {
+      : Tensor(detail::clone_range(other), detail::nbatch(other),
+               default_construct{false}) {
     detail::tensor_init(op, *this, other);
   }
 
@@ -717,7 +719,8 @@ class Tensor {
       typename std::enable_if_t<is_tensor<T1>::value &&
                                 detail::is_permutation_v<Perm>>* = nullptr>
   Tensor(const T1& other, Op&& op, const Perm& perm)
-      : Tensor(outer(perm) * other.range(), 1, default_construct{false}) {
+      : Tensor(outer(perm) * other.range(), detail::nbatch(other),
+               default_construct{false}) {
     detail::tensor_init(op, outer(perm), *this, other);
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
@@ -745,7 +748,8 @@ class Tensor {
   template <typename T1, typename T2, typename Op,
             typename = std::enable_if_t<detail::is_nested_tensor_v<T1, T2>>>
   Tensor(const T1& left, const T2& right, Op&& op)
-      : Tensor(detail::clone_range(left), 1, default_construct{false}) {
+      : Tensor(detail::clone_range(left), detail::nbatch(left),
+               default_construct{false}) {
     detail::tensor_init(op, *this, left, right);
   }
 
@@ -765,7 +769,8 @@ class Tensor {
       typename std::enable_if<detail::is_nested_tensor<T1, T2>::value &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor(const T1& left, const T2& right, Op&& op, const Perm& perm)
-      : Tensor(outer(perm) * left.range(), 1, default_construct{false}) {
+      : Tensor(outer(perm) * left.range(), detail::nbatch(left),
+               default_construct{false}) {
     detail::tensor_init(op, outer(perm), *this, left, right);
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
