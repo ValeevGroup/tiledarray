@@ -26,7 +26,9 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <functional>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include <TiledArray/fwd.h>
@@ -822,6 +824,45 @@ namespace detail {
 inline std::optional<Stream>*& madness_task_stream_opt_ptr_accessor() {
   static thread_local std::optional<Stream>* stream_opt_ptr = nullptr;
   return stream_opt_ptr;
+}
+
+/// releases deferred until the device work a device task queued has completed:
+/// runs each of them on destruction
+class DeferredReleases {
+ public:
+  DeferredReleases() = default;
+  DeferredReleases(DeferredReleases&& other) noexcept
+      : releases_(std::exchange(other.releases_, {})) {}
+  DeferredReleases& operator=(DeferredReleases&& other) noexcept {
+    if (this != &other) {
+      run();
+      releases_ = std::exchange(other.releases_, {});
+    }
+    return *this;
+  }
+  DeferredReleases(const DeferredReleases&) = delete;
+  DeferredReleases& operator=(const DeferredReleases&) = delete;
+  ~DeferredReleases() { run(); }
+
+  void push_back(std::function<void()> release) {
+    releases_.push_back(std::move(release));
+  }
+
+ private:
+  std::vector<std::function<void()>> releases_;
+
+  void run() {
+    for (auto& release : releases_) release();
+    releases_.clear();
+  }
+};
+
+// in a madness device task points to its list of deferred releases (see
+// TiledArray::device::defer_until_task_completes); nullptr outside device
+// tasks
+inline DeferredReleases*& madness_task_deferred_releases_ptr_accessor() {
+  static thread_local DeferredReleases* ptr = nullptr;
+  return ptr;
 }
 
 inline std::optional<Stream>& tls_stream_opt_accessor() {

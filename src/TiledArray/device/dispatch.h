@@ -29,6 +29,7 @@
 #include <TiledArray/tensor/type_traits.h>
 
 #include <complex>
+#include <functional>
 #include <type_traits>
 
 /// Device kernels behind TA::Tensor's tile ops. A TA::Tensor member runs the
@@ -45,7 +46,10 @@
 /// blasqueue_for) and calls device::sync_madness_task_with; inside a device
 /// task every later kernel reuses the stream the first one recorded, so the
 /// kernels of one task run in order. Host code that reads data a kernel of the
-/// same task wrote must call device::synchronize() first.
+/// same task wrote must call device::synchronize() first. Storage of a device
+/// tensor freed inside a device task is returned to its allocator only once
+/// the work the task queued has completed (see defer_until_task_completes),
+/// so temporaries may be dropped while kernels reading them are in flight.
 ///
 /// Whether a tile op runs in a device task at all is decided earlier, by
 /// detail::is_device_tile; under a Host scope, dist_eval/unary_eval.h and
@@ -104,6 +108,10 @@ inline constexpr bool device_executable_v =
 /// the host code may read data that kernels queued earlier in the same task
 /// (before a scope changed the setting) are still writing, so the macro waits
 /// for them first.
+/// \warning use only in templates whose argument types appear in the list:
+///          the discarded branches rely on `if constexpr` in a template; in
+///          non-template code they would be compiled and, without device
+///          support, fail to link (the kernels are only defined with it).
 #define TA_ON_DEVICE(...)                                          \
   if constexpr (!::TiledArray::device_executable_v<__VA_ARGS__>) { \
   } else if (::TiledArray::execution_space() !=                    \
@@ -160,6 +168,17 @@ T inner_product(integer n, const T* x, const T* y, const Range& range);
 /// task completes; outside one, does nothing, since every kernel has already
 /// waited for its stream
 void synchronize();
+
+/// inside a device task, queues \p release to run once the device work this
+/// task queued has completed, and returns true; outside one returns false and
+/// does not call \p release (every kernel outside a device task has already
+/// waited for its stream, so the caller may release now)
+bool defer_until_task_completes(std::function<void()> release);
+
+/// waits for the device work this task queued (see synchronize()), then
+/// prefetches the \p n elements at \p p to the host and waits for that
+template <typename T>
+void prefetch_to_host(const T* p, integer n, const Range& range);
 
 }  // namespace device
 }  // namespace TiledArray

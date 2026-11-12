@@ -33,8 +33,6 @@
 #include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/tile.h>
 
-#include <madness/world/archive.h>
-
 namespace TiledArray {
 namespace detail {
 
@@ -155,39 +153,9 @@ inline TiledArray::DistArray<UMTile, Policy> ta_tensor_to_um_tensor(
 
 }  // namespace TiledArray
 
-/// MADNESS archive support for UMTensor. UM data may be stale on the host
-/// while a device kernel is in flight, so storing first prefetches the tile to
-/// the host and waits; the format is TA::Tensor::serialize's, which also loads
-/// it.
-namespace madness {
-namespace archive {
-
-template <class Archive, typename T>
-struct ArchiveStoreImpl<Archive, TiledArray::UMTensor<T>> {
-  static inline void store(const Archive& ar,
-                           const TiledArray::UMTensor<T>& t) {
-    if constexpr (TiledArray::detail::is_numeric_v<T>)
-      TiledArray::device::sync_madness_task_with(
-          TiledArray::detail::to_host(t));
-    // a shallow copy, since serialize() is not const
-    TiledArray::UMTensor<T>(t).serialize(ar);
-  }
-};
-
-}  // namespace archive
-}  // namespace madness
-
-/// extern template declarations for the UMTensor class.
-namespace TiledArray {
-
-extern template class Tensor<double, device_um_allocator<double>>;
-extern template class Tensor<float, device_um_allocator<float>>;
-extern template class Tensor<std::complex<double>,
-                             device_um_allocator<std::complex<double>>>;
-extern template class Tensor<std::complex<float>,
-                             device_um_allocator<std::complex<float>>>;
-
-}  // namespace TiledArray
+// N.B. archiving a UMTensor needs no specialization: Tensor::serialize
+// waits for device work and prefetches the data to the host before storing.
+// The extern template declarations for UMTensor live in tensor/tensor.h.
 
 #endif  // TILEDARRAY_HAS_DEVICE
 

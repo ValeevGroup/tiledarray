@@ -139,6 +139,15 @@ inline ExecutionSpace execution_space() {
 ///          so call `.get()` on returned Futures (e.g. from `dot()`) inside
 ///          the scope. Open scopes from the main thread only, after
 ///          TA::initialize; the constructor throws otherwise.
+///          Being process-wide, it also switches tasks of other arrays that
+///          are in flight when the scope opens or closes.
+/// \note the scope decides which code the tile ops run, not which tasks
+///       run them: only the elementwise evaluators (UnaryEvalImpl,
+///       BinaryEvalImpl) skip the device task under a Host scope. Contraction
+///       argument conversion and reduction (contraction_eval.h,
+///       reduce_task.h), assignment-time conversions (expr.h) and clone still
+///       submit device tasks, whose tile ops then run the host code after
+///       waiting for the task's device work.
 class ExecutionSpaceScope {
  public:
   explicit ExecutionSpaceScope(ExecutionSpace space) {

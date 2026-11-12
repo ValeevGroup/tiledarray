@@ -162,7 +162,7 @@ void permute(const T* in, T* out, const Range& in_range,
       static_cast<std::size_t>(std::numeric_limits<int>::max()))
     TA_EXCEPTION(
         "device::permute: librett cannot permute more than INT_MAX elements");
-  // ponytail: librett builds and destroys a plan per call; cache plans by
+  // TODO: librett builds and destroys a plan per call; cache plans by
   // (extents, perm) if permutes show up in profiles
   const Launch launch(in_range);
   const auto n = in_range.volume();
@@ -212,6 +212,21 @@ void synchronize() {
     DeviceSafeCall(streamSynchronize(stream->stream));
 }
 
+template <typename T>
+void prefetch_to_host(const T* p, integer n, const Range& range) {
+  synchronize();
+  const Launch launch(range);
+  TiledArray::detail::prefetch(p, n, CpuDeviceId, launch.stream.stream);
+  DeviceSafeCall(streamSynchronize(launch.stream.stream));
+}
+
+bool defer_until_task_completes(std::function<void()> release) {
+  auto* releases = detail::madness_task_deferred_releases_ptr_accessor();
+  if (releases == nullptr) return false;
+  releases->push_back(std::move(release));
+  return true;
+}
+
 #define TA_INSTANTIATE_DEVICE_KERNELS(T)                                      \
   template void gemm(math::blas::Op, math::blas::Op, integer, integer,        \
                      integer, T, const T*, integer, const T*, integer, T, T*, \
@@ -223,7 +238,8 @@ void synchronize() {
   template void mult_to(integer, const T*, T*, const Range&);                 \
   template void permute(const T*, T*, const Range&, const Permutation&);      \
   template T dot(integer, const T*, const T*, const Range&);                  \
-  template T inner_product(integer, const T*, const T*, const Range&);
+  template T inner_product(integer, const T*, const T*, const Range&);        \
+  template void prefetch_to_host(const T*, integer, const Range&);
 
 TA_INSTANTIATE_DEVICE_KERNELS(float)
 TA_INSTANTIATE_DEVICE_KERNELS(double)

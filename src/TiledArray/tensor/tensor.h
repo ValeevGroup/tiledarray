@@ -354,6 +354,20 @@ class Tensor {
  private:
   using default_construct = bool;
 
+  /// returns \p size elements at \p ptr to \p allocator; for a device
+  /// tensor freed inside a device task, once the device work that task queued
+  /// has completed, since its kernels may still be reading the storage
+  static void deallocate_storage(allocator_type allocator, value_type* ptr,
+                                 std::size_t size) {
+    if constexpr (device_executable_v<Tensor>) {
+      if (device::defer_until_task_completes([allocator, ptr, size]() mutable {
+            allocator.deallocate(ptr, size);
+          }))
+        return;
+    }
+    allocator.deallocate(ptr, size);
+  }
+
   Tensor(const range_type& range, size_t nbatch, bool default_construct)
       : range_(range), nbatch_(nbatch) {
     size_t size = range_.volume() * nbatch;
@@ -382,7 +396,7 @@ class Tensor {
                               make_string("created by TA::Tensor*=", this));
       }
 #endif
-      allocator.deallocate(ptr, size);
+      deallocate_storage(std::move(allocator), ptr, size);
     };
     this->data_ = std::shared_ptr<value_type[]>(ptr, std::move(deleter));
 #ifdef TA_TENSOR_MEM_TRACE
@@ -423,7 +437,7 @@ class Tensor {
                               make_string("created by TA::Tensor*=", this));
       }
 #endif
-      allocator.deallocate(ptr, size);
+      deallocate_storage(std::move(allocator), ptr, size);
     };
     this->data_ = std::shared_ptr<value_type[]>(ptr, std::move(deleter));
 #ifdef TA_TENSOR_MEM_TRACE
@@ -1410,6 +1424,11 @@ class Tensor {
       } else {
         if constexpr (madness::is_input_archive_v<Archive>) {
           *this = Tensor(std::move(range), nbatch, default_construct{true});
+        } else if constexpr (device_executable_v<Tensor>) {
+          // device kernels may still be writing the data: wait for them, and
+          // migrate the data to the host before reading it
+          device::prefetch_to_host(this->data_.get(), total_size(),
+                                   this->range_);
         }
         ar& madness::archive::wrap(this->data_.get(),
                                    this->range_.volume() * nbatch);
@@ -1740,10 +1759,13 @@ class Tensor {
     } else {
       TA_ON_DEVICE(Tensor) {
         if (!empty()) {
-          TA_ASSERT(nbatch() == 1);
           const auto outer_perm = outer(perm);
-          Tensor result(outer_perm * range_, 1, default_construct{false});
-          device::permute(data(), result.data(), range_, outer_perm);
+          Tensor result(outer_perm * range_, nbatch(),
+                        default_construct{false});
+          const auto volume = range_.volume();
+          for (std::size_t b = 0; b != nbatch(); ++b)
+            device::permute(data() + b * volume, result.data() + b * volume,
+                            range_, outer_perm);
           return result;
         }
       }
@@ -2129,8 +2151,7 @@ class Tensor {
         if constexpr (detail::is_complex_conjugate_v<Scalar>)
           device::synchronize();
         else {
-          TA_ASSERT(nbatch() == 1);
-          device::scal(range_.volume(), numeric_type(factor), data(), range_);
+          device::scal(total_size(), numeric_type(factor), data(), range_);
           return *this;
         }
       }
@@ -2273,16 +2294,6 @@ class Tensor {
     } else {
       return detail::clone_or_cast<Tensor>(right);
     }
-  }
-
-  /// \return \p tmp permuted by \p perm, once the device work reading
-  /// \p tmp is done, so that \p tmp can be freed
-  // ponytail: blocks the task; stream-ordered deallocation would avoid it
-  template <typename Perm>
-  static Tensor permute_temporary(const Tensor& tmp, const Perm& perm) {
-    Tensor result = tmp.permute(perm);
-    device::synchronize();
-    return result;
   }
 
   // Addition operations
@@ -2495,7 +2506,7 @@ class Tensor {
     requires(is_tensor<Right>::value && detail::is_permutation_v<Perm> &&
              detail::addable<const value_type&, const value_t<Right>&>)
   auto add(const Right& right, const Perm& perm) const {
-    TA_ON_DEVICE(Tensor, Right) return permute_temporary(add(right), perm);
+    TA_ON_DEVICE(Tensor, Right) return add(right).permute(perm);
     return binary(
         right,
         [](const value_type& l, const value_t<Right>& r) { return l + r; },
@@ -2540,9 +2551,7 @@ class Tensor {
              detail::is_permutation_v<Perm> &&
              detail::addable<const value_type&, const value_t<Right>&>)
   auto add(const Right& right, const Scalar factor, const Perm& perm) const {
-    TA_ON_DEVICE(Tensor, Right) {
-      return permute_temporary(add(right, factor), perm);
-    }
+    TA_ON_DEVICE(Tensor, Right) { return add(right, factor).permute(perm); }
     return binary(
         right,
         [factor](const value_type& l, const value_t<Right>& r) {
@@ -2607,9 +2616,9 @@ class Tensor {
     }
 
     TA_ON_DEVICE(Tensor, Right) {
-      TA_ASSERT(nbatch() == 1 && detail::is_range_set_congruent(*this, right));
-      device::axpy(range_.volume(), numeric_type(1), right.data(), data(),
-                   range_);
+      TA_ASSERT(detail::is_range_set_congruent(*this, right) &&
+                nbatch() == right.nbatch());
+      device::axpy(total_size(), numeric_type(1), right.data(), data(), range_);
       return *this;
     }
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
@@ -2691,8 +2700,9 @@ class Tensor {
       }
     }
     TA_ON_DEVICE(Tensor, Right) {
-      TA_ASSERT(nbatch() == 1 && detail::is_range_set_congruent(*this, right));
-      device::axpy(range_.volume(), numeric_type(factor), right.data(), data(),
+      TA_ASSERT(detail::is_range_set_congruent(*this, right) &&
+                nbatch() == right.nbatch());
+      device::axpy(total_size(), numeric_type(factor), right.data(), data(),
                    range_);
       return *this;
     }
@@ -2727,7 +2737,6 @@ class Tensor {
       TA_ON_DEVICE(Tensor, Right) {
         const Tensor permuted_right = right.permute(perm);
         axpy_to(permuted_right, factor);
-        device::synchronize();  // before permuted_right is freed
         return *this;
       }
       auto permuted = right.permute(perm);
@@ -2892,7 +2901,7 @@ class Tensor {
           "supported for view inner cells");
       return Tensor{};
     } else {
-      TA_ON_DEVICE(Tensor, Right) return permute_temporary(subt(right), perm);
+      TA_ON_DEVICE(Tensor, Right) return subt(right).permute(perm);
       return binary(
           right, [](const value_type& l, const value_type& r) { return l - r; },
           perm);
@@ -2958,9 +2967,7 @@ class Tensor {
       auto result = subt(right, factor);
       return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
-      TA_ON_DEVICE(Tensor, Right) {
-        return permute_temporary(subt(right, factor), perm);
-      }
+      TA_ON_DEVICE(Tensor, Right) { return subt(right, factor).permute(perm); }
       return binary(
           right,
           [factor](const value_type& l, const value_type& r) {
@@ -3017,8 +3024,9 @@ class Tensor {
     }
 
     TA_ON_DEVICE(Tensor, Right) {
-      TA_ASSERT(nbatch() == 1 && detail::is_range_set_congruent(*this, right));
-      device::axpy(range_.volume(), numeric_type(-1), right.data(), data(),
+      TA_ASSERT(detail::is_range_set_congruent(*this, right) &&
+                nbatch() == right.nbatch());
+      device::axpy(total_size(), numeric_type(-1), right.data(), data(),
                    range_);
       return *this;
     }
@@ -3159,11 +3167,10 @@ class Tensor {
           *this, right, fill, detail::ArenaBinarySparsity::Intersection);
     } else {
       TA_ON_DEVICE(Tensor, Right) {
-        TA_ASSERT(nbatch() == 1 &&
-                  detail::is_range_set_congruent(*this, right));
-        Tensor result(range_, 1, default_construct{false});
-        device::mult(range_.volume(), data(), right.data(), result.data(),
-                     range_);
+        TA_ASSERT(detail::is_range_set_congruent(*this, right) &&
+                  nbatch() == right.nbatch());
+        Tensor result(range_, nbatch(), default_construct{false});
+        device::mult(total_size(), data(), right.data(), result.data(), range_);
         return result;
       }
       return binary(right, mult_op);
@@ -3209,7 +3216,7 @@ class Tensor {
       auto result = mult(right);
       return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
-      TA_ON_DEVICE(Tensor, Right) return permute_temporary(mult(right), perm);
+      TA_ON_DEVICE(Tensor, Right) return mult(right).permute(perm);
       return binary(
           right,
           [](const value_type& l, const value_t<Right>& r) { return l * r; },
@@ -3280,9 +3287,7 @@ class Tensor {
       auto result = mult(right, factor);
       return arena_perm_is_trivial(perm) ? result : result.permute(perm);
     } else {
-      TA_ON_DEVICE(Tensor, Right) {
-        return permute_temporary(mult(right, factor), perm);
-      }
+      TA_ON_DEVICE(Tensor, Right) { return mult(right, factor).permute(perm); }
       return binary(
           right,
           [factor](const value_type& l, const value_t<Right>& r) {
@@ -3318,8 +3323,9 @@ class Tensor {
     // Routing through that kernel would rebuild the whole tile only to
     // materialize explicit zeros where screening had removed cells.
     TA_ON_DEVICE(Tensor, Right) {
-      TA_ASSERT(nbatch() == 1 && detail::is_range_set_congruent(*this, right));
-      device::mult_to(range_.volume(), right.data(), data(), range_);
+      TA_ASSERT(detail::is_range_set_congruent(*this, right) &&
+                nbatch() == right.nbatch());
+      device::mult_to(total_size(), right.data(), data(), range_);
       return *this;
     }
     return inplace_binary(right, [](value_type& MADNESS_RESTRICT l,
@@ -4608,6 +4614,17 @@ extern template class Tensor<float>;
 // extern template class Tensor<long>;
 extern template class Tensor<std::complex<double>>;
 extern template class Tensor<std::complex<float>>;
+
+#ifdef TILEDARRAY_HAS_DEVICE
+// instantiated in device/tensor.cpp; declared here so that every translation
+// unit using UMTensor sees them
+extern template class Tensor<double, device_um_allocator<double>>;
+extern template class Tensor<float, device_um_allocator<float>>;
+extern template class Tensor<std::complex<double>,
+                             device_um_allocator<std::complex<double>>>;
+extern template class Tensor<std::complex<float>,
+                             device_um_allocator<std::complex<float>>>;
+#endif  // TILEDARRAY_HAS_DEVICE
 
 #endif  // TILEDARRAY_HEADER_ONLY
 
