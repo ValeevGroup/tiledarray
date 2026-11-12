@@ -47,8 +47,5 @@
 # stray parallel-archive files from the unit tests (see tests/archive_file_utils.h)
 tmp.??????.?????
 
-build/*
-cmake-build*
-
 # macOS Finder metadata
 .DS_Store
