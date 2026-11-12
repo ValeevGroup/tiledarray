@@ -99,7 +99,11 @@ BOOST_AUTO_TEST_CASE(block_assign_threshold_mismatch) {
 // Regression for threshold 0: a shape screened at threshold 0 cannot mark a
 // zero-norm tile zero (0 < 0 is false), yet nothing produces such a tile. The
 // tests below mix operands screened at a positive threshold with results made
-// at threshold 0; each must neither abort nor hang.
+// at threshold 0; each must neither abort nor hang. Where the shape can be
+// checked before the read that would hang, a BOOST_REQUIRE on it makes a
+// regression fail by name instead of wedging the suite; the contraction cannot
+// be checked that way, and a regression there aborts in a task (ContractReduce
+// asserts its reduction is nonempty), taking down the whole test binary.
 
 // contraction: every tile pair feeding c(0,0) has a zero operand tile, so its
 // reduction would receive no pairs
@@ -151,7 +155,8 @@ BOOST_AUTO_TEST_CASE(block_assign_zero_threshold_unwritten_tile) {
   dest("i,j").block({1, 0}, {2, 2}, preserve_lobound) = src("i,j");
   world.gop.fence();
 
-  BOOST_CHECK(dest.is_zero({1, 0}));
+  // dest(1,0) is never written; if its shape says nonzero, the copy hangs
+  BOOST_REQUIRE(dest.is_zero({1, 0}));
   TSpArrayD copy;
   BOOST_CHECK_NO_THROW({
     copy("i,j") = dest("i,j");
@@ -168,7 +173,9 @@ BOOST_AUTO_TEST_CASE(fill_zero_at_zero_threshold) {
   a.fill(0.0);
   world.gop.fence();
 
-  BOOST_CHECK(a.is_zero({0, 0}));
+  // no tile is written; if the shape says nonzero, the copy hangs
+  for (const auto& idx : a.trange().tiles_range())
+    BOOST_REQUIRE(a.is_zero(idx));
   TSpArrayD copy;
   BOOST_CHECK_NO_THROW({
     copy("i,j") = a("i,j");
