@@ -29,6 +29,7 @@
 #include <TiledArray/math/transpose.h>
 #include <TiledArray/perm_index.h>
 #include <TiledArray/tensor/type_traits.h>
+#include <TiledArray/tensor/utility.h>
 
 namespace TiledArray {
 namespace detail {
@@ -120,6 +121,20 @@ template <typename InputOp, typename OutputOp, typename Result, typename Perm,
           typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
 inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
                     const Perm& perm, const Arg0& arg0, const Args&... args) {
+  // batched tensors: permute each batch; the range describes a single batch
+  check_nbatch_congruent(result, arg0, args...);
+  if constexpr (is_batched_tensor_v<Result> && is_batched_tensor_v<Arg0> &&
+                (is_batched_tensor_v<Args> && ...)) {
+    if (const std::size_t nb = result.nbatch(); nb > 1) {
+      for (std::size_t b = 0; b != nb; ++b) {
+        auto result_b = result.batch(b);
+        permute(input_op, output_op, result_b, perm, arg0.batch(b),
+                args.batch(b)...);
+      }
+      return;
+    }
+  }
+
   detail::PermIndex perm_index_op(arg0.range(), outer(perm));
 
   // Cache constants
