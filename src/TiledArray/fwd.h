@@ -129,19 +129,6 @@ using device_pinned_allocator = umpire::default_init_allocator<
     T, umpire::allocator<T, umpire::detail::MutexLock<deviceEnv>,
                          detail::get_pinned_allocator>>;
 
-/// \brief a vector that lives in UM, with most operations
-/// implemented on the CPU
-template <typename T>
-using device_um_btas_varray =
-    ::btas::varray<T, TiledArray::device_um_allocator<T>>;
-
-/**
- * btas::Tensor with UM storage device_um_btas_varray
- */
-template <typename T, typename Range = TiledArray::Range>
-using btasUMTensorVarray =
-    ::btas::Tensor<T, Range, TiledArray::device_um_btas_varray<T>>;
-
 /// TA::Tensor backed by the unified-memory allocator, usable as a device tile
 template <typename T>
 using UMTensor = Tensor<T, TiledArray::device_um_allocator<T>>;

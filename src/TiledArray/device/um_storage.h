@@ -46,8 +46,8 @@ bool in_memory_space(const Storage& vec) noexcept {
 
 /**
  * @tparam Space
- * @tparam Storage  the Storage type of the vector, such as
- * device_um_btas_varray
+ * @tparam Storage  the Storage type of the vector, such as a
+ * btas::varray with device_um_allocator
  */
 template <ExecutionSpace Space, typename Storage>
 void to_execution_space(Storage& vec, const device::Stream& s) {
