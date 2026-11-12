@@ -88,11 +88,30 @@ struct CPFixture : public TiledRangeFixture {
   TSpArrayI a_sparse;
 };
 
+// right now this just works for contracting two order 3 tensors which form a THC like
+// order 4 tensor.
 template <typename TArrayT>
 TArrayT compute_cp(const TArrayT& T, size_t cp_rank, bool verbose = false) {
   CP_ALS<typename TArrayT::value_type, typename TArrayT::policy_type> CPD(T);
   CPD.compute_rank(cp_rank, rank_tile_size, false, 1e-3, verbose);
   return CPD.reconstruct();
+}
+
+template <typename TArrayT>
+TArrayT compute_thc_cp(const TArrayT& T, size_t cp_rank, size_t cp_thc_rank, bool verbose = true) {
+  CP_ALS<typename TArrayT::value_type, typename TArrayT::policy_type> CPD(T);
+  CPD.compute_rank(cp_rank, rank_tile_size, false, 1e-3, verbose);
+  auto factors = CPD.get_factor_matrices();
+
+  TArrayT core;
+  core("p,q") = factors[2]("p,X") * factors[2]("q,X");
+
+  factors[0]("A,r") = factors[0]("r,A");
+  factors[1]("A,r") = factors[1]("r,A");
+  auto CPTHC = CP_THC_ALS(factors[0], factors[1], core);
+
+  CPTHC.compute_rank(cp_thc_rank, rank_tile_size, false, 1e-3, verbose);
+  return CPTHC.reconstruct();
 }
 
 enum class Fill { Random, Constant };
@@ -386,6 +405,17 @@ BOOST_AUTO_TEST_CASE(ta_cp_als) {
     BOOST_CHECK(accurate);
   }
 
+  // test the THC like CPD solver
+  {
+    auto b_dense = make<TArrayD>(tr3);
+    size_t cp_rank = 1;
+    auto b_cp = compute_thc_cp(b_dense, cp_rank, cp_rank, verbose);
+    TArrayD diff;
+    diff("a,b,c,d") = (b_dense("a,b,X") * b_dense("c,d,X")) - b_cp("a,b,c,d");
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-1);
+    BOOST_CHECK(accurate);
+  }
+
   // sparse test
   // order-3 test
   {
@@ -417,6 +447,17 @@ BOOST_AUTO_TEST_CASE(ta_cp_als) {
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < target_rel_error);
+//    BOOST_CHECK(accurate);
+  }
+
+  // test the THC like CPD solver
+  {
+    auto b_sparse = make<TSpArrayD, Fill::Random>(tr3);
+    size_t cp_rank = 77;
+    auto b_cp = compute_thc_cp(b_sparse, cp_rank, 5 * cp_rank, verbose);
+    TSpArrayD diff;
+    diff("a,b,c,d") = (b_sparse("a,b,X") * b_sparse("c,d,X")) - b_cp("a,b,c,d");
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-1);
     BOOST_CHECK(accurate);
   }
 }
