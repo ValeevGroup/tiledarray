@@ -24,7 +24,8 @@
 
 #ifdef TILEDARRAY_HAS_DEVICE
 
-#include <TiledArray/device/btas_um_tensor.h>
+#include <TiledArray/device/tensor.h>
+#include <TiledArray/external/librett.h>
 #include "unit_test_config.h"
 
 struct LibreTTFixture {
@@ -475,7 +476,7 @@ BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
 BOOST_AUTO_TEST_CASE(librett_um_tensor) {
   TiledArray::Range range{A, A};
 
-  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::UMTensor<double>;
 
   auto a = Tile(range);
 
@@ -492,7 +493,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor) {
 
   TiledArray::Permutation permutation(perm);
 
-  auto b = permute(a, permutation);
+  auto b = a.permute(permutation);
 
   TiledArray::device::deviceSynchronize();
   iter = 0;
@@ -507,7 +508,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor) {
 BOOST_AUTO_TEST_CASE(librett_um_tensor_nonsym) {
   TiledArray::Range range{B, A};
 
-  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::UMTensor<double>;
 
   auto a = Tile(range);
 
@@ -524,7 +525,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_nonsym) {
 
   TiledArray::Permutation permutation(perm);
 
-  auto b = permute(a, permutation);
+  auto b = a.permute(permutation);
 
   TiledArray::device::deviceSynchronize();
   iter = 0;
@@ -539,7 +540,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_nonsym) {
 BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_three) {
   TiledArray::Range range{A, B, C};
 
-  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::UMTensor<double>;
 
   auto a = Tile(range);
 
@@ -558,7 +559,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_three) {
   {
     TiledArray::Permutation permutation({1, 2, 0});
 
-    auto b = permute(a, permutation);
+    auto b = a.permute(permutation);
 
     TiledArray::device::deviceSynchronize();
     iter = 0;
@@ -576,7 +577,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_three) {
   {
     TiledArray::Permutation permutation({1, 0, 2});
 
-    auto b = permute(a, permutation);
+    auto b = a.permute(permutation);
 
     TiledArray::device::deviceSynchronize();
     iter = 0;
@@ -599,7 +600,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_four) {
 
   TiledArray::Range range(std::vector<std::size_t>({a, b, c, d}));
 
-  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::UMTensor<double>;
 
   auto tile_a = Tile(range);
 
@@ -621,7 +622,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_four) {
   {
     TiledArray::Permutation permutation({0, 3, 2, 1});
 
-    auto tile_b = permute(tile_a, permutation);
+    auto tile_b = tile_a.permute(permutation);
 
     TiledArray::device::deviceSynchronize();
     // validate
@@ -642,7 +643,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_four) {
   {
     TiledArray::Permutation permutation({1, 0, 3, 2});
 
-    auto tile_b = permute(tile_a, permutation);
+    auto tile_b = tile_a.permute(permutation);
 
     TiledArray::device::deviceSynchronize();
     // validate
@@ -670,7 +671,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_six) {
 
   TiledArray::Range range(std::vector<std::size_t>({a, b, c, d, e, f}));
 
-  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::UMTensor<double>;
 
   auto tile_a = Tile(range);
 
@@ -696,7 +697,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_six) {
   {
     TiledArray::Permutation permutation({0, 3, 2, 1, 5, 4});
 
-    auto tile_b = permute(tile_a, permutation);
+    auto tile_b = tile_a.permute(permutation);
 
     TiledArray::device::deviceSynchronize();
     // validate
@@ -721,7 +722,7 @@ BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_six) {
   {
     TiledArray::Permutation permutation({1, 0, 4, 3, 2, 5});
 
-    auto tile_b = permute(tile_a, permutation);
+    auto tile_b = tile_a.permute(permutation);
 
     TiledArray::device::deviceSynchronize();
     // validate
