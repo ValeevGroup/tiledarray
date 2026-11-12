@@ -353,6 +353,14 @@ std::size_t count_nonzero_tiles(const Array& a) {
 
 }  // namespace
 
+// The storage of an array is usable in an explicit instantiation -- which
+// instantiates every member, used or not -- for a tile type that does
+// nothing on becoming an element of an array (array_element_traits) as well
+// as for one that does. Applications instantiate it this way.
+template class TiledArray::detail::DistributedStorage<TiledArray::Tensor<long>>;
+template class TiledArray::detail::DistributedStorage<
+    TiledArray::DiskTile<TiledArray::Tensor<long>>>;
+
 BOOST_AUTO_TEST_SUITE(disk_tile_suite)
 
 BOOST_AUTO_TEST_CASE(lazy_tile_nestedness) {

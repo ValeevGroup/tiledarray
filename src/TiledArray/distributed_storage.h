@@ -150,18 +150,25 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T>> {
       // runs inside the assignment of from_, by whoever assigns it, and to_
       // -- the element of the array -- would stay unassigned, so that every
       // later use of the tile would wait forever. Stop instead.
-      try {
-        to_.set(array_element_traits<value_type>::on_insertion(
-            value_type(from_.get()), state_));
-      } catch (const std::exception& e) {
-        madness::print_error(
-            "TiledArray: a tile could not be made an element of an array: ",
-            e.what(), "\n");
-        std::terminate();
-      } catch (...) {
-        madness::print_error(
-            "TiledArray: a tile could not be made an element of an array\n");
-        std::terminate();
+      // Reached only for a tile type that transforms on insertion, but
+      // compiled for every tile type when this class is explicitly
+      // instantiated: the trait has on_insertion() only for the former.
+      if constexpr (array_element_traits<value_type>::transforms_on_insertion) {
+        try {
+          to_.set(array_element_traits<value_type>::on_insertion(
+              value_type(from_.get()), state_));
+        } catch (const std::exception& e) {
+          madness::print_error(
+              "TiledArray: a tile could not be made an element of an array: ",
+              e.what(), "\n");
+          std::terminate();
+        } catch (...) {
+          madness::print_error(
+              "TiledArray: a tile could not be made an element of an array\n");
+          std::terminate();
+        }
+      } else {
+        to_.set(from_);
       }
     }
 
