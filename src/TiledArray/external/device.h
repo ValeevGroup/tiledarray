@@ -26,7 +26,9 @@
 
 #include <cassert>
 #include <cstdlib>
+#include <functional>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include <TiledArray/fwd.h>
@@ -824,6 +826,45 @@ inline std::optional<Stream>*& madness_task_stream_opt_ptr_accessor() {
   return stream_opt_ptr;
 }
 
+/// releases deferred until the device work a device task queued has completed:
+/// runs each of them on destruction
+class DeferredReleases {
+ public:
+  DeferredReleases() = default;
+  DeferredReleases(DeferredReleases&& other) noexcept
+      : releases_(std::exchange(other.releases_, {})) {}
+  DeferredReleases& operator=(DeferredReleases&& other) noexcept {
+    if (this != &other) {
+      run();
+      releases_ = std::exchange(other.releases_, {});
+    }
+    return *this;
+  }
+  DeferredReleases(const DeferredReleases&) = delete;
+  DeferredReleases& operator=(const DeferredReleases&) = delete;
+  ~DeferredReleases() { run(); }
+
+  void push_back(std::function<void()> release) {
+    releases_.push_back(std::move(release));
+  }
+
+ private:
+  std::vector<std::function<void()>> releases_;
+
+  void run() {
+    for (auto& release : releases_) release();
+    releases_.clear();
+  }
+};
+
+// in a madness device task points to its list of deferred releases (see
+// TiledArray::device::defer_until_task_completes); nullptr outside device
+// tasks
+inline DeferredReleases*& madness_task_deferred_releases_ptr_accessor() {
+  static thread_local DeferredReleases* ptr = nullptr;
+  return ptr;
+}
+
 inline std::optional<Stream>& tls_stream_opt_accessor() {
   static thread_local std::optional<Stream> stream_opt =
 
@@ -845,6 +886,13 @@ inline std::optional<Stream>& madness_task_stream_opt_accessor() {
 /// before task completion
 /// \param s the stream to synchronize this task with
 inline void sync_madness_task_with(const Stream& s) {
+  // Outside a device task there is no task completion to defer, so block until
+  // the stream drains. N.B. the thread-local consulted below is pre-initialized
+  // non-empty, so without this branch such a call synchronizes nothing.
+  if (detail::madness_task_stream_opt_ptr_accessor() == nullptr) {
+    DeviceSafeCall(device::streamSynchronize(s.stream));
+    return;
+  }
   if (!detail::madness_task_stream_opt_accessor())
     detail::madness_task_stream_opt_accessor() = s;
   else {
@@ -888,16 +936,20 @@ inline void cancel_madness_task_sync() {
   detail::madness_task_stream_opt_accessor() = {};
 }
 
-/// maps a (tile) Range to device::Stream; if had already pushed work into a
-/// device::Stream (as indicated by madness_task_current_stream() )
-/// will return that Stream instead
+/// maps a (tile) Range to device::Stream; if the enclosing device task had
+/// already pushed work into a device::Stream (as indicated by
+/// madness_task_current_stream() ) will return that Stream instead
 /// @param[in] range will determine the device::Stream to compute an object
 /// associated with this Range object
 /// @return the device::Stream to use for creating tasks generating work
 /// associated with Range \p range
 template <typename Range>
 device::Stream stream_for(const Range& range) {
-  const auto stream_opt = madness_task_current_stream();
+  // outside a device task the thread-local current stream is always set, so
+  // only a device task's stream is reused
+  const auto stream_opt = detail::madness_task_stream_opt_ptr_accessor()
+                              ? madness_task_current_stream()
+                              : std::nullopt;
   if (!stream_opt) {
     auto stream_ord =
         range.offset() % device::Env::instance()->num_streams_total();

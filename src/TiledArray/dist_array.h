@@ -1853,7 +1853,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     // the RHS of an equation)
     if (!is_initialized()) return;
 
-    constexpr bool is_tot = detail::is_tensor_of_tensor_v<value_type>;
+    // an array of lazy tiles is annotated by the tile they evaluate to
+    constexpr bool is_tot = detail::evaluates_to_tensor_of_tensor_v<value_type>;
     const auto rank = tiles_range().rank();
     // TODO: Make constexpr and use structured bindings when CUDA supports C++17
     if (is_tot) {

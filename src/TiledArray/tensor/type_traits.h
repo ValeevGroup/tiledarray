@@ -223,6 +223,28 @@ template <typename... Ts>
 inline constexpr const bool is_tensor_of_tensor_v =
     is_tensor_of_tensor<Ts...>::value;
 
+/// Whether a tile of type \c T is, or evaluates to, a tensor of tensors.
+
+/// This is the nestedness of an \em array whose tiles are of type \c T : an
+/// array of lazy tiles is annotated (\c "i,j;a" ), and its expressions are
+/// typed, by the tile its tiles evaluate to (see \c eval_trait ). For a tile
+/// that is not lazy this is \c is_tensor_of_tensor<T> .
+/// \note Unlike \c is_tensor_of_tensor<T> this says nothing about \c T
+/// itself: a lazy tile has no tensor interface (\c data() , \c range() ,
+/// element access, ...). Use it to ask what an array holds, not what can be
+/// done with a tile in hand.
+template <typename T>
+struct evaluates_to_tensor_of_tensor
+    : public std::bool_constant<is_tensor_of_tensor_v<detail::remove_cvr_t<
+          typename std::conditional_t<is_lazy_tile<T>::value, eval_trait<T>,
+                                      std::type_identity<T>>::type>>> {};
+
+/// \c evaluates_to_tensor_of_tensor_v<T> is an alias for
+/// \c evaluates_to_tensor_of_tensor<T>::value
+template <typename T>
+inline constexpr bool evaluates_to_tensor_of_tensor_v =
+    evaluates_to_tensor_of_tensor<T>::value;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// It is sometimes desirable to distinguish between DistArrays with
 /// tensor-of-scalars tiles vs tensor-of-tensors tiles.

@@ -53,6 +53,9 @@ Core library lives under `src/TiledArray/`:
   `HashPmap`, `ReplicatedPmap`).
 - `math/` — BLAS/LAPACK wrappers, optional ScaLAPACK, CG solver, etc.
 - `conversions/` — interop with `Eigen`, `btas::Tensor`, row-major arrays.
+- `disk/` — disk-backed arrays: `DiskTile` (a lazy tile kept in a per-process
+  scratch file) and `DiskArray`. See
+  `doc/dox/dev/Disk-Backed-Arrays.md`.
 - `device/`, `host/` — GPU (CUDA/HIP) and host-side tile kernels; device
   code is gated by `TILEDARRAY_HAS_DEVICE`.
 - `external/` — adapters for MADNESS, Eigen, BTAS, device runtimes, TTG.
@@ -177,8 +180,12 @@ There is no Python-level test driver; `tests/` is all C++.
 - **GPU support is off by default.** `TA_CUDA=OFF`, `TA_HIP=OFF`; there is
   no SYCL backend. When either is ON, `TILEDARRAY_HAS_DEVICE` is defined
   and `device/`, LibreTT, and Umpire-managed unified memory get wired in.
-  CI does **not** exercise GPU paths, so device changes need local
-  validation.
+  GitHub Actions (`.github/workflows/ci.yml`) is CPU-only. GPU coverage
+  comes from a privately hosted GitLab CI (`.gitlab-ci.yml`), whose one
+  CUDA cell (`TA_CUDA=ON`, `RelWithDebInfo`, `cuda` runner) builds the
+  library and examples and runs `check_serial-tiledarray`, i.e. the unit
+  tests at np=1 only. Its status shows on GitHub PRs. HIP builds and
+  multi-rank device runs are not covered and need local validation.
 - **ScaLAPACK (`TA_SCALAPACK=ON`) is off by default.** When on, it's
   resolved via `external/scalapackpp.cmake`; failures typically surface
   at link time rather than configure.
@@ -445,16 +452,13 @@ in the tree:
   deep-copy tile via the same non-intrusive API.
 - **`btas::Tensor`** also lacks member ops → `external/btas.h` provides
   free-function overloads **in the `btas` namespace** (so ADL finds
-  them, not in `TiledArray`). Device-specific further specializations
-  for BTAS-backed unified-memory tiles live in
-  `device/btas_um_tensor.h` and dispatch to device BLAS where possible.
+  them, not in `TiledArray`).
 
-**When to actually use `btas::Tensor`.** Almost never. Its remaining
-production use is composing the tile type for GPU unified-memory
-arrays; PR #531 will let `TA::Tensor` cover that case too, after which
-`btas::Tensor` is purely a tile-genericity test vehicle. Don't reach
-for it in new TA code unless you are deliberately exercising the
-non-`TA::Tensor` path.
+**When to actually use `btas::Tensor`.** Almost never. GPU
+unified-memory arrays use `TA::UMTensor` (a `TA::Tensor` with the UM
+allocator), so `btas::Tensor` is purely a tile-genericity test vehicle.
+Don't reach for it in new TA code unless you are deliberately
+exercising the non-`TA::Tensor` path.
 
 ### Lazy tiles (`is_lazy_tile`)
 
@@ -525,7 +529,10 @@ doesn't compile cleanly in the expression DSL, the fix is usually
   application-specific. For "binary" sparsity (a tile is zero exactly
   when its norm is exactly zero), use
   `std::numeric_limits<float>::min()` as the threshold so any nonzero
-  norm clears the bar.
+  norm clears the bar. `SparseShape<T>::threshold(t)` raises any `t`
+  below that (including 0) to it, because at threshold 0 a zero-norm
+  tile would count as nonzero yet never be written; negative, infinite,
+  and NaN thresholds throw.
 - **`TiledRange` / `Range` are immutable post-construction.** To change
   tiling, build a new array with `retile` / `TA::retile` and copy tiles
   over.
@@ -614,7 +621,7 @@ Set at runtime, read during `initialize` or first use:
 | `TA_SUMMA_MAX_MEMORY` | (none) | Caps SUMMA contraction per-rank memory (`dist_eval/contraction_eval.h`). |
 | `TA_SUMMA_MAX_DEPTH` | (none) | Caps SUMMA pipeline depth. |
 | `TA_DEVICE_NUM_STREAMS` / `TA_CUDA_NUM_STREAMS` / `TA_HIP_NUM_STREAMS` | impl | Number of device streams per rank. CUDA unit tests require `=1`. |
-| `TA_DEVICE_LEGACY_UM_CONVERSION` | unset | Opt into the pre-Umpire unified-memory conversion path for `btas_um_tensor`. |
+| `TA_DISK_SCRATCH_DIR` | system temp dir | Directory for the scratch files of disk-backed arrays (`disk/store.h`); overridden by `TiledArray::set_disk_scratch_dir()`. Should be node-local and not memory-backed. |
 | `TA_UT_DISTRIBUTED` | unset | Set by CTest for np≥2 runs; test fixtures branch on it. |
 
 ## Documentation
@@ -627,9 +634,10 @@ The `doc/` tree builds those; user-facing install/build notes live in
 ## Reviewing a PR
 
 Guidance for agents doing PR review — focused on regressions CI won't
-catch because its matrix is narrow (no GPUs, no ScaLAPACK on every cell,
-no alternate task backends on every cell). Flag these; don't nitpick
-style (`.clang-format` is the source of truth).
+catch because its matrix is narrow (GitHub Actions is CPU-only; the
+private GitLab CI has one CUDA cell, serial tests only; no HIP; no
+ScaLAPACK on every cell; no alternate task backends on every cell). Flag
+these; don't nitpick style (`.clang-format` is the source of truth).
 
 - **Raw MPI calls** outside `SafeMPI` / `World::mpi` — breaks
   `-DENABLE_MPI=OFF` and bypasses error checking.
@@ -655,9 +663,10 @@ style (`.clang-format` is the source of truth).
   `external/versions.cmake` — confirm the motivating MADNESS commit is
   merged and that TA still builds against it cleanly on both
   `Pthreads` and `PaRSEC` backends.
-- **Device path changes without a GPU build run.** CI has no GPU cell;
-  ask the author to confirm `-DTA_CUDA=ON` or `-DTA_HIP=ON` still builds
-  and the device-tagged tests pass locally.
+- **Device path changes without a multi-rank or HIP run.** The GitLab
+  CUDA cell runs only np=1; ask the author to confirm the device tests
+  pass at np=2 and, for changes that touch HIP code, that `-DTA_HIP=ON`
+  still builds.
 - **New tests appended out of order** in `tests/CMakeLists.txt`. The
   order is load-bearing — fixtures set up by earlier cases are consumed
   by later ones. New tests go near related tests, not at the end by

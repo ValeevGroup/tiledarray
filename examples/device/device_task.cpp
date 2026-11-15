@@ -3,14 +3,13 @@
 //
 
 #include <TiledArray/device/blas.h>
-#include <TiledArray/device/btas_um_tensor.h>
 #include <TiledArray/device/device_task_fn.h>
+#include <TiledArray/device/tensor.h>
 
 #include <tiledarray.h>
 
 using value_type = double;
-using tensor_type = TiledArray::btasUMTensorVarray<value_type>;
-using tile_type = TiledArray::Tile<tensor_type>;
+using tile_type = TiledArray::UMTensor<value_type>;
 
 /// verify the elements in tile is equal to value
 void verify(const tile_type& tile, value_type value, std::size_t index) {
@@ -31,22 +30,14 @@ void verify(const tile_type& tile, value_type value, std::size_t index) {
 tile_type scale(const tile_type& arg, value_type a,
                 TiledArray::device::Stream stream, std::size_t index) {
   /// make result Tensor
-  using Storage = typename tile_type::tensor_type::storage_type;
-  Storage result_storage;
-  auto result_range = arg.range();
-  TiledArray::make_device_storage(result_storage, arg.size(), stream);
-
-  typename tile_type::tensor_type result(std::move(result_range),
-                                         std::move(result_storage));
+  tile_type result(arg.range());
 
   /// copy the original Tensor
   auto& queue = TiledArray::BLASQueuePool::queue(stream);
 
-  blas::copy(result.size(), arg.data(), 1,
-             TiledArray::device_data(result.storage()), 1, queue);
+  blas::copy(result.size(), arg.data(), 1, result.data(), 1, queue);
 
-  blas::scal(result.size(), a, TiledArray::device_data(result.storage()), 1,
-             queue);
+  blas::scal(result.size(), a, result.data(), 1, queue);
 
   //  std::stringstream stream_str;
   //  stream_str << stream;
@@ -56,7 +47,7 @@ tile_type scale(const tile_type& arg, value_type a,
 
   TiledArray::device::sync_madness_task_with(stream);
 
-  return tile_type(std::move(result));
+  return result;
 }
 
 void process_task(madness::World* world, std::size_t ntask) {

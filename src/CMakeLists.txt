@@ -32,6 +32,9 @@ TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
 TiledArray/dense_shape.h
+TiledArray/disk/disk_array.h
+TiledArray/disk/disk_tile.h
+TiledArray/disk/store.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
 TiledArray/error.h
@@ -39,6 +42,7 @@ TiledArray/initialize.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/platform.h
+TiledArray/device/dispatch.h
 TiledArray/proc_grid.h
 TiledArray/range.h
 TiledArray/range1.h
@@ -208,6 +212,7 @@ TiledArray/util/vector.h
 
 set(TILEDARRAY_SOURCE_FILES
         TiledArray/array_impl.cpp
+        TiledArray/disk/store.cpp
         TiledArray/dist_array.cpp
         TiledArray/range.cpp
         TiledArray/sparse_shape.cpp
@@ -233,15 +238,13 @@ if(TILEDARRAY_HAS_HIP OR TILEDARRAY_HAS_CUDA)
           TiledArray/external/device.h
           TiledArray/external/librett.h
           TiledArray/device/blas.h
-          TiledArray/device/btas.h
-          TiledArray/device/btas_um_tensor.h
+          TiledArray/device/tensor.h
           TiledArray/device/device_task_fn.h
           TiledArray/device/kernel/mult_kernel.h
           TiledArray/device/kernel/reduce_kernel.h
           TiledArray/device/kernel/thrust/mult_kernel.h
           TiledArray/device/kernel/thrust/reduce_kernel.h
           TiledArray/device/thrust.h
-          TiledArray/device/um_storage.h
   )
   list(APPEND TILEDARRAY_SOURCE_FILES
           TiledArray/device/blas.cpp
@@ -267,7 +270,7 @@ set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
 
   set(TILEDARRAY_DEVICE_SOURCE_FILES
-          TiledArray/device/btas_um_tensor.cpp
+          TiledArray/device/tensor.cpp
   )
 
   if(TILEDARRAY_HAS_CUDA)

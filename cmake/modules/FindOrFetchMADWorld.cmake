@@ -21,6 +21,13 @@ if (NOT TARGET MADworld)
       endif()
     endif()
   endif()
+  # PaRSEC enables its own GPU support by default, and each PaRSEC context then
+  # reserves 95% of each visible GPU's free memory at startup, starving TA's
+  # device code (and any other rank sharing the GPU). TA does not run PaRSEC
+  # device tasks.
+  set(PARSEC_GPU_WITH_CUDA OFF CACHE BOOL "Whether PaRSEC enables its CUDA device support")
+  set(PARSEC_GPU_WITH_HIP OFF CACHE BOOL "Whether PaRSEC enables its HIP device support")
+  set(PARSEC_GPU_WITH_LEVEL_ZERO OFF CACHE BOOL "Whether PaRSEC enables its Level Zero device support")
   set(MPI_THREAD "multiple" CACHE INTERNAL "MADNESS requires MPI_THREAD_MULTIPLE")
   # TA_WERROR=ON implies MADNESS_WERROR=ON: warnings-as-errors should cover
   # the MADNESS translation units built as part of TA's FetchContent tree.

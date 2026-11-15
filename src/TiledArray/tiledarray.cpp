@@ -2,6 +2,7 @@
 #include <TiledArray/initialize.h>
 #include <TiledArray/util/threads.h>
 
+#include <TiledArray/disk/store.h>
 #include <TiledArray/math/linalg/basic.h>
 
 #include <madness/world/safempi.h>
@@ -158,6 +159,12 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
       TiledArray::set_linalg_crossover_to_distributed(
           linalg_distributed_minsize);
     }
+
+    // a scratch directory for disk-backed arrays that cannot be used is
+    // better reported now than when the first tile is written
+    if (const char* disk_scratch_dir_cstr = std::getenv("TA_DISK_SCRATCH_DIR");
+        disk_scratch_dir_cstr && *disk_scratch_dir_cstr)
+      TiledArray::detail::check_disk_scratch_dir(disk_scratch_dir_cstr);
 
     return default_world;
   } else

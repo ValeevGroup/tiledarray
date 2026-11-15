@@ -22,6 +22,14 @@
 #  Jul 19, 2013
 #
 
+# Use the Boost.Test library, rather than the header-only variant of the
+# framework, if and only if the library the tests link is a shared one; this
+# sets BOOST_TEST_DYN_LINK in unit_test_config.h.
+include(${CMAKE_CURRENT_SOURCE_DIR}/BoostTestLinkage.cmake)
+if (Boost_IS_MODULARIZED)
+  ta_boost_test_is_shared(Boost::unit_test_framework BOOST_TEST_DYN_LINK)
+endif()
+
 CONFIGURE_FILE(
   ${CMAKE_CURRENT_SOURCE_DIR}/unit_test_config.h.in
   ${PROJECT_BINARY_DIR}/tests/unit_test_config.h
@@ -96,6 +104,7 @@ set(ta_test_src_files  ta_test.cpp
     diagonal_array.cpp
     einsum.cpp
     dot_inner.cpp
+    disk_tile.cpp
     general_product.cpp
     linalg.cpp
     math_blas.cpp
@@ -114,7 +123,7 @@ set(ta_test_src_files  ta_test.cpp
 )
 
 if(TILEDARRAY_HAS_CUDA OR TILEDARRAY_HAS_HIP)
-  list(APPEND ta_test_src_files librett.cpp expressions_device_um.cpp tensor_um.cpp)
+  list(APPEND ta_test_src_files librett.cpp expressions_device_tensor.cpp)
 endif()
 
 # if using C++20 must use Boost 1.74 or later:

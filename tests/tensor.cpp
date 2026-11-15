@@ -834,4 +834,248 @@ BOOST_AUTO_TEST_CASE(size_of) {
                            5 * 6 * sizeof(TTD::value_type::value_type));
 }
 
+// every host op must act on all batches of a batched tensor, and value-
+// returning ops must return a tensor with as many batches as their arguments
+BOOST_AUTO_TEST_CASE(batched_ops) {
+  using T = TensorD;
+  const std::size_t nb = 3;
+  const Range rng{Range1{0, 2}, Range1{1, 4}, Range1{0, 4}};
+  const Permutation perm{2, 0, 1};
+
+  auto make = [&](double offset) {
+    T t(rng, T::nbatches{nb});
+    for (std::size_t i = 0; i != t.total_size(); ++i)
+      t.data()[i] = offset + 0.5 * i;
+    return t;
+  };
+  // deep copy of batch b as a plain (nbatch=1) tensor
+  auto deep_batch = [](const T& t, std::size_t b) {
+    T result(t.range());
+    std::copy_n(t.batch_data(b), t.range().volume(), result.data());
+    return result;
+  };
+  // checks the result of op() against the per-batch reference ref_op(b),
+  // computed on deep copies; each op is checked independently, so one
+  // failing (or throwing) op does not hide the others
+  auto check = [&](const char* what, auto&& op, auto&& ref_op) {
+    BOOST_TEST_CONTEXT(what) {
+      T result;
+      try {
+        result = op();
+      } catch (const std::exception& e) {
+        BOOST_ERROR("threw: " << e.what());
+        return;
+      }
+      BOOST_CHECK_EQUAL(result.nbatch(), nb);
+      if (result.nbatch() != nb) return;
+      for (std::size_t b = 0; b != nb; ++b) {
+        BOOST_TEST_CONTEXT("batch " << b) {
+          const T expected = ref_op(b);
+          BOOST_REQUIRE_EQUAL(result.range(), expected.range());
+          const auto* r = result.batch_data(b);
+          for (std::size_t i = 0; i != expected.size(); ++i)
+            BOOST_CHECK_CLOSE(r[i], expected.data()[i], 1e-12);
+        }
+      }
+    }
+  };
+  // checks in-place op(x) on a copy of a against the per-batch reference
+  auto check_inplace = [&](const char* what, const T& a, auto&& op,
+                           auto&& ref_op) {
+    check(
+        what,
+        [&] {
+          T x = a.clone();
+          op(x);
+          return x;
+        },
+        ref_op);
+  };
+
+  const T a = make(1.0);
+  const T c = make(-7.0);
+  auto ab = [&](std::size_t b) { return deep_batch(a, b); };
+  auto cb = [&](std::size_t b) { return deep_batch(c, b); };
+
+  // value-returning ops
+  check(
+      "clone", [&] { return a.clone(); }, ab);
+  check(
+      "permute", [&] { return a.permute(perm); },
+      [&](auto b) { return ab(b).permute(perm); });
+  check(
+      "scale", [&] { return a.scale(2.0); },
+      [&](auto b) { return ab(b).scale(2.0); });
+  check(
+      "scale(perm)", [&] { return a.scale(2.0, perm); },
+      [&](auto b) { return ab(b).scale(2.0, perm); });
+  check(
+      "neg", [&] { return a.neg(); }, [&](auto b) { return ab(b).neg(); });
+  check(
+      "neg(perm)", [&] { return a.neg(perm); },
+      [&](auto b) { return ab(b).neg(perm); });
+  check(
+      "add", [&] { return a.add(c); },
+      [&](auto b) { return ab(b).add(cb(b)); });
+  check(
+      "add(perm)", [&] { return a.add(c, perm); },
+      [&](auto b) { return ab(b).add(cb(b), perm); });
+  check(
+      "add(factor)", [&] { return a.add(c, 3.0); },
+      [&](auto b) { return ab(b).add(cb(b), 3.0); });
+  check(
+      "add(constant)", [&] { return a.add(3.0); },
+      [&](auto b) { return ab(b).add(3.0); });
+  check(
+      "subt", [&] { return a.subt(c); },
+      [&](auto b) { return ab(b).subt(cb(b)); });
+  check(
+      "subt(perm)", [&] { return a.subt(c, perm); },
+      [&](auto b) { return ab(b).subt(cb(b), perm); });
+  check(
+      "mult", [&] { return a.mult(c); },
+      [&](auto b) { return ab(b).mult(cb(b)); });
+  check(
+      "mult(perm)", [&] { return a.mult(c, perm); },
+      [&](auto b) { return ab(b).mult(cb(b), perm); });
+  auto sq = [](double x) { return x * x; };
+  check(
+      "unary", [&] { return a.unary(sq); },
+      [&](auto b) {
+        const T a_b = ab(b);
+        return a_b.unary(sq);
+      });
+  auto f = [](double x, double y) { return x - 2 * y; };
+  check(
+      "binary", [&] { return a.binary(c, f); },
+      [&](auto b) { return ab(b).binary(cb(b), f); });
+  check(
+      "operator+", [&] { return a + c; },
+      [&](auto b) { return ab(b) + cb(b); });
+
+  // in-place ops
+  check_inplace(
+      "scale_to", a, [](T& x) { x.scale_to(2.0); },
+      [&](auto b) { return ab(b).scale(2.0); });
+  check_inplace(
+      "neg_to", a, [](T& x) { x.neg_to(); },
+      [&](auto b) { return ab(b).neg(); });
+  check_inplace(
+      "add_to(constant)", a, [](T& x) { x.add_to(3.0); },
+      [&](auto b) { return ab(b).add(3.0); });
+  check_inplace(
+      "add_to", a, [&](T& x) { x.add_to(c); },
+      [&](auto b) { return ab(b).add(cb(b)); });
+  check_inplace(
+      "subt_to(factor)", a, [&](T& x) { x.subt_to(c, 2.0); },
+      [&](auto b) { return ab(b).subt(cb(b), 2.0); });
+  check_inplace(
+      "mult_to", a, [&](T& x) { x.mult_to(c); },
+      [&](auto b) { return ab(b).mult(cb(b)); });
+  check_inplace(
+      "inplace_unary", a,
+      [](T& x) { x.inplace_unary([](double& v) { v *= -3; }); },
+      [&](auto b) { return ab(b).scale(-3.0); });
+
+  // reductions cover all batches
+  {
+    double sum = 0, sqnorm = 0, dot = 0;
+    for (std::size_t b = 0; b != nb; ++b) {
+      sum += ab(b).sum();
+      sqnorm += ab(b).squared_norm();
+      dot += ab(b).dot(cb(b));
+    }
+    BOOST_CHECK_CLOSE(a.sum(), sum, 1e-12);
+    BOOST_CHECK_CLOSE(a.squared_norm(), sqnorm, 1e-12);
+    BOOST_CHECK_CLOSE(a.dot(c), dot, 1e-12);
+  }
+
+  // operands with different numbers of batches are rejected in all builds
+  {
+    const T plain = ab(0);
+    const T big(Range{Range1{0, 4}, Range1{1, 6}, Range1{0, 5}}, 2.0);
+    const auto view = big.block({0, 1, 0}, {2, 4, 4});  // non-contiguous
+    BOOST_CHECK_THROW(a.add(plain), TiledArray::Exception);
+    BOOST_CHECK_THROW(a.add(plain, perm), TiledArray::Exception);
+    BOOST_CHECK_THROW(a.add(view), TiledArray::Exception);
+    T x = a.clone();
+    BOOST_CHECK_THROW(x.add_to(plain), TiledArray::Exception);
+    BOOST_CHECK_THROW(x.add_to(view), TiledArray::Exception);
+  }
+}
+
+// same for a batched tensor of tensors, including the inner permutation
+BOOST_AUTO_TEST_CASE(batched_tot_ops) {
+  using Inner = TensorD;
+  using T = Tensor<Inner>;
+  const std::size_t nb = 3;
+  const Range rng{Range1{0, 2}, Range1{0, 3}};
+  const Range inner_rng{Range1{0, 2}, Range1{0, 4}};
+  // the inner permutation is given in absolute (outer+inner) mode indices
+  const BipartitePermutation bperm(Permutation{1, 0, 3, 2}, 2);
+
+  auto make = [&](double offset) {
+    T t(rng, T::nbatches{nb});
+    for (std::size_t i = 0; i != t.total_size(); ++i) {
+      Inner cell(inner_rng);
+      for (std::size_t j = 0; j != cell.size(); ++j)
+        cell.data()[j] = offset + i + 0.25 * j;
+      t.data()[i] = cell;
+    }
+    return t;
+  };
+  auto deep_batch = [](const T& t, std::size_t b) {
+    T result(t.range());
+    for (std::size_t i = 0; i != t.range().volume(); ++i)
+      result.data()[i] = t.batch_data(b)[i].clone();
+    return result;
+  };
+  auto check = [&](const char* what, auto&& op, auto&& ref_op) {
+    BOOST_TEST_CONTEXT(what) {
+      T result;
+      try {
+        result = op();
+      } catch (const std::exception& e) {
+        BOOST_ERROR("threw: " << e.what());
+        return;
+      }
+      BOOST_CHECK_EQUAL(result.nbatch(), nb);
+      if (result.nbatch() != nb) return;
+      for (std::size_t b = 0; b != nb; ++b) {
+        BOOST_TEST_CONTEXT("batch " << b) {
+          const T expected = ref_op(b);
+          BOOST_REQUIRE_EQUAL(result.range(), expected.range());
+          for (std::size_t i = 0; i != expected.size(); ++i)
+            BOOST_CHECK(result.batch_data(b)[i] == expected.data()[i]);
+        }
+      }
+    }
+  };
+
+  const T a = make(1.0);
+  const T c = make(-5.0);
+  auto ab = [&](std::size_t b) { return deep_batch(a, b); };
+  auto cb = [&](std::size_t b) { return deep_batch(c, b); };
+  auto twice = [](double x) { return 2 * x; };
+
+  check(
+      "clone", [&] { return a.clone(); }, ab);
+  check(
+      "scale", [&] { return a.scale(2.0); },
+      [&](auto b) { return ab(b).scale(2.0); });
+  check(
+      "permute(bperm)", [&] { return a.permute(bperm); },
+      [&](auto b) { return ab(b).permute(bperm); });
+  check(
+      "add", [&] { return a.add(c); },
+      [&](auto b) { return ab(b).add(cb(b)); });
+  check(
+      "add(bperm)", [&] { return a.add(c, bperm); },
+      [&](auto b) { return ab(b).add(cb(b), bperm); });
+  // the op+permutation constructor applies the inner permutation itself
+  check(
+      "Tensor(other, op, bperm)", [&] { return T(a, twice, bperm); },
+      [&](auto b) { return T(ab(b), twice, bperm); });
+}
+
 BOOST_AUTO_TEST_SUITE_END()

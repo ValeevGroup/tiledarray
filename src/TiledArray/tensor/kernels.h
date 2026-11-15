@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
 #define TILEDARRAY_TENSOR_KERNELS_H__INCLUDED
 
+#include <TiledArray/device/dispatch.h>
 #include <TiledArray/einsum/index.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/tensor/arena_tensor.h>
@@ -157,6 +158,15 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
         integer{1},
         (gemm_helper.right_op() == TiledArray::math::blas::NoTranspose ? n
                                                                        : k));
+    const integer ldc = std::max(integer{1}, n);
+
+    TA_ON_DEVICE(Tensor<Cs...>, Tensor<As...>, Tensor<Bs...>) {
+      using T = typename Tensor<Cs...>::value_type;
+      device::gemm<T>(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+                      T(alpha), A.data(), lda, B.data(), ldb, T(beta), C.data(),
+                      ldc, C.range());
+      return;
+    }
 
     // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
@@ -175,7 +185,7 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
       }
       non_distributed::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
                             k, alpha, A.data(), lda, B.data(), ldb,
-                            twostep ? numeric_type(0) : beta, C.data(), n);
+                            twostep ? numeric_type(0) : beta, C.data(), ldc);
 
       if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
           TiledArray::TileOpsLogger<T>::get_instance().gemm) {
@@ -224,7 +234,6 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
       }
     }
 #else   // TA_ENABLE_TILE_OPS_LOGGING
-    const integer ldc = std::max(integer{1}, n);
     math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
                      alpha, A.data(), lda, B.data(), ldb, beta, C.data(), ldc);
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
@@ -395,8 +404,10 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
-  const auto volume = result.range().volume();
+  // contiguous data: all batches are processed in one sweep
+  const auto volume = result.range().volume() * nbatch(result);
 
   math::inplace_vector_op(std::forward<Op>(op), volume, result.data(),
                           tensors.data()...);
@@ -419,6 +430,7 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   auto volume = result.total_size();
   for (decltype(volume) ord = 0; ord < volume; ++ord) {
@@ -465,6 +477,7 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
                               const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_congruent(result, tensor1, perm));
+  check_nbatch_congruent(result, tensor1, tensors...);
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
   TA_ASSERT(perm);
   TA_ASSERT(perm.size() == tensor1.range().rank());
@@ -511,6 +524,7 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
                               const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_congruent(result, tensor1, perm));
+  check_nbatch_congruent(result, tensor1, tensors...);
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
   TA_ASSERT(perm);
   TA_ASSERT(perm.size() == tensor1.range().rank());
@@ -551,6 +565,7 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   const auto volume = result.range().volume();
 
@@ -591,6 +606,7 @@ template <typename Op, typename TR, typename... Ts,
 inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   const auto volume = result.range().volume();
 
@@ -652,8 +668,10 @@ template <typename Op, typename TR, typename... Ts,
 inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
-  const auto volume = result.range().volume();
+  // contiguous data: all batches are processed in one sweep
+  const auto volume = result.range().volume() * nbatch(result);
 
   auto wrapper_op = [&op](typename TR::pointer MADNESS_RESTRICT result,
                           typename Ts::const_reference MADNESS_RESTRICT... ts) {
@@ -683,6 +701,7 @@ template <
 inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
+  check_nbatch_congruent(result, tensors...);
 
   if constexpr (std::is_invocable_r_v<TR, Op, const Ts&...>) {
     result = std::forward<Op>(op)(tensors...);
@@ -717,6 +736,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(perm, result, tensor1, tensors...));
+  check_nbatch_congruent(result, tensor1, tensors...);
   TA_ASSERT(perm);
   TA_ASSERT(perm.size() == result.range().rank());
 
@@ -751,6 +771,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(perm, result, tensor1, tensors...));
+  check_nbatch_congruent(result, tensor1, tensors...);
   TA_ASSERT(perm);
   TA_ASSERT(perm.size() == result.range().rank());
 
@@ -791,6 +812,7 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
                         const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
+  check_nbatch_congruent(result, tensor1, tensors...);
 
   const auto volume = tensor1.range().volume();
 
@@ -846,6 +868,7 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
                         const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensor1, tensors...));
+  check_nbatch_congruent(result, tensor1, tensors...);
 
   const auto volume = tensor1.range().volume();
 
