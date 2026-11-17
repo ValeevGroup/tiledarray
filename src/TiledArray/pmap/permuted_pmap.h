@@ -31,6 +31,7 @@
 #include <TiledArray/pmap/pmap.h>
 #include <TiledArray/range.h>
 
+#include <algorithm>
 #include <memory>
 
 namespace TiledArray {
@@ -51,6 +52,7 @@ namespace detail {
 class PermutedPmap : public Pmap {
  protected:
   // Import Pmap protected variables
+  using Pmap::local_;       ///< The local tiles, sorted
   using Pmap::local_size_;  ///< The number of local tiles
   using Pmap::procs_;       ///< The number of processes
   using Pmap::rank_;        ///< The rank of this process
@@ -64,16 +66,24 @@ class PermutedPmap : public Pmap {
   /// \param target_tiles The tiles range in the target mode order
   /// \param source_to_target The permutation that takes a source tile index
   ///        to its target tile index
+  /// \throw TiledArray::Exception if \p base is null, if \p source_to_target
+  ///        is null or its rank differs from that of \p target_tiles , or if
+  ///        \p base maps a different number of tiles or processes
   PermutedPmap(World& world, std::shared_ptr<const Pmap> base,
                const Range& target_tiles, const Permutation& source_to_target)
       : Pmap(world, target_tiles.volume()),
         base_(std::move(base)),
-        target_to_source_(target_tiles, source_to_target.inv()) {
-    TA_ASSERT(base_);
-    TA_ASSERT(source_to_target);
-    TA_ASSERT(base_->size() == size_);
-    TA_ASSERT(base_->procs() == procs_);
-    if (base_->known_local_size()) this->local_size_ = base_->local_size();
+        target_to_source_(checked_target_to_source(
+            base_, target_tiles, source_to_target, this->size_, this->procs_)) {
+    // list the local tiles once: the base map's local tiles, renumbered in
+    // the target mode order. Iterating them then costs O(local tiles), as for
+    // the base map, rather than a scan of every tile through is_local().
+    const PermIndex source_to_target_ord(source_to_target.inv() * target_tiles,
+                                         source_to_target);
+    for (const auto source_ord : *base_)
+      local_.push_back(source_to_target_ord(source_ord));
+    std::sort(local_.begin(), local_.end());
+    local_size_ = local_.size();
   }
 
   virtual ~PermutedPmap() {}
@@ -95,23 +105,42 @@ class PermutedPmap : public Pmap {
   /// \param tile The (target) tile to be checked
   /// \return \c true if \c tile is owned by this process, otherwise \c false .
   virtual bool is_local(const size_type tile) const {
+    TA_ASSERT(tile < size_);
     return base_->is_local(target_to_source_(tile));
   }
-
-  virtual bool known_local_size() const { return base_->known_local_size(); }
 
   virtual bool is_replicated() const { return base_->is_replicated(); }
 
   virtual const_iterator begin() const {
-    return Iterator(*this, 0ul, size_, 0ul, /*checking=*/true);
+    return Iterator(*this, local_.begin());
   }
-  virtual const_iterator end() const {
-    return Iterator(*this, 0ul, size_, size_, /*checking=*/true);
-  }
+  virtual const_iterator end() const { return Iterator(*this, local_.end()); }
 
  private:
   const std::shared_ptr<const Pmap> base_;  ///< The map of the source tiles
   const PermIndex target_to_source_;  ///< Maps a target ordinal to its source
+
+  /// Validates the constructor arguments, before any of them is used
+
+  /// \return the functor that maps a target ordinal to its source ordinal
+  static PermIndex checked_target_to_source(
+      const std::shared_ptr<const Pmap>& base, const Range& target_tiles,
+      const Permutation& source_to_target, const size_type size,
+      const size_type procs) {
+    if (!base) TA_EXCEPTION("PermutedPmap: the base map is null");
+    if (!source_to_target)
+      TA_EXCEPTION("PermutedPmap: the permutation is null");
+    if (source_to_target.size() != target_tiles.rank())
+      TA_EXCEPTION(
+          "PermutedPmap: the permutation and the tiles range differ in rank");
+    if (base->size() != size)
+      TA_EXCEPTION(
+          "PermutedPmap: the base map maps a different number of tiles");
+    if (base->procs() != procs)
+      TA_EXCEPTION(
+          "PermutedPmap: the base map maps a different number of processes");
+    return PermIndex(target_tiles, source_to_target.inv());
+  }
 
 };  // class PermutedPmap
 
