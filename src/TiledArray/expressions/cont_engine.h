@@ -31,6 +31,7 @@
 #include <TiledArray/dist_eval/zero_volume_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/expressions/permopt.h>
+#include <TiledArray/pmap/permuted_pmap.h>
 #include <TiledArray/pmap/slabbed_pmap.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/tensor/arena_einsum.h>
@@ -245,6 +246,12 @@ class ContEngine : public BinaryEngine<Derived> {
   size_type proc_h_ = 1;            ///< process-grid extent along the slab (h)
                                     ///< axis of the 3-d grid (# of h-planes)
   size_type proc_h_stride_ = 0;     ///< ranks per h-plane (0 = ungrouped 2-d)
+  std::shared_ptr<const pmap_interface>
+      canonical_pmap_;  ///< the slab-replicated map the batched Summa
+                        ///< computes the canonical-layout result on; built
+                        ///< once by init_distribution_general, so the default
+                        ///< result map (its permuted image) and the map the
+                        ///< tiles are actually computed on cannot diverge
 
   static unsigned int find(const BipartiteIndexList& indices,
                            const std::string& index_label, unsigned int i,
@@ -575,11 +582,40 @@ class ContEngine : public BinaryEngine<Derived> {
     }
   }
 
+  /// The default process map of the result, given the map its tiles are
+  /// computed on
+
+  /// The contraction computes the result's tiles in its own mode order (for a
+  /// general product, the canonical layout), on \p computed_on , and delivers
+  /// them in the target order. If the two orders differ the result is given
+  /// the image of \p computed_on under that permutation, so that every tile
+  /// is delivered to the rank that computed it; \p computed_on applied to the
+  /// target ordinals would send most of them to another rank.
+  /// \note Only the *default* result map is chosen here: a map supplied by
+  ///       the caller (or by a consuming expression) is used as is, and tiles
+  ///       are then sent to its owners. The no-transfer property also relies
+  ///       on \p computed_on being the map the evaluator really computes on:
+  ///       ProcGrid::make_pmap() matches Summa::result_tile_owner() for a
+  ///       plain contraction, and for a general product the same
+  ///       canonical_pmap_ object is used by make_dist_eval_general().
+  /// \param world The world where the result will be distributed
+  /// \param computed_on The process map the result's tiles are computed on,
+  ///        a function of their ordinals in the unpermuted mode order
+  /// \return The process map for the result tensor tiles, a function of
+  ///         their ordinals in the target mode order
+  std::shared_ptr<const pmap_interface> make_result_pmap(
+      World* world, std::shared_ptr<const pmap_interface> computed_on) const {
+    const auto& outer_perm = outer(perm_);
+    if (!outer_perm || outer_perm.is_identity()) return computed_on;
+    return std::make_shared<TiledArray::detail::PermutedPmap>(
+        *world, std::move(computed_on), trange_.tiles_range(), outer_perm);
+  }
+
   /// Initialize result tensor distribution
 
   /// This function will initialize the world and process map for the result
   /// tensor.
-  /// \param world The world were the result will be distributed
+  /// \param world The world where the result will be distributed
   /// \param pmap The process map for the result tensor tiles
   void init_distribution(World* world,
                          std::shared_ptr<const pmap_interface> pmap) {
@@ -628,7 +664,7 @@ class ContEngine : public BinaryEngine<Derived> {
       right_.init_distribution(world, proc_grid_.make_col_phase_pmap(K_));
 
       // Initialize the process map if not already defined
-      if (!pmap) pmap = proc_grid_.make_pmap();
+      if (!pmap) pmap = make_result_pmap(world, proc_grid_.make_pmap());
       ExprEngine_::init_distribution(world, pmap);
     }
   }
@@ -1042,11 +1078,8 @@ class ContEngine : public BinaryEngine<Derived> {
             world, std::make_shared<TiledArray::detail::SlabbedPmap>(
                        *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_));
 
-        // Initialize the process map if not already defined
-        if (!pmap)
-          pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-              *world, proc_grid_.make_pmap(), n_slabs_);
-        ExprEngine_::init_distribution(world, pmap);
+        canonical_pmap_ = std::make_shared<TiledArray::detail::SlabbedPmap>(
+            *world, proc_grid_.make_pmap(), n_slabs_);
       } else {
         // Construct this rank's GROUP-LOCAL per-slab process grid (ranks
         // outside the grouped prefix of the world construct a valid
@@ -1073,13 +1106,13 @@ class ContEngine : public BinaryEngine<Derived> {
                        *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_,
                        proc_h_, proc_h_stride_));
 
-        // Initialize the process map if not already defined
-        if (!pmap)
-          pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-              *world, proc_grid_.make_pmap(), n_slabs_, proc_h_,
-              proc_h_stride_);
-        ExprEngine_::init_distribution(world, pmap);
+        canonical_pmap_ = std::make_shared<TiledArray::detail::SlabbedPmap>(
+            *world, proc_grid_.make_pmap(), n_slabs_, proc_h_, proc_h_stride_);
       }
+
+      // Initialize the process map if not already defined
+      if (!pmap) pmap = make_result_pmap(world, canonical_pmap_);
+      ExprEngine_::init_distribution(world, pmap);
     }
   }
 
@@ -1161,17 +1194,15 @@ class ContEngine : public BinaryEngine<Derived> {
     }();
     // the inner Summa's result placement must be slab-replicated (the owner
     // of a tile independent of its slab index), regardless of the
-    // (target-layout) pmap the consumer supplied for this node
-    auto canonical_pmap =
-        proc_h_ == 1ul ? std::make_shared<TiledArray::detail::SlabbedPmap>(
-                             *world_, proc_grid_.make_pmap(), n_slabs_)
-                       : std::make_shared<TiledArray::detail::SlabbedPmap>(
-                             *world_, proc_grid_.make_pmap(), n_slabs_, proc_h_,
-                             proc_h_stride_);
+    // (target-layout) pmap the consumer supplied for this node; it is the
+    // same map whose permuted image is the default result map (see
+    // make_result_pmap), so by default the re-permute moves no tile
+    TA_ASSERT(canonical_pmap_);
     std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
-        left, right, *world_, canonical_trange, canonical_shape, canonical_pmap,
-        BipartitePermutation{}, batched_op_type(op_, n_fused_modes_), K_,
-        proc_grid_, n_slabs_, proc_h_, proc_h_stride_);
+        left, right, *world_, canonical_trange, canonical_shape,
+        canonical_pmap_, BipartitePermutation{},
+        batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_, proc_h_,
+        proc_h_stride_);
     dist_eval_type canonical(pimpl);
 
     typedef TiledArray::detail::UnaryEvalImpl<

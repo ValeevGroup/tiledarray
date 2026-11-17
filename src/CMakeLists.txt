@@ -151,6 +151,7 @@ TiledArray/pmap/block_pmap.h
 TiledArray/pmap/blocked_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h
+TiledArray/pmap/permuted_pmap.h
 TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/pmap/round_robin_pmap.h
