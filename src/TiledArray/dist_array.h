@@ -115,6 +115,17 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       pmap_interface;  ///< Process map interface type
   /// Makes the process map of an array read from an archive (see load() and
   /// deserialize()), given the array's World and its number of tiles
+
+  /// The factory is called once on every rank, and either every rank or no
+  /// rank must be given one. It must make the same map on every rank; this
+  /// is not checked. It must not communicate: it runs before the ranks check
+  /// each other's maps, so a collective factory that fails on some ranks only
+  /// leaves the others waiting forever. A replicated map is accepted only on
+  /// a single rank; to read a replicated array, read it onto a distributed map
+  /// and then call make_replicated().
+  /// @note the number of tiles comes from the archive's tiled range, which is
+  /// not otherwise validated before the factory is called; a corrupt archive
+  /// can pass a very large number
   using pmap_factory_type =
       std::function<std::shared_ptr<const pmap_interface>(World&, std::size_t)>;
 
@@ -1636,16 +1647,18 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// them is rejected, every rank throws.
   /// An archive written before tiles carried their ordinals is read as before,
   /// which is correct only if it was written by an array on the default
-  /// process map (whatever map \p make_pmap makes).
+  /// process map; the map \p make_pmap makes does not matter.
   /// @note use Parallel{Input,Output}Archive for parallel serialization
   /// @tparam Archive an Archive type
   /// @param ar the archive of this rank
   /// @param make_pmap makes the process map of the array, given the default
-  /// World and the number of tiles; it is called on every rank
+  /// World (the array is always on it) and the number of tiles; see
+  /// pmap_factory_type for what it must do
   /// @throw TiledArray::Exception on every rank if the archive of any rank
   /// does not match this array type or world, has an unsupported format
   /// version, or its tiles do not cover the nonzero tiles exactly once, or if
-  /// \p make_pmap fails or makes a map that does not fit the array
+  /// \p make_pmap fails or makes a map that does not fit the array, on any
+  /// rank, or is given on some ranks only
   /// @warning this does not fence; it is user's responsibility to do that
   template <typename Archive,
             typename = std::enable_if_t<
@@ -1741,13 +1754,13 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// validated on every I/O node before any tile is set; if it is rejected,
   /// every rank throws. An archive written before tiles carried their ordinals
   /// is read as before, which is correct only if the stored array was on the
-  /// default process map or a single I/O node was used (whatever map \p
-  /// make_pmap makes).
+  /// default process map or a single I/O node was used; the map \p make_pmap
+  /// makes does not matter.
   /// @tparam Archive a parallel MADWorld Archive type
   /// @param world a World object with which this object will be associated
   /// @param ar an Archive object from which this object's data will be read
   /// @param make_pmap makes the process map of the array, given \p world and
-  /// the number of tiles; it is called on every rank
+  /// the number of tiles; see pmap_factory_type for what it must do
   ///
   /// @note The & operator for serializing will only work with parallel
   ///       MADWorld archives.
@@ -1756,8 +1769,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// @throw TiledArray::Exception on every rank if the archive does not match
   /// this array type or the number of I/O nodes, has an unsupported format
   /// version, or its tiles do not cover the nonzero tiles exactly once, or if
-  /// \p make_pmap fails or makes a map that does not fit the array. If the
-  /// tile data itself cannot be read, this array is left partly loaded.
+  /// \p make_pmap fails or makes a map that does not fit the array, on any
+  /// rank, or is given on some ranks only. If the tile data itself cannot be
+  /// read, this array is left partly loaded.
   template <typename Archive>
   void load(World& world, Archive& ar,
             const pmap_factory_type& make_pmap = {}) {
@@ -2011,34 +2025,50 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Makes the process map of an array read from an archive
 
-  /// Collective.
-  /// @param[in] make_pmap the user's factory; if empty, the default map is
-  /// made
+  /// Collective, whether or not \p make_pmap is empty.
+  /// @param[in] make_pmap the user's factory (see pmap_factory_type); if
+  /// empty, the default map is made
   /// @return the map, which every rank has checked fits an array of \p volume
   /// tiles on \p world
   /// @throw TiledArray::Exception on every rank if \p make_pmap failed, or
-  /// made no map or one that does not fit, on any rank
+  /// made no map or one that does not fit, on any rank, or if it is empty on
+  /// some ranks only
   static std::shared_ptr<const pmap_interface> make_archive_pmap(
       World& world, const char* where, const std::size_t volume,
       const pmap_factory_type& make_pmap) {
-    if (!make_pmap)
-      return detail::policy_t<DistArray>::default_pmap(world, volume);
     std::shared_ptr<const pmap_interface> pmap;
     std::string error;
-    try {
-      pmap = make_pmap(world, volume);
-      if (!pmap)
-        error = "the process map factory made no map";
-      else if (pmap->size() != volume)
-        error = "the process map is for " + std::to_string(pmap->size()) +
-                " tiles, the array has " + std::to_string(volume);
-      else if (pmap->procs() != std::size_t(world.size()) ||
-               pmap->rank() != std::size_t(world.rank()))
-        error = "the process map is not for this World";
-    } catch (const std::exception& e) {
-      error = std::string("the process map factory threw: ") + e.what();
+    if (!make_pmap) {
+      pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
+    } else {
+      try {
+        pmap = make_pmap(world, volume);
+        if (!pmap)
+          error = "the process map factory made no map";
+        else if (pmap->size() != volume)
+          error = "the process map is for " + std::to_string(pmap->size()) +
+                  " tiles, the array has " + std::to_string(volume);
+        else if (pmap->procs() != std::size_t(world.size()) ||
+                 pmap->rank() != std::size_t(world.rank()))
+          error = "the process map is not for this World";
+        else if (pmap->is_replicated() && world.size() > 1)
+          // each tile would be set only on the rank that read it
+          error =
+              "a replicated process map is not supported; read the array "
+              "onto a distributed map, then call make_replicated()";
+      } catch (const std::exception& e) {
+        error = std::string("the process map factory threw: ") + e.what();
+      } catch (...) {
+        error = "the process map factory threw an unknown exception";
+      }
     }
-    throw_if_any_rank_failed(world, where, error);
+    // {failed, given, -given}: given on some ranks only iff max != min
+    const std::int64_t given = make_pmap ? 1 : 0;
+    std::array<std::int64_t, 3> buf{error.empty() ? 0 : 1, given, -given};
+    world.gop.max(buf.data(), buf.size());
+    if (buf[0] == 0 && buf[1] != -buf[2])
+      error = "the process map factory was given on some ranks only";
+    throw_if_any_rank_failed(world, where, std::move(error));
     return pmap;
   }
 

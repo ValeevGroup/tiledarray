@@ -28,6 +28,7 @@
 #include <array_fixture.h>
 #include "../src/TiledArray/dist_array.h"
 #include "TiledArray/pmap/hash_pmap.h"
+#include "TiledArray/pmap/replicated_pmap.h"
 #include "TiledArray/pmap/round_robin_pmap.h"
 #include "archive_file_utils.h"
 #include "sparse_threshold_guard.h"
@@ -846,6 +847,8 @@ BOOST_AUTO_TEST_CASE(serialization_nondefault_pmap) {
 // An array is read onto the process map its factory makes, from a local or a
 // parallel archive, whatever map the stored array was on; a factory that fails,
 // on any rank, or makes a map that does not fit, is rejected on every rank.
+// With one rank every map puts every tile on rank 0, so a misplaced tile is
+// detected only in the run on more than one rank.
 BOOST_AUTO_TEST_CASE(serialization_custom_pmap) {
   const int nio = std::min(world.size(), 2);
   char archive_file_name[] = "tmp.XXXXXX";
@@ -901,9 +904,28 @@ BOOST_AUTO_TEST_CASE(serialization_custom_pmap) {
   BOOST_CHECK(same_tiles(source, parallel_read));
   world.gop.fence();
 
-  // factories that fail: a map of the wrong size, no map, a throw on rank 0
-  // only
-  const std::vector<SpArrayN::pmap_factory_type> bad_factories{
+  // a replicated map would leave each tile only on the rank that read it, so
+  // it is accepted only on one rank
+  const SpArrayN::pmap_factory_type replicated_pmap = [](World& w,
+                                                         std::size_t size) {
+    return std::make_shared<detail::ReplicatedPmap>(w, size);
+  };
+  if (world.size() == 1) {
+    SpArrayN replicated_read;
+    {
+      madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+      BOOST_REQUIRE_NO_THROW(replicated_read.deserialize(iar, replicated_pmap));
+    }
+    world.gop.fence();
+    BOOST_CHECK(replicated_read.pmap()->is_replicated());
+    BOOST_CHECK(same_tiles(source, replicated_read));
+  }
+
+  // factories that fail, as seen by this rank: a map of the wrong size, no
+  // map, a throw on rank 0 only, a throw of a type not derived from
+  // std::exception on rank 0 only; with more than one rank also a replicated
+  // map, and a factory given on rank 0 only
+  std::vector<SpArrayN::pmap_factory_type> bad_factories{
       [](World& w, std::size_t size) {
         return std::make_shared<detail::HashPmap>(w, size + 1);
       },
@@ -913,7 +935,16 @@ BOOST_AUTO_TEST_CASE(serialization_custom_pmap) {
       [](World& w, std::size_t size) {
         if (w.rank() == 0) throw std::runtime_error("no map for rank 0");
         return std::make_shared<detail::HashPmap>(w, size);
+      },
+      [](World& w, std::size_t size) {
+        if (w.rank() == 0) throw 42;
+        return std::make_shared<detail::HashPmap>(w, size);
       }};
+  if (world.size() > 1) {
+    bad_factories.push_back(replicated_pmap);
+    bad_factories.push_back(world.rank() == 0 ? hash_pmap
+                                              : SpArrayN::pmap_factory_type{});
+  }
   for (std::size_t f = 0; f != bad_factories.size(); ++f) {
     BOOST_TEST_CONTEXT("bad factory " << f) {
       SpArrayN read;
