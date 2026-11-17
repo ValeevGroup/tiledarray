@@ -57,6 +57,7 @@ set(ta_test_src_files  ta_test.cpp
     hash_pmap.cpp
     cyclic_pmap.cpp
     replicated_pmap.cpp
+    permuted_pmap.cpp
     dense_shape.cpp
     sparse_shape.cpp
     distributed_storage.cpp

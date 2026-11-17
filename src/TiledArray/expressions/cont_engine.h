@@ -31,6 +31,7 @@
 #include <TiledArray/dist_eval/zero_volume_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/expressions/permopt.h>
+#include <TiledArray/pmap/permuted_pmap.h>
 #include <TiledArray/pmap/slabbed_pmap.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/tensor/arena_einsum.h>
@@ -575,11 +576,33 @@ class ContEngine : public BinaryEngine<Derived> {
     }
   }
 
+  /// The default process map of the result, given the map its tiles are
+  /// computed on
+
+  /// The contraction computes the result's tiles in its own mode order (for a
+  /// general product, the canonical layout), on \p computed_on , and delivers
+  /// them in the target order. If the two orders differ the result is given
+  /// the image of \p computed_on under that permutation, so that every tile
+  /// is delivered to the rank that computed it; \p computed_on applied to the
+  /// target ordinals would send most of them to another rank.
+  /// \param world The world where the result will be distributed
+  /// \param computed_on The process map the result's tiles are computed on,
+  ///        a function of their ordinals in the unpermuted mode order
+  /// \return The process map for the result tensor tiles, a function of
+  ///         their ordinals in the target mode order
+  std::shared_ptr<const pmap_interface> make_result_pmap(
+      World* world, std::shared_ptr<const pmap_interface> computed_on) const {
+    const auto& outer_perm = outer(perm_);
+    if (!outer_perm || outer_perm.is_identity()) return computed_on;
+    return std::make_shared<TiledArray::detail::PermutedPmap>(
+        *world, std::move(computed_on), trange_.tiles_range(), outer_perm);
+  }
+
   /// Initialize result tensor distribution
 
   /// This function will initialize the world and process map for the result
   /// tensor.
-  /// \param world The world were the result will be distributed
+  /// \param world The world where the result will be distributed
   /// \param pmap The process map for the result tensor tiles
   void init_distribution(World* world,
                          std::shared_ptr<const pmap_interface> pmap) {
@@ -628,7 +651,7 @@ class ContEngine : public BinaryEngine<Derived> {
       right_.init_distribution(world, proc_grid_.make_col_phase_pmap(K_));
 
       // Initialize the process map if not already defined
-      if (!pmap) pmap = proc_grid_.make_pmap();
+      if (!pmap) pmap = make_result_pmap(world, proc_grid_.make_pmap());
       ExprEngine_::init_distribution(world, pmap);
     }
   }
@@ -1044,8 +1067,9 @@ class ContEngine : public BinaryEngine<Derived> {
 
         // Initialize the process map if not already defined
         if (!pmap)
-          pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-              *world, proc_grid_.make_pmap(), n_slabs_);
+          pmap = make_result_pmap(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world, proc_grid_.make_pmap(), n_slabs_));
         ExprEngine_::init_distribution(world, pmap);
       } else {
         // Construct this rank's GROUP-LOCAL per-slab process grid (ranks
@@ -1075,9 +1099,10 @@ class ContEngine : public BinaryEngine<Derived> {
 
         // Initialize the process map if not already defined
         if (!pmap)
-          pmap = std::make_shared<TiledArray::detail::SlabbedPmap>(
-              *world, proc_grid_.make_pmap(), n_slabs_, proc_h_,
-              proc_h_stride_);
+          pmap = make_result_pmap(
+              world, std::make_shared<TiledArray::detail::SlabbedPmap>(
+                         *world, proc_grid_.make_pmap(), n_slabs_, proc_h_,
+                         proc_h_stride_));
         ExprEngine_::init_distribution(world, pmap);
       }
     }
