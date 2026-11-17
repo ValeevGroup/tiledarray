@@ -28,6 +28,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <utility>
 
 namespace TiledArray::test {
 
@@ -61,6 +62,29 @@ inline void make_unique_filename_template(char* name_template) {
   ::close(fd);
   std::remove(name_template);
 }
+
+/// Removes, when destroyed, a local archive file of this rank and, if this
+/// rank is one of the first \p nio ranks (the I/O nodes of a parallel archive
+/// with \p nio writers), its file of a parallel archive
+class ScopedArchiveFiles {
+ public:
+  ScopedArchiveFiles(std::string local_file_name,
+                     const char* parallel_file_prefix, int nio, int rank)
+      : local_file_name_(std::move(local_file_name)),
+        parallel_file_name_(rank < nio ? to_parallel_archive_file_name(
+                                             parallel_file_prefix, rank)
+                                       : std::string{}) {}
+  ScopedArchiveFiles(const ScopedArchiveFiles&) = delete;
+  ScopedArchiveFiles& operator=(const ScopedArchiveFiles&) = delete;
+  ~ScopedArchiveFiles() {
+    std::remove(local_file_name_.c_str());
+    if (!parallel_file_name_.empty()) std::remove(parallel_file_name_.c_str());
+  }
+
+ private:
+  std::string local_file_name_;
+  std::string parallel_file_name_;
+};
 
 }  // namespace TiledArray::test
 

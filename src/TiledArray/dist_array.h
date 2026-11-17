@@ -36,7 +36,13 @@
 
 #include <madness/world/parallel_archive.h>
 #include <array>
+#include <bit>
+#include <cstdint>
 #include <cstdlib>
+#include <limits>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -1573,6 +1579,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// serialize local contents of a DistArray to an Archive object
 
+  /// Writes the array's metadata, the ordinals of its local tiles and then the
+  /// tiles, so that the archive can be read back whatever process map wrote it
+  /// (see the input overload).
   /// @note use Parallel{Input,Output}Archive for parallel serialization
   /// @tparam Archive an Archive type
   /// @warning this does not fence; it is user's responsibility to do that
@@ -1581,20 +1590,36 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                 !Archive::is_parallel_archive &&
                 madness::is_output_archive_v<std::decay_t<Archive>>>>
   void serialize(Archive& ar) const {
-    // serialize array type, world size, rank, and pmap type to be able
-    // to ensure same data type and same data distribution expected
-    ar& typeid(*this).hash_code() & world().size() & world().rank() & trange() &
-        shape() & typeid(pmap().get()).hash_code();
-    int64_t count = 0;
-    for (auto it = begin(); it != end(); ++it) ++count;
-    ar & count;
-    for (auto it = begin(); it != end(); ++it) ar & it->get();
+    // array type, world size and rank, to make sure the reader expects the
+    // same data on the same number of ranks; the world size is written
+    // negated and followed by the format version (see
+    // archive_format_version)
+    ar& typeid(*this).hash_code() & ProcessID(-world().size()) &
+        world().rank() & archive_format_version& trange() & shape();
+    std::vector<int64_t> ordinals;
+    for (auto it = begin(); it != end(); ++it)
+      ordinals.push_back(int64_t(it.ordinal()));
+    write_archived_tiles(ar, ordinals);
   }
 
   /// deserialize local contents of a DistArray from an Archive object
 
+  /// The array is created with the default process map. Each tile is placed
+  /// at the ordinal recorded for it, on the rank that owns that ordinal in
+  /// the default map, which need not be this rank, so a local tile may still
+  /// be in flight from another rank when this returns (its future is set when
+  /// it arrives; fence to wait for all of them). This is a collective
+  /// operation: every rank of the default world must load its own archive.
+  /// The archives are validated together before any tile is set; if any of
+  /// them is rejected, every rank throws.
+  /// An archive written before tiles carried their ordinals is read as before,
+  /// which is correct only if it was written by an array on the default
+  /// process map.
   /// @note use Parallel{Input,Output}Archive for parallel serialization
   /// @tparam Archive an Archive type
+  /// @throw TiledArray::Exception on every rank if the archive of any rank
+  /// does not match this array type or world, has an unsupported format
+  /// version, or its tiles do not cover the nonzero tiles exactly once
   /// @warning this does not fence; it is user's responsibility to do that
   template <typename Archive,
             typename = std::enable_if_t<
@@ -1602,51 +1627,87 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                 madness::is_input_archive_v<std::decay_t<Archive>>>>
   void serialize(Archive& ar) {
     auto& world = TiledArray::get_default_world();
+    constexpr const char* where = "DistArray::serialize";
 
-    std::size_t typeid_hash = 0l;
-    ar & typeid_hash;
-    if (typeid_hash != typeid(*this).hash_code())
-      TA_EXCEPTION(
-          "DistArray::serialize: source DistArray type != this DistArray type");
-
-    ProcessID world_size = -1;
-    ProcessID world_rank = -1;
-    ar & world_size & world_rank;
-    if (world_size != world.size() || world_rank != world.rank())
-      TA_EXCEPTION(
-          "DistArray::serialize: source DistArray world != this DistArray "
-          "world");
-
+    std::string error;
+    std::int32_t version = 0;
     trange_type trange;
     shape_type shape;
-    ar & trange & shape;
+    int64_t count = 0;
+    std::vector<int64_t> ordinals;
+    try {
+      std::size_t typeid_hash = 0l;
+      ar & typeid_hash;
+      if (typeid_hash != typeid(*this).hash_code())
+        throw std::runtime_error(
+            "source DistArray type != this DistArray type");
 
-    // use default pmap, ensure it's the same pmap used to serialize
-    auto volume = trange.tiles_range().volume();
-    auto pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
-    size_t pmap_hash_code = 0;
-    ar & pmap_hash_code;
-    if (pmap_hash_code != typeid(pmap.get()).hash_code())
-      TA_EXCEPTION(
-          "DistArray::serialize: source DistArray pmap != this DistArray pmap");
+      ProcessID world_size = 0;
+      ProcessID world_rank = -1;
+      version =
+          read_archive_format_version(ar, world_size, [&] { ar & world_rank; });
+      if (world_size != world.size() || world_rank != world.rank())
+        throw std::runtime_error(
+            "source DistArray world != this DistArray world");
+
+      ar & trange & shape;
+
+      if (version == 0) {
+        // the legacy format records the static type of the pmap pointer,
+        // which does not identify the map; the check is kept to read the field
+        const auto pmap = detail::policy_t<DistArray>::default_pmap(
+            world, trange.tiles_range().volume());
+        size_t pmap_hash_code = 0;
+        ar & pmap_hash_code;
+        if (pmap_hash_code != typeid(pmap.get()).hash_code())
+          throw std::runtime_error(
+              "source DistArray pmap != this DistArray pmap");
+      }
+      ar & count;
+      if (version != 0) read_archived_ordinals(ar, count, ordinals);
+    } catch (const std::exception& e) {
+      error = e.what();
+    }
+    version = check_archive_headers(world, where, error, version);
+
+    auto pmap = detail::policy_t<DistArray>::default_pmap(
+        world, trange.tiles_range().volume());
     pimpl_.reset(
         new impl_type(world, std::move(trange), std::move(shape), pmap));
 
-    int64_t count = 0;
-    ar & count;
-    for (auto it = begin(); it != end(); ++it, --count) {
-      Tile tile;
-      ar & tile;
-      this->set(it.ordinal(), std::move(tile));
+    if (version != 0) {
+      check_archived_ordinals(world, where, ordinals);
+      try {
+        read_archived_tiles(ar, ordinals);
+      } catch (const std::exception& e) {
+        error = e.what();
+      }
+    } else {
+      try {
+        for (auto it = begin(); it != end(); ++it, --count) {
+          Tile tile;
+          ar & tile;
+          this->set(it.ordinal(), std::move(tile));
+        }
+        if (count != 0)
+          throw std::runtime_error(
+              "# of tiles in archive != # of tiles expected");
+      } catch (const std::exception& e) {
+        error = e.what();
+      }
     }
-    if (count != 0)
-      TA_EXCEPTION(
-          "DistArray::serialize: # of tiles in archive != # of tiles expected");
+    throw_if_any_rank_failed(world, where, error);
   }
 
   /// Replaces this array with one loaded from an Archive object using the
   /// default processor map
 
+  /// Each tile is placed at the ordinal recorded for it, whatever process
+  /// map the stored array was on. The archive is validated on every I/O node
+  /// before any tile is set; if it is rejected, every rank throws.
+  /// An archive written before tiles carried their ordinals is read as before,
+  /// which is correct only if the stored array was on the default process map
+  /// or a single I/O node was used.
   /// @tparam Archive a parallel MADWorld Archive type
   /// @param world a World object with which this object will be associated
   /// @param ar an Archive object from which this object's data will be read
@@ -1655,91 +1716,123 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///       MADWorld archives.
   /// @note This is a collective operation that fences before and after
   ///       completion, if @c ar.dofence() is true
+  /// @throw TiledArray::Exception on every rank if the archive does not match
+  /// this array type or the number of I/O nodes, has an unsupported format
+  /// version, or its tiles do not cover the nonzero tiles exactly once. If
+  /// the tile data itself cannot be read, this array is left partly loaded.
   template <typename Archive>
   void load(World& world, Archive& ar) {
     auto me = world.rank();
     const Tag tag = world.mpi.unique_tag();  // for broadcasting metadata
+    constexpr const char* where = "DistArray::load";
 
     if (ar.dofence()) world.gop.fence();
+
+    std::string error;
+    std::int32_t version = 0;
+    trange_type trange;
+    shape_type shape;
+    int64_t count = 0;
+    std::vector<int64_t> ordinals;
 
     if (ar.is_io_node()) {  // on each io node ...
 
       auto& localar = ar.local_archive();
 
-      // make sure source data matches the expected type
-      // TODO would be nice to be able to convert the data upon reading
-      std::size_t typeid_hash = 0l;
-      localar & typeid_hash;
-      if (typeid_hash != typeid(*this).hash_code())
-        TA_EXCEPTION(
-            "DistArray::load: source DistArray type != this DistArray type");
+      try {
+        // make sure source data matches the expected type
+        // TODO would be nice to be able to convert the data upon reading
+        std::size_t typeid_hash = 0l;
+        localar & typeid_hash;
+        if (typeid_hash != typeid(*this).hash_code())
+          throw std::runtime_error(
+              "source DistArray type != this DistArray type");
 
-      // make sure same number of clients for every I/O node
-      int num_io_clients = 0;
-      localar & num_io_clients;
-      if (num_io_clients != ar.num_io_clients())
-        TA_EXCEPTION("DistArray::load: invalid parallel archive");
+        // make sure same number of clients for every I/O node
+        int num_io_clients = 0;
+        version = read_archive_format_version(localar, num_io_clients, [] {});
+        if (num_io_clients != ar.num_io_clients())
+          throw std::runtime_error("invalid parallel archive");
 
-      trange_type trange;
-      shape_type shape;
-      localar & trange & shape;
-
-      // send trange and shape to every client
-      for (ProcessID p = 0; p < world.size(); ++p) {
-        if (p != me && ar.io_node(p) == me) {
-          world.mpi.Send(int(1), p, tag);  // Tell client to expect the data
-          madness::archive::MPIOutputArchive dest(world, p);
-          dest & trange & shape;
-          dest.flush();
-        }
+        localar & trange & shape & count;
+        if (version != 0) read_archived_ordinals(localar, count, ordinals);
+      } catch (const std::exception& e) {
+        error = e.what();
       }
 
-      // use default pmap
-      auto volume = trange.tiles_range().volume();
-      auto pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
-      pimpl_.reset(
-          new impl_type(world, std::move(trange), std::move(shape), pmap));
-
-      int64_t count = 0;
-      localar & count;
-      for (size_t ord = 0; ord != volume; ++ord) {
-        if (!is_zero(ord)) {
-          auto owner_rank = pmap->owner(ord);
-          if (ar.io_node(owner_rank) == me) {
-            Tile tile;
-            localar & tile;
-            this->set(ord, std::move(tile));
-            --count;
+      // send trange and shape to every client, or tell it the archive was
+      // rejected
+      for (ProcessID p = 0; p < world.size(); ++p) {
+        if (p != me && ar.io_node(p) == me) {
+          world.mpi.Send(int(error.empty()), p, tag);
+          if (error.empty()) {
+            madness::archive::MPIOutputArchive dest(world, p);
+            dest & trange & shape;
+            dest.flush();
           }
         }
       }
-      if (count != 0)
-        TA_EXCEPTION(
-            "DistArray::load: # of tiles in archive != # of tiles expected");
     } else {  // non-I/O node still needs to initialize metadata
-
-      trange_type trange;
-      shape_type shape;
-
       ProcessID p = ar.my_io_node();
-      int flag;
+      int flag = 0;
       world.mpi.Recv(flag, p, tag);
-      TA_ASSERT(flag == 1);
-      madness::archive::MPIInputArchive source(world, p);
-      source & trange & shape;
-
-      // use default pmap
-      auto volume = trange.tiles_range().volume();
-      auto pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
-      pimpl_.reset(
-          new impl_type(world, std::move(trange), std::move(shape), pmap));
+      if (flag == 1) {
+        madness::archive::MPIInputArchive source(world, p);
+        source & trange & shape;
+      } else
+        error = "the archive was rejected by I/O node " + std::to_string(p);
     }
+    // the clients learn the format version from their I/O nodes here
+    version = check_archive_headers(
+        world, where, error,
+        ar.is_io_node() ? std::optional<std::int32_t>(version) : std::nullopt);
+
+    // use default pmap
+    const auto volume = trange.tiles_range().volume();
+    auto pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
+    pimpl_.reset(
+        new impl_type(world, std::move(trange), std::move(shape), pmap));
+
+    if (version != 0) {
+      check_archived_ordinals(world, where, ordinals);
+      if (ar.is_io_node()) {
+        try {
+          read_archived_tiles(ar.local_archive(), ordinals);
+        } catch (const std::exception& e) {
+          error = e.what();
+        }
+      }
+    } else if (ar.is_io_node()) {
+      try {
+        auto& localar = ar.local_archive();
+        for (size_t ord = 0; ord != volume; ++ord) {
+          if (!is_zero(ord)) {
+            auto owner_rank = pmap->owner(ord);
+            if (ar.io_node(owner_rank) == me) {
+              Tile tile;
+              localar & tile;
+              this->set(ord, std::move(tile));
+              --count;
+            }
+          }
+        }
+        if (count != 0)
+          throw std::runtime_error(
+              "# of tiles in archive != # of tiles expected");
+      } catch (const std::exception& e) {
+        error = e.what();
+      }
+    }
+    throw_if_any_rank_failed(world, where, error);
 
     if (ar.dofence()) world.gop.fence();
   }
 
   /// Stores this array to an Archive object
 
+  /// Each I/O node writes the ordinals of the tiles owned by its clients and
+  /// then the tiles, so that load() can place them whatever process map this
+  /// array is on.
   /// @tparam Archive a parallel MADWorld Archive type
   /// @param ar an Archive object that will contain this object's data
   ///
@@ -1755,29 +1848,19 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
     if (ar.is_io_node()) {  // on each io node ...
       auto& localar = ar.local_archive();
-      // ... store metadata first ...
-      localar& typeid(*this).hash_code() & ar.num_io_clients() & trange() &
-          shape();
-      // ... then loop over tiles and dump the data from ranks
-      // assigned to this I/O node in order ...
-      // for sanity check dump tile count assigned to this I/O node
+      // ... store metadata first; the number of I/O clients is written
+      // negated and followed by the format version (see
+      // archive_format_version) ...
+      localar& typeid(*this).hash_code() & int(-ar.num_io_clients()) &
+          archive_format_version& trange() & shape();
+      // ... then the tiles owned by the ranks assigned to this I/O node
       const auto volume = trange().tiles_range().volume();
-      int64_t count = 0;
+      std::vector<int64_t> ordinals;
       for (size_t ord = 0; ord != volume; ++ord) {
-        if (!is_zero(ord)) {
-          const auto owner_rank = pmap()->owner(ord);
-          if (ar.io_node(owner_rank) == me) {
-            ++count;
-          }
-        }
+        if (!is_zero(ord) && ar.io_node(pmap()->owner(ord)) == me)
+          ordinals.push_back(int64_t(ord));
       }
-      localar & count;
-      for (size_t ord = 0; ord != volume; ++ord) {
-        if (!is_zero(ord)) {
-          auto owner_rank = pmap()->owner(ord);
-          if (ar.io_node(owner_rank) == me) localar& find(ord).get();
-        }
-      }
+      write_archived_tiles(localar, ordinals);
     }  // am I an I/O node?
     if (ar.dofence()) world().gop.fence();
   }
@@ -1794,6 +1877,181 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
  private:
+  /// The version of the archive format written by serialize() and store()
+
+  /// Archives of an array begin with its type hash and a count (the world
+  /// size in serialize(), the number of I/O clients in store()). In the legacy
+  /// format, version 0, the count is positive and the tiles follow without
+  /// their ordinals. In later versions the count is written negated and is
+  /// followed (in serialize(), after the rank) by the version:
+  /// - version 1: after the metadata, the number of tiles, their ordinals, and
+  ///   the tiles in that order.
+  ///
+  /// Readers from before version 1 reject such archives because the count
+  /// does not match. A change to the layout of an archive, including the
+  /// layouts of the trange and shape it contains, must bump this version.
+  static constexpr std::int32_t archive_format_version = 1;
+
+  /// Reads the count that begins an archive (see archive_format_version) and
+  /// the format version that follows it
+
+  /// @param[in] ar the archive
+  /// @param[out] count the count, i.e. the world size or # of I/O clients
+  /// @param[in] read_between reads the fields between the count and the
+  /// version (the rank, in serialize())
+  /// @return the format version, 0 for the legacy format
+  /// @throw std::runtime_error if the version is not supported
+  template <typename Archive, typename Int, typename F>
+  static std::int32_t read_archive_format_version(Archive& ar, Int& count,
+                                                  F&& read_between) {
+    ar & count;
+    read_between();
+    if (count >= 0) return 0;
+    if (count == std::numeric_limits<Int>::min())
+      throw std::runtime_error("invalid archive header");
+    count = -count;
+    std::int32_t version = 0;
+    ar & version;
+    if (version < 1 || version > archive_format_version)
+      throw std::runtime_error("unsupported archive format version " +
+                               std::to_string(version) +
+                               " (this build reads versions up to " +
+                               std::to_string(archive_format_version) + ")");
+    return version;
+  }
+
+  /// Throws on every rank of \p world if \p error is nonempty on any rank
+
+  /// Collective.
+  /// @param[in] world the world whose ranks take part
+  /// @param[in] where the function name to put in the message
+  /// @param[in] error this rank's error message, empty if none
+  /// @throw TiledArray::Exception on every rank if any rank failed; a rank
+  /// that did not fail reports that another rank did
+  static void throw_if_any_rank_failed(World& world, const char* where,
+                                       std::string error) {
+    int failed = error.empty() ? 0 : 1;
+    world.gop.max(&failed, 1);
+    if (failed == 0) return;
+    if (error.empty()) error = "the archive was rejected on another rank";
+    TiledArray::exception_break();
+    throw TiledArray::Exception(std::string(where) + ": " + error);
+  }
+
+  /// Checks, on every rank, that every rank read its archive header and that
+  /// the headers agree on the format version
+
+  /// Collective.
+  /// @param[in] world the world whose ranks take part
+  /// @param[in] where the function name to put in the message
+  /// @param[in] error this rank's error message, empty if none
+  /// @param[in] version the format version this rank read, or none if it
+  /// did not read a header (a client of an I/O node)
+  /// @return the format version of the archives
+  /// @throw TiledArray::Exception on every rank if any rank failed or the
+  /// versions differ
+  static std::int32_t check_archive_headers(
+      World& world, const char* where, std::string error,
+      std::optional<std::int32_t> version) {
+    constexpr std::int64_t none = std::numeric_limits<std::int64_t>::min();
+    // {failed, max version, -min version} over the ranks that read a header
+    std::array<std::int64_t, 3> buf{error.empty() ? 0 : 1, none, none};
+    if (error.empty() && version) {
+      buf[1] = *version;
+      buf[2] = -std::int64_t(*version);
+    }
+    world.gop.max(buf.data(), buf.size());
+    if (buf[0] == 0 && buf[1] != -buf[2])
+      error = "the archives have different format versions";
+    throw_if_any_rank_failed(world, where, std::move(error));
+    return std::int32_t(buf[1]);
+  }
+
+  /// Writes the ordinals of the tiles to be archived, then the tiles
+  template <typename Archive>
+  void write_archived_tiles(Archive& ar,
+                            const std::vector<int64_t>& ordinals) const {
+    const int64_t count = ordinals.size();
+    ar & count;
+    for (const auto ord : ordinals) ar & ord;
+    for (const auto ord : ordinals) ar& find(ord).get();
+  }
+
+  /// Reads the ordinals of \p count archived tiles
+
+  /// @throw std::runtime_error if \p count is negative
+  template <typename Archive>
+  static void read_archived_ordinals(Archive& ar, const int64_t count,
+                                     std::vector<int64_t>& ordinals) {
+    if (count < 0) throw std::runtime_error("invalid # of tiles in archive");
+    ordinals.clear();
+    // not resize(count): a corrupt count must fail when the archive runs out,
+    // not when allocating
+    for (int64_t i = 0; i != count; ++i) {
+      int64_t ord = -1;
+      ar & ord;
+      ordinals.push_back(ord);
+    }
+  }
+
+  /// Checks that the ordinals read from the archives of all ranks name every
+  /// nonzero tile of this array exactly once
+
+  /// Collective; must be called before any tile is set, so that a rejected
+  /// archive sets no tile twice.
+  /// @param[in] ordinals the ordinals this rank read (empty if it read none)
+  /// @throw TiledArray::Exception on every rank if the check fails anywhere
+  void check_archived_ordinals(World& world, const char* where,
+                               const std::vector<int64_t>& ordinals) const {
+    const auto volume = trange().tiles_range().volume();
+    std::string error;
+    // bit ord is set if any rank read ordinal ord
+    std::vector<std::uint64_t> seen((volume + 63) / 64, 0);
+    for (const auto ord : ordinals) {
+      if (ord < 0 || std::size_t(ord) >= volume) {
+        error = "tile ordinal " + std::to_string(ord) + " is out of range";
+        break;
+      }
+      if (is_zero(ord)) {
+        error = "tile ordinal " + std::to_string(ord) + " names a zero tile";
+        break;
+      }
+      auto& word = seen[ord / 64];
+      const auto bit = std::uint64_t(1) << (ord % 64);
+      if (word & bit) {
+        error = "tile ordinal " + std::to_string(ord) + " appears twice";
+        break;
+      }
+      word |= bit;
+    }
+    // with no rank in error, each rank's ordinals are distinct and nonzero;
+    // they partition the nonzero tiles iff their union has as many elements
+    // as there are nonzero tiles, and as many as the ranks read in all
+    // {# of ordinals read, # of ranks in error}
+    std::array<std::int64_t, 2> counts{std::int64_t(ordinals.size()),
+                                       error.empty() ? 0 : 1};
+    world.gop.sum(counts.data(), counts.size());
+    if (!seen.empty()) world.gop.bit_or(seen.data(), seen.size());
+    std::int64_t nonzero = 0;
+    for (std::size_t ord = 0; ord != volume; ++ord)
+      if (!is_zero(ord)) ++nonzero;
+    std::int64_t covered = 0;
+    for (const auto word : seen) covered += std::popcount(word);
+    if (counts[1] == 0 && (covered != nonzero || counts[0] != nonzero))
+      error = "the archived tiles do not cover the nonzero tiles exactly once";
+    throw_if_any_rank_failed(world, where, error);
+  }
+
+  /// Reads the archived tiles, whose ordinals are \p ordinals , and sets them
+  template <typename Archive>
+  void read_archived_tiles(Archive& ar, const std::vector<int64_t>& ordinals) {
+    for (const auto ord : ordinals) {
+      Tile tile;
+      ar & tile;
+      this->set(ord, std::move(tile));
+    }
+  }
+
   template <typename Ordinal>
   std::enable_if_t<std::is_integral_v<Ordinal>, void> check_index(
       const Ordinal ord) const {
