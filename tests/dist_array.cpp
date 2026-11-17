@@ -60,6 +60,7 @@ ArrayFixture::ArrayFixture()
 ArrayFixture::~ArrayFixture() { GlobalFixture::world->gop.fence(); }
 
 using TiledArray::test::make_unique_filename_template;
+using TiledArray::test::ScopedArchiveFiles;
 using TiledArray::test::to_parallel_archive_file_name;
 
 BOOST_FIXTURE_TEST_SUITE(array_suite, ArrayFixture)
@@ -791,14 +792,8 @@ BOOST_AUTO_TEST_CASE(serialization_nondefault_pmap) {
     char archive_file_prefix_name[] = "tmp.XXXXXX";
     make_unique_filename_template(archive_file_prefix_name);
     // removes the archives however the check exits
-    const auto remove_archives =
-        std::shared_ptr<void>(nullptr, [&, rank = world.rank()](void*) {
-          std::remove(archive_file_name);
-          if (rank < nio)
-            std::remove(
-                to_parallel_archive_file_name(archive_file_prefix_name, rank)
-                    .c_str());
-        });
+    const ScopedArchiveFiles archive_files(
+        archive_file_name, archive_file_prefix_name, nio, world.rank());
     {
       madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
       source.serialize(oar);
@@ -855,14 +850,8 @@ BOOST_AUTO_TEST_CASE(serialization_legacy_format) {
   make_unique_filename_template(archive_file_name);
   char archive_file_prefix_name[] = "tmp.XXXXXX";
   make_unique_filename_template(archive_file_prefix_name);
-  const auto remove_archives =
-      std::shared_ptr<void>(nullptr, [&, rank = world.rank()](void*) {
-        std::remove(archive_file_name);
-        if (rank < nio)
-          std::remove(
-              to_parallel_archive_file_name(archive_file_prefix_name, rank)
-                  .c_str());
-      });
+  const ScopedArchiveFiles archive_files(
+      archive_file_name, archive_file_prefix_name, nio, world.rank());
 
   // the legacy local format: the local tiles in iteration order, after the
   // static type of the pmap pointer
@@ -913,6 +902,172 @@ BOOST_AUTO_TEST_CASE(serialization_legacy_format) {
   world.gop.fence();
 }
 
+namespace {
+
+/// a tile of \p array to write at ordinal \p ord : the array's tile if \p ord
+/// names a nonzero tile of it, a tile of zeros otherwise
+template <typename Array>
+typename Array::value_type archived_tile(const Array& array, int64_t ord) {
+  const auto volume = array.trange().tiles_range().volume();
+  if (ord >= 0 && std::size_t(ord) < volume && !array.is_zero(ord))
+    return array.find(ord).get();
+  return typename Array::value_type(array.trange().make_tile_range(0), 0);
+}
+
+/// writes \p ordinals and their tiles (see archived_tile) after the header
+template <typename Archive, typename Array>
+void write_archived_tiles(Archive& ar, const Array& array,
+                          const std::vector<int64_t>& ordinals) {
+  ar& int64_t(ordinals.size());
+  for (const auto ord : ordinals) ar & ord;
+  for (const auto ord : ordinals) ar& archived_tile(array, ord);
+}
+
+/// writes this rank's file of a local archive of \p array in the layout of
+/// format \p version (>= 1), with the tiles at \p ordinals
+template <typename Array>
+void write_local_archive(const char* file_name, const Array& array,
+                         std::int32_t version,
+                         const std::vector<int64_t>& ordinals) {
+  auto& world = array.world();
+  madness::archive::BinaryFstreamOutputArchive oar(file_name);
+  oar& typeid(array).hash_code() & ProcessID(-world.size()) & world.rank() &
+      version & array.trange() & array.shape();
+  write_archived_tiles(oar, array, ordinals);
+}
+
+/// writes a parallel archive of \p array in the layout of format \p version
+/// (>= 1); I/O node \p n writes the tiles at \p ordinals_of(n)
+template <typename Array, typename F>
+void write_parallel_archive(const char* prefix, int nio, const Array& array,
+                            std::int32_t version, F&& ordinals_of) {
+  auto& world = array.world();
+  madness::archive::ParallelOutputArchive<> oar(world, prefix, nio);
+  if (oar.is_io_node()) {
+    auto& localar = oar.local_archive();
+    localar& typeid(array).hash_code() & int(-oar.num_io_clients()) & version &
+        array.trange() & array.shape();
+    write_archived_tiles(localar, array, ordinals_of(world.rank()));
+  }
+}
+
+}  // namespace
+
+// Archives that are corrupt, or of an unsupported format version, are
+// rejected on every rank, however few of the ranks (or I/O nodes) read the
+// faulty part, and before any tile is set.
+BOOST_AUTO_TEST_CASE(serialization_rejects_corrupt_archives) {
+  const int nio = std::min(world.size(), 2);
+  char archive_file_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_name);
+  char archive_file_prefix_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_prefix_name);
+  const ScopedArchiveFiles archive_files(
+      archive_file_name, archive_file_prefix_name, nio, world.rank());
+
+  const auto volume = int64_t(b.trange().tiles_range().volume());
+  std::vector<int64_t> nonzero;
+  int64_t a_zero_tile = -1;
+  for (int64_t ord = 0; ord != volume; ++ord) {
+    if (b.is_zero(ord))
+      a_zero_tile = ord;
+    else
+      nonzero.push_back(ord);
+  }
+  BOOST_REQUIRE(a_zero_tile >= 0);
+  // a partition of the nonzero tiles into nparts parts, each nonempty
+  BOOST_REQUIRE(nonzero.size() >= std::size_t(std::max(world.size(), nio)));
+  auto part = [&](int p, int nparts) {
+    std::vector<int64_t> result;
+    for (std::size_t i = p; i < nonzero.size(); i += nparts)
+      result.push_back(nonzero[i]);
+    return result;
+  };
+
+  // the faults, applied to the tiles of part 0; the cross-part duplicate
+  // needs a second part to put it in
+  enum class Fault {
+    none,
+    out_of_range,
+    zero_tile,
+    duplicate,
+    missing,
+    duplicate_across,
+    bad_version
+  };
+  // \return the tiles of part p of nparts, with fault applied
+  auto faulty_part = [&](Fault fault, int p, int nparts) {
+    auto ordinals = part(p, nparts);
+    if (p == 0) {
+      switch (fault) {
+        case Fault::out_of_range:
+          ordinals.push_back(volume);
+          break;
+        case Fault::zero_tile:
+          ordinals.push_back(a_zero_tile);
+          break;
+        case Fault::duplicate:
+          ordinals.push_back(ordinals.front());
+          break;
+        case Fault::missing:
+          ordinals.pop_back();
+          break;
+        default:
+          break;
+      }
+    }
+    // part 1 replaces one of its tiles by one of part 0: as many tiles in
+    // all, but one of them twice and one not at all
+    if (fault == Fault::duplicate_across && p == 1)
+      ordinals.front() = part(0, nparts).front();
+    return ordinals;
+  };
+  auto version_of = [](Fault fault, int p) -> std::int32_t {
+    return fault == Fault::bad_version && p == 0 ? 2 : 1;
+  };
+
+  for (const auto fault :
+       {Fault::none, Fault::out_of_range, Fault::zero_tile, Fault::duplicate,
+        Fault::missing, Fault::duplicate_across, Fault::bad_version}) {
+    BOOST_TEST_CONTEXT("fault " << int(fault)) {
+      const bool expect_throw =
+          fault != Fault::none &&
+          (fault != Fault::duplicate_across || world.size() > 1);
+      write_local_archive(archive_file_name, b, version_of(fault, world.rank()),
+                          faulty_part(fault, world.rank(), world.size()));
+      decltype(b) local_read;
+      {
+        madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+        if (expect_throw)
+          BOOST_CHECK_THROW(local_read.serialize(iar), TiledArray::Exception);
+        else
+          BOOST_CHECK_NO_THROW(local_read.serialize(iar));
+      }
+      world.gop.fence();
+      if (!expect_throw) BOOST_CHECK(same_tiles(b, local_read));
+
+      const bool expect_parallel_throw =
+          fault != Fault::none && (fault != Fault::duplicate_across || nio > 1);
+      write_parallel_archive(
+          archive_file_prefix_name, nio, b, version_of(fault, world.rank()),
+          [&](int io_node) { return faulty_part(fault, io_node, nio); });
+      world.gop.fence();
+      decltype(b) parallel_read;
+      {
+        madness::archive::ParallelInputArchive<> iar(
+            world, archive_file_prefix_name, nio);
+        if (expect_parallel_throw)
+          BOOST_CHECK_THROW(parallel_read.load(world, iar),
+                            TiledArray::Exception);
+        else
+          BOOST_CHECK_NO_THROW(parallel_read.load(world, iar));
+      }
+      if (!expect_parallel_throw) BOOST_CHECK(same_tiles(b, parallel_read));
+      world.gop.fence();
+    }
+  }
+}
+
 // An array saved under one sparse threshold and read back under another must
 // keep its tiles: the shape carries the threshold its norms were screened with.
 BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
@@ -936,14 +1091,8 @@ BOOST_AUTO_TEST_CASE(sparse_serialization_threshold_mismatch) {
   make_unique_filename_template(archive_file_prefix_name);
   const int nio = 1;
   // removes the archives however the test exits
-  const auto remove_archives =
-      std::shared_ptr<void>(nullptr, [&, rank = world.rank()](void*) {
-        std::remove(archive_file_name);
-        if (rank < nio)
-          std::remove(
-              to_parallel_archive_file_name(archive_file_prefix_name, rank)
-                  .c_str());
-      });
+  const ScopedArchiveFiles archive_files(
+      archive_file_name, archive_file_prefix_name, nio, world.rank());
   {
     madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
     c.serialize(oar);
