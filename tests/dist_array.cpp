@@ -27,6 +27,7 @@
 
 #include <array_fixture.h>
 #include "../src/TiledArray/dist_array.h"
+#include "TiledArray/pmap/hash_pmap.h"
 #include "TiledArray/pmap/round_robin_pmap.h"
 #include "archive_file_utils.h"
 #include "sparse_threshold_guard.h"
@@ -842,6 +843,96 @@ BOOST_AUTO_TEST_CASE(serialization_nondefault_pmap) {
   check(sparse);
 }
 
+// An array is read onto the process map its factory makes, from a local or a
+// parallel archive, whatever map the stored array was on; a factory that fails,
+// on any rank, or makes a map that does not fit, is rejected on every rank.
+BOOST_AUTO_TEST_CASE(serialization_custom_pmap) {
+  const int nio = std::min(world.size(), 2);
+  char archive_file_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_name);
+  char archive_file_prefix_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_prefix_name);
+  const ScopedArchiveFiles archive_files(
+      archive_file_name, archive_file_prefix_name, nio, world.rank());
+
+  // stored on a round-robin map, read onto a hash map (neither is the
+  // default); every tile holds its own ordinal, so a misplaced tile is
+  // detected
+  const auto volume = b.trange().tiles_range().volume();
+  SpArrayN source(world, b.trange(), b.shape(),
+                  std::make_shared<detail::RoundRobinPmap>(world, volume));
+  for (auto it = source.begin(); it != source.end(); ++it)
+    *it = SpArrayN::value_type(source.trange().make_tile_range(it.ordinal()),
+                               int(it.ordinal()) + 1);
+  world.gop.fence();
+  {
+    madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+    source.serialize(oar);
+  }
+  {
+    madness::archive::ParallelOutputArchive<> oar(
+        world, archive_file_prefix_name, nio);
+    oar & source;
+  }
+
+  std::shared_ptr<const SpArrayN::pmap_interface> made;
+  const SpArrayN::pmap_factory_type hash_pmap = [&](World& w,
+                                                    std::size_t size) {
+    made = std::make_shared<detail::HashPmap>(w, size);
+    return made;
+  };
+
+  SpArrayN local_read;
+  {
+    madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+    BOOST_REQUIRE_NO_THROW(local_read.deserialize(iar, hash_pmap));
+  }
+  world.gop.fence();
+  BOOST_CHECK(local_read.pmap() == made);
+  BOOST_CHECK(same_tiles(source, local_read));
+
+  SpArrayN parallel_read;
+  {
+    madness::archive::ParallelInputArchive<> iar(world,
+                                                 archive_file_prefix_name, nio);
+    BOOST_REQUIRE_NO_THROW(parallel_read.load(world, iar, hash_pmap));
+  }
+  BOOST_CHECK(parallel_read.pmap() == made);
+  BOOST_CHECK(same_tiles(source, parallel_read));
+  world.gop.fence();
+
+  // factories that fail: a map of the wrong size, no map, a throw on rank 0
+  // only
+  const std::vector<SpArrayN::pmap_factory_type> bad_factories{
+      [](World& w, std::size_t size) {
+        return std::make_shared<detail::HashPmap>(w, size + 1);
+      },
+      [](World&, std::size_t) {
+        return std::shared_ptr<const SpArrayN::pmap_interface>{};
+      },
+      [](World& w, std::size_t size) {
+        if (w.rank() == 0) throw std::runtime_error("no map for rank 0");
+        return std::make_shared<detail::HashPmap>(w, size);
+      }};
+  for (std::size_t f = 0; f != bad_factories.size(); ++f) {
+    BOOST_TEST_CONTEXT("bad factory " << f) {
+      SpArrayN read;
+      {
+        madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+        BOOST_CHECK_THROW(read.deserialize(iar, bad_factories[f]),
+                          TiledArray::Exception);
+      }
+      {
+        madness::archive::ParallelInputArchive<> iar(
+            world, archive_file_prefix_name, nio);
+        BOOST_CHECK_THROW(read.load(world, iar, bad_factories[f]),
+                          TiledArray::Exception);
+      }
+      world.gop.fence();
+    }
+  }
+}
+
 // Archives written before tiles carried their ordinals, by an array on the
 // default process map, are still read.
 BOOST_AUTO_TEST_CASE(serialization_legacy_format) {
@@ -899,6 +990,28 @@ BOOST_AUTO_TEST_CASE(serialization_legacy_format) {
     BOOST_REQUIRE_NO_THROW(parallel_read.load(world, iar));
   }
   BOOST_CHECK(same_tiles(b, parallel_read));
+  world.gop.fence();
+
+  // ... also onto a map other than the default
+  const decltype(b)::pmap_factory_type round_robin = [](World& w,
+                                                        std::size_t size) {
+    return std::make_shared<detail::RoundRobinPmap>(w, size);
+  };
+  decltype(b) local_read_rr;
+  {
+    madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+    BOOST_REQUIRE_NO_THROW(local_read_rr.deserialize(iar, round_robin));
+  }
+  world.gop.fence();
+  BOOST_CHECK(same_tiles(b, local_read_rr));
+
+  decltype(b) parallel_read_rr;
+  {
+    madness::archive::ParallelInputArchive<> iar(world,
+                                                 archive_file_prefix_name, nio);
+    BOOST_REQUIRE_NO_THROW(parallel_read_rr.load(world, iar, round_robin));
+  }
+  BOOST_CHECK(same_tiles(b, parallel_read_rr));
   world.gop.fence();
 }
 
