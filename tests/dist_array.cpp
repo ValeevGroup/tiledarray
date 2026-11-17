@@ -27,6 +27,7 @@
 
 #include <array_fixture.h>
 #include "../src/TiledArray/dist_array.h"
+#include "TiledArray/pmap/round_robin_pmap.h"
 #include "archive_file_utils.h"
 #include "sparse_threshold_guard.h"
 #include "tiledarray.h"
@@ -752,6 +753,164 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
         to_parallel_archive_file_name(archive_file_prefix_name, world.rank())
             .c_str());
   }
+}
+
+namespace {
+
+/// \return whether \p lhs and \p rhs have the same shape and, at every
+/// ordinal, the same tile (checked on every rank, fetching remote tiles)
+template <typename Array>
+bool same_tiles(const Array& lhs, const Array& rhs) {
+  if (lhs.trange() != rhs.trange() || !(lhs.shape() == rhs.shape()))
+    return false;
+  bool ok = true;
+  const auto volume = lhs.trange().tiles_range().volume();
+  for (std::size_t ord = 0; ord != volume; ++ord) {
+    if (lhs.is_zero(ord)) continue;
+    const auto l = lhs.find(ord).get();
+    const auto r = rhs.find(ord).get();
+    ok = ok && l.range() == r.range() &&
+         std::equal(l.begin(), l.end(), r.begin(), r.end());
+  }
+  return ok;
+}
+
+}  // namespace
+
+// An array on a process map other than the default is read back (on the
+// default map) with every tile at its own ordinal, from a local or a parallel
+// archive. With more than one rank the round-robin map gives each rank, and
+// each I/O node, other tiles than the default (blocked) map, so an archive
+// that does not record ordinals would put tiles at the wrong ordinals.
+BOOST_AUTO_TEST_CASE(serialization_nondefault_pmap) {
+  const int nio = std::min(world.size(), 2);
+  auto check = [&](const auto& source) {
+    using Array = std::decay_t<decltype(source)>;
+    char archive_file_name[] = "tmp.XXXXXX";
+    make_unique_filename_template(archive_file_name);
+    char archive_file_prefix_name[] = "tmp.XXXXXX";
+    make_unique_filename_template(archive_file_prefix_name);
+    // removes the archives however the check exits
+    const auto remove_archives =
+        std::shared_ptr<void>(nullptr, [&, rank = world.rank()](void*) {
+          std::remove(archive_file_name);
+          if (rank < nio)
+            std::remove(
+                to_parallel_archive_file_name(archive_file_prefix_name, rank)
+                    .c_str());
+        });
+    {
+      madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+      source.serialize(oar);
+    }
+    {
+      madness::archive::ParallelOutputArchive<> oar(
+          world, archive_file_prefix_name, nio);
+      oar & source;
+    }
+
+    Array local_read;
+    {
+      madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+      local_read.serialize(iar);
+    }
+    world.gop.fence();
+    BOOST_CHECK(same_tiles(source, local_read));
+
+    Array parallel_read;
+    {
+      madness::archive::ParallelInputArchive<> iar(
+          world, archive_file_prefix_name, nio);
+      parallel_read.load(world, iar);
+    }
+    BOOST_CHECK(same_tiles(source, parallel_read));
+    world.gop.fence();
+  };
+
+  // every tile holds its own ordinal, so a misplaced tile is detected
+  auto fill = [](auto& array) {
+    for (auto it = array.begin(); it != array.end(); ++it)
+      *it = typename std::decay_t<decltype(array)>::value_type(
+          array.trange().make_tile_range(it.ordinal()), int(it.ordinal()) + 1);
+    array.world().gop.fence();
+  };
+  const auto volume = tr.tiles_range().volume();
+
+  ArrayN dense(world, tr,
+               std::make_shared<detail::RoundRobinPmap>(world, volume));
+  fill(dense);
+  check(dense);
+
+  SpArrayN sparse(world, tr, b.shape(),
+                  std::make_shared<detail::RoundRobinPmap>(world, volume));
+  fill(sparse);
+  check(sparse);
+}
+
+// Archives written before tiles carried their ordinals, by an array on the
+// default process map, are still read.
+BOOST_AUTO_TEST_CASE(serialization_legacy_format) {
+  const int nio = 1;
+  char archive_file_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_name);
+  char archive_file_prefix_name[] = "tmp.XXXXXX";
+  make_unique_filename_template(archive_file_prefix_name);
+  const auto remove_archives =
+      std::shared_ptr<void>(nullptr, [&, rank = world.rank()](void*) {
+        std::remove(archive_file_name);
+        if (rank < nio)
+          std::remove(
+              to_parallel_archive_file_name(archive_file_prefix_name, rank)
+                  .c_str());
+      });
+
+  // the legacy local format: the local tiles in iteration order, after the
+  // static type of the pmap pointer
+  {
+    madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+    oar& typeid(b).hash_code() & world.size() & world.rank() & b.trange() &
+        b.shape() & typeid(b.pmap().get()).hash_code();
+    int64_t count = 0;
+    for (auto it = b.begin(); it != b.end(); ++it) ++count;
+    oar & count;
+    for (auto it = b.begin(); it != b.end(); ++it) oar & it->get();
+  }
+  // the legacy parallel format, one I/O node: all nonzero tiles in ordinal
+  // order
+  {
+    madness::archive::ParallelOutputArchive<> oar(
+        world, archive_file_prefix_name, nio);
+    if (oar.is_io_node()) {
+      auto& localar = oar.local_archive();
+      localar& typeid(b).hash_code() & oar.num_io_clients() & b.trange() &
+          b.shape();
+      const auto volume = b.trange().tiles_range().volume();
+      int64_t count = 0;
+      for (std::size_t ord = 0; ord != volume; ++ord)
+        if (!b.is_zero(ord)) ++count;
+      localar & count;
+      for (std::size_t ord = 0; ord != volume; ++ord)
+        if (!b.is_zero(ord)) localar & b.find(ord).get();
+    }
+  }
+  world.gop.fence();
+
+  decltype(b) local_read;
+  {
+    madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+    BOOST_REQUIRE_NO_THROW(local_read.serialize(iar));
+  }
+  world.gop.fence();
+  BOOST_CHECK(same_tiles(b, local_read));
+
+  decltype(b) parallel_read;
+  {
+    madness::archive::ParallelInputArchive<> iar(world,
+                                                 archive_file_prefix_name, nio);
+    BOOST_REQUIRE_NO_THROW(parallel_read.load(world, iar));
+  }
+  BOOST_CHECK(same_tiles(b, parallel_read));
+  world.gop.fence();
 }
 
 // An array saved under one sparse threshold and read back under another must
