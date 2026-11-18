@@ -246,6 +246,10 @@ class ContEngine : public BinaryEngine<Derived> {
   size_type proc_h_ = 1;            ///< process-grid extent along the slab (h)
                                     ///< axis of the 3-d grid (# of h-planes)
   size_type proc_h_stride_ = 0;     ///< ranks per h-plane (0 = ungrouped 2-d)
+  std::shared_ptr<const std::vector<std::size_t>>
+      slab_group_;  ///< the h-plane of every slab, if the caller chose where
+                    ///< slabs are computed (Expr::set_slab_pmap); null = slab
+                    ///< h belongs to plane h % proc_h_
   std::shared_ptr<const pmap_interface>
       canonical_pmap_;  ///< the slab-replicated map the batched Summa
                         ///< computes the canonical-layout result on; built
@@ -987,6 +991,55 @@ class ContEngine : public BinaryEngine<Derived> {
                                         op_.gemm_helper(), n_fused_modes_);
   }
 
+  /// The h-plane of every slab of a general product, from the caller's slab
+  /// map (see Expr::set_slab_pmap)
+
+  /// \param slab_pmap a process map over the tile index tuples of the fused
+  ///        modes, in the order in which they appear in the target layout
+  /// \param fused_extent the tile extents of the fused modes, in the
+  ///        canonical layout (where they lead)
+  /// \param nh the number of fused modes
+  /// \return for every slab (in the canonical order) the plane that contains
+  ///         the rank \p slab_pmap gives for it
+  /// \pre proc_h_ and proc_h_stride_ are set, and proc_h_ > 1
+  template <typename Extent>
+  std::shared_ptr<const std::vector<std::size_t>> make_slab_groups(
+      const pmap_interface& slab_pmap, const Extent* fused_extent,
+      const unsigned int nh) const {
+    // fused mode i of the canonical layout is mode outer(perm_)[i] of the
+    // target layout; order the fused modes as the target layout does
+    const auto& outer_perm = outer(perm_);
+    container::svector<unsigned int> by_target(nh);
+    for (unsigned int i = 0u; i != nh; ++i) by_target[i] = i;
+    if (outer_perm && !outer_perm.is_identity())
+      std::sort(by_target.begin(), by_target.end(),
+                [&](unsigned int a, unsigned int b) {
+                  return outer_perm[a] < outer_perm[b];
+                });
+    // weight of canonical fused mode i in the slab map's ordinal
+    container::svector<std::size_t> weight(nh);
+    std::size_t w = 1ul;
+    for (unsigned int j = nh; j-- != 0u;) {
+      weight[by_target[j]] = w;
+      w *= fused_extent[by_target[j]];
+    }
+    const std::size_t n_slabs = w;
+    auto groups = std::make_shared<std::vector<std::size_t>>(n_slabs);
+    container::svector<std::size_t> idx(nh, 0ul);
+    for (std::size_t h = 0ul; h != n_slabs; ++h) {
+      std::size_t ord = 0ul;
+      for (unsigned int i = 0u; i != nh; ++i) ord += idx[i] * weight[i];
+      (*groups)[h] = std::min<std::size_t>(
+          slab_pmap.owner(ord) / proc_h_stride_, proc_h_ - 1ul);
+      // next canonical (row-major) fused tile index tuple
+      for (unsigned int i = nh; i-- != 0u;) {
+        if (++idx[i] < std::size_t(fused_extent[i])) break;
+        idx[i] = 0ul;
+      }
+    }
+    return groups;
+  }
+
   /// Initialize the result distribution of a general product
 
   /// The 2-d process grid spans the external (free) modes only; the fused
@@ -1061,10 +1114,25 @@ class ContEngine : public BinaryEngine<Derived> {
         proc_h_ = std::min<size_type>(n_slabs_,
                                       std::max<size_type>(1ul, P / p2d_cap));
       }
+      // the caller's choice of where the slabs are computed, if any
+      const auto slab_pmap = (ExprEngine_::override_ptr_ && P > 1ul)
+                                 ? ExprEngine_::override_ptr_->slab_pmap
+                                 : std::shared_ptr<const pmap_interface>{};
+      const bool use_slab_pmap =
+          slab_pmap && slab_pmap->size() == n_slabs_ && slab_pmap->procs() == P;
+      // a requested slab map names the rank that computes each slab: give
+      // every rank its own plane, so that the map is honored exactly (planes
+      // with no slab idle) and a slab whose operands are already on that rank
+      // moves no data, however many result tiles it has. Balancing the work
+      // over the ranks is then up to the map.
+      if (use_slab_pmap) proc_h_ = P;
       // keep the invariant proc_h_ == 1 => proc_h_stride_ == 0 (the ungrouped
       // 2-d case) so downstream logic can key off either field; for grouped
       // grids it is the per-plane world-rank count P / proc_h_.
       proc_h_stride_ = (proc_h_ == 1ul) ? 0ul : P / proc_h_;
+      slab_group_.reset();
+      if (use_slab_pmap && proc_h_ > 1ul)
+        slab_group_ = make_slab_groups(*slab_pmap, left_tiles_size, nh);
 
       if (proc_h_ == 1ul) {
         // Construct the per-slab process grid over the whole world.
@@ -1100,14 +1168,15 @@ class ContEngine : public BinaryEngine<Derived> {
         left_.init_distribution(
             world, std::make_shared<TiledArray::detail::SlabbedPmap>(
                        *world, proc_grid_.make_row_phase_pmap(K_), n_slabs_,
-                       proc_h_, proc_h_stride_));
+                       proc_h_, proc_h_stride_, slab_group_));
         right_.init_distribution(
             world, std::make_shared<TiledArray::detail::SlabbedPmap>(
                        *world, proc_grid_.make_col_phase_pmap(K_), n_slabs_,
-                       proc_h_, proc_h_stride_));
+                       proc_h_, proc_h_stride_, slab_group_));
 
         canonical_pmap_ = std::make_shared<TiledArray::detail::SlabbedPmap>(
-            *world, proc_grid_.make_pmap(), n_slabs_, proc_h_, proc_h_stride_);
+            *world, proc_grid_.make_pmap(), n_slabs_, proc_h_, proc_h_stride_,
+            slab_group_);
       }
 
       // Initialize the process map if not already defined
@@ -1174,7 +1243,7 @@ class ContEngine : public BinaryEngine<Derived> {
       std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
           left, right, *world_, trange_, shape_, pmap_, perm_,
           batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_,
-          proc_h_, proc_h_stride_);
+          proc_h_, proc_h_stride_, slab_group_);
       return dist_eval_type(pimpl);
     }
 
@@ -1202,7 +1271,7 @@ class ContEngine : public BinaryEngine<Derived> {
         left, right, *world_, canonical_trange, canonical_shape,
         canonical_pmap_, BipartitePermutation{},
         batched_op_type(op_, n_fused_modes_), K_, proc_grid_, n_slabs_, proc_h_,
-        proc_h_stride_);
+        proc_h_stride_, slab_group_);
     dist_eval_type canonical(pimpl);
 
     typedef TiledArray::detail::UnaryEvalImpl<

@@ -26,6 +26,9 @@
 #include <TiledArray/pmap/pmap.h>
 
 #include <memory>
+#include <vector>
+
+#include <memory>
 #include <utility>
 
 namespace TiledArray {
@@ -54,6 +57,9 @@ namespace detail {
 /// `proc_h == 1` reduces to the slab-replicated map above (and is constructed
 /// via the 2-argument-base constructor, which delegates locality to the base
 /// map).
+/// The slabs are independent of each other, so which plane a slab belongs to
+/// is a free choice: a table of planes, one per slab, can replace the default
+/// \f$ h \% proc\_h \f$ (e.g. to compute every slab where its operands are).
 class SlabbedPmap : public Pmap {
  protected:
   // Import Pmap protected variables
@@ -71,6 +77,14 @@ class SlabbedPmap : public Pmap {
   const size_type proc_h_stride_ = 0;  ///< Ranks per h-plane (0 = the whole
                                        ///< world; base owners are world ranks
                                        ///< and locality delegates to the base)
+  const std::shared_ptr<const std::vector<size_type>>
+      slab_group_;  ///< The h-plane of every slab (null = slab h belongs to
+                    ///< plane h % proc_h_)
+
+  /// \return the h-plane of slab \p h
+  size_type group_of(const size_type h) const {
+    return slab_group_ ? (*slab_group_)[h] : h % proc_h_;
+  }
 
   /// \return whether this map distributes the slab axis over a process plane
   bool hgrouped() const { return proc_h_stride_ != 0ul; }
@@ -102,20 +116,25 @@ class SlabbedPmap : public Pmap {
   /// \param nslabs The number of slabs
   /// \param proc_h The number of slab groups (slab h -> group h % proc_h)
   /// \param proc_h_stride The number of (contiguous) world ranks per group
+  /// \param slab_group If non-null, the group of every slab (\c nslabs
+  ///        values in [0, proc_h) ), in place of group h % proc_h
   SlabbedPmap(World& world, std::shared_ptr<const Pmap> base,
               const size_type nslabs, const size_type proc_h,
-              const size_type proc_h_stride)
+              const size_type proc_h_stride,
+              std::shared_ptr<const std::vector<size_type>> slab_group = {})
       : Pmap(world, base->size() * nslabs),
         base_(std::move(base)),
         slab_size_(base_->size()),
         nslabs_(nslabs),
         proc_h_(proc_h),
-        proc_h_stride_(proc_h_stride) {
+        proc_h_stride_(proc_h_stride),
+        slab_group_(std::move(slab_group)) {
     TA_ASSERT(base_);
     TA_ASSERT(nslabs_ > 0ul);
     TA_ASSERT(proc_h_ > 0ul);
     TA_ASSERT(proc_h_stride_ > 0ul);
     TA_ASSERT(proc_h_ * proc_h_stride_ <= size_type(world.size()));
+    TA_ASSERT(!slab_group_ || slab_group_->size() == nslabs_);
 
     // this rank's group and group-local rank; ranks beyond the grouped
     // prefix of the world own nothing
@@ -124,9 +143,16 @@ class SlabbedPmap : public Pmap {
       const size_type my_group = rank / proc_h_stride_;
       const size_type my_group_rank = rank % proc_h_stride_;
       // count of my group's slabs: h in [0, nslabs) with h % proc_h ==
-      // my_group
-      const size_type my_slabs =
+      // my_group, or those the table gives to my_group
+      size_type my_slabs =
           (nslabs_ / proc_h_) + (my_group < (nslabs_ % proc_h_) ? 1u : 0u);
+      if (slab_group_) {
+        my_slabs = 0ul;
+        for (const auto g : *slab_group_) {
+          TA_ASSERT(g < proc_h_);
+          if (g == my_group) ++my_slabs;
+        }
+      }
       // count of slab indices the base assigns to my group-local rank
       size_type base_local = 0ul;
       for (size_type j = 0ul; j < slab_size_; ++j)
@@ -155,7 +181,7 @@ class SlabbedPmap : public Pmap {
   virtual size_type owner(const size_type tile) const {
     TA_ASSERT(tile < size_);
     if (!hgrouped()) return base_->owner(tile % slab_size_);
-    const size_type group = (tile / slab_size_) % proc_h_;
+    const size_type group = group_of(tile / slab_size_);
     return group * proc_h_stride_ + base_->owner(tile % slab_size_);
   }
 

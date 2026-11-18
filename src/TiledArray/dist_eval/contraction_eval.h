@@ -20,6 +20,8 @@
 #ifndef TILEDARRAY_DIST_EVAL_CONTRACTION_EVAL_H__INCLUDED
 #define TILEDARRAY_DIST_EVAL_CONTRACTION_EVAL_H__INCLUDED
 
+#include <limits>
+#include <memory>
 #include <vector>
 
 #include <TiledArray/config.h>
@@ -135,13 +137,42 @@ class Summa
   // ordinary shared-grid batched contraction.
   const ordinal_type proc_h_;  ///< Number of slab (h) groups
   const ordinal_type
-      proc_h_stride_;              ///< World ranks per slab group (the
-                                   ///< group of slab h spans world ranks
-                                   ///< [(h % proc_h_) * proc_h_stride_, ...))
-  const ordinal_type first_slab_;  ///< This rank's group's first slab (== its
-                                   ///< group index), or nh_ if this rank is
-                                   ///< in no group (idle for this eval)
+      proc_h_stride_;  ///< World ranks per slab group (the
+                       ///< group of slab h spans world ranks
+                       ///< [(h % proc_h_) * proc_h_stride_, ...))
+  const std::shared_ptr<const std::vector<std::size_t>>
+      slab_group_;  ///< The group of every slab, in place of h % proc_h_
+                    ///< (null = h % proc_h_)
+  static constexpr ordinal_type no_group =
+      std::numeric_limits<ordinal_type>::max();  ///< "this rank is in no group"
+  const ordinal_type first_slab_;  ///< This rank's group index (with no
+                                   ///< slab_group_ table also its group's
+                                   ///< first slab), or no_group if this rank
+                                   ///< is in no group (idle for this eval)
   const ordinal_type my_slabs_;    ///< Number of slabs of this rank's group
+  std::vector<ordinal_type>
+      slab_ord_;  ///< With a slab_group_ table: this rank's group-local
+                  ///< ordinal of each of its group's slabs
+
+  /// \return the group of slab \p h
+  ordinal_type group_of(const ordinal_type h) const {
+    if (proc_h_ == 1ul) return 0ul;
+    return slab_group_ ? ordinal_type((*slab_group_)[h]) : h % proc_h_;
+  }
+
+  /// \return the smallest slab >= \p h of this rank's group, or nh_ if there
+  /// is none
+  ordinal_type next_slab(ordinal_type h) const {
+    if (first_slab_ == no_group) return nh_;  // not in any group
+    if (!slab_group_ || proc_h_ == 1ul) {
+      if (proc_h_ == 1ul) return std::min(h, nh_);
+      if (h <= first_slab_) return std::min(first_slab_, nh_);
+      const ordinal_type r = (h - first_slab_) % proc_h_;
+      return std::min(r == 0ul ? h : h + (proc_h_ - r), nh_);
+    }
+    while (h < nh_ && (*slab_group_)[h] != first_slab_) ++h;
+    return std::min(h, nh_);
+  }
 
   /// \return the world rank that owns result tile \p i: the within-group
   /// owner (from the group-local process grid) shifted by the world-rank
@@ -158,7 +189,7 @@ class Summa
     const ProcessID within_group = proc_row * proc_grid_.proc_cols() + proc_col;
     // shift by the offset of the group that owns this tile's slab
     const ordinal_type slab = source_index / result_slab_size_;
-    const ordinal_type group = (proc_h_ > 1ul) ? (slab % proc_h_) : 0ul;
+    const ordinal_type group = group_of(slab);
     return ProcessID(group * proc_h_stride_) + within_group;
   }
 
@@ -171,8 +202,8 @@ class Summa
   /// rank's group's slabs, or nsteps_ if there is none
   ordinal_type next_step(ordinal_type s) const {
     if (proc_h_ == 1ul) return std::min(s, nsteps_);
-    if (first_slab_ >= nh_) return nsteps_;  // not in any group
-    while (s < nsteps_ && (step_h(s) % proc_h_) != first_slab_)
+    if (first_slab_ == no_group) return nsteps_;  // not in any group
+    while (s < nsteps_ && group_of(step_h(s)) != first_slab_)
       s = (step_h(s) + 1ul) * k_;  // jump to the start of the next slab
     return std::min(s, nsteps_);
   }
@@ -180,6 +211,7 @@ class Summa
   /// \return this rank's group-local ordinal of slab \p h (which must
   /// belong to this rank's group)
   ordinal_type slab_ord(const ordinal_type h) const {
+    if (slab_group_ && proc_h_ != 1ul) return slab_ord_[h];
     return (h - first_slab_) / proc_h_;
   }
 
@@ -1044,7 +1076,8 @@ class Summa
       // two static keys are offset PAST that range and made group-unique so
       // that two different groups' single-grid static groups never claim the
       // same DistributedID with inconsistent membership)
-      const std::size_t static_key_base = 2ul * nsteps_ + 2ul * first_slab_;
+      const std::size_t static_key_base =
+          2ul * nsteps_ + 2ul * (first_slab_ == no_group ? nh_ : first_slab_);
       const madness::DistributedID col_did(DistEvalImpl_::id(),
                                            static_key_base);
       col_group_ = proc_grid_.make_col_group(col_did);
@@ -1116,7 +1149,7 @@ class Summa
     // does not depend on h)
     ordinal_type tile_count = 0ul;
     ReducePairTask<op_type>* MADNESS_RESTRICT reduce_task = reduce_tasks_;
-    for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
+    for (ordinal_type h = next_slab(0ul); h < nh_; h = next_slab(h + 1ul)) {
       const ordinal_type slab_base = h * result_slab_size_;
       ordinal_type row_start =
           slab_base + proc_grid_.rank_row() * proc_grid_.cols();
@@ -1186,7 +1219,7 @@ class Summa
 
     // Iterate over all local tiles, slab by slab
     ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-    for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
+    for (ordinal_type h = next_slab(0ul); h < nh_; h = next_slab(h + 1ul)) {
       const ordinal_type slab_base = h * result_slab_size_;
       ordinal_type row_start =
           slab_base + proc_grid_.rank_row() * proc_grid_.cols();
@@ -1228,7 +1261,7 @@ class Summa
 
     // Iterate over all local tiles, slab by slab
     ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-    for (ordinal_type h = first_slab_; h < nh_; h += proc_h_) {
+    for (ordinal_type h = next_slab(0ul); h < nh_; h = next_slab(h + 1ul)) {
       const ordinal_type slab_base = h * result_slab_size_;
       ordinal_type row_start =
           slab_base + proc_grid_.rank_row() * proc_grid_.cols();
@@ -1762,7 +1795,8 @@ class Summa
         const std::shared_ptr<const pmap_interface>& pmap, const Perm& perm,
         const op_type& op, const ordinal_type k, const ProcGrid& proc_grid,
         const ordinal_type nh = 1ul, const ordinal_type proc_h = 1ul,
-        const ordinal_type proc_h_stride = 0ul)
+        const ordinal_type proc_h_stride = 0ul,
+        std::shared_ptr<const std::vector<std::size_t>> slab_group = {})
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         left_(left),
         right_(right),
@@ -1778,9 +1812,9 @@ class Summa
         result_slab_size_(proc_grid.rows() * proc_grid.cols()),
         proc_h_(proc_h),
         proc_h_stride_(proc_h_stride),
+        slab_group_(proc_h == 1ul ? nullptr : std::move(slab_group)),
         first_slab_(compute_first_slab(world, nh, proc_h, proc_h_stride)),
-        my_slabs_(first_slab_ < nh ? (nh - first_slab_ + proc_h - 1ul) / proc_h
-                                   : 0ul),
+        my_slabs_(count_my_slabs(nh, proc_h, first_slab_, slab_group_.get())),
         reduce_tasks_(NULL),
         left_start_local_(proc_grid_.rank_row() * k),
         left_end_(left.size() / nh),
@@ -1801,7 +1835,33 @@ class Summa
     TA_ASSERT(right.size() % nh_ == 0);
     TA_ASSERT(proc_h_ > 0);
     TA_ASSERT(proc_h_ == 1ul || proc_h_stride > 0ul);
-    TA_ASSERT(proc_h_ <= nh_);
+    TA_ASSERT(slab_group_ || proc_h_ <= nh_);
+    TA_ASSERT(!slab_group_ || slab_group_->size() == nh_);
+    if (slab_group_) {
+      // this rank's group-local ordinals of its group's slabs
+      slab_ord_.assign(nh_, nh_);
+      ordinal_type ord = 0ul;
+      for (ordinal_type h = 0ul; h < nh_; ++h) {
+        TA_ASSERT((*slab_group_)[h] < proc_h_);
+        if ((*slab_group_)[h] == first_slab_) slab_ord_[h] = ord++;
+      }
+    }
+  }
+
+  /// \return the number of slabs of the group \p my_group (the value of
+  /// compute_first_slab), given the slab-to-group table \p slab_group or,
+  /// if null, slab h -> group h % proc_h
+  static ordinal_type count_my_slabs(
+      const ordinal_type nh, const ordinal_type proc_h,
+      const ordinal_type my_group, const std::vector<std::size_t>* slab_group) {
+    if (proc_h == 1ul) return nh;
+    if (!slab_group)
+      return my_group < nh ? (nh - my_group + proc_h - 1ul) / proc_h : 0ul;
+    if (my_group == no_group) return 0ul;
+    ordinal_type n = 0ul;
+    for (const auto g : *slab_group)
+      if (g == my_group) ++n;
+    return n;
   }
 
   /// \return this rank's group's first slab (== its group index), or
@@ -1811,7 +1871,7 @@ class Summa
                                          const ordinal_type proc_h_stride) {
     if (proc_h == 1ul) return 0ul;
     const auto rank = ordinal_type(world.rank());
-    return (rank < proc_h * proc_h_stride) ? (rank / proc_h_stride) : nh;
+    return (rank < proc_h * proc_h_stride) ? (rank / proc_h_stride) : no_group;
   }
 
   virtual ~Summa() {}
@@ -1919,7 +1979,9 @@ class Summa
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
 
     ordinal_type tile_count = 0ul;
-    if (proc_grid_.local_size() > 0ul) {
+    // a rank outside the process grid, or whose slab group was given no slab
+    // (possible with a caller's slab-to-group table), has nothing to compute
+    if (proc_grid_.local_size() > 0ul && my_slabs_ > 0ul) {
       tile_count = initialize();
 
       // depth controls the number of simultaneous SUMMA iterations

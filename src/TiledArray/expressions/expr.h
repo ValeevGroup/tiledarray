@@ -51,6 +51,9 @@
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/zip_with.hpp>
 
+/// Defined if Expr::set_slab_pmap() is available
+#define TILEDARRAY_HAS_EXPR_SLAB_PMAP 1
+
 namespace TiledArray::expressions {
 
 template <typename Engine>
@@ -67,6 +70,8 @@ struct EngineParamOverride {
   World* world;
   std::shared_ptr<const pmap_interface> pmap;
   const shape_type* shape;
+  std::shared_ptr<const pmap_interface>
+      slab_pmap;  ///< see Expr::set_slab_pmap()
 };
 
 /// \brief type trait checks if T has array() member
@@ -144,6 +149,29 @@ class Expr {
       override_ptr_ = std::make_shared<override_type>();
       override_ptr_->pmap = pmap;
     }
+    return derived();
+  }
+  /// Chooses where the slabs of a general product are computed
+
+  /// A product with fused (Hadamard) outer indices, e.g.
+  /// `c("i,j,a,b") = a("i,j,a,k") * b("i,j,k,b")`, is a batch of
+  /// independent contractions, one per slab (one per tile index tuple of the
+  /// fused modes). With no slab map each slab is computed by a group of
+  /// ranks on a 2-d process grid, and slabs are dealt to the groups
+  /// round-robin. A slab map names the one rank that computes each slab, so
+  /// that operands distributed by the same rule are used where they are, and
+  /// the result (unless a result map is requested with set_pmap()) stays
+  /// where it was computed. The map then also decides how the work is
+  /// balanced over the ranks.
+  /// \param slab_pmap a process map over the tile index tuples of the fused
+  ///        modes, taken in the order in which they appear in the result of
+  ///        this expression (row-major). Ignored by expressions that are not
+  ///        general products, and if its size or process count do not match.
+  Expr<Derived>& set_slab_pmap(
+      const std::shared_ptr<const typename override_type::pmap_interface>
+          slab_pmap) {
+    if (!override_ptr_) override_ptr_ = std::make_shared<override_type>();
+    override_ptr_->slab_pmap = slab_pmap;
     return derived();
   }
 
