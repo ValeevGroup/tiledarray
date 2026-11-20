@@ -905,6 +905,245 @@ BOOST_AUTO_TEST_CASE(expression_general_product_no_externals) {
   BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(summa_slab_lanes) {
+  using TA::detail::summa_num_lanes;
+  // (slabs, local result tiles per slab, threads)
+  // a slab with one result tile occupies one thread: one lane per thread
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 1, 10), 10ul);
+  // never more lanes than slabs
+  BOOST_CHECK_EQUAL(summa_num_lanes(4, 1, 10), 4ul);
+  // slabs with enough result tiles to occupy the threads: a single lane
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 10, 10), 1ul);
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 100, 10), 1ul);
+  // in between: enough lanes to occupy the threads
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 4, 10), 3ul);
+  // an ordinary contraction, and a rank with no slabs or no local tiles
+  BOOST_CHECK_EQUAL(summa_num_lanes(1, 1, 10), 1ul);
+  BOOST_CHECK_EQUAL(summa_num_lanes(0, 0, 10), 1ul);
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 0, 10), 10ul);
+  // single thread
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 1, 1), 1ul);
+}
+
+BOOST_AUTO_TEST_CASE(summa_slab_lane_plan) {
+  using TA::detail::summa_chain_steps;
+  using TA::detail::summa_lane_plan;
+  using TA::detail::summa_num_lanes;
+  // a chain of depth d holds the argument tiles of d steps contracting and
+  // d + 1 fetched
+  BOOST_CHECK_EQUAL(summa_chain_steps(1), 3ul);
+  BOOST_CHECK_EQUAL(summa_chain_steps(2), 5ul);
+
+  // (slabs, local result tiles per slab, threads, single-chain depth,
+  //  user bound on the live steps or 0) -> {lanes, depth, deeper lanes}
+  auto check = [](std::size_t nslabs, std::size_t tiles, std::size_t nthreads,
+                  std::size_t depth, std::size_t max_steps, std::size_t nlanes,
+                  std::size_t lane_depth, std::size_t ndeeper) {
+    const auto plan =
+        summa_lane_plan(nslabs, tiles, nthreads, depth, max_steps);
+    BOOST_CHECK_EQUAL(plan.nlanes, nlanes);
+    BOOST_CHECK_EQUAL(plan.depth, lane_depth);
+    BOOST_CHECK_EQUAL(plan.ndeeper, ndeeper);
+  };
+  // a single lane keeps the single-chain depth
+  check(1, 1, 10, 2, 0, 1, 2, 0);
+  check(51, 100, 10, 8, 0, 1, 8, 0);
+  // lanes run at depth 1 (3 live steps each) when they need more live steps
+  // than a single chain ...
+  check(51, 1, 10, 2, 0, 10, 1, 0);
+  // ... and share the live steps of a single chain when it has more; the
+  // depths of the lanes differ by at most 1
+  check(51, 8, 16, 8, 0, 2, 3, 1);  // depths 4, 3: 9 + 7 live steps of 17
+  check(51, 4, 10, 8, 0, 3, 2, 1);  // depths 3, 2, 2: 7 + 5 + 5 = 17
+  // the user bound is on the live steps over all lanes, spent on lanes
+  // first; TA_SUMMA_MAX_DEPTH=D bounds them to those of a single chain of
+  // depth D, so a single lane gets depth D as before
+  check(51, 1, 10, 2, summa_chain_steps(1), 1, 1, 0);
+  check(51, 1, 10, 2, summa_chain_steps(4), 3, 1, 0);
+  check(51, 1, 10, 2, summa_chain_steps(10), 7, 1, 0);
+  check(51, 8, 16, 8, summa_chain_steps(2), 1, 2, 0);
+  check(51, 100, 10, 8, summa_chain_steps(3), 1, 3, 0);
+  // the user bound never raises the live steps
+  check(51, 1, 10, 2, summa_chain_steps(100), 10, 1, 0);
+  check(51, 100, 10, 8, summa_chain_steps(100), 1, 8, 0);
+  // a bound below the minimum (one lane of depth 1) gives the minimum
+  check(51, 1, 10, 2, 1, 1, 1, 0);
+  check(51, 1, 10, 2, 2, 1, 1, 0);
+
+  // invariants over a range of inputs
+  for (std::size_t nslabs : {1, 2, 7, 51})
+    for (std::size_t tiles : {0, 1, 3, 100})
+      for (std::size_t nthreads : {1, 2, 10, 64})
+        for (std::size_t depth : {1, 2, 8, 30})
+          for (std::size_t max_steps : {0, 1, 3, 4, 9, 20, 1000}) {
+            const auto plan =
+                summa_lane_plan(nslabs, tiles, nthreads, depth, max_steps);
+            BOOST_CHECK_GE(plan.nlanes, 1ul);
+            BOOST_CHECK_LE(plan.nlanes,
+                           summa_num_lanes(nslabs, tiles, nthreads));
+            BOOST_CHECK_GE(plan.depth, 1ul);
+            BOOST_CHECK_LT(plan.ndeeper, plan.nlanes);
+            std::size_t steps = 0;
+            for (std::size_t l = 0; l < plan.nlanes; ++l)
+              steps += summa_chain_steps(plan.lane_depth(l));
+            BOOST_CHECK_EQUAL(steps, plan.steps());
+            // never more than the unbounded live steps ...
+            BOOST_CHECK_LE(
+                steps, std::max(summa_chain_steps(depth),
+                                3 * summa_num_lanes(nslabs, tiles, nthreads)));
+            // ... nor than the bound, unless it is below the minimum
+            if (max_steps)
+              BOOST_CHECK_LE(steps, std::max<std::size_t>(max_steps, 3));
+            // and within one step per lane of the budget
+            const std::size_t budget =
+                max_steps
+                    ? std::min(std::max<std::size_t>(max_steps, 3),
+                               std::max(summa_chain_steps(depth),
+                                        3 * summa_num_lanes(nslabs, tiles,
+                                                            nthreads)))
+                    : std::max(summa_chain_steps(depth),
+                               3 * summa_num_lanes(nslabs, tiles, nthreads));
+            BOOST_CHECK_LE(budget - steps, 1ul);
+          }
+}
+
+BOOST_AUTO_TEST_CASE(summa_env_parsing) {
+  using TA::detail::summa_parse_max_depth;
+  using TA::detail::summa_parse_max_memory;
+  const std::size_t MiB = 1048576ul;
+  BOOST_CHECK_EQUAL(summa_parse_max_memory(nullptr), 0ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("0"), 0ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("0 GiB"), 0ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("2 GiB"), 2048ul * MiB);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("2GiB"), 2048ul * MiB);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("  2 gib  "), 2048ul * MiB);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("1.5 GB"), 1500000000ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("200MB"), 200000000ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("300000000"), 300000000ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("300000000 B"), 300000000ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("1 TiB"), 1048576ul * MiB);
+  // at least 100 MiB
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("1 kB"), 100ul * MiB);
+  BOOST_CHECK_EQUAL(summa_parse_max_memory("3 MiB"), 100ul * MiB);
+  // not memory sizes: no bound (and a warning)
+  for (const char* bad : {"", "abc", "2 G", "2 gigs", "-5", "-1 GiB", "2 GiB x",
+                          "GiB", "nan", "inf"})
+    BOOST_CHECK_MESSAGE(summa_parse_max_memory(bad) == 0ul,
+                        "TA_SUMMA_MAX_MEMORY=\"" << bad << "\"");
+
+  BOOST_CHECK_EQUAL(summa_parse_max_depth(nullptr), 0ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_depth("0"), 0ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_depth("4"), 4ul);
+  BOOST_CHECK_EQUAL(summa_parse_max_depth(" 4 "), 4ul);
+  for (const char* bad :
+       {"", "x", "4x", "-1", "+4", "1.5", "99999999999999999999999"})
+    BOOST_CHECK_MESSAGE(summa_parse_max_depth(bad) == 0ul,
+                        "TA_SUMMA_MAX_DEPTH=\"" << bad << "\"");
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_many_slabs_no_externals) {
+  // many fused slabs, each with a single result tile: with more than one
+  // thread the slabs are dealt to several lanes of SUMMA steps
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13},
+                    {0, 2, 3, 5, 6, 8}};  // i, j
+  auto a = make_patterned_array(world, tr, 1.0);
+  auto b = make_patterned_array(world, tr, 2.0);
+
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("i") = a("i,j") * b("i,j"));
+  auto c_ref = TA::einsum(a("i,j"), b("i,j"), "i");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
+
+  // plan the lanes for more threads than the tests run with, to exercise
+  // more than 2 lanes
+  if (world.size() == 1 && !std::getenv("TA_SUMMA_MAX_DEPTH") &&
+      !std::getenv("TA_SUMMA_MAX_MEMORY")) {
+    struct NThreads {
+      NThreads(std::size_t n) { TA::detail::summa_nthreads_override() = n; }
+      ~NThreads() { TA::detail::summa_nthreads_override() = 0; }
+    };
+    for (std::size_t nthreads : {1, 2, 5, 32}) {
+      NThreads override_nthreads(nthreads);
+      TA::TArrayD c5;
+      BOOST_REQUIRE_NO_THROW(c5("i") = a("i,j") * b("i,j"));
+      // 13 slabs, each with one result tile
+      BOOST_CHECK_EQUAL(TA::detail::summa_last_nlanes().load(),
+                        std::min(nthreads, std::size_t(13)));
+      BOOST_CHECK_SMALL(diff_norm(c5, c_ref, "i"), 1e-10);
+
+      // block-sparse
+      const TA::TiledRange1 tr_b{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+          tr_j{0, 2, 3, 6, 7, 9};
+      auto as = make_patterned_sparse_array(world, TA::TiledRange{tr_b, tr_j},
+                                            1.0, 3);
+      auto bs = make_patterned_sparse_array(world, TA::TiledRange{tr_b, tr_j},
+                                            2.0, 2);
+      TA::TSpArrayD cs;
+      BOOST_REQUIRE_NO_THROW(cs("b") = as("b,j") * bs("b,j"));
+      BOOST_CHECK_EQUAL(TA::detail::summa_last_nlanes().load(),
+                        std::min(nthreads, std::size_t(11)));
+      auto cs_ref = TA::einsum(as("b,j"), bs("b,j"), "b");
+      BOOST_CHECK_SMALL(diff_norm_sp(cs, cs_ref, "b"), 1e-10);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_many_slabs) {
+  // block-sparse, many fused slabs, with and without external indices; the
+  // lanes skip the steps of zero tiles independently
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  const TA::TiledRange1 tr_b{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+      tr_i{0, 3, 4}, tr_j{0, 2, 3, 6, 7, 9}, tr_k{0, 4, 5};
+  {
+    TA::TiledRange tr{tr_b, tr_i, tr_j};
+    auto a = make_patterned_sparse_array(world, tr, 1.0, 3);
+    auto b = make_patterned_sparse_array(world, tr, 2.0, 4);
+    TA::TSpArrayD c;
+    BOOST_REQUIRE_NO_THROW(c("b,i") = a("b,i,j") * b("b,i,j"));
+    auto c_ref = TA::einsum(a("b,i,j"), b("b,i,j"), "b,i");
+    BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i"), 1e-10);
+  }
+  {
+    auto a =
+        make_patterned_sparse_array(world, TA::TiledRange{tr_b, tr_j}, 1.0, 3);
+    auto b =
+        make_patterned_sparse_array(world, TA::TiledRange{tr_b, tr_j}, 2.0, 2);
+    TA::TSpArrayD c;
+    BOOST_REQUIRE_NO_THROW(c("b") = a("b,j") * b("b,j"));
+    auto c_ref = TA::einsum(a("b,j"), b("b,j"), "b");
+    BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b"), 1e-10);
+  }
+  {
+    auto a = make_patterned_sparse_array(
+        world, TA::TiledRange{tr_b, tr_i, tr_j}, 1.0, 3);
+    auto b = make_patterned_sparse_array(
+        world, TA::TiledRange{tr_b, tr_j, tr_k}, 2.0, 4);
+    TA::TSpArrayD c;
+    BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+    auto c_ref = TA::einsum(a("b,i,j"), b("b,j,k"), "b,i,k");
+    BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i,k"), 1e-10);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_many_slabs_no_externals) {
+  // nested tiles, many fused slabs (i), contracted j, no free outer index;
+  // inner contraction
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+                    {0, 1, 2, 3, 4, 5}};                      // i, j
+  auto a = make_patterned_tot_array(world, tr, {2, 3}, 1.0);  // inner m, c
+  auto b = make_patterned_tot_array(world, tr, {3, 2}, 2.0);  // inner c, n
+
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("i;m,n") = a("i,j;m,c") * b("i,j;c,n"));
+  auto c_ref = TA::einsum(a("i,j;m,c"), b("i,j;c,n"), "i;m,n");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(
     expression_general_product_tot_no_externals_inner_hadamard) {
   // ToT no-external product with an INNER HADAMARD: outer i,j fused, x
@@ -1629,6 +1868,53 @@ using general_product_suite::make_patterned_sparse_array;
 using general_product_suite::make_patterned_tot_array;
 using general_product_suite::TArrayToT;
 using general_product_suite::tot_max_abs_diff;
+
+BOOST_AUTO_TEST_CASE(dist_many_slabs_uneven_lanes) {
+  // many fused slabs with 3 result tiles each: on 2 ranks the 2-d process
+  // grid gives the ranks different numbers of local result tiles per slab,
+  // hence different numbers of lanes; the ranks then walk the steps of the
+  // group in different orders, which must neither deadlock nor change the
+  // result
+  auto& world = TA::get_default_world();
+  if (std::getenv("TA_SUMMA_MAX_DEPTH") || std::getenv("TA_SUMMA_MAX_MEMORY"))
+    return;
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  const TA::TiledRange1 tr_b{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13},
+      tr_i{0, 2, 3, 5}, tr_j{0, 2, 5}, tr_k{0, 3};
+  auto a = make_patterned_array(world, TA::TiledRange{tr_b, tr_i, tr_j}, 1.0);
+  auto b = make_patterned_array(world, TA::TiledRange{tr_b, tr_j, tr_k}, 2.0);
+  auto c_ref = TA::einsum(a("b,i,j"), b("b,j,k"), "b,i,k");
+
+  struct NThreads {
+    NThreads(std::size_t n) { TA::detail::summa_nthreads_override() = n; }
+    ~NThreads() { TA::detail::summa_nthreads_override() = 0; }
+  };
+  for (std::size_t nthreads : {3, 6}) {
+    NThreads override_nthreads(nthreads);
+    TA::detail::summa_last_nlanes() = 0;
+    TA::TArrayD c;
+    BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+    BOOST_CHECK_SMALL(diff_norm(c, c_ref, "b,i,k"), 1e-10);
+
+    // the local result tiles of a slab (the same for every slab)
+    std::size_t tiles_per_slab = 0;
+    for (std::size_t i = 0; i != std::size_t(tr_i.tile_extent()); ++i)
+      if (c.is_local({0ul, i, 0ul})) ++tiles_per_slab;
+    std::size_t nlanes = TA::detail::summa_last_nlanes().load();
+    if (tiles_per_slab != 0)
+      BOOST_CHECK_EQUAL(
+          nlanes, TA::detail::summa_num_lanes(std::size_t(tr_b.tile_extent()),
+                                              tiles_per_slab, nthreads));
+    // check that the test covers what it is for: ranks with different lanes
+    if (world.size() == 2) {
+      std::size_t min_nlanes = tiles_per_slab ? nlanes : 1000ul;
+      std::size_t max_nlanes = tiles_per_slab ? nlanes : 0ul;
+      world.gop.min(min_nlanes);
+      world.gop.max(max_nlanes);
+      BOOST_CHECK_NE(min_nlanes, max_nlanes);
+    }
+  }
+}
 
 BOOST_AUTO_TEST_CASE(dist_dense) {
   // batched general product: b fused, j contracted, i/k free
