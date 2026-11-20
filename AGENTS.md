@@ -618,8 +618,8 @@ Set at runtime, read during `initialize` or first use:
 |---|---|---|
 | `TA_LINALG_BACKEND` | (auto) | `scalapack`, `lapack`, or `ttg`. Invalid values throw. |
 | `TA_LINALG_DISTRIBUTED_MINSIZE` | 4194304 | Matrix-size threshold above which the distributed LA backend is chosen automatically. |
-| `TA_SUMMA_MAX_MEMORY` | (none) | Caps the memory of the argument tiles of the SUMMA steps in flight per rank (`dist_eval/contraction_eval.h`), e.g. `2 GiB`; minimum 100 MiB. Bounds the steps in flight like `TA_SUMMA_MAX_DEPTH`. |
-| `TA_SUMMA_MAX_DEPTH` | (none) | Caps the SUMMA steps in flight per rank, counted over all concurrent slab lanes of a batched contraction (`1` = one step at a time). Only lowers. |
+| `TA_SUMMA_MAX_MEMORY` | (none) | Caps the memory of the argument tiles of the SUMMA steps live at once per rank (`dist_eval/contraction_eval.h`), e.g. `2 GiB` (units B, kB, KiB, MB, MiB, GB, GiB, TB, TiB; case-insensitive); positive values below 100 MiB are raised to it, `0` means no bound, and an invalid value is ignored with a warning. Never goes below the minimum SUMMA needs (3 steps; warns). Not applied to nested (ToT) tiles, whose size it cannot estimate. |
+| `TA_SUMMA_MAX_DEPTH` | (none) | Caps the SUMMA steps whose argument tiles are live at once per rank to those of a single chain of depth D, i.e. 2D+1 (D steps contracting, D+1 fetched ahead), counted over all concurrent slab lanes of a batched contraction. `1` (3 live steps) is the minimum. Only lowers; an invalid value is ignored with a warning. |
 | `TA_DEVICE_NUM_STREAMS` / `TA_CUDA_NUM_STREAMS` / `TA_HIP_NUM_STREAMS` | impl | Number of device streams per rank. CUDA unit tests require `=1`. |
 | `TA_DISK_SCRATCH_DIR` | system temp dir | Directory for the scratch files of disk-backed arrays (`disk/store.h`); overridden by `TiledArray::set_disk_scratch_dir()`. Should be node-local and not memory-backed. |
 | `TA_UT_DISTRIBUTED` | unset | Set by CTest for np≥2 runs; test fixtures branch on it. |
