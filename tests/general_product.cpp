@@ -905,6 +905,162 @@ BOOST_AUTO_TEST_CASE(expression_general_product_no_externals) {
   BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
 }
 
+BOOST_AUTO_TEST_CASE(summa_slab_lanes) {
+  using TA::detail::summa_num_lanes;
+  // (slabs, local result tiles per slab, threads)
+  // a slab with one result tile occupies one thread: one lane per thread
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 1, 10), 10ul);
+  // never more lanes than slabs
+  BOOST_CHECK_EQUAL(summa_num_lanes(4, 1, 10), 4ul);
+  // slabs with enough result tiles to occupy the threads: a single lane
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 10, 10), 1ul);
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 100, 10), 1ul);
+  // in between: enough lanes to occupy the threads
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 4, 10), 3ul);
+  // an ordinary contraction, and a rank with no slabs or no local tiles
+  BOOST_CHECK_EQUAL(summa_num_lanes(1, 1, 10), 1ul);
+  BOOST_CHECK_EQUAL(summa_num_lanes(0, 0, 10), 1ul);
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 0, 10), 10ul);
+  // single thread
+  BOOST_CHECK_EQUAL(summa_num_lanes(51, 1, 1), 1ul);
+}
+
+BOOST_AUTO_TEST_CASE(summa_slab_lane_plan) {
+  using TA::detail::summa_lane_plan;
+  // (slabs, local result tiles per slab, threads, single-chain depth,
+  //  user bound on the steps in flight or 0) -> {lanes, depth per lane}
+  auto check = [](std::size_t nslabs, std::size_t tiles, std::size_t nthreads,
+                  std::size_t depth, std::size_t max_depth, std::size_t nlanes,
+                  std::size_t lane_depth) {
+    const auto plan =
+        summa_lane_plan(nslabs, tiles, nthreads, depth, max_depth);
+    BOOST_CHECK_EQUAL(plan.nlanes, nlanes);
+    BOOST_CHECK_EQUAL(plan.depth, lane_depth);
+  };
+  // a single lane keeps the single-chain depth
+  check(1, 1, 10, 2, 0, 1, 2);
+  check(51, 100, 10, 8, 0, 1, 8);
+  // lanes do not add to the steps in flight beyond one step per lane ...
+  check(51, 1, 10, 2, 0, 10, 1);
+  // ... and share the single-chain depth when it exceeds the lane count
+  check(51, 8, 16, 8, 0, 2, 4);
+  check(51, 4, 10, 8, 0, 3, 2);
+  // the user bound is on the steps in flight over all lanes, spent on lanes
+  // first; 1 reproduces a single chain of depth 1
+  check(51, 1, 10, 2, 1, 1, 1);
+  check(51, 1, 10, 2, 4, 4, 1);
+  check(51, 1, 10, 2, 10, 10, 1);
+  check(51, 8, 16, 8, 2, 2, 1);
+  check(51, 8, 16, 8, 3, 2, 1);
+  check(51, 100, 10, 8, 3, 1, 3);
+  // the user bound never raises the steps in flight
+  check(51, 1, 10, 2, 100, 10, 1);
+  check(51, 100, 10, 8, 100, 1, 8);
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_many_slabs_no_externals) {
+  // many fused slabs, each with a single result tile: with more than one
+  // thread the slabs are dealt to several lanes of SUMMA steps
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13},
+                    {0, 2, 3, 5, 6, 8}};  // i, j
+  auto a = make_patterned_array(world, tr, 1.0);
+  auto b = make_patterned_array(world, tr, 2.0);
+
+  TA::TArrayD c;
+  BOOST_REQUIRE_NO_THROW(c("i") = a("i,j") * b("i,j"));
+  auto c_ref = TA::einsum(a("i,j"), b("i,j"), "i");
+  BOOST_CHECK_SMALL(diff_norm(c, c_ref, "i"), 1e-10);
+
+  // plan the lanes for more threads than the tests run with, to exercise
+  // more than 2 lanes
+  if (world.size() == 1 && !std::getenv("TA_SUMMA_MAX_DEPTH") &&
+      !std::getenv("TA_SUMMA_MAX_MEMORY")) {
+    struct NThreads {
+      NThreads(std::size_t n) { TA::detail::summa_nthreads_override() = n; }
+      ~NThreads() { TA::detail::summa_nthreads_override() = 0; }
+    };
+    for (std::size_t nthreads : {1, 2, 5, 32}) {
+      NThreads override_nthreads(nthreads);
+      TA::TArrayD c5;
+      BOOST_REQUIRE_NO_THROW(c5("i") = a("i,j") * b("i,j"));
+      // 13 slabs, each with one result tile
+      BOOST_CHECK_EQUAL(TA::detail::summa_last_nlanes().load(),
+                        std::min(nthreads, std::size_t(13)));
+      BOOST_CHECK_SMALL(diff_norm(c5, c_ref, "i"), 1e-10);
+
+      // block-sparse
+      const TA::TiledRange1 tr_b{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+          tr_j{0, 2, 3, 6, 7, 9};
+      auto as = make_patterned_sparse_array(world, TA::TiledRange{tr_b, tr_j},
+                                            1.0, 3);
+      auto bs = make_patterned_sparse_array(world, TA::TiledRange{tr_b, tr_j},
+                                            2.0, 2);
+      TA::TSpArrayD cs;
+      BOOST_REQUIRE_NO_THROW(cs("b") = as("b,j") * bs("b,j"));
+      BOOST_CHECK_EQUAL(TA::detail::summa_last_nlanes().load(),
+                        std::min(nthreads, std::size_t(11)));
+      auto cs_ref = TA::einsum(as("b,j"), bs("b,j"), "b");
+      BOOST_CHECK_SMALL(diff_norm_sp(cs, cs_ref, "b"), 1e-10);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_sparse_many_slabs) {
+  // block-sparse, many fused slabs, with and without external indices; the
+  // lanes skip the steps of zero tiles independently
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  const TA::TiledRange1 tr_b{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+      tr_i{0, 3, 4}, tr_j{0, 2, 3, 6, 7, 9}, tr_k{0, 4, 5};
+  {
+    TA::TiledRange tr{tr_b, tr_i, tr_j};
+    auto a = make_patterned_sparse_array(world, tr, 1.0, 3);
+    auto b = make_patterned_sparse_array(world, tr, 2.0, 4);
+    TA::TSpArrayD c;
+    BOOST_REQUIRE_NO_THROW(c("b,i") = a("b,i,j") * b("b,i,j"));
+    auto c_ref = TA::einsum(a("b,i,j"), b("b,i,j"), "b,i");
+    BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i"), 1e-10);
+  }
+  {
+    auto a =
+        make_patterned_sparse_array(world, TA::TiledRange{tr_b, tr_j}, 1.0, 3);
+    auto b =
+        make_patterned_sparse_array(world, TA::TiledRange{tr_b, tr_j}, 2.0, 2);
+    TA::TSpArrayD c;
+    BOOST_REQUIRE_NO_THROW(c("b") = a("b,j") * b("b,j"));
+    auto c_ref = TA::einsum(a("b,j"), b("b,j"), "b");
+    BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b"), 1e-10);
+  }
+  {
+    auto a = make_patterned_sparse_array(
+        world, TA::TiledRange{tr_b, tr_i, tr_j}, 1.0, 3);
+    auto b = make_patterned_sparse_array(
+        world, TA::TiledRange{tr_b, tr_j, tr_k}, 2.0, 4);
+    TA::TSpArrayD c;
+    BOOST_REQUIRE_NO_THROW(c("b,i,k") = a("b,i,j") * b("b,j,k"));
+    auto c_ref = TA::einsum(a("b,i,j"), b("b,j,k"), "b,i,k");
+    BOOST_CHECK_SMALL(diff_norm_sp(c, c_ref, "b,i,k"), 1e-10);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(expression_general_product_tot_many_slabs_no_externals) {
+  // nested tiles, many fused slabs (i), contracted j, no free outer index;
+  // inner contraction
+  auto& world = TA::get_default_world();
+  ForceLegacyEinsum legacy_oracle;  // keep the einsum reference independent
+  TA::TiledRange tr{{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+                    {0, 1, 2, 3, 4, 5}};                      // i, j
+  auto a = make_patterned_tot_array(world, tr, {2, 3}, 1.0);  // inner m, c
+  auto b = make_patterned_tot_array(world, tr, {3, 2}, 2.0);  // inner c, n
+
+  TArrayToT c;
+  BOOST_REQUIRE_NO_THROW(c("i;m,n") = a("i,j;m,c") * b("i,j;c,n"));
+  auto c_ref = TA::einsum(a("i,j;m,c"), b("i,j;c,n"), "i;m,n");
+  BOOST_CHECK_SMALL(tot_max_abs_diff(c, c_ref), 1e-10);
+}
+
 BOOST_AUTO_TEST_CASE(
     expression_general_product_tot_no_externals_inner_hadamard) {
   // ToT no-external product with an INNER HADAMARD: outer i,j fused, x

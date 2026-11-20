@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_DIST_EVAL_CONTRACTION_EVAL_H__INCLUDED
 #define TILEDARRAY_DIST_EVAL_CONTRACTION_EVAL_H__INCLUDED
 
+#include <atomic>
 #include <vector>
 
 #include <TiledArray/config.h>
@@ -39,6 +40,81 @@
 
 namespace TiledArray {
 namespace detail {
+
+/// The number of concurrent chains of SUMMA steps ("lanes") for a batched
+/// contraction
+
+/// The fused (Hadamard) slabs of a batched contraction are independent:
+/// they share no argument or result tiles. The SUMMA step window (depth)
+/// throttles the steps of a slab, each of which spawns one tile contraction
+/// per local result tile of the slab. When a slab has few local result
+/// tiles (in the extreme, one: no external indices) a single chain of steps
+/// running through all slabs keeps most threads idle. Instead the slabs are
+/// dealt round-robin to lanes, each lane running its own chain of steps
+/// through its slabs, with enough lanes to occupy the threads.
+/// \param nslabs The number of slabs evaluated by this process
+/// \param tiles_per_slab The number of local result tiles per slab
+/// \param nthreads The number of threads of this process
+/// \return The number of lanes, at least 1 and at most \p nslabs (1 if
+/// \p nslabs is 0)
+inline std::size_t summa_num_lanes(const std::size_t nslabs,
+                                   const std::size_t tiles_per_slab,
+                                   const std::size_t nthreads) {
+  if (nslabs <= 1ul) return 1ul;
+  const std::size_t per_lane = std::max(std::size_t(1), tiles_per_slab);
+  const std::size_t lanes = (nthreads + per_lane - 1ul) / per_lane;
+  return std::clamp(lanes, std::size_t(1), nslabs);
+}
+
+/// The lanes of a batched contraction and the SUMMA step window of each
+struct SummaLanePlan {
+  std::size_t nlanes;  ///< the number of lanes
+  std::size_t depth;   ///< the number of steps in flight per lane
+};
+
+/// Divides the SUMMA steps in flight between lanes and depth
+
+/// The steps in flight on a process are the lanes times the steps in flight
+/// per lane (depth). The two are not alike: the steps of a slab accumulate
+/// into the same result tiles, so depth overlaps the argument broadcasts of
+/// a step with the work of its predecessors, whereas lanes run independent
+/// slabs on different threads. The steps in flight are therefore spent on
+/// lanes first, and lanes do not add to them beyond one step per lane: the
+/// lanes share the depth of a single chain, \p depth .
+/// \param nslabs The number of slabs evaluated by this process
+/// \param tiles_per_slab The number of local result tiles per slab
+/// \param nthreads The number of threads of this process
+/// \param depth The depth of a single chain of steps, at least 1
+/// \param max_depth The user-defined bound on the number of steps in flight
+/// on a process, over all lanes (TA_SUMMA_MAX_DEPTH, and the steps that fit
+/// in TA_SUMMA_MAX_MEMORY), or 0 if there is none;
+/// it never raises that number
+/// \return The number of lanes (see summa_num_lanes()) and the depth of each
+inline SummaLanePlan summa_lane_plan(const std::size_t nslabs,
+                                     const std::size_t tiles_per_slab,
+                                     const std::size_t nthreads,
+                                     const std::size_t depth,
+                                     const std::size_t max_depth) {
+  std::size_t nlanes = summa_num_lanes(nslabs, tiles_per_slab, nthreads);
+  std::size_t in_flight = std::max(std::max(depth, std::size_t(1)), nlanes);
+  if (max_depth) in_flight = std::min(in_flight, max_depth);
+  nlanes = std::min(nlanes, in_flight);
+  return {nlanes, in_flight / nlanes};
+}
+
+/// Test hook: if nonzero, the lanes of a batched contraction are planned for
+/// this number of threads instead of the size of the thread pool
+inline std::atomic<std::size_t>& summa_nthreads_override() {
+  static std::atomic<std::size_t> nthreads{0ul};
+  return nthreads;
+}
+
+/// Test hook: the number of lanes of the most recent contraction evaluated
+/// by this process
+inline std::atomic<std::size_t>& summa_last_nlanes() {
+  static std::atomic<std::size_t> nlanes{0ul};
+  return nlanes;
+}
 
 /// \brief Distributed contraction evaluator implementation
 
@@ -142,6 +218,10 @@ class Summa
                                    ///< group index), or nh_ if this rank is
                                    ///< in no group (idle for this eval)
   const ordinal_type my_slabs_;    ///< Number of slabs of this rank's group
+  /// Number of lanes: independent chains of SUMMA steps, lane l running
+  /// through this rank's group's slabs of ordinal congruent to l modulo
+  /// nlanes_ (see summa_num_lanes()); set by internal_eval()
+  ordinal_type nlanes_ = 1ul;
 
   /// \return the world rank that owns result tile \p i: the within-group
   /// owner (from the group-local process grid) shifted by the world-rank
@@ -167,13 +247,17 @@ class Summa
   /// \return the within-slab inner-dimension index of SUMMA step \p s
   ordinal_type step_k(const ordinal_type s) const { return s % k_; }
 
-  /// \return the smallest SUMMA step >= \p s that belongs to one of this
-  /// rank's group's slabs, or nsteps_ if there is none
-  ordinal_type next_step(ordinal_type s) const {
-    if (proc_h_ == 1ul) return std::min(s, nsteps_);
+  /// \return the smallest SUMMA step >= \p s that belongs to one of the
+  /// slabs of lane \p lane of this rank's group, or nsteps_ if there is none
+  ordinal_type next_step(ordinal_type s, const ordinal_type lane) const {
+    TA_ASSERT(lane < nlanes_);
     if (first_slab_ >= nh_) return nsteps_;  // not in any group
-    while (s < nsteps_ && (step_h(s) % proc_h_) != first_slab_)
-      s = (step_h(s) + 1ul) * k_;  // jump to the start of the next slab
+    while (s < nsteps_) {
+      const ordinal_type h = step_h(s);
+      if ((h % proc_h_) == first_slab_ && (slab_ord(h) % nlanes_) == lane)
+        break;
+      s = (h + 1ul) * k_;  // jump to the start of the next slab
+    }
     return std::min(s, nsteps_);
   }
 
@@ -185,6 +269,13 @@ class Summa
 
   /// \return the number of SUMMA steps of this rank's group's slabs
   ordinal_type my_steps() const { return my_slabs_ * k_; }
+
+  /// \return the number of SUMMA steps of the slabs of lane \p lane
+  ordinal_type lane_steps(const ordinal_type lane) const {
+    return lane < my_slabs_
+               ? ((my_slabs_ - lane + nlanes_ - 1ul) / nlanes_) * k_
+               : 0ul;
+  }
 
   typedef Future<typename right_type::eval_type>
       right_future;  ///< Future to a right-hand argument tile
@@ -805,12 +896,13 @@ class Summa
     }
   }
 
-  void bcast_col_range_task(ordinal_type s, const ordinal_type end) const {
+  void bcast_col_range_task(ordinal_type s, const ordinal_type end,
+                            const ordinal_type lane) const {
     // Iterate over the skipped steps for which this process column owns the
     // broadcast root (i.e. within-slab k congruent to rank_col mod Pcols)
     const ordinal_type Pcols = proc_grid_.proc_cols();
 
-    for (s = next_step(s); s < end; s = next_step(s + 1ul)) {
+    for (s = next_step(s, lane); s < end; s = next_step(s + 1ul, lane)) {
       const ordinal_type k = step_k(s);
       if (k % Pcols != static_cast<ordinal_type>(proc_grid_.rank_col()))
         continue;
@@ -858,12 +950,13 @@ class Summa
     }
   }
 
-  void bcast_row_range_task(ordinal_type s, const ordinal_type end) const {
+  void bcast_row_range_task(ordinal_type s, const ordinal_type end,
+                            const ordinal_type lane) const {
     // Iterate over the skipped steps for which this process row owns the
     // broadcast root (i.e. within-slab k congruent to rank_row mod Prows)
     const ordinal_type Prows = proc_grid_.proc_rows();
 
-    for (s = next_step(s); s < end; s = next_step(s + 1ul)) {
+    for (s = next_step(s, lane); s < end; s = next_step(s + 1ul, lane)) {
       const ordinal_type k = step_k(s);
       if (k % Prows != static_cast<ordinal_type>(proc_grid_.rank_row()))
         continue;
@@ -922,10 +1015,10 @@ class Summa
   /// \param s The first step to search
   /// \return The first step, greater than or equal to \c s with non-zero
   /// tiles, or \c nsteps_ if none is found.
-  ordinal_type iterate_row(ordinal_type s) const {
+  ordinal_type iterate_row(ordinal_type s, const ordinal_type lane) const {
     // Iterate over this rank's group's steps until a non-zero tile is found
     // or the end of the matrix is reached.
-    for (s = next_step(s); s < nsteps_; s = next_step(s + 1ul)) {
+    for (s = next_step(s, lane); s < nsteps_; s = next_step(s + 1ul, lane)) {
       // Search for non-zero tiles in row k of slab h of right
       ordinal_type i =
           step_h(s) * right_slab_size_ + step_k(s) * proc_grid_.cols();
@@ -946,10 +1039,10 @@ class Summa
   /// \param s The first step to test for non-zero tiles
   /// \return The first step, greater than or equal to \c s, that contains
   /// a non-zero tile. If no non-zero tile is not found, return \c nsteps_.
-  ordinal_type iterate_col(ordinal_type s) const {
+  ordinal_type iterate_col(ordinal_type s, const ordinal_type lane) const {
     // Iterate over this rank's group's steps until a non-zero tile is found
     // or the end of the matrix is reached.
-    for (s = next_step(s); s < nsteps_; s = next_step(s + 1ul)) {
+    for (s = next_step(s, lane); s < nsteps_; s = next_step(s + 1ul, lane)) {
       // Search column k of slab h for non-zero tiles
       const ordinal_type base = step_h(s) * left_slab_size_;
       for (ordinal_type i = base + left_start_local_ + step_k(s);
@@ -971,17 +1064,18 @@ class Summa
   /// \param k The first row/column to check
   /// \return The next k-th column and row of the left- and right-hand
   /// arguments, respectively, that both have non-zero tiles
-  ordinal_type iterate_sparse(const ordinal_type s) const {
+  ordinal_type iterate_sparse(const ordinal_type s,
+                              const ordinal_type lane) const {
     // Initial step for k_col and k_row.
-    ordinal_type k_col = iterate_col(s);
-    ordinal_type k_row = iterate_row(k_col);
+    ordinal_type k_col = iterate_col(s, lane);
+    ordinal_type k_row = iterate_row(k_col, lane);
 
     // Search for a row and column that both have non-zero tiles
     while (k_col != k_row) {
       if (k_col < k_row) {
-        k_col = iterate_col(k_row);
+        k_col = iterate_col(k_row, lane);
       } else {
-        k_row = iterate_row(k_col);
+        k_row = iterate_row(k_col, lane);
       }
     }
 
@@ -989,12 +1083,12 @@ class Summa
       // Spawn a task to broadcast any local columns of left that were skipped
       TensorImpl_::world().taskq.add(shared_from_this(),
                                      &Summa_::bcast_col_range_task, s, k_row,
-                                     madness::TaskAttributes::hipri());
+                                     lane, madness::TaskAttributes::hipri());
 
       // Spawn a task to broadcast any local rows of right that were skipped
       TensorImpl_::world().taskq.add(shared_from_this(),
                                      &Summa_::bcast_row_range_task, s, k_col,
-                                     madness::TaskAttributes::hipri());
+                                     lane, madness::TaskAttributes::hipri());
     }
 
     return k_col;
@@ -1011,10 +1105,10 @@ class Summa
   /// \param k The first row/column to check
   /// \return The next k-th column and row of the left- and right-hand
   /// arguments, respectively, that both have non-zero tiles
-  ordinal_type iterate(const ordinal_type k) const {
+  ordinal_type iterate(const ordinal_type k, const ordinal_type lane) const {
     return (left_.shape().is_dense() && right_.shape().is_dense()
                 ? k
-                : iterate_sparse(k));
+                : iterate_sparse(k, lane));
   }
 
   // Initialization functions ----------------------------------------------
@@ -1460,6 +1554,7 @@ class Summa
     std::vector<col_datum> col_{};
     std::vector<row_datum> row_{};
     FinalizeTask* finalize_task_;         ///< The SUMMA finalization task
+    const ordinal_type lane_;             ///< The lane of this chain of steps
     StepTask* next_step_task_ = nullptr;  ///< The next SUMMA step task
     StepTask* tail_step_task_ =
         nullptr;  ///< The last SUMMA step task that currently exists
@@ -1481,7 +1576,13 @@ class Summa
     }
 
    public:
-    StepTask(const std::shared_ptr<Summa_>& owner, int finalize_ndep)
+    /// Construct the task for the first step of a lane
+
+    /// \param owner The SUMMA evaluator
+    /// \param finalize_task The finalization task, shared by all lanes
+    /// \param lane The lane
+    StepTask(const std::shared_ptr<Summa_>& owner,
+             FinalizeTask* const finalize_task, const ordinal_type lane)
         :
 #ifdef TILEDARRAY_ENABLE_TASK_DEBUG_TRACE
           madness::TaskInterface(0ul, "StepTask 1st ctor",
@@ -1491,9 +1592,10 @@ class Summa
 #endif
           owner_(owner),
           world_(owner->world()),
-          finalize_task_(new FinalizeTask(owner, finalize_ndep)) {
+          finalize_task_(finalize_task),
+          lane_(lane) {
       TA_ASSERT(owner_);
-      owner_->world().taskq.add(finalize_task_);
+      TA_ASSERT(finalize_task_);
     }
 
     /// Construct the task for the next step
@@ -1510,7 +1612,8 @@ class Summa
 #endif
           owner_(parent->owner_),
           world_(parent->world_),
-          finalize_task_(parent->finalize_task_) {
+          finalize_task_(parent->finalize_task_),
+          lane_(parent->lane_) {
       TA_ASSERT(parent);
       parent->next_step_task_ = this;
     }
@@ -1538,11 +1641,9 @@ class Summa
     template <typename Derived>
     void make_next_step_tasks(Derived* task, ordinal_type depth) {
       // Set the depth to be no greater than the number of SUMMA steps this
-      // rank's group actually executes. In the 2-d (proc_h_ == 1) case this is
-      // nsteps_ (my_slabs_ == nh_); in the 3-d (proc_h_ > 1) case my_steps() <
-      // nsteps_, and clamping to nsteps_ would pre-spawn surplus step tasks
-      // that all resolve to the terminating step (k_ == nsteps_).
-      if (depth > owner_->my_steps()) depth = owner_->my_steps();
+      // lane actually executes; clamping to nsteps_ would pre-spawn surplus
+      // step tasks that all resolve to the terminating step (k_ == nsteps_).
+      if (depth > owner_->lane_steps(lane_)) depth = owner_->lane_steps(lane_);
 
       // Spawn n=depth step tasks
       for (; depth > 0ul; --depth) {
@@ -1624,19 +1725,22 @@ class Summa
   class DenseStepTask : public StepTask {
    protected:
     const ordinal_type k_;
+    using StepTask::lane_;
     using StepTask::owner_;
 
    public:
     DenseStepTask(const std::shared_ptr<Summa_>& owner,
+                  FinalizeTask* const finalize_task, const ordinal_type lane,
                   const ordinal_type depth)
-        : StepTask(owner, owner->my_steps() + 1ul), k_(owner->next_step(0ul)) {
+        : StepTask(owner, finalize_task, lane),
+          k_(owner->next_step(0ul, lane)) {
       StepTask::make_next_step_tasks(this, depth);
       if (k_ < owner_->nsteps_) StepTask::spawn_get_row_col_tasks(k_);
     }
 
     DenseStepTask(DenseStepTask* const parent, const int ndep)
         : StepTask(parent, ndep),
-          k_(parent->owner_->next_step(parent->k_ + 1ul)) {
+          k_(parent->owner_->next_step(parent->k_ + 1ul, parent->lane_)) {
       // Spawn tasks to get k-th row and column tiles
       if (k_ < owner_->nsteps_) StepTask::spawn_get_row_col_tasks(k_);
     }
@@ -1655,6 +1759,7 @@ class Summa
     Future<madness::Group> row_group_{};
     Future<madness::Group> col_group_{};
     using StepTask::finalize_task_;
+    using StepTask::lane_;
     using StepTask::next_step_task_;
     using StepTask::owner_;
     using StepTask::world_;
@@ -1663,7 +1768,7 @@ class Summa
     /// Spawn task to construct process groups and get tiles.
     void iterate_task(ordinal_type k, const ordinal_type offset) {
       // Search for the next non-zero row and column
-      k = owner_->iterate_sparse(k + offset);
+      k = owner_->iterate_sparse(k + offset, lane_);
       k_.set(k);
 
       if (k < owner_->nsteps_) {
@@ -1692,8 +1797,10 @@ class Summa
     }
 
    public:
-    SparseStepTask(const std::shared_ptr<Summa_>& owner, ordinal_type depth)
-        : StepTask(owner, 1ul) {
+    SparseStepTask(const std::shared_ptr<Summa_>& owner,
+                   FinalizeTask* const finalize_task, const ordinal_type lane,
+                   ordinal_type depth)
+        : StepTask(owner, finalize_task, lane) {
       StepTask::make_next_step_tasks(this, depth);
 
       // Spawn a task to find the next non-zero iteration
@@ -1844,57 +1951,45 @@ class Summa
   void discard_tile(ordinal_type i) const override { get_tile(i); }
 
  private:
-  /// Adjust iteration depth based on memory constraints
+  /// The number of SUMMA steps that fit in the user-defined memory bound
 
-  /// \param depth The unbounded iteration depth
   /// \param left_sparsity The fraction of zero tiles in the left-hand matrix
   /// \param right_sparsity The fraction of zero tiles in the right-hand matrix
-  /// \return The memory bounded iteration depth
-  /// \thorw TiledArray::Exception When the memory bounded iteration depth
-  /// is less than 1.
-  ordinal_type mem_bound_depth(ordinal_type depth, const float left_sparsity,
-                               const float right_sparsity) {
+  /// \return The number of SUMMA steps whose argument tiles fit in the
+  /// memory bound (TA_SUMMA_MAX_MEMORY) on this process, counted over all
+  /// lanes, or 0 if there is no bound
+  /// \throw TiledArray::Exception When the argument tiles of a single step
+  /// do not fit.
+  ordinal_type mem_bound_steps(const float left_sparsity,
+                               const float right_sparsity) const {
     // Check if a memory bound has been set
     const ordinal_type available_memory = max_memory_;
-    if (available_memory) {
-      // Compute the average memory requirement per iteration of this process
-      const std::size_t local_memory_per_iter_left =
-          (left_.trange().elements_range().volume() /
-           left_.trange().tiles_range().volume()) *
-          sizeof(typename numeric_type<typename left_type::eval_type>::type) *
-          proc_grid_.local_rows() * (1.0f - left_sparsity);
-      const std::size_t local_memory_per_iter_right =
-          (right_.trange().elements_range().volume() /
-           right_.trange().tiles_range().volume()) *
-          sizeof(typename numeric_type<typename right_type::eval_type>::type) *
-          proc_grid_.local_cols() * (1.0f - right_sparsity);
+    if (!available_memory) return 0ul;
 
-      // Compute the maximum number of iterations based on available memory
-      const ordinal_type mem_bound_depth =
-          ((local_memory_per_iter_left + local_memory_per_iter_right) /
-           available_memory);
+    // Compute the average memory requirement per iteration of this process
+    const std::size_t local_memory_per_iter_left =
+        (left_.trange().elements_range().volume() /
+         left_.trange().tiles_range().volume()) *
+        sizeof(typename numeric_type<typename left_type::eval_type>::type) *
+        proc_grid_.local_rows() * (1.0f - left_sparsity);
+    const std::size_t local_memory_per_iter_right =
+        (right_.trange().elements_range().volume() /
+         right_.trange().tiles_range().volume()) *
+        sizeof(typename numeric_type<typename right_type::eval_type>::type) *
+        proc_grid_.local_cols() * (1.0f - right_sparsity);
+    const std::size_t local_memory_per_iter =
+        std::max(std::size_t(1),
+                 local_memory_per_iter_left + local_memory_per_iter_right);
 
-      // Check if the memory bounded depth is less than the optimal depth
-      if (depth > mem_bound_depth) {
-        // Adjust the depth based on the available memory
-        switch (mem_bound_depth) {
-          case 0:
-            // When memory bound depth is
-            TA_EXCEPTION("Insufficient memory available for SUMMA");
-            break;
-          case 1:
-            if (TensorImpl_::world().rank() == 0)
-              printf(
-                  "!! WARNING TiledArray: Memory constraints limit the SUMMA "
-                  "depth depth to 1.\n"
-                  "!! WARNING TiledArray: Performance may be slow.\n");
-          default:
-            depth = mem_bound_depth;
-        }
-      }
-    }
-
-    return depth;
+    // Compute the maximum number of iterations based on available memory
+    const ordinal_type nsteps = available_memory / local_memory_per_iter;
+    if (nsteps == 0ul) TA_EXCEPTION("Insufficient memory available for SUMMA");
+    if (nsteps == 1ul && TensorImpl_::world().rank() == 0)
+      printf(
+          "!! WARNING TiledArray: Memory constraints limit the SUMMA "
+          "depth to 1.\n"
+          "!! WARNING TiledArray: Performance may be slow.\n");
+    return nsteps;
   }
 
   /// Evaluate the tiles of this tensor
@@ -1935,20 +2030,51 @@ class Summa
       // producing nonzero-volume result ... in that case there is nothing to do
       // the appropriate initialization was performed in the initialize() method
       if (nsteps_ != 0) {
-        // Construct the first SUMMA iteration task
+        // The slabs of a batched contraction are independent; deal them to
+        // enough lanes, each with its own chain of steps, to occupy the
+        // threads, and divide the steps in flight (the single-chain depth,
+        // bounded by the user and by the user's memory bound) among the lanes.
+        auto plan_lanes = [this](const ordinal_type single_chain_depth,
+                                 const ordinal_type mem_bound) {
+          const ordinal_type nthreads_override = summa_nthreads_override();
+          ordinal_type max_in_flight = max_depth_;
+          if (mem_bound)
+            max_in_flight =
+                max_in_flight ? std::min(max_in_flight, mem_bound) : mem_bound;
+          const auto plan = summa_lane_plan(
+              my_slabs_, proc_grid_.local_size(),
+              nthreads_override ? nthreads_override
+                                : madness::ThreadPool::size() + 1ul,
+              single_chain_depth, max_in_flight);
+          nlanes_ = plan.nlanes;
+          summa_last_nlanes() = nlanes_;
+          return ordinal_type(plan.depth);
+        };
+        auto spawn_lanes = [this](const ordinal_type finalize_ndep,
+                                  auto&& make_step_task) {
+          // every lane notifies the finalization task when it terminates
+          FinalizeTask* const finalize_task =
+              new FinalizeTask(shared_from_this(), finalize_ndep);
+          TensorImpl_::world().taskq.add(finalize_task);
+          for (ordinal_type lane = 0ul; lane < nlanes_; ++lane)
+            TensorImpl_::world().taskq.add(make_step_task(finalize_task, lane));
+        };
+
+        // Construct the first SUMMA iteration task of every lane
         if (TensorImpl_::shape().is_dense()) {
           // We cannot have more iterations than there are SUMMA steps
           if (depth > nsteps_) depth = nsteps_;
 
-          // Modify the number of concurrent iterations based on the available
-          // memory.
-          depth = mem_bound_depth(depth, 0.0f, 0.0f);
+          // Plan the lanes and the depth of each, enforcing the user defined
+          // bounds on the depth and the memory
+          depth = plan_lanes(depth, mem_bound_steps(0.0f, 0.0f));
 
-          // Enforce user defined depth bound
-          if (max_depth_) depth = std::min(depth, max_depth_);
-
-          TensorImpl_::world().taskq.add(
-              new DenseStepTask(shared_from_this(), depth));
+          // the finalization task waits for every step and for the
+          // terminating step of every lane
+          spawn_lanes(my_steps() + nlanes_, [this, depth](FinalizeTask* f,
+                                                          ordinal_type lane) {
+            return new DenseStepTask(shared_from_this(), f, lane, depth);
+          });
         } else {
           // Increase the depth based on the amount of sparsity in an iteration.
 
@@ -1968,15 +2094,17 @@ class Summa
           // We cannot have more iterations than there are SUMMA steps
           if (depth > nsteps_) depth = nsteps_;
 
-          // Modify the number of concurrent iterations based on the available
-          // memory and sparsity of the argument tensors.
-          depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
+          // Plan the lanes and the depth of each, enforcing the user defined
+          // bounds on the depth and the memory
+          depth =
+              plan_lanes(depth, mem_bound_steps(left_sparsity, right_sparsity));
 
-          // Enforce user defined depth bound
-          if (max_depth_) depth = std::min(depth, max_depth_);
-
-          TensorImpl_::world().taskq.add(
-              new SparseStepTask(shared_from_this(), depth));
+          // the finalization task waits for the terminating step of every
+          // lane; every other step registers itself
+          spawn_lanes(
+              nlanes_, [this, depth](FinalizeTask* f, ordinal_type lane) {
+                return new SparseStepTask(shared_from_this(), f, lane, depth);
+              });
         }
       }  // nsteps_ != 0
     }

@@ -618,8 +618,8 @@ Set at runtime, read during `initialize` or first use:
 |---|---|---|
 | `TA_LINALG_BACKEND` | (auto) | `scalapack`, `lapack`, or `ttg`. Invalid values throw. |
 | `TA_LINALG_DISTRIBUTED_MINSIZE` | 4194304 | Matrix-size threshold above which the distributed LA backend is chosen automatically. |
-| `TA_SUMMA_MAX_MEMORY` | (none) | Caps SUMMA contraction per-rank memory (`dist_eval/contraction_eval.h`). |
-| `TA_SUMMA_MAX_DEPTH` | (none) | Caps SUMMA pipeline depth. |
+| `TA_SUMMA_MAX_MEMORY` | (none) | Caps the memory of the argument tiles of the SUMMA steps in flight per rank (`dist_eval/contraction_eval.h`), e.g. `2 GiB`; minimum 100 MiB. Bounds the steps in flight like `TA_SUMMA_MAX_DEPTH`. |
+| `TA_SUMMA_MAX_DEPTH` | (none) | Caps the SUMMA steps in flight per rank, counted over all concurrent slab lanes of a batched contraction (`1` = one step at a time). Only lowers. |
 | `TA_DEVICE_NUM_STREAMS` / `TA_CUDA_NUM_STREAMS` / `TA_HIP_NUM_STREAMS` | impl | Number of device streams per rank. CUDA unit tests require `=1`. |
 | `TA_DISK_SCRATCH_DIR` | system temp dir | Directory for the scratch files of disk-backed arrays (`disk/store.h`); overridden by `TiledArray::set_disk_scratch_dir()`. Should be node-local and not memory-backed. |
 | `TA_UT_DISTRIBUTED` | unset | Set by CTest for np≥2 runs; test fixtures branch on it. |

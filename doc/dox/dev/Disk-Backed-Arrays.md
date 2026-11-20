@@ -103,7 +103,7 @@ No shared filesystem is assumed or needed. When a process needs a tile owned by 
 
 ## Memory
 
-A tile is in memory from the moment an expression evaluates it until the expression is done with it. A contraction evaluates the tiles of an argument a batch at a time (one SUMMA iteration), so the argument is never in memory as a whole; how many batches are in flight at once is controlled by the `TA_SUMMA_MAX_DEPTH` environment variable. Smaller tiles along the contracted indices give finer batches.
+A tile is in memory from the moment an expression evaluates it until the expression is done with it. A contraction evaluates the tiles of an argument a batch at a time (one SUMMA iteration), so the argument is never in memory as a whole; the number of batches in flight at once on a process can be bounded with the `TA_SUMMA_MAX_DEPTH` environment variable. The bound is on the whole contraction: a batched contraction that runs its slabs concurrently counts the batches of all of them. Smaller tiles along the contracted indices give finer batches.
 
 Writing or reading a tile temporarily needs a buffer of the size of the tile in addition to the tile itself.
 
