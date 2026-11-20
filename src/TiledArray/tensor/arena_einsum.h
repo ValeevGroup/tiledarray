@@ -983,6 +983,21 @@ class ContractionArenaPlan {
   auto operand_inner_ranges(const Left& left, const Right& right,
                             const math::GemmHelper& outer_gh) const;
 
+  /// The inner range implied by one `left`/`right` K-panel for a single
+  /// output cell, as a callable of the cell ordinal. `operand_inner_ranges`
+  /// evaluates it for every cell; `grow_to_cover` evaluates it on demand,
+  /// for the cells that are still null, so a steady-state panel (nothing
+  /// grows) costs no per-cell range construction.
+  auto cell_range_fn(const Left& left, const Right& right,
+                     const math::GemmHelper& outer_gh) const;
+
+  /// Whether one `left`/`right` K-panel can grow a given output cell: true
+  /// exactly when cell_range_fn would yield a non-empty range for it. Built
+  /// from per-row (left) and per-column (right) non-empty masks over K, so
+  /// the per-cell test is a mask test and constructs no range.
+  auto cell_grows_fn(const Left& left, const Right& right,
+                     const math::GemmHelper& outer_gh) const;
+
   ArenaInnerShapePlan inner_plan_{};
 };
 
@@ -1042,9 +1057,9 @@ auto make_contraction_arena_plan(ArenaInnerShapeKind inner_kind,
   }
 }
 
-/// Per-output-cell inner ranges implied by one `left`/`right` K-panel.
+/// The per-cell inner range of one `left`/`right` K-panel, as a callable.
 template <typename Result, typename Left, typename Right>
-auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
+auto ContractionArenaPlan<Result, Left, Right>::cell_range_fn(
     const Left& left, const Right& right,
     const math::GemmHelper& outer_gh) const {
   using inner_t = typename Result::value_type;
@@ -1056,11 +1071,13 @@ auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
   const integer lda = (outer_gh.left_op() == math::blas::NoTranspose) ? K : M;
   const integer ldb = (outer_gh.right_op() == math::blas::NoTranspose) ? N : K;
   TA_ASSERT(left.nbatch() == right.nbatch());
-  const std::size_t batch_sz = static_cast<std::size_t>(left.nbatch());
   const std::size_t mn =
       static_cast<std::size_t>(M) * static_cast<std::size_t>(N);
+  const bool left_notrans = outer_gh.left_op() == math::blas::NoTranspose;
+  const bool right_notrans = outer_gh.right_op() == math::blas::NoTranspose;
 
-  auto range_for = [&](std::size_t ord) -> inner_range_t {
+  return [this, &left, &right, N, K, lda, ldb, mn, left_notrans,
+          right_notrans](std::size_t ord) -> inner_range_t {
     if (mn == 0) return inner_range_t{};
     const integer b = static_cast<integer>(ord / mn);
     const integer rem = static_cast<integer>(ord % mn);
@@ -1071,7 +1088,7 @@ auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
       if constexpr (is_arena_eligible_outer_v<Left>) {
         const auto* lbase = left.batch_data(static_cast<std::size_t>(b));
         for (integer k = 0; k != K; ++k) {
-          const auto aoff = (outer_gh.left_op() == math::blas::NoTranspose)
+          const auto aoff = left_notrans
                                 ? m * lda + k
                                 : k * lda + m;
           const auto& lc = *(lbase + aoff);
@@ -1084,7 +1101,7 @@ auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
       if constexpr (is_arena_eligible_outer_v<Right>) {
         const auto* rbase = right.batch_data(static_cast<std::size_t>(b));
         for (integer k = 0; k != K; ++k) {
-          const auto boff = (outer_gh.right_op() == math::blas::NoTranspose)
+          const auto boff = right_notrans
                                 ? k * ldb + n
                                 : n * ldb + k;
           const auto& rc = *(rbase + boff);
@@ -1099,10 +1116,10 @@ auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
       const auto* lbase = left.batch_data(static_cast<std::size_t>(b));
       const auto* rbase = right.batch_data(static_cast<std::size_t>(b));
       for (integer k = 0; k != K; ++k) {
-        const auto aoff = (outer_gh.left_op() == math::blas::NoTranspose)
+        const auto aoff = left_notrans
                               ? m * lda + k
                               : k * lda + m;
-        const auto boff = (outer_gh.right_op() == math::blas::NoTranspose)
+        const auto boff = right_notrans
                               ? k * ldb + n
                               : n * ldb + k;
         const auto& lc = *(lbase + aoff);
@@ -1113,9 +1130,107 @@ auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
     }
     return inner_range_t{};
   };
+}
 
+/// Per-cell "would this K-panel grow it" predicate; see cell_grows_fn.
+template <typename Result, typename Left, typename Right>
+auto ContractionArenaPlan<Result, Left, Right>::cell_grows_fn(
+    const Left& left, const Right& right,
+    const math::GemmHelper& outer_gh) const {
+  using integer = math::blas::integer;
+  integer M, N, K;
+  outer_gh.compute_matrix_sizes(M, N, K, left.range(), right.range());
+  const integer lda = (outer_gh.left_op() == math::blas::NoTranspose) ? K : M;
+  const integer ldb = (outer_gh.right_op() == math::blas::NoTranspose) ? N : K;
+  TA_ASSERT(left.nbatch() == right.nbatch());
+  const std::size_t batch_sz = static_cast<std::size_t>(left.nbatch());
+  const std::size_t mn =
+      static_cast<std::size_t>(M) * static_cast<std::size_t>(N);
+  const std::size_t words = (static_cast<std::size_t>(K) + 63) / 64;
+  const bool left_notrans = outer_gh.left_op() == math::blas::NoTranspose;
+  const bool right_notrans = outer_gh.right_op() == math::blas::NoTranspose;
+  const auto kind = inner_plan_.kind;
+  // row_mask[(b*M + m)*words + w]: bit k%64 of word w set iff left cell
+  // (b, m, k) is non-empty; col_mask likewise for right cell (b, k, n).
+  std::vector<std::uint64_t> row_mask, col_mask;
+  if constexpr (is_arena_eligible_outer_v<Left>) {
+    if (kind != ArenaInnerShapeKind::right_range) {
+      row_mask.assign(batch_sz * static_cast<std::size_t>(M) * words, 0);
+      for (std::size_t b = 0; b < batch_sz; ++b) {
+        const auto* lbase = left.batch_data(b);
+        for (integer m = 0; m != M; ++m) {
+          auto* mask = &row_mask[(b * M + m) * words];
+          for (integer k = 0; k != K; ++k) {
+            const auto aoff = left_notrans ? m * lda + k : k * lda + m;
+            if (!(lbase + aoff)->empty())
+              mask[k / 64] |= std::uint64_t{1} << (k % 64);
+          }
+        }
+      }
+    }
+  }
+  if constexpr (is_arena_eligible_outer_v<Right>) {
+    if (kind != ArenaInnerShapeKind::left_range) {
+      col_mask.assign(batch_sz * static_cast<std::size_t>(N) * words, 0);
+      for (std::size_t b = 0; b < batch_sz; ++b) {
+        const auto* rbase = right.batch_data(b);
+        for (integer n = 0; n != N; ++n) {
+          auto* mask = &col_mask[(b * N + n) * words];
+          for (integer k = 0; k != K; ++k) {
+            const auto boff = right_notrans ? k * ldb + n : n * ldb + k;
+            if (!(rbase + boff)->empty())
+              mask[k / 64] |= std::uint64_t{1} << (k % 64);
+          }
+        }
+      }
+    }
+  }
+  return [M, N, mn, words, kind, row_mask = std::move(row_mask),
+          col_mask = std::move(col_mask)](std::size_t ord) -> bool {
+    if (mn == 0) return false;
+    const std::size_t b = ord / mn;
+    const std::size_t rem = ord % mn;
+    const std::size_t m = rem / static_cast<std::size_t>(N);
+    const std::size_t n = rem % static_cast<std::size_t>(N);
+    const std::uint64_t* rm = row_mask.empty() ? nullptr
+                                               : &row_mask[(b * M + m) * words];
+    const std::uint64_t* cm = col_mask.empty() ? nullptr
+                                               : &col_mask[(b * N + n) * words];
+    if (kind == ArenaInnerShapeKind::left_range) {
+      if (!rm) return false;
+      for (std::size_t w = 0; w < words; ++w)
+        if (rm[w]) return true;
+      return false;
+    }
+    if (kind == ArenaInnerShapeKind::right_range) {
+      if (!cm) return false;
+      for (std::size_t w = 0; w < words; ++w)
+        if (cm[w]) return true;
+      return false;
+    }
+    // gemm_result_range needs both operands to be ToT.
+    if (!rm || !cm) return false;
+    for (std::size_t w = 0; w < words; ++w)
+      if (rm[w] & cm[w]) return true;
+    return false;
+  };
+}
+
+/// Per-output-cell inner ranges implied by one `left`/`right` K-panel.
+template <typename Result, typename Left, typename Right>
+auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
+    const Left& left, const Right& right,
+    const math::GemmHelper& outer_gh) const {
+  using inner_range_t = typename Result::value_type::range_type;
+  using integer = math::blas::integer;
+  integer M, N, K;
+  outer_gh.compute_matrix_sizes(M, N, K, left.range(), right.range());
+  TA_ASSERT(left.nbatch() == right.nbatch());
+  const std::size_t N_cells = static_cast<std::size_t>(M) *
+                              static_cast<std::size_t>(N) *
+                              static_cast<std::size_t>(left.nbatch());
+  auto range_for = cell_range_fn(left, right, outer_gh);
   std::vector<inner_range_t> ranges;
-  const std::size_t N_cells = mn * batch_sz;
   ranges.reserve(N_cells);
   for (std::size_t ord = 0; ord < N_cells; ++ord)
     ranges.emplace_back(range_for(ord));
@@ -1145,11 +1260,11 @@ template <typename Result, typename Left, typename Right>
 void ContractionArenaPlan<Result, Left, Right>::grow_to_cover(
     Result& result, const Left& left, const Right& right,
     const math::GemmHelper& outer_gh) const {
-  using inner_range_t = typename Result::value_type::range_type;
-  const auto ranges = operand_inner_ranges(left, right, outer_gh);
-  detail::arena_tot_grow_inplace(
-      result,
-      [&ranges](std::size_t ord) -> inner_range_t { return ranges[ord]; });
+  // On demand: arena_tot_grow_inplace tests only the cells that are still
+  // null, with a mask test per cell, and asks for a range (and allocates)
+  // only once a panel actually grows something.
+  detail::arena_tot_grow_inplace(result, cell_grows_fn(left, right, outer_gh),
+                                 cell_range_fn(left, right, outer_gh));
 }
 
 /// Accumulates a contraction into an already-allocated result cell.
