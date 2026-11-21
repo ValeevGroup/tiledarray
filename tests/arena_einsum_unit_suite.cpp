@@ -5,6 +5,10 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+#include <optional>
+#include <random>
+#include <vector>
+
 BOOST_AUTO_TEST_SUITE(arena_einsum_unit_suite, TA_UT_LABEL_SERIAL)
 
 namespace TA = TiledArray;
@@ -158,6 +162,147 @@ BOOST_AUTO_TEST_CASE(reserve_and_construct_jagged_inner_per_cell) {
   BOOST_CHECK_EQUAL(result.data()[1].range().volume(), std::size_t{2});
   BOOST_CHECK_EQUAL(result.data()[2].range().volume(), std::size_t{4});
   BOOST_CHECK_EQUAL(result.data()[3].range().volume(), std::size_t{4});
+}
+
+namespace {
+
+/// A ToT operand tile over \p range whose cell \c o is null
+/// (`state[o] == 0`), has range \p inner (`1`), or -- owning inner only --
+/// is a non-empty cell of the zero-volume range \p zero_inner (`2`).
+template <typename Outer>
+Outer make_grow_operand(const TA::Range& range, const std::vector<int>& state,
+                        const TA::Range& inner, const TA::Range& zero_inner) {
+  using Inner = typename Outer::value_type;
+  if constexpr (TA::is_arena_tensor_v<Inner>) {
+    return TA::detail::arena_outer_init<Outer>(
+        range, 1, [&](std::size_t o) -> TA::Range {
+          return state[o] == 1 ? inner : TA::Range{};
+        });
+  } else {
+    Outer t(range);
+    for (std::size_t o = 0; o != range.volume(); ++o) {
+      if (state[o] == 1) t.data()[o] = Inner(inner, 1.0);
+      if (state[o] == 2) t.data()[o] = Inner(zero_inner);
+    }
+    return t;
+  }
+}
+
+/// Checks `grow_to_cover` against `reserve_and_construct`, which evaluates
+/// every cell's range. A result shaped by one random K-panel is grown by a
+/// second one; a null cell must become exactly what the second panel alone
+/// would shape, a non-null cell must keep its range and data, and a panel
+/// that grows nothing must leave the tile's storage alone. The K values
+/// straddle the 64-bit words of the non-empty masks.
+template <typename Outer>
+void check_grow_to_cover(bool zero_volume_cells, unsigned seed) {
+  using TA::detail::ArenaInnerShapeKind;
+  namespace blas = TA::math::blas;
+  std::mt19937 gen(seed);
+  auto pick = [&gen](std::size_t n) { return gen() % n; };
+  const long Ks[] = {1, 3, 63, 64, 65, 130};
+  const blas::Op ops[] = {blas::NoTranspose, blas::Transpose};
+  const ArenaInnerShapeKind kinds[] = {ArenaInnerShapeKind::left_range,
+                                       ArenaInnerShapeKind::right_range,
+                                       ArenaInnerShapeKind::gemm_result_range};
+  std::size_t ngrown = 0, nsteady = 0;
+  for (int trial = 0; trial != 600; ++trial) {
+    const long M = 1 + pick(4), N = 1 + pick(4), K = Ks[pick(6)];
+    const auto lop = ops[pick(2)], rop = ops[pick(2)];
+    const auto kind = kinds[pick(3)];
+    const double density = pick(3) == 0 ? 0.02 : 0.3;
+    const TA::math::GemmHelper outer_gh(lop, rop, 2, 2, 2);
+    std::optional<TA::math::GemmHelper> inner_gh;
+    TA::Range linner{2, 3}, rinner{2, 3};
+    const TA::Range lzero{0, 3};
+    TA::Range rzero{0, 3};
+    if (kind == ArenaInnerShapeKind::gemm_result_range) {
+      inner_gh.emplace(blas::NoTranspose, blas::NoTranspose, 2, 2, 2);
+      rinner = TA::Range{3, 4};
+      rzero = TA::Range{3, 0};
+    }
+    auto plan = TA::detail::make_contraction_arena_plan<Outer, Outer, Outer>(
+        kind, inner_gh, TA::Permutation{});
+    BOOST_REQUIRE(plan.has_value());
+    const TA::Range lrange =
+        lop == blas::NoTranspose ? TA::Range{M, K} : TA::Range{K, M};
+    const TA::Range rrange =
+        rop == blas::NoTranspose ? TA::Range{K, N} : TA::Range{N, K};
+    auto random_state = [&](std::size_t n) {
+      std::vector<int> state(n);
+      for (auto& s : state) {
+        const double u = pick(10000) / 10000.0;
+        s = u < density ? 1 : (zero_volume_cells && u < 2 * density ? 2 : 0);
+      }
+      return state;
+    };
+    const Outer l1 =
+        make_grow_operand<Outer>(lrange, random_state(M * K), linner, lzero);
+    const Outer r1 =
+        make_grow_operand<Outer>(rrange, random_state(K * N), rinner, rzero);
+    const Outer l2 =
+        make_grow_operand<Outer>(lrange, random_state(M * K), linner, lzero);
+    const Outer r2 =
+        make_grow_operand<Outer>(rrange, random_state(K * N), rinner, rzero);
+
+    const Outer ref1 = plan->reserve_and_construct(l1, r1, outer_gh);
+    const Outer ref2 = plan->reserve_and_construct(l2, r2, outer_gh);
+    Outer result = plan->reserve_and_construct(l1, r1, outer_gh);
+    const std::size_t ncells = static_cast<std::size_t>(M * N);
+    for (std::size_t o = 0; o != ncells; ++o) {
+      auto& cell = result.data()[o];
+      if (cell.empty()) continue;
+      for (std::size_t i = 0; i != cell.size(); ++i)
+        cell.data()[i] = 1.0 + o + 0.01 * i;
+    }
+    const auto* const data_before = result.data();
+    BOOST_REQUIRE_NO_THROW(plan->grow_to_cover(result, l2, r2, outer_gh));
+
+    bool grows = false;
+    for (std::size_t o = 0; o != ncells; ++o)
+      if (ref1.data()[o].empty() && !ref2.data()[o].empty() &&
+          ref2.data()[o].range().volume() != 0)
+        grows = true;
+    if (!grows) {
+      ++nsteady;
+      BOOST_CHECK(result.data() == data_before);  // no reallocation
+      continue;
+    }
+    ++ngrown;
+    for (std::size_t o = 0; o != ncells; ++o) {
+      const auto& got = result.data()[o];
+      const auto& want = ref1.data()[o].empty() ? ref2.data()[o]   // grown
+                                                : ref1.data()[o];  // kept
+      BOOST_REQUIRE_EQUAL(got.empty(), want.empty());
+      if (got.empty()) continue;
+      BOOST_REQUIRE(got.range() == want.range());
+      const bool kept = !ref1.data()[o].empty();
+      for (std::size_t i = 0; i != got.size(); ++i)
+        BOOST_REQUIRE_EQUAL(got.data()[i], kept ? 1.0 + o + 0.01 * i : 0.0);
+    }
+  }
+  // both the growing and the steady-state branch were exercised
+  BOOST_CHECK_GT(ngrown, 0u);
+  BOOST_CHECK_GT(nsteady, 0u);
+}
+
+}  // namespace
+
+BOOST_AUTO_TEST_CASE(grow_to_cover_matches_reserve_and_construct_arena) {
+  check_grow_to_cover<TA::Tensor<TA::ArenaTensor<double, TA::Range>>>(
+      /* zero_volume_cells = */ false, 1u);
+}
+
+BOOST_AUTO_TEST_CASE(grow_to_cover_matches_reserve_and_construct_owning) {
+  check_grow_to_cover<TA::Tensor<TA::Tensor<double>>>(
+      /* zero_volume_cells = */ false, 2u);
+}
+
+// An owning inner cell can be non-empty with a zero-volume range; such a
+// cell grows nothing, so it must not make a panel reallocate the result.
+BOOST_AUTO_TEST_CASE(grow_to_cover_zero_volume_operand_cells) {
+  check_grow_to_cover<TA::Tensor<TA::Tensor<double>>>(
+      /* zero_volume_cells = */ true, 3u);
 }
 
 BOOST_AUTO_TEST_CASE(fused_hadamard_inplace_accumulates) {

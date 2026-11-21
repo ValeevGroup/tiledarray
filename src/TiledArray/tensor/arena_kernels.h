@@ -529,9 +529,10 @@ void arena_tot_grow_inplace(OuterTensor& result, GrowsFn&& grows_fn,
   using inner_range_t = typename inner_t::range_type;
   const std::size_t N_cells = result.range().volume() * result.nbatch();
   // Pass 1: only a null cell can grow. Test those cells (grows_fn(ord) must
-  // be true exactly when more_range_fn(ord) has non-zero volume) and stop at
-  // the first one that grows; the steady state (nothing grows) is one cheap
-  // test per null cell and no allocation.
+  // be true exactly when more_range_fn(ord) has non-zero volume; it may be
+  // stateful, and is never called if no cell is null) and stop at the first
+  // one that grows; the steady state (nothing grows) is one cheap test per
+  // null cell and no allocation.
   bool grows = false;
   for (std::size_t ord = 0; ord < N_cells && !grows; ++ord) {
     if (!result.data()[ord].empty()) continue;
@@ -541,10 +542,19 @@ void arena_tot_grow_inplace(OuterTensor& result, GrowsFn&& grows_fn,
   // Pass 2 (something grows): the full per-cell range vector, as before.
   std::vector<inner_range_t> ranges;
   ranges.reserve(N_cells);
+  [[maybe_unused]] bool range_grows = false;
   for (std::size_t ord = 0; ord < N_cells; ++ord) {
     const auto& rc = result.data()[ord];
-    ranges.emplace_back(rc.empty() ? more_range_fn(ord) : rc.range());
+    if (!rc.empty()) {
+      ranges.emplace_back(rc.range());
+      continue;
+    }
+    ranges.emplace_back(more_range_fn(ord));
+    if (ranges.back().volume() != 0) range_grows = true;
   }
+  // grows_fn and more_range_fn must agree, else pass 1 skips real growth or
+  // (here) reallocates the tile for nothing.
+  TA_ASSERT(range_grows);
   OuterTensor grown = arena_outer_init<OuterTensor>(
       result.range(), result.nbatch(),
       [&ranges](std::size_t ord) -> inner_range_t { return ranges[ord]; });
