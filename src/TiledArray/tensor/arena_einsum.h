@@ -953,6 +953,59 @@ struct ArenaInnerShapePlan {
   }
 };
 
+/// Matrix geometry of one outer `left`/`right` K-panel of a ToT contraction:
+/// the result is an `M` x `N` matrix of inner cells per batch, contracted
+/// over `K`. The one place that maps a result-cell ordinal to its
+/// (batch, row, column) and a (row/column, k) pair to an operand-cell offset,
+/// so the per-cell range (`cell_range_fn`) and the growth test
+/// (`cell_grows_fn`) cannot disagree on the layout.
+struct ArenaPanelGeometry {
+  std::size_t M = 0, N = 0, K = 0;
+  std::size_t lda = 0, ldb = 0;  ///< leading dimensions of left and right
+  bool left_notrans = true, right_notrans = true;
+  std::size_t nbatch = 0;
+  std::size_t mn = 0;  ///< result cells per batch, `M * N`
+
+  template <typename Left, typename Right>
+  ArenaPanelGeometry(const Left& left, const Right& right,
+                     const math::GemmHelper& outer_gh) {
+    math::blas::integer m, n, k;
+    outer_gh.compute_matrix_sizes(m, n, k, left.range(), right.range());
+    M = static_cast<std::size_t>(m);
+    N = static_cast<std::size_t>(n);
+    K = static_cast<std::size_t>(k);
+    left_notrans = outer_gh.left_op() == math::blas::NoTranspose;
+    right_notrans = outer_gh.right_op() == math::blas::NoTranspose;
+    lda = left_notrans ? K : M;
+    ldb = right_notrans ? N : K;
+    TA_ASSERT(left.nbatch() == right.nbatch());
+    nbatch = static_cast<std::size_t>(left.nbatch());
+    mn = M * N;
+  }
+
+  /// Number of result cells, over all batches.
+  std::size_t ncells() const { return mn * nbatch; }
+
+  /// (batch, row, column) of a result cell.
+  struct Cell {
+    std::size_t b, m, n;
+  };
+  /// \pre `mn != 0`
+  Cell cell(std::size_t ord) const {
+    const std::size_t rem = ord % mn;
+    return {ord / mn, rem / N, rem % N};
+  }
+
+  /// Offset of left cell (m, k) within its batch.
+  std::size_t left_offset(std::size_t m, std::size_t k) const {
+    return left_notrans ? m * lda + k : k * lda + m;
+  }
+  /// Offset of right cell (k, n) within its batch.
+  std::size_t right_offset(std::size_t k, std::size_t n) const {
+    return right_notrans ? k * ldb + n : n * ldb + k;
+  }
+};
+
 /// Derives result ranges and constructs non-empty inner cells in one arena
 /// slab.
 template <typename Result, typename Left, typename Right>
@@ -982,6 +1035,26 @@ class ContractionArenaPlan {
   /// return type unconditionally (and returns nullopt for non-ToT).
   auto operand_inner_ranges(const Left& left, const Right& right,
                             const math::GemmHelper& outer_gh) const;
+
+  /// The inner range implied by one `left`/`right` K-panel for a single
+  /// output cell, as a callable of the cell ordinal. `operand_inner_ranges`
+  /// evaluates it for every cell; `grow_to_cover` evaluates it on demand,
+  /// for the cells that are still null, so a steady-state panel (nothing
+  /// grows) costs no per-cell range construction.
+  /// \warning the callable refers to `*this`, `left` and `right`; it must
+  /// not outlive any of them.
+  auto cell_range_fn(const Left& left, const Right& right,
+                     const math::GemmHelper& outer_gh) const;
+
+  /// Whether one `left`/`right` K-panel grows a given output cell: a
+  /// callable of the cell ordinal that is true exactly when `cell_range_fn`
+  /// yields a non-zero-volume range for it. It screens with per-row (left)
+  /// and per-column (right) non-empty masks over K, built on the first call
+  /// (never, if the result has no null cell to test), and constructs a range
+  /// only for a cell the masks let through.
+  /// \warning same lifetime rule as `cell_range_fn`.
+  auto cell_grows_fn(const Left& left, const Right& right,
+                     const math::GemmHelper& outer_gh) const;
 
   ArenaInnerShapePlan inner_plan_{};
 };
@@ -1042,39 +1115,24 @@ auto make_contraction_arena_plan(ArenaInnerShapeKind inner_kind,
   }
 }
 
-/// Per-output-cell inner ranges implied by one `left`/`right` K-panel.
+/// The per-cell inner range of one `left`/`right` K-panel, as a callable.
 template <typename Result, typename Left, typename Right>
-auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
+auto ContractionArenaPlan<Result, Left, Right>::cell_range_fn(
     const Left& left, const Right& right,
     const math::GemmHelper& outer_gh) const {
   using inner_t = typename Result::value_type;
   using inner_range_t = typename inner_t::range_type;
-  using integer = math::blas::integer;
+  const ArenaPanelGeometry g(left, right, outer_gh);
 
-  integer M, N, K;
-  outer_gh.compute_matrix_sizes(M, N, K, left.range(), right.range());
-  const integer lda = (outer_gh.left_op() == math::blas::NoTranspose) ? K : M;
-  const integer ldb = (outer_gh.right_op() == math::blas::NoTranspose) ? N : K;
-  TA_ASSERT(left.nbatch() == right.nbatch());
-  const std::size_t batch_sz = static_cast<std::size_t>(left.nbatch());
-  const std::size_t mn =
-      static_cast<std::size_t>(M) * static_cast<std::size_t>(N);
-
-  auto range_for = [&](std::size_t ord) -> inner_range_t {
-    if (mn == 0) return inner_range_t{};
-    const integer b = static_cast<integer>(ord / mn);
-    const integer rem = static_cast<integer>(ord % mn);
-    const integer m = rem / N;
-    const integer n = rem % N;
+  return [this, &left, &right, g](std::size_t ord) -> inner_range_t {
+    if (g.mn == 0) return inner_range_t{};
+    const auto [b, m, n] = g.cell(ord);
 
     if (inner_plan_.kind == ArenaInnerShapeKind::left_range) {
       if constexpr (is_arena_eligible_outer_v<Left>) {
-        const auto* lbase = left.batch_data(static_cast<std::size_t>(b));
-        for (integer k = 0; k != K; ++k) {
-          const auto aoff = (outer_gh.left_op() == math::blas::NoTranspose)
-                                ? m * lda + k
-                                : k * lda + m;
-          const auto& lc = *(lbase + aoff);
+        const auto* lbase = left.batch_data(b);
+        for (std::size_t k = 0; k != g.K; ++k) {
+          const auto& lc = *(lbase + g.left_offset(m, k));
           if (!lc.empty()) return lc.range();
         }
       }
@@ -1082,40 +1140,114 @@ auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
     }
     if (inner_plan_.kind == ArenaInnerShapeKind::right_range) {
       if constexpr (is_arena_eligible_outer_v<Right>) {
-        const auto* rbase = right.batch_data(static_cast<std::size_t>(b));
-        for (integer k = 0; k != K; ++k) {
-          const auto boff = (outer_gh.right_op() == math::blas::NoTranspose)
-                                ? k * ldb + n
-                                : n * ldb + k;
-          const auto& rc = *(rbase + boff);
+        const auto* rbase = right.batch_data(b);
+        for (std::size_t k = 0; k != g.K; ++k) {
+          const auto& rc = *(rbase + g.right_offset(k, n));
           if (!rc.empty()) return rc.range();
         }
       }
       return inner_range_t{};
     }
-    // gemm_result_range needs both operands to be ToT.
+    // gemm_result_range and unit_range: both operands must be ToT, and the
+    // cell exists once some k has both operand cells.
     if constexpr (is_arena_eligible_outer_v<Left> &&
                   is_arena_eligible_outer_v<Right>) {
-      const auto* lbase = left.batch_data(static_cast<std::size_t>(b));
-      const auto* rbase = right.batch_data(static_cast<std::size_t>(b));
-      for (integer k = 0; k != K; ++k) {
-        const auto aoff = (outer_gh.left_op() == math::blas::NoTranspose)
-                              ? m * lda + k
-                              : k * lda + m;
-        const auto boff = (outer_gh.right_op() == math::blas::NoTranspose)
-                              ? k * ldb + n
-                              : n * ldb + k;
-        const auto& lc = *(lbase + aoff);
-        const auto& rc = *(rbase + boff);
+      const auto* lbase = left.batch_data(b);
+      const auto* rbase = right.batch_data(b);
+      for (std::size_t k = 0; k != g.K; ++k) {
+        const auto& lc = *(lbase + g.left_offset(m, k));
+        const auto& rc = *(rbase + g.right_offset(k, n));
         if (lc.empty() || rc.empty()) continue;
         return inner_plan_.template make<inner_range_t>(lc, rc);
       }
     }
     return inner_range_t{};
   };
+}
 
+/// Per-cell "does this K-panel grow it" predicate; see the declaration.
+template <typename Result, typename Left, typename Right>
+auto ContractionArenaPlan<Result, Left, Right>::cell_grows_fn(
+    const Left& left, const Right& right,
+    const math::GemmHelper& outer_gh) const {
+  const ArenaPanelGeometry g(left, right, outer_gh);
+  const std::size_t words = (g.K + 63) / 64;
+  // row_mask[(b*M + m)*words + w]: bit k%64 of word w is set iff left cell
+  // (b, m, k) is non-empty; col_mask likewise for right cell (b, k, n). A
+  // mask stays empty when its operand is not a ToT or the kind ignores it.
+  return [&left, &right, g, words, kind = inner_plan_.kind,
+          range_fn = cell_range_fn(left, right, outer_gh),
+          row_mask = std::vector<std::uint64_t>{},
+          col_mask = std::vector<std::uint64_t>{},
+          masks_built = false](std::size_t ord) mutable -> bool {
+    if (g.mn == 0 || words == 0) return false;
+    if (!masks_built) {
+      masks_built = true;
+      if constexpr (is_arena_eligible_outer_v<Left>) {
+        if (kind != ArenaInnerShapeKind::right_range) {
+          row_mask.assign(g.nbatch * g.M * words, 0);
+          for (std::size_t b = 0; b != g.nbatch; ++b) {
+            const auto* lbase = left.batch_data(b);
+            for (std::size_t m = 0; m != g.M; ++m) {
+              auto* mask = &row_mask[(b * g.M + m) * words];
+              for (std::size_t k = 0; k != g.K; ++k)
+                if (!(lbase + g.left_offset(m, k))->empty())
+                  mask[k / 64] |= std::uint64_t{1} << (k % 64);
+            }
+          }
+        }
+      }
+      if constexpr (is_arena_eligible_outer_v<Right>) {
+        if (kind != ArenaInnerShapeKind::left_range) {
+          col_mask.assign(g.nbatch * g.N * words, 0);
+          for (std::size_t b = 0; b != g.nbatch; ++b) {
+            const auto* rbase = right.batch_data(b);
+            for (std::size_t n = 0; n != g.N; ++n) {
+              auto* mask = &col_mask[(b * g.N + n) * words];
+              for (std::size_t k = 0; k != g.K; ++k)
+                if (!(rbase + g.right_offset(k, n))->empty())
+                  mask[k / 64] |= std::uint64_t{1} << (k % 64);
+            }
+          }
+        }
+      }
+    }
+    const auto [b, m, n] = g.cell(ord);
+    const std::uint64_t* rm =
+        row_mask.empty() ? nullptr : &row_mask[(b * g.M + m) * words];
+    const std::uint64_t* cm =
+        col_mask.empty() ? nullptr : &col_mask[(b * g.N + n) * words];
+    // The masks answer "does cell_range_fn find an operand cell (pair)".
+    bool found = false;
+    if (kind == ArenaInnerShapeKind::left_range) {
+      for (std::size_t w = 0; rm && !found && w != words; ++w)
+        found = rm[w] != 0;
+    } else if (kind == ArenaInnerShapeKind::right_range) {
+      for (std::size_t w = 0; cm && !found && w != words; ++w)
+        found = cm[w] != 0;
+    } else {
+      // gemm_result_range and unit_range: some k with both operand cells.
+      for (std::size_t w = 0; rm && cm && !found && w != words; ++w)
+        found = (rm[w] & cm[w]) != 0;
+    }
+    // A found cell normally grows. The exception is a non-empty operand cell
+    // of zero volume (an owning inner keeps a ranked zero-volume range),
+    // whose range grows nothing; ask the range itself so that this predicate
+    // is exactly "cell_range_fn(ord) has non-zero volume".
+    return found && range_fn(ord).volume() != 0;
+  };
+}
+
+/// Per-output-cell inner ranges implied by one `left`/`right` K-panel.
+template <typename Result, typename Left, typename Right>
+auto ContractionArenaPlan<Result, Left, Right>::operand_inner_ranges(
+    const Left& left, const Right& right,
+    const math::GemmHelper& outer_gh) const {
+  using inner_range_t = typename Result::value_type::range_type;
+  const std::size_t N_cells =
+      ArenaPanelGeometry(left, right, outer_gh).ncells();
+  auto range_for = cell_range_fn(left, right, outer_gh);
   std::vector<inner_range_t> ranges;
-  const std::size_t N_cells = mn * batch_sz;
   ranges.reserve(N_cells);
   for (std::size_t ord = 0; ord < N_cells; ++ord)
     ranges.emplace_back(range_for(ord));
@@ -1145,11 +1277,12 @@ template <typename Result, typename Left, typename Right>
 void ContractionArenaPlan<Result, Left, Right>::grow_to_cover(
     Result& result, const Left& left, const Right& right,
     const math::GemmHelper& outer_gh) const {
-  using inner_range_t = typename Result::value_type::range_type;
-  const auto ranges = operand_inner_ranges(left, right, outer_gh);
-  detail::arena_tot_grow_inplace(
-      result,
-      [&ranges](std::size_t ord) -> inner_range_t { return ranges[ord]; });
+  // On demand: arena_tot_grow_inplace tests only the cells that are still
+  // null, with a mask test per cell (the masks are built at the first such
+  // cell), and asks for every range (and allocates) only once a panel
+  // actually grows something.
+  detail::arena_tot_grow_inplace(result, cell_grows_fn(left, right, outer_gh),
+                                 cell_range_fn(left, right, outer_gh));
 }
 
 /// Accumulates a contraction into an already-allocated result cell.
